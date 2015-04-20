@@ -29,3 +29,5 @@ local.properties
  
 # CDT-specific
 .cproject
+# Python specific
+*.pyc
