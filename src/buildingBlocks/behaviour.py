@@ -5,25 +5,29 @@ Created on 13.04.2015
 ''' 
 import operator
 
-class behaviour(object):
+class Behaviour(object):
     '''
     This is the smallest entity of an action.
     It may take a while or finish immediately.
     '''
-    _activators = []
-    _predecessors = []
-    _successors = []
-    _isExecuting = False
-    _name = ""
+    
+    _instanceCounter = 0 # static counter to get distinguishable names
 
-
-    def __init__(self, name):
+    def __init__(self, name = None):
         '''
         Constructor
         '''
-        self._name = name
+        self._name = name if name else "Behaviour {0}".format(Behaviour._instanceCounter)
+        self._activators = []
+        self._predecessors = []   # maybe unnecessary
+        self._successors = []     # maybe unnecessary
+        self._isExecuting = False # set this to True if this behaviour is selected for execution
+        Behaviour._instanceCounter += 1
         
-    def addDependency(self, activator):
+    def addActivator(self, activator):
+        '''
+        This method adds an activator to the behaviour.
+        '''
         self._activators.append(activator)
     
     def getActivation(self):
@@ -32,4 +36,7 @@ class behaviour(object):
         In the easiest case this is equivalent to the product of the individual Activations.
         '''
         return reduce(operator.mul, (x.getActivation() for x in self._activators), 1)
+    
+    def __str__(self):
+        return self._name
         
