@@ -27,10 +27,10 @@ class Goal(object): #TODO: Although it is similar to Preconditions of a behaviou
         '''
         This method adds an precondition to the behaviour.
         '''
-        if isinstance(condition, conditions.Condition):
+        if issubclass(type(condition), conditions.Conditonal):
             self._conditions.append(condition)
         else:
-            warnings.warn("That's no condition!")
+            warnings.warn("That's no conditional object!")
     
     @property
     def statisfaction(self):

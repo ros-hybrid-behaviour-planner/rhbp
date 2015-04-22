@@ -28,11 +28,13 @@ class Behaviour(object):
     def addPrecondition(self, precondition):
         '''
         This method adds an precondition to the behaviour.
+        There is an AND relationship between all elenents (all have to be fulfilled so that the behaviour is ready)
+        To enable OR behaviour use the pseudo Conditional Disjunction.
         '''
-        if isinstance(precondition, conditions.Condition):
+        if issubclass(type(precondition), conditions.Conditonal):
             self._preconditions.append(precondition)
         else:
-            warnings.warn("That's no condition!")
+            warnings.warn("That's no conditional object!")
         
     
     def _getPreconditionActivation(self):
@@ -59,8 +61,8 @@ class Behaviour(object):
         return self._getPreconditionActivation() >= self._readyThreshold
     
     def __str__(self):
-        return self._name
+        return "{0} with the following preconditions:\n{1}".format(self._name, "\n".join([str(x) for x in self._preconditions]))
     
     def __repr__(self):
-        return str(self)
+        return self._name
         
