@@ -20,8 +20,8 @@ class Sensor(object):
         self._value = None # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         Sensor._instanceCounter += 1
 
-    
-    def getValue(self):
+    @property
+    def value(self):
         return self._value
     
     def update(self, newValue):
@@ -32,3 +32,6 @@ class Sensor(object):
         
     def __str__(self):
         return self._name
+    
+    def __repr__(self):
+        return str(self)

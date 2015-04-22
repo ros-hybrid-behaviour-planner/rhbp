@@ -1,90 +1,118 @@
 '''
-Created on 13.04.2015
+Created on 22.04.2015
 
 @author: stephan
 '''
+
 from __future__ import division # force floating point division when using plain /
+
 
 class Activator(object):
     '''
-    This is an abstract base class for an activator.
-    Its actual implementations are supposed to evaluate the contribution of the supervised component(s) on a behaviour's activation.
+    This is the abstract base class for an activator which reacts to a value according to the activation behaviour implemented in it
     '''
-    _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
-    def __init__(self, name = None):
+    def __init__(self, minActivation = 0, maxActivation = 1):
         '''
         Constructor
         '''
-        self._name = name if name else "Activator {0}".format(Activator._instanceCounter)
-        self._minActivation = 0.0
-        self._maxActivation = 1.0
-        Activator._instanceCounter += 1
-    
-    def setMinActivation(self, minActivationLevel = 0.0):
-        self._minActivation = float(minActivationLevel)
+        self._minActivation = float(minActivation)
+        self._maxActivation = float(maxActivation)
         
-    def setMaxActivation(self, maxActivationLevel = 1.0):
-        self._maxActivation = float(maxActivationLevel)
+    @property
+    def minActivation(self):
+        return self._minActivation
+
+    @minActivation.setter
+    def minActivation(self, minActivationLevel):
+        self._minActivation = float(minActivationLevel)
     
-    def getActivation(self):
+    @property
+    def maxActivation(self):
+        return self._maxActivation
+
+    @maxActivation.setter
+    def maxActivation(self, maxActivationLevel):
+        self._maxActivation = float(maxActivationLevel)    
+    
+    def computeActivation(self, value):
         '''
-        This method should return an activation level between _minActivation (no activation) and _maxActivation (total activation)
-        The actual implementation obviously depends on the sensor so that there is no useful default here.
+        This method should return an activation level.
+        The actual implementation obviously depends on the type of activation so that there is no useful default here.
         '''
         raise NotImplementedError()
     
     def __str__(self):
-        return self._name
+        return "Activator"
     
+    def __repr__(self):
+        return str(self)
     
-class SensorValueActivator(Activator):
+
+class BooleanActivator(Activator):
     '''
-    This activator wraps around a sensor and its derived classes are supposed to work with this sensor
+    This class is an activator that compares a boolean value to a desired value
     '''
-    _sensor = None
     
-    def __init__(self, sensor, name = None):
+    def __init__(self, desiredValue = True, minActivation = 0, maxActivation = 1):
         '''
         Constructor
         '''
-        super(SensorValueActivator, self).__init__(name)
-        self._name = name if name else "SensorValueActivator {0}".format(Activator._instanceCounter)
-        self._sensor = sensor
+        super(BooleanActivator, self).__init__(minActivation, maxActivation)
+        self._desired = desiredValue   # this is the threshold Value
+    
+    def computeActivation(self, value):
+        assert isinstance(value, bool)
+        return self._maxActivation if value == self._desired else self._minActivation
+    
+    def __str__(self):
+        return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
+    
 
-class ThresholdActivator(SensorValueActivator):
+class ThresholdActivator(Activator):
     '''
-    This class is an activator that compares a sensor's value (expected to be int or float) to a threshold and evaluates the activation level using a margin.
+    This class is an activator that compares a sensor's value (expected to be int or float) to a threshold.
     '''
     
-    def __init__(self, sensor, thresholdValue, fullActivationValue, name = None):
-        super(ThresholdActivator, self).__init__(sensor, name)
-        self._name = name if name else "ThresholdActivator {0}".format(Activator._instanceCounter)
-        self._thresholdValue = thresholdValue           # Activation raises linearly between this value and _fullActivationValue (it remains 0 until here))
+    def __init__(self, thresholdValue, rising = True, minActivation = 0, maxActivation = 1):
+        '''
+        Constructor
+        '''
+        super(ThresholdActivator, self).__init__(minActivation, maxActivation)
+        self._threshold = thresholdValue   # this is the threshold Value
+        self._rising = rising # The direction in which the threshold must be crossed in order to be activated
+    
+    def computeActivation(self, value):
+        assert isinstance(value, int) or isinstance(value, float)
+        if self._rising:
+            return self._maxActivation if value >= self._threshold else self._minActivation
+        else:
+            return self._maxActivation if value < self._threshold else self._minActivation
+        
+    def __str__(self):
+        return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above"  if self._rising else "below")
+
+class LinearActivator(Activator):
+    '''
+    This class is an activator that takes a value (expected to be int or float) and computes a linear slope of activation within a value range.
+    '''
+
+    def __init__(self, zeroActivationValue, fullActivationValue, minActivation = 0, maxActivation = 1):
+        '''
+        Constructor
+        '''
+        super(LinearActivator, self).__init__(minActivation, maxActivation)
+        self._zeroActivationValue = zeroActivationValue # Activation raises linearly between this value and _fullActivationValue (it remains 0 until here))
         self._fullActivationValue = fullActivationValue # This value (and other values further away from _threshold in this direction) means total activation
     
-    
-    def getActivation(self):
-        value = self._sensor.getValue()
+    def computeActivation(self, value):
         assert isinstance(value, int) or isinstance(value, float)
-        valueRange = self._fullActivationValue - self._thresholdValue
+        valueRange = self._fullActivationValue - self._zeroActivationValue
         assert valueRange != 0
-        rawActivation = (value - self._thresholdValue) / valueRange
+        rawActivation = (value - self._zeroActivationValue) / valueRange
         activationRange = self._maxActivation - self._minActivation
         assert self._minActivation <= self._maxActivation
         return max(min(self._maxActivation, rawActivation * activationRange + self._minActivation), self._minActivation) # clamp to activation range
-        
-class GoalActivator(Activator):
-    '''
-    This activator wraps around a goal spreads activation from the goal to correlating behaviours.
-    Possibly, this is going to be merged with sensorActivator as it is actually the same but backwards.
-    '''   
-    _goal = None 
     
-    def __init__(self, goal, name = None):
-        '''
-        Constructor
-        '''
-        super(Activator, self).__init__(name)
-        self._name = name if name else "GoalActivator {0}".format(Activator._instanceCounter)
-        self._goal = goal
+    def __str__(self):
+        return "Linear Activator [{0} - {1}] ({2} - {3})".format(self._minActivation, self._maxActivation, self._zeroActivationValue, self._fullActivationValue)
