@@ -10,7 +10,7 @@ import warnings
 class Conditonal(object):
     '''
     This is the base class for conditions or anything that spreads activations.
-    Subclasses have to provide the activation property
+    Subclasses have to provide the satisfaction property
     '''
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
     
@@ -18,12 +18,19 @@ class Conditonal(object):
         Conditonal._instanceCounter += 1
         
     @property
-    def activation(self):
+    def satisfaction(self):
         '''
         This property means fulfillment.
-        Note that the opposite (1 - activation) is a good measure of the effort that is necessary to reach fulfillment - so it can be used as activation induced in behaviours to reach fulfillment.
         '''
         raise NotImplementedError()
+    
+    def getWishes(self):
+        '''
+        This method should return a list of (sensor, indicator) tuple where the indicator should return the strength normalized strength and direction of sensor changes to make the condition True.
+        Indicator value range should be between -1 and 1 where -1 means the value must decrease or become False, 0 means no change is necessary and should remain, 1 means the value should increase or become True.
+        '''
+        raise NotImplementedError()
+        
     
     def __str__(self):
         return "Conditional"
@@ -34,7 +41,7 @@ class Conditonal(object):
 
 class Condition(Conditonal):
     '''
-    This class wraps a sensor and an activator to build a precondition
+    This class wraps a sensor and an activator to build a condition and produce a satisfaction value
     '''
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
@@ -57,17 +64,23 @@ class Condition(Conditonal):
             self._activator = newActivator
         else:
             warnings.warn("That's no activator!")
+            
+    def getWishes(self):
+        return [(self._sensor, self._activator.getWish(self._sensor.value))]
     
     @property
-    def activation(self):
+    def satisfaction(self):
         '''
         This property specifies to what extend the condition is fulfilled.
-        Note that the opposite (1 - activation) is a good measure of the effort that is necessary to satisfy this condition - so it can be used as activation induced in behaviours that change the sensor value in the satisfactory direction.
         '''
         return self._activator.computeActivation(self._sensor.value)
     
+    @property
+    def sensor(self):
+        return self._sensor
+    
     def __str__(self):
-        return "{0} wrapping {1} with {2}: {3}".format(self._name, self._sensor, self._activator, self.activation)
+        return "{0} {{{1} + {2}: {3}}}".format(self._name, self._sensor, self._activator, self.satisfaction)
     
     def __repr__(self):
         return str(self)
@@ -97,18 +110,21 @@ class Disjunction(Conditonal):
             warnings.warn("That's no condition!")
     
     @property
-    def activation(self):
+    def satisfaction(self):
         '''
-        The disjunction of activations is the highest activation.
+        The disjunction of activations is the highest satisfaction.
         '''
-        return max((x.activation for x in self._conditions))
+        return max((x.satisfaction for x in self._conditions))
+    
+    def getWishes(self):
+        return [(c.sensor, c._activator.getWish(c.sensor.value)) for c in self._conditions]
         
     @property
     def conditions(self):
         return self._conditions
     
     def __str__(self):
-        return "{0} made of: {1}: {2}".format(self._name, self._conditions, self.activation)
+        return "{0} made of: {1}: {2}".format(self._name, self._conditions, self.satisfaction)
     
     def __repr__(self):
         return str(self)

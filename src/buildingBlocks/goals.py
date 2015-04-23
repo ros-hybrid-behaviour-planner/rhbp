@@ -7,6 +7,7 @@ Created on 22.04.2015
 import operator
 import conditions
 import warnings
+import itertools
 
 class Goal(object): #TODO: Although it is similar to Preconditions of a behaviour we accept the code duplication for now
     '''
@@ -31,6 +32,13 @@ class Goal(object): #TODO: Although it is similar to Preconditions of a behaviou
             self._conditions.append(condition)
         else:
             warnings.warn("That's no conditional object!")
+
+    def getWishes(self):
+        '''
+        This function returns a dict of wishes.
+        For all sensors wrapped in conditions for this goal this dict says what changes are necessary to achieve it
+        '''
+        return dict(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))
     
     @property
     def statisfaction(self):
@@ -38,11 +46,19 @@ class Goal(object): #TODO: Although it is similar to Preconditions of a behaviou
         This method should return the overall activation from all conditions.
         In the easiest case this is equivalent to the product of the individual activations.
         '''
-        return reduce(operator.mul, (x.activation for x in self._conditions), 1)
+        return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
     
     @property
     def conditions(self):
         return self._conditions
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self, newName):
+        self._name = newName
     
     def __str__(self):
         return "{0} with the following conditions:\n{1}".format(self._name, "\n".join([str(x) for x in self._conditions]))
