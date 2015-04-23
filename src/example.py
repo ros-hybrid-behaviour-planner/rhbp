@@ -23,8 +23,8 @@ if __name__ == '__main__':
     mapCoverageSensor = m.addSensor(Sensor("mapCoverageSensor"))
     # initial conditions (this is normally done in the simulation loop)
     batterySensor.update(1.0)
-    flyingSensor.update(False)
-    homeSensor.update(True)
+    flyingSensor.update(True) # TODO: set back to False for initial conditions
+    homeSensor.update(False) # TODO: set back to False for initial conditions
     targetSelectedSensor.update(False)
     objectsFoundSensor.update(0.0)
     mapCoverageSensor.update(0.0)
@@ -42,20 +42,20 @@ if __name__ == '__main__':
     mapComplete = Condition(mapCoverageSensor, LinearActivator(0, 1), name = "mapCompleteCondition")
     mapIncomplete = Condition(mapCoverageSensor, LinearActivator(1, 0), name = "mapIncompleteCondition")
     # setting up behaviours
-    startBehaviour = m.addBehaviour(Behaviour("startBehaviour"))
+    startBehaviour = m.addBehaviour(Behaviour("startBehaviour", correlations = {flyingSensor: 1.0}))
     startBehaviour.addPrecondition(isNotFlying)
     startBehaviour.addPrecondition(fullBattery)
-    landBehaviour = m.addBehaviour(Behaviour("landBehaviour"))
+    landBehaviour = m.addBehaviour(Behaviour("landBehaviour", correlations = {flyingSensor: -1.0}))
     landBehaviour.addPrecondition(isFlying)
     landBehaviour.addPrecondition(emptyBattery)
-    goHomeBehaviour = m.addBehaviour(Behaviour("goHomeBehaviour"))
+    goHomeBehaviour = m.addBehaviour(Behaviour("goHomeBehaviour", correlations = {targetSelectedSensor: 1.0}))
     goHomeBehaviour.addPrecondition(isNotAtHome)
     goHomeBehaviour.addPrecondition(emptyBattery)
-    selectTargetBehaviour = m.addBehaviour(Behaviour("selectTargetBehaviour"))
+    selectTargetBehaviour = m.addBehaviour(Behaviour("selectTargetBehaviour", correlations = {targetSelectedSensor: 1.0}))
     selectTargetBehaviour.addPrecondition(fullBattery)
     selectTargetBehaviour.addPrecondition(isFlying)
     selectTargetBehaviour.addPrecondition(Disjunction(objectsNotFound, mapIncomplete, name = "noMapNorObjectsDisjunction"))
-    moveBehaviour = m.addBehaviour(Behaviour("moveBehaviour"))
+    moveBehaviour = m.addBehaviour(Behaviour("moveBehaviour", correlations = {homeSensor: 0.8, mapCoverageSensor: 0.8, objectsFoundSensor: 0.8, targetSelectedSensor: -0.5}))
     moveBehaviour.addPrecondition(isFlying)
     moveBehaviour.addPrecondition(targetSelected)
     # setting up goals
@@ -71,6 +71,8 @@ if __name__ == '__main__':
         print "executable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction())
         print behaviour.name, "wishes", behaviour.getWishes()
         print "activation from preconditions: ", behaviour.getActivationFromPreconditions()
+        print "activation from goals: ", behaviour.getActivationFromGoals()
+        print "inhibition from goals: ", behaviour.getInhibitionFromGoals()
         print
     for goal in m.goals:
         print goal.name, "satisfaction", goal.statisfaction, "wishes", goal.getWishes()

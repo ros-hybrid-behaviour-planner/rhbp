@@ -69,7 +69,24 @@ class Behaviour(object):
         This method computes the activation from goals.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
         '''
-        pass
+        activatedByGoals = []
+        for goal in self._manager.goals:
+            for (sensor, indicator) in goal.getWishes().iteritems():
+                if sensor in self._correlations.keys() and self._correlations[sensor] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
+                    activatedByGoals.append((goal, self._correlations[sensor] * indicator))            # actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return 0.0 if len(activatedByGoals) == 0 else reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)) / len(activatedByGoals)
+    
+    def getInhibitionFromGoals(self):
+        '''
+        This method computes the inhibition caused by goals it conflicts with.
+        Precondition is that correlations are known so that the effect of this behaviour can be evaluated
+        '''
+        inhibitedByGoals = []
+        for goal in self._manager.goals:
+            for (sensor, indicator) in goal.getWishes().iteritems():
+                if sensor in self._correlations.keys() and self._correlations[sensor] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
+                    inhibitedByGoals.append((goal, self._correlations[sensor] * indicator))            # actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return 0.0 if len(inhibitedByGoals) == 0 else reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)) / len(inhibitedByGoals)
     
     @property
     def correllations(self):
