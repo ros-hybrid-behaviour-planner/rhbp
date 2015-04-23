@@ -69,6 +69,12 @@ class Behaviour(object):
         This method computes the activation from goals.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
         '''
+        pass
+    
+    @property
+    def correllations(self):
+        return self._correlations
+    
     @correllations.setter
     def correllations(self, correllations):
         '''
