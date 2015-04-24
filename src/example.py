@@ -68,7 +68,6 @@ if __name__ == '__main__':
     objectsFoundGoal.addCondition(objectsFound)
     for behaviour in m.behaviours:
         print behaviour
-        print "executable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction())
         print behaviour.name, "wishes", behaviour.getWishes()
         print "activation from preconditions: ", behaviour.getActivationFromPreconditions()
         print "activation from goals: ", behaviour.getActivationFromGoals()
@@ -76,7 +75,10 @@ if __name__ == '__main__':
         print "activation from predecessors: ", behaviour.getActivationFromPredecessors()
         print "activation from successors: ", behaviour.getActivationFromSuccessors()
         print "inhibition from conflictors: ", behaviour.getInhibitionFromConflictors()
-
+        print "executable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction())
+        behaviour.computeActivation()
+        behaviour.commitActivation()
+        print "activation: ", behaviour.activation
         print
     for goal in m.goals:
         print goal.name, "satisfaction", goal.statisfaction, "wishes", goal.getWishes()
