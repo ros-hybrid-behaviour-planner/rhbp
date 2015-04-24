@@ -73,6 +73,10 @@ if __name__ == '__main__':
         print "activation from preconditions: ", behaviour.getActivationFromPreconditions()
         print "activation from goals: ", behaviour.getActivationFromGoals()
         print "inhibition from goals: ", behaviour.getInhibitionFromGoals()
+        print "activation from predecessors: ", behaviour.getActivationFromPredecessors()
+        print "activation from successors: ", behaviour.getActivationFromSuccessors()
+        print "inhibition from conflictors: ", behaviour.getInhibitionFromConflictors()
+
         print
     for goal in m.goals:
         print goal.name, "satisfaction", goal.statisfaction, "wishes", goal.getWishes()

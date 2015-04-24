@@ -56,7 +56,7 @@ class Behaviour(object):
         For all sensors wrapped in conditions for this goal this dict says what changes are necessary to achieve it
         '''
         return dict(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))
-    
+
     def getActivationFromPreconditions(self):
         '''
         This method computes the activation from the situation.
@@ -73,21 +73,68 @@ class Behaviour(object):
         for goal in self._manager.goals:
             for (sensor, indicator) in goal.getWishes().iteritems():
                 if sensor in self._correlations.keys() and self._correlations[sensor] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
-                    activatedByGoals.append((goal, self._correlations[sensor] * indicator))            # actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return 0.0 if len(activatedByGoals) == 0 else reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)) / len(activatedByGoals)
+                    activatedByGoals.append((goal, self._correlations[sensor] * indicator))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return 0.0 if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)) / len(activatedByGoals), activatedByGoals)
     
     def getInhibitionFromGoals(self):
         '''
-        This method computes the inhibition caused by goals it conflicts with.
+        This method computes the inhibition (actually, activation but negative sign!) caused by goals it conflicts with.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
         '''
         inhibitedByGoals = []
         for goal in self._manager.goals:
             for (sensor, indicator) in goal.getWishes().iteritems():
                 if sensor in self._correlations.keys() and self._correlations[sensor] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
-                    inhibitedByGoals.append((goal, self._correlations[sensor] * indicator))            # actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return 0.0 if len(inhibitedByGoals) == 0 else reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)) / len(inhibitedByGoals)
+                    inhibitedByGoals.append((goal, self._correlations[sensor] * indicator))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return 0.0 if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)) / len(inhibitedByGoals), inhibitedByGoals)
     
+    def getActivationFromPredecessors(self):
+        '''
+        This method computes the activation based on the fact that other behaviours can fulfill a precondition of this behaviour.
+        This is scaled by the "readyness" (precondition satisfaction) of the predecessor as it makes only sense to activate a successor if it is likely that it is executable soon.
+        '''
+        # TODO: add current activation to the equation
+        activatedByPredecessors = []
+        for behaviour in self._manager.behaviours:
+            if behaviour == self: # ignore ourselves
+                continue
+            for (sensor, indicator) in self.getWishes().iteritems():
+                if sensor in behaviour.correllations.keys() and behaviour.correllations[sensor] * indicator > 0.0: # If a predecessor can satisfy my precondition
+                    activatedByPredecessors.append((behaviour, sensor, behaviour.correllations[sensor] * indicator * behaviour.getPreconditionSatisfaction())) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon.
+        return 0.0 if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)) / len(activatedByPredecessors), activatedByPredecessors)
+
+    def getActivationFromSuccessors(self):
+        '''
+        This method computed the activation this behaviour receives because it is a precondition to a successor which has unfulfilled wishes.
+        '''
+        # TODO: add current activation to the equation
+        activatedBySuccessors = []
+        for behaviour in self._manager.behaviours:
+            if behaviour == self: # ignore ourselves
+                continue
+            behaviourWishes = behaviour.getWishes()                    # this is what the behaviour wants
+            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to Sensors
+                if sensor in behaviourWishes.keys():                   # if we affect it somehow
+                    if behaviourWishes[sensor] * indicator > 0:        # we are a predecessor so we get activation from that successor
+                        activatedBySuccessors.append((behaviour, sensor, behaviourWishes[sensor] * indicator)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes
+        return 0.0 if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)) / len(activatedBySuccessors), activatedBySuccessors)
+
+    def getInhibitionFromConflictors(self):
+        '''
+        This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whos preconditions get antagonize when this behaviour runs.
+        '''
+        # TODO: add current activation to the equation
+        inhibitionFromConflictors = []
+        for behaviour in self._manager.behaviours:
+            if behaviour == self: # ignore ourselves
+                continue
+            behaviourWishes = behaviour.getWishes()                    # this is what the behaviour wants
+            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to Sensors
+                if sensor in behaviourWishes.keys():                   # if we affect it somehow
+                    if behaviourWishes[sensor] * indicator < 0:        # we are a conflictor so we get inhibited
+                        inhibitionFromConflictors.append((behaviour, sensor, behaviourWishes[sensor] * indicator)) # The inhibition experienced is my bad influence (my correlation to this sensor) times the wish of the other behaviour concerning this sensor. Actually only the value is needed but it is a tuple for debug purposes
+        return 0.0 if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)) / len(inhibitionFromConflictors), inhibitionFromConflictors)
+
     @property
     def correllations(self):
         return self._correlations
@@ -135,6 +182,10 @@ class Behaviour(object):
     @name.setter
     def name(self, newName):
         self._name = newName
+        
+    @property
+    def isExecuting(self):
+        return self._isExecuting
     
     def __str__(self):
         return "{0} with the following preconditions:\n{1}".format(self._name, "\n".join([str(x) for x in self._preconditions]))
