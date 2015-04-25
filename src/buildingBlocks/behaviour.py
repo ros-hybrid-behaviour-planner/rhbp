@@ -134,6 +134,9 @@ class Behaviour(object):
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)) / len(inhibitionFromConflictors), inhibitionFromConflictors)
 
     def computeActivation(self):
+        '''
+        This method sums up all components of activation to compute the additional activation in this step.
+        '''
         self.__currentActivationStep = self.getActivationFromPreconditions() \
             + self.getActivationFromGoals()[0] \
             + self.getInhibitionFromGoals()[0] \
@@ -142,8 +145,27 @@ class Behaviour(object):
             + self.getInhibitionFromConflictors()[0]
     
     def commitActivation(self):
+        '''
+        This method applies the activatipn of this iteration to the overall activation.
+        '''
         self._activation += self.__currentActivationStep
-        self.__currentActivationStep = 0
+        if self._activation < 0.0:
+            self._activation = 0
+        self.__currentActivationStep = 0.0
+    
+    def execute(self):
+        '''
+        This method is a wrapper around the behaviours actual action.
+        It sets internal parameter like _isExecuting and resets the activation once the behaviour is done (returns False)
+        '''
+        self._isExecuting = True
+        if self.action() == False: # The action has finished
+            self._isExecuting = False
+            self._activation = 0.0
+            
+        
+    def action(self):
+        return False
     
     @property
     def correllations(self):

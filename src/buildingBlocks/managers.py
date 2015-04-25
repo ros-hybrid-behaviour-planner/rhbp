@@ -21,9 +21,38 @@ class Manager(object):
         self._goals = []
         self._behaviours = []
         self._activationThreshold = 10 # not sure how to set this just yet.
+        self._stepCounter = 0
     
     def step(self):
-        pass
+        print "STEP {0}".format(self._stepCounter)
+        for sensor in self._sensors:
+            print sensor, sensor.value
+        print
+        for goal in self._goals:
+            print goal.name, "satisfaction", goal.statisfaction, "wishes", goal.getWishes()
+        print
+        for behaviour in self._behaviours:
+            print behaviour.name
+            print "\twishes", behaviour.getWishes()
+            print "\tactivation from preconditions: ", behaviour.getActivationFromPreconditions()
+            print "\tactivation from goals: ", behaviour.getActivationFromGoals()
+            print "\tinhibition from goals: ", behaviour.getInhibitionFromGoals()
+            print "\tactivation from predecessors: ", behaviour.getActivationFromPredecessors()
+            print "\tactivation from successors: ", behaviour.getActivationFromSuccessors()
+            print "\tinhibition from conflictors: ", behaviour.getInhibitionFromConflictors()
+            print "\texecutable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction())
+            behaviour.computeActivation()
+            behaviour.commitActivation()
+            print "\tactivation: ", behaviour.activation
+        print
+        executableBehaviours = [x for x in self._behaviours if x.executable or x.isExecuting] # make a list of executable or still executing behaviours
+        for behaviour in executableBehaviours:
+            if behaviour.activation >= self._activationThreshold or behaviour.isExecuting == True: # activate new behaviours or continue old ones
+                print "RUNNING BEHAVIOUR ", behaviour.name
+                behaviour.execute()
+
+        print
+        self._stepCounter += 1
     
     def addSensor(self, sensor):
         self._sensors.append(sensor)
