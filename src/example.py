@@ -59,9 +59,11 @@ if __name__ == '__main__':
     landBehaviour.action = landAction
     landBehaviour.addPrecondition(isFlying)
     landBehaviour.addPrecondition(emptyBattery)
+    landBehaviour.addPrecondition(isAtHome)
     goHomeBehaviour = m.addBehaviour(Behaviour("goHomeBehaviour", correlations = {targetSelectedSensor: 1.0}))
     def goHomeAction():
         targetSelectedSensor.update(True)
+        global homeSelected
         homeSelected = True
         return False
     goHomeBehaviour.action = goHomeAction
@@ -72,6 +74,7 @@ if __name__ == '__main__':
         targetSelectedSensor.update(True)
         return False
     selectTargetBehaviour.action = selectTargetActionAction
+    selectTargetBehaviour.readyThreshold = 0.42
     selectTargetBehaviour.addPrecondition(fullBattery)
     selectTargetBehaviour.addPrecondition(isFlying)
     selectTargetBehaviour.addPrecondition(Disjunction(objectsNotFound, mapIncomplete, name = "noMapNorObjectsDisjunction"))
