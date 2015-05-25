@@ -1,11 +1,8 @@
-'''
-Created on 22.04.2015
-
-@author: stephan
-'''
+## The Activators module
+#Created on 22.04.2015
+#@author: stephan
 
 from __future__ import division # force floating point division when using plain /
-
 
 
 class Activator(object):
