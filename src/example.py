@@ -1,9 +1,10 @@
+#!/usr/bin/python
 '''
 Created on 13.04.2015
 
 @author: stephan
 '''
-
+import rospy
 import random # because why not?
 from buildingBlocks.conditions import Condition, Disjunction
 from buildingBlocks.sensors import Sensor
@@ -13,6 +14,7 @@ from buildingBlocks.goals import Goal
 from buildingBlocks.managers import Manager
 
 if __name__ == '__main__':
+    rospy.init_node('behaviourPlanner', anonymous=True) 
     # some random helper variables
     homeSelected = False
     # create a Manager
@@ -106,6 +108,8 @@ if __name__ == '__main__':
     completeMapGoal.addCondition(mapComplete)
     objectsFoundGoal = m.addGoal(Goal("objectsFound"))
     objectsFoundGoal.addCondition(objectsFound)
+    rate = rospy.Rate(2) # 2hz
     for i in range(25):
         m.step()
         batterySensor.update(batterySensor.value - 0.05)
+        rate.sleep()

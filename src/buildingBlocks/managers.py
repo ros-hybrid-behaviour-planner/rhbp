@@ -4,6 +4,8 @@ Created on 23.04.2015
 @author: stephan
 '''
 
+import rospy
+
 class Manager(object):
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
@@ -24,34 +26,29 @@ class Manager(object):
         self._stepCounter = 0
     
     def step(self):
-        print "STEP {0}".format(self._stepCounter)
+        rospy.loginfo("STEP {0}".format(self._stepCounter))
         for sensor in self._sensors:
-            print sensor, sensor.value
-        print
+            rospy.loginfo("%s %s", sensor, sensor.value)
         for goal in self._goals:
-            print goal.name, "satisfaction", goal.statisfaction, "wishes", goal.getWishes()
-        print
+            rospy.loginfo("%s satisfaction: %f wishes %s", goal.name, goal.statisfaction, goal.getWishes())
         for behaviour in self._behaviours:
-            print behaviour.name
-            print "\twishes", behaviour.getWishes()
-            print "\tactivation from preconditions: ", behaviour.getActivationFromPreconditions()
-            print "\tactivation from goals: ", behaviour.getActivationFromGoals()
-            print "\tinhibition from goals: ", behaviour.getInhibitionFromGoals()
-            print "\tactivation from predecessors: ", behaviour.getActivationFromPredecessors()
-            print "\tactivation from successors: ", behaviour.getActivationFromSuccessors()
-            print "\tinhibition from conflictors: ", behaviour.getInhibitionFromConflictors()
-            print "\texecutable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction())
+            rospy.loginfo(behaviour.name)
+            rospy.loginfo("\twishes", behaviour.getWishes())
+            rospy.loginfo("\tactivation from preconditions: %s", behaviour.getActivationFromPreconditions())
+            rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
+            rospy.loginfo("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
+            rospy.loginfo("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
+            rospy.loginfo("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
+            rospy.loginfo("\tinhibition from conflictors: %s", behaviour.getInhibitionFromConflictors())
+            rospy.loginfo("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction()))
             behaviour.computeActivation()
             behaviour.commitActivation()
-            print "\tactivation: ", behaviour.activation
-        print
+            rospy.loginfo("\tactivation: %f", behaviour.activation)
         executableBehaviours = [x for x in self._behaviours if x.executable or x.isExecuting] # make a list of executable or still executing behaviours
         for behaviour in executableBehaviours:
             if behaviour.activation >= self._activationThreshold or behaviour.isExecuting == True: # activate new behaviours or continue old ones
-                print "RUNNING BEHAVIOUR ", behaviour.name
+                rospy.loginfo("RUNNING BEHAVIOUR %s", behaviour.name)
                 behaviour.execute()
-
-        print
         self._stepCounter += 1
     
     def addSensor(self, sensor):
