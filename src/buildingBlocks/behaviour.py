@@ -3,6 +3,7 @@ Created on 13.04.2015
 
 @author: stephan
 ''' 
+import rospy
 import operator
 import conditions
 import warnings
@@ -30,8 +31,17 @@ class Behaviour(object):
         self._conflictors = []     # List of successors. This list is refreshed each iteration based on correlations.
         self._manager = None       # This is the Manager that supplies global variables an access to all foreign objects
         self._activation = 0.0     # This is the magic activation that it's all about
+        self._activationDecay = .9 # This reduces accumulated activation if the situation does not fit any more
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
+        self.__logFile = open(self._name, 'w')
+        self.__logFile.write('{0}\n'.format(self._name))
+    
+    def __del__(self):
+        '''
+        Destructor
+        '''
+        self.__logFile.close()
         
     def addPrecondition(self, precondition):
         '''
@@ -99,38 +109,44 @@ class Behaviour(object):
             if behaviour == self: # ignore ourselves
                 continue
             for (sensor, indicator) in self.getWishes().iteritems():
-                if sensor in behaviour.correllations.keys() and behaviour.correllations[sensor] *  behaviour.getPreconditionSatisfaction() * indicator > 0.0:  # If a predecessor can satisfy my precondition
-                    activatedByPredecessors.append((behaviour, sensor, behaviour.correllations[sensor] * indicator * behaviour.getPreconditionSatisfaction() * behaviour.activation)) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon.
+                if sensor in behaviour.correlations.keys() and behaviour.correlations[sensor] *  behaviour.getPreconditionSatisfaction() * indicator > 0.0:  # If a predecessor can satisfy my precondition
+                    numSuccessorsOfThatPredecessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.getWishes().keys() and b.getWishes()[sensor] * indicator > 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d successor(s) of %s via %s: %s",  self.name, numSuccessorsOfThatPredecessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.getWishes().keys() and b.getWishes()[sensor] * indicator > 0.0])
+                    activatedByPredecessors.append((behaviour, sensor, behaviour.correlations[sensor] * indicator * behaviour.getPreconditionSatisfaction() * behaviour.activation / numSuccessorsOfThatPredecessorAffectedByThisCorrelation)) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. numSuccessorsOfThatPredecessorAffectedByThisCorrelation knows how many more behaviours will get activation from this predecessor so we distribute it equally
         return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)) / len(activatedByPredecessors), activatedByPredecessors)
 
     def getActivationFromSuccessors(self):
         '''
-        This method computed the activation this behaviour receives because it is a precondition to a successor which has unfulfilled wishes.
+        This method computes the activation this behaviour receives because it fulfills a precondition (is a predecessor) of a successor which has unfulfilled wishes.
         '''
         activatedBySuccessors = []
         for behaviour in self._manager.behaviours:
             if behaviour == self: # ignore ourselves
                 continue
             behaviourWishes = behaviour.getWishes()                    # this is what the behaviour wants
-            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to Sensors
+            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to sensors
                 if sensor in behaviourWishes.keys():                   # if we affect it somehow
                     if behaviourWishes[sensor] * indicator > 0:        # we are a predecessor so we get activation from that successor
-                        activatedBySuccessors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes
+                        numPredecessorsOfThatSuccessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0]) # the variable name says it all
+                        rospy.logdebug("Calculating activation from successors for %s. There is/are %d predecessor(s) of %s via %s: %s", self.name, numPredecessorsOfThatSuccessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0])
+                        activatedBySuccessors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation / numPredecessorsOfThatSuccessorAffectedByThisCorrelation)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. numPredecessorsOfThatSuccessorAffectedByThisCorrelation is used to distribute activation among all predecessors
         return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)) / len(activatedBySuccessors), activatedBySuccessors)
 
-    def getInhibitionFromConflictors(self):
+    def getInhibitionFromConflicted(self):
         '''
-        This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whos preconditions get antagonize when this behaviour runs.
+        This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose preconditions get antagonized when this behaviour runs.
         '''
         inhibitionFromConflictors = []
         for behaviour in self._manager.behaviours:
             if behaviour == self: # ignore ourselves
                 continue
             behaviourWishes = behaviour.getWishes()                    # this is what the behaviour wants
-            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to Sensors
+            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to sensors
                 if sensor in behaviourWishes.keys():                   # if we affect it somehow
                     if behaviourWishes[sensor] * indicator < 0:        # we are a conflictor so we get inhibited
-                        inhibitionFromConflictors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation)) # The inhibition experienced is my bad influence (my correlation to this sensor) times the wish of the other behaviour concerning this sensor. Actually only the value is needed but it is a tuple for debug purposes
+                        numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.getWishes()[sensor] < 0.0]) # the variable name says it all
+                        rospy.logdebug("Calculating inhibition from conflicted for %s. %s is conflicted via %s by %d behaviour(s): %s", self.name, behaviour.name, sensor, numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.getWishes()[sensor] < 0.0])
+                        inhibitionFromConflictors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation / numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation)) # The inhibition experienced is my bad influence (my correlation to this sensor) times the wish of the other behaviour concerning this sensor. Actually only the value is needed but it is a tuple for debug purposes. numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation knows how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)) / len(inhibitionFromConflictors), inhibitionFromConflictors)
 
     def computeActivation(self):
@@ -142,21 +158,23 @@ class Behaviour(object):
             + self.getInhibitionFromGoals()[0] \
             + self.getActivationFromPredecessors()[0] \
             + self.getActivationFromSuccessors()[0] \
-            + self.getInhibitionFromConflictors()[0]
+            + self.getInhibitionFromConflicted()[0]
     
     def commitActivation(self):
         '''
         This method applies the activatipn of this iteration to the overall activation.
         '''
-        self._activation += self.__currentActivationStep
+        self._activation = self._activation * self._activationDecay + self.__currentActivationStep
         if self._activation < 0.0:
             self._activation = 0
-        self.__currentActivationStep = 0.0
+        self.__currentActivationStep = 0.0        
+        self.__logFile.write("{0}\n".format(self._activation))
     
     def execute(self):
         '''
         This method is a wrapper around the behaviours actual action.
         It sets internal parameter like _isExecuting and resets the activation once the behaviour is done (returns False)
+        TODO: multi thread this so that behaviour network can continue to work on other things (actionlib?!)
         '''
         self._isExecuting = True
         if self.action() == False: # The action has finished
@@ -168,16 +186,16 @@ class Behaviour(object):
         return False
     
     @property
-    def correllations(self):
+    def correlations(self):
         return self._correlations
     
-    @correllations.setter
-    def correllations(self, correllations):
+    @correlations.setter
+    def correlations(self, correlations):
         '''
         This is for initializing the correlations.
         correlations must be a dict of form sensor <Sensor> : correlation <float> [-1 to 1].
         '''
-        self._correlations = correllations
+        self._correlations = correlations
     
     @property
     def activation(self):
@@ -190,6 +208,14 @@ class Behaviour(object):
     @readyThreshold.setter
     def readyThreshold(self, threshold):
         self._readyThreshold = float(threshold)
+    
+    @property
+    def activationDecay(self):
+        return self._activationDecay
+    
+    @activationDecay.setter
+    def activationDecay(self, rate):
+        self._activationDecay = rate
         
     @property
     def manager(self):

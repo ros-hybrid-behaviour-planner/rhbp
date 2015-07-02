@@ -13,8 +13,32 @@ from buildingBlocks.activators import BooleanActivator, LinearActivator
 from buildingBlocks.goals import Goal
 from buildingBlocks.managers import Manager
 
+class MoveBehaviour(Behaviour):
+    def __init__(self, *args, **kwargs):
+        super(MoveBehaviour, self).__init__(*args, **kwargs)
+        
+    def action(self):
+        homeSensor.update(homeSelected)
+        mapImprovement = random.random()
+        for i in range(10):
+            if mapImprovement + mapCoverageSensor.value <= 1:
+                mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value * .8)
+                break
+            else:
+                mapImprovement = random.random()        
+        objectImprovement = random.random() 
+        for i in range(10):
+            if objectImprovement + objectsFoundSensor.value <= 1:
+                objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value * .8)
+                break
+            else:
+                objectImprovement = random.random()
+        targetSelectedSensor.update(False)
+        return False
+
+
 if __name__ == '__main__':
-    rospy.init_node('behaviourPlanner', anonymous=True) 
+    rospy.init_node('behaviourPlanner', anonymous=True, log_level=rospy.DEBUG) 
     # some random helper variables
     homeSelected = False
     # create a Manager
@@ -54,6 +78,8 @@ if __name__ == '__main__':
     startBehaviour.action = startAction
     startBehaviour.addPrecondition(isNotFlying)
     startBehaviour.addPrecondition(fullBattery)
+    startBehaviour.addPrecondition(mapIncomplete)
+    startBehaviour.addPrecondition(objectsNotFound)
     landBehaviour = m.addBehaviour(Behaviour("landBehaviour", correlations = {flyingSensor: -1.0}))
     def landAction():
         flyingSensor.update(False)
@@ -80,24 +106,7 @@ if __name__ == '__main__':
     selectTargetBehaviour.addPrecondition(fullBattery)
     selectTargetBehaviour.addPrecondition(isFlying)
     selectTargetBehaviour.addPrecondition(Disjunction(objectsNotFound, mapIncomplete, name = "noMapNorObjectsDisjunction"))
-    moveBehaviour = m.addBehaviour(Behaviour("moveBehaviour", correlations = {homeSensor: 0.8, mapCoverageSensor: 0.8, objectsFoundSensor: 0.8, targetSelectedSensor: -0.5}))
-    def moveAction():
-        homeSensor.update(homeSelected)
-        mapImprovement = 1337
-        for i in range(10):
-            if mapImprovement + mapCoverageSensor.value <= 1:
-                mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value / 2)
-            else:
-                mapImprovement = random.random()        
-        objectImprovement = 1337
-        for i in range(10):
-            if objectImprovement + objectsFoundSensor.value <= 1:
-                objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value / 2)
-            else:
-                objectImprovement = random.random()
-        targetSelectedSensor.update(False)
-        return False
-    moveBehaviour.action = moveAction        
+    moveBehaviour = m.addBehaviour(MoveBehaviour("moveBehaviour", correlations = {homeSensor: 0.8, mapCoverageSensor: 0.8, objectsFoundSensor: 0.8, targetSelectedSensor: -0.5}))      
     moveBehaviour.addPrecondition(isFlying)
     moveBehaviour.addPrecondition(targetSelected)
     # setting up goals
@@ -108,8 +117,8 @@ if __name__ == '__main__':
     completeMapGoal.addCondition(mapComplete)
     objectsFoundGoal = m.addGoal(Goal("objectsFound"))
     objectsFoundGoal.addCondition(objectsFound)
-    rate = rospy.Rate(2) # 2hz
-    for i in range(25):
+    rate = rospy.Rate(10) # 10hz
+    for i in range(101):
         m.step()
-        batterySensor.update(batterySensor.value - 0.05)
+        batterySensor.update(batterySensor.value - 0.01)
         rate.sleep()
