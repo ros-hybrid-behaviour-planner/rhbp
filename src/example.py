@@ -21,20 +21,20 @@ class MoveBehaviour(Behaviour):
         
     def action(self):
         homeSensor.update(homeSelected)
-        mapImprovement = random.random() * .5
+        mapImprovement = random.random() * .1
         for i in range(10):
             if mapImprovement + mapCoverageSensor.value <= 1:
-                mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value * .8)
+                mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value)
                 break
             else:
-                mapImprovement = random.random() * .5  
-        objectImprovement = random.random() * .5
+                mapImprovement = random.random() * .1
+        objectImprovement = random.random() * .1
         for i in range(10):
             if objectImprovement + objectsFoundSensor.value <= 1:
-                objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value * .8)
+                objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value)
                 break
             else:
-                objectImprovement = random.random() * .5
+                objectImprovement = random.random() * .1
         targetSelectedSensor.update(False)
         return False
 
@@ -60,8 +60,8 @@ if __name__ == '__main__':
     objectsFoundSensor.update(0.0)
     mapCoverageSensor.update(0.0)
     # setting up (pre-)conditions
-    fullBattery = Condition(batterySensor, LinearActivator(.05, .3), name = "fullBatteryCondition")
-    emptyBattery = Condition(batterySensor, LinearActivator(.5, .1), name = "emptyBatteryCondition")
+    fullBattery = Condition(batterySensor, LinearActivator(.05, .2), name = "fullBatteryCondition")
+    emptyBattery = Condition(batterySensor, LinearActivator(.42, .1), name = "emptyBatteryCondition")
     isFlying = Condition(flyingSensor, BooleanActivator(True), name = "isFlyingCondition")
     isNotFlying = Condition(flyingSensor, BooleanActivator(False), name = "isNotFlyingCondition")
     isAtHome = Condition(homeSensor, BooleanActivator(True), name = "isAtHomeCondition")
@@ -69,9 +69,9 @@ if __name__ == '__main__':
     targetSelected = Condition(targetSelectedSensor, BooleanActivator(True), name = "targetSelectedCondition")
     targetNotSelected = Condition(targetSelectedSensor, BooleanActivator(False), name = "targetNotSelectedCondition")
     objectsFound = Condition(objectsFoundSensor, LinearActivator(0, 1), name = "objectsFoundCondition")
-    objectsNotFound = Condition(objectsFoundSensor, LinearActivator(1, 0), name = "objectsNotFoundCondition")
+    objectsNotFound = Condition(objectsFoundSensor, LinearActivator(1, .7), name = "objectsNotFoundCondition")
     mapComplete = Condition(mapCoverageSensor, LinearActivator(0, 1), name = "mapCompleteCondition")
-    mapIncomplete = Condition(mapCoverageSensor, LinearActivator(1, 0), name = "mapIncompleteCondition")
+    mapIncomplete = Condition(mapCoverageSensor, LinearActivator(1, .7), name = "mapIncompleteCondition")
     # setting up behaviours
     startBehaviour = m.addBehaviour(Behaviour("startBehaviour", correlations = {flyingSensor: 1.0}))
     def startAction():

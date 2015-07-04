@@ -112,7 +112,7 @@ class Behaviour(object):
         '''
         activatedByPredecessors = []
         for behaviour in self._manager.behaviours:
-            if behaviour == self: # ignore ourselves
+            if behaviour == self or not behaviour.executable: # ignore ourselves and non-executable behaviours
                 continue
             for (sensor, indicator) in self.getWishes().iteritems():
                 if sensor in behaviour.correlations.keys() and behaviour.correlations[sensor] *  behaviour.getPreconditionSatisfaction() * indicator > 0.0:  # If a predecessor can satisfy my precondition

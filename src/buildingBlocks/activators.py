@@ -184,7 +184,7 @@ class LinearActivator(Activator):
     def getWish(self, value):
         if self.computeActivation(value) == self._maxActivation:  # no change is required
             return 0.0
-        return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [-1, 1]
+        return sorted((-1.0, (self._fullActivationValue - value) / self.valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
     
     @property
     def valueRange(self):
