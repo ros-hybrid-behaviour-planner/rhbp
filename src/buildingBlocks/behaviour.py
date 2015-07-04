@@ -3,11 +3,13 @@ Created on 13.04.2015
 
 @author: stephan
 ''' 
+from __future__ import division # force floating point division when using plain /
 import rospy
 import operator
 import conditions
 import warnings
 import itertools
+
 
 class Behaviour(object):
     '''
@@ -84,8 +86,10 @@ class Behaviour(object):
         for goal in self._manager.goals:
             for (sensor, indicator) in goal.getWishes().iteritems():
                 if sensor in self._correlations.keys() and self._correlations[sensor] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
-                    activatedByGoals.append((goal, self._correlations[sensor] * indicator))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)) / len(activatedByGoals), activatedByGoals)
+                    numBehavioursActivatedBySameGoal = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d behaviour(s) that supports %s via %s: %s",  self.name, numBehavioursActivatedBySameGoal, goal.name, sensor, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0])
+                    activatedByGoals.append((goal, self._correlations[sensor] * indicator / numBehavioursActivatedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
     def getInhibitionFromGoals(self):
         '''
@@ -96,8 +100,10 @@ class Behaviour(object):
         for goal in self._manager.goals:
             for (sensor, indicator) in goal.getWishes().iteritems():
                 if sensor in self._correlations.keys() and self._correlations[sensor] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
-                    inhibitedByGoals.append((goal, self._correlations[sensor] * indicator))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)) / len(inhibitedByGoals), inhibitedByGoals)
+                    numBehavioursInhibitedBySameGoal = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator < 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name, sensor, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator < 0.0])
+                    inhibitedByGoals.append((goal, self._correlations[sensor] * indicator / numBehavioursInhibitedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+        return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
     
     def getActivationFromPredecessors(self):
         '''
@@ -113,7 +119,7 @@ class Behaviour(object):
                     numSuccessorsOfThatPredecessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.getWishes().keys() and b.getWishes()[sensor] * indicator > 0.0]) # the variable name says it all
                     rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d successor(s) of %s via %s: %s",  self.name, numSuccessorsOfThatPredecessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.getWishes().keys() and b.getWishes()[sensor] * indicator > 0.0])
                     activatedByPredecessors.append((behaviour, sensor, behaviour.correlations[sensor] * indicator * behaviour.getPreconditionSatisfaction() * behaviour.activation / numSuccessorsOfThatPredecessorAffectedByThisCorrelation)) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. numSuccessorsOfThatPredecessorAffectedByThisCorrelation knows how many more behaviours will get activation from this predecessor so we distribute it equally
-        return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)) / len(activatedByPredecessors), activatedByPredecessors)
+        return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
     def getActivationFromSuccessors(self):
         '''
@@ -130,7 +136,7 @@ class Behaviour(object):
                         numPredecessorsOfThatSuccessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0]) # the variable name says it all
                         rospy.logdebug("Calculating activation from successors for %s. There is/are %d predecessor(s) of %s via %s: %s", self.name, numPredecessorsOfThatSuccessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0])
                         activatedBySuccessors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation / numPredecessorsOfThatSuccessorAffectedByThisCorrelation)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. numPredecessorsOfThatSuccessorAffectedByThisCorrelation is used to distribute activation among all predecessors
-        return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)) / len(activatedBySuccessors), activatedBySuccessors)
+        return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)), activatedBySuccessors)
 
     def getInhibitionFromConflicted(self):
         '''
@@ -147,7 +153,7 @@ class Behaviour(object):
                         numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.getWishes()[sensor] < 0.0]) # the variable name says it all
                         rospy.logdebug("Calculating inhibition from conflicted for %s. %s is conflicted via %s by %d behaviour(s): %s", self.name, behaviour.name, sensor, numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.getWishes()[sensor] < 0.0])
                         inhibitionFromConflictors.append((behaviour, sensor, behaviourWishes[sensor] * indicator * behaviour.activation / numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation)) # The inhibition experienced is my bad influence (my correlation to this sensor) times the wish of the other behaviour concerning this sensor. Actually only the value is needed but it is a tuple for debug purposes. numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation knows how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
-        return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)) / len(inhibitionFromConflictors), inhibitionFromConflictors)
+        return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
 
     def computeActivation(self):
         '''

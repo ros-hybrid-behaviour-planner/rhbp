@@ -7,6 +7,7 @@ Created on 13.04.2015
 import activators
 import warnings
 
+
 class Conditonal(object):
     '''
     This is the base class for conditions or anything that spreads activations.
@@ -26,7 +27,7 @@ class Conditonal(object):
     
     def getWishes(self):
         '''
-        This method should return a list of (sensor, indicator) tuple where the indicator should return the strength normalized strength and direction of sensor changes to make the condition True.
+        This method should return a list of (sensor, indicator) tuples where the indicator should return the strength normalized strength and direction of sensor changes to make the condition True.
         Indicator value range should be between -1 and 1 where -1 means the value must decrease or become False, 0 means no change is necessary and should remain, 1 means the value should increase or become True.
         '''
         raise NotImplementedError()
