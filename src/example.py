@@ -21,20 +21,21 @@ class MoveBehaviour(Behaviour):
         
     def action(self):
         homeSensor.update(homeSelected)
-        mapImprovement = random.random() * .1
-        for i in range(10):
-            if mapImprovement + mapCoverageSensor.value <= 1:
-                mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value)
-                break
-            else:
-                mapImprovement = random.random() * .1
-        objectImprovement = random.random() * .1
-        for i in range(10):
-            if objectImprovement + objectsFoundSensor.value <= 1:
-                objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value)
-                break
-            else:
-                objectImprovement = random.random() * .1
+        if not homeSelected:
+            mapImprovement = random.random() * .1
+            for i in range(10):
+                if mapImprovement + mapCoverageSensor.value <= 1:
+                    mapCoverageSensor.update(mapImprovement + mapCoverageSensor.value)
+                    break
+                else:
+                    mapImprovement = random.random() * .1
+            objectImprovement = random.random() * .1
+            for i in range(10):
+                if objectImprovement + objectsFoundSensor.value <= 1:
+                    objectsFoundSensor.update(objectImprovement + objectsFoundSensor.value)
+                    break
+                else:
+                    objectImprovement = random.random() * .1
         targetSelectedSensor.update(False)
         return False
 

@@ -36,7 +36,7 @@ class Behaviour(object):
         self._activationDecay = .9 # This reduces accumulated activation if the situation does not fit any more
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
-        self.__logFile = open(self._name, 'w')
+        self.__logFile = open("{0}.log".format(self._name), 'w')
         self.__logFile.write('{0}\n'.format(self._name))
     
     def __del__(self):

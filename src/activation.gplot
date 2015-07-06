@@ -1,8 +1,8 @@
 set terminal pdf
 set output 'activation.pdf'
 set title "activation"
-set key inside left
-set grid y
+set key outside Left reverse right title "Legend"
+set grid x
 set grid y
 set logscale y
 plot for [col=1:5] 'activationFlow.dat' using 0:col with lines  title columnheader

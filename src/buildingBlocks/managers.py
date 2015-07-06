@@ -26,10 +26,14 @@ class Manager(object):
         self._activationDecay = .9     # not sure how to set this just yet.
 
         self._stepCounter = 0
+        self.__logFile = open("sensors.log", 'w')
     
     def step(self):
+        if self._stepCounter == 0:
+            self.__logFile.write("{0}\n".format("\t".join([str(s) for s in self._sensors])))
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         rospy.loginfo("############ SENSOR STATI ############")
+        self.__logFile.write("{0}\n".format("\t".join([str(float(s.value)) for s in self._sensors])))
         for sensor in self._sensors:
             rospy.loginfo("%s %s", sensor, sensor.value)
         rospy.loginfo("############# GOAL STATI #############")

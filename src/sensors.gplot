@@ -1,0 +1,9 @@
+set terminal pdf
+set output 'sensors.pdf'
+set title "sensors"
+set key outside Left reverse right title "Legend"
+set grid x
+set grid y
+#set logscale y
+set yrange [-.1:1.1]
+plot for [col=1:6] 'sensors.log' using 0:col with lines  title columnheader
