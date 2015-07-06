@@ -28,13 +28,21 @@ class Manager(object):
         self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
         self._stepCounter = 0
         self.__logFile = open("sensors.log", 'w')
+        self.__threshFile = open("threshold.log", 'w')
+        
+    def __del__(self):
+        self.__logFile.close()
+        self.__threshFile.close()
     
     def step(self):
         if self._stepCounter == 0:
             self.__logFile.write("{0}\n".format("\t".join([str(s) for s in self._sensors])))
+            self.__threshFile.write("{0}\n".format("activationThreshold"))
+
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         rospy.loginfo("############ SENSOR STATI ############")
         self.__logFile.write("{0}\n".format("\t".join([str(float(s.value)) for s in self._sensors])))
+        self.__threshFile.write("{0}\n".format(self._activationThreshold))
         for sensor in self._sensors:
             rospy.loginfo("%s %s", sensor, sensor.value)
         rospy.loginfo("############# GOAL STATI #############")
@@ -57,14 +65,20 @@ class Manager(object):
             behaviour.commitActivation()
             rospy.loginfo("\tactivation: %f", behaviour.activation)
         rospy.loginfo("############## ACTIONS ###############")
-        executableBehaviours = [x for x in self._behaviours if x.executable or x.isExecuting] # make a list of executable or still executing behaviours
-        for behaviour in executableBehaviours:
-            '''
-            TODO: only run behaviours in parallel that do not interfere with each other (have no commom actuators) 
-            '''
-            if behaviour.activation >= self._activationThreshold or behaviour.isExecuting == True: # activate new behaviours or continue old ones
+        executableBehaviours = [x for x in self._behaviours if (x.executable and x.activation >= self._activationThreshold) or x.isExecuting] # make a list of executable or still executing behaviours
+        if len(executableBehaviours) > 0:
+            for behaviour in executableBehaviours:
+                '''
+                TODO: only run behaviours in parallel that do not interfere with each other (have no common actuators) 
+                '''
                 rospy.loginfo("RUNNING BEHAVIOUR %s", behaviour.name)
                 behaviour.execute()
+            self._activationThreshold *= (1/.8)
+            rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+        else:
+            self._activationThreshold *= .8
+            rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+            
         self._stepCounter += 1
     
     def addSensor(self, sensor):

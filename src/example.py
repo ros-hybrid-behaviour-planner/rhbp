@@ -7,7 +7,7 @@ Created on 13.04.2015
 from __future__ import division # force floating point division when using plain /
 import rospy
 import random # because why not?
-from buildingBlocks.conditions import Condition, Disjunction
+from buildingBlocks.conditions import Condition, Disjunction, Conjunction
 from buildingBlocks.sensors import Sensor
 from buildingBlocks.behaviour import Behaviour
 from buildingBlocks.activators import BooleanActivator, LinearActivator
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # some random helper variables
     homeSelected = False
     # create a Manager
-    m = Manager()
+    m = Manager(activationThreshold=21)
     # creating sensors
     batterySensor = m.addSensor(Sensor("batteryLevelSensor"))
     flyingSensor = m.addSensor(Sensor("flyingSensor"))
@@ -61,8 +61,8 @@ if __name__ == '__main__':
     objectsFoundSensor.update(0.0)
     mapCoverageSensor.update(0.0)
     # setting up (pre-)conditions
-    fullBattery = Condition(batterySensor, LinearActivator(.05, .2), name = "fullBatteryCondition")
-    emptyBattery = Condition(batterySensor, LinearActivator(.42, .1), name = "emptyBatteryCondition")
+    fullBattery = Condition(batterySensor, LinearActivator(.05, .21), name = "fullBatteryCondition")
+    emptyBattery = Condition(batterySensor, LinearActivator(.21, .05), name = "emptyBatteryCondition")
     isFlying = Condition(flyingSensor, BooleanActivator(True), name = "isFlyingCondition")
     isNotFlying = Condition(flyingSensor, BooleanActivator(False), name = "isNotFlyingCondition")
     isAtHome = Condition(homeSensor, BooleanActivator(True), name = "isAtHomeCondition")
@@ -81,16 +81,17 @@ if __name__ == '__main__':
     startBehaviour.action = startAction
     startBehaviour.addPrecondition(isNotFlying)
     startBehaviour.addPrecondition(fullBattery)
-    # startBehaviour.addPrecondition(mapIncomplete)
-    # startBehaviour.addPrecondition(objectsNotFound)
+    startBehaviour.addPrecondition(mapIncomplete)
+    startBehaviour.addPrecondition(objectsNotFound)
     landBehaviour = m.addBehaviour(Behaviour("landBehaviour", correlations = {flyingSensor: -1.0}))
     def landAction():
         flyingSensor.update(False)
         return False
     landBehaviour.action = landAction
     landBehaviour.addPrecondition(isFlying)
-    landBehaviour.addPrecondition(emptyBattery)
     landBehaviour.addPrecondition(isAtHome)
+    jobDone = Conjunction(objectsFound, mapComplete, name="jobDone")
+    landBehaviour.addPrecondition(Disjunction(emptyBattery, jobDone, name = "landingCriteria"))
     goHomeBehaviour = m.addBehaviour(Behaviour("goHomeBehaviour", correlations = {targetSelectedSensor: 1.0}))
     def goHomeAction():
         targetSelectedSensor.update(True)
@@ -98,8 +99,8 @@ if __name__ == '__main__':
         homeSelected = True
         return False
     goHomeBehaviour.action = goHomeAction
-    goHomeBehaviour.addPrecondition(isNotAtHome)
-    goHomeBehaviour.addPrecondition(emptyBattery)
+    component1 = Conjunction(isNotAtHome, emptyBattery, name="awayAndBatteryEmpty")
+    goHomeBehaviour.addPrecondition(Disjunction(component1, jobDone, name="goHomeMix"))
     selectTargetBehaviour = m.addBehaviour(Behaviour("selectTargetBehaviour", correlations = {targetSelectedSensor: 1.0}))
     def selectTargetActionAction():
         targetSelectedSensor.update(True)

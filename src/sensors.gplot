@@ -1,9 +1,10 @@
 set terminal pdf
 set output 'sensors.pdf'
 set title "sensors"
-set key outside Left reverse right title "Legend"
+set key above vertical maxrows 3
 set grid x
 set grid y
 #set logscale y
 set yrange [-.1:1.1]
-plot for [col=1:6] 'sensors.log' using 0:col with lines  title columnheader
+set y2tics
+plot for [col=1:6] 'sensors.log' using 0:col with lines lw 2 title columnheader

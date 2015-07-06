@@ -6,6 +6,8 @@ Created on 13.04.2015
 
 import activators
 import warnings
+import operator
+import itertools
 
 
 class Conditonal(object):
@@ -118,7 +120,62 @@ class Disjunction(Conditonal):
         return max((x.satisfaction for x in self._conditions))
     
     def getWishes(self):
-        return [(c.sensor, c._activator.getWish(c.sensor.value)) for c in self._conditions]
+        l = []
+        for c in self._conditions:
+            el = c.getWishes()
+            l = list(itertools.chain(l, el))
+        return l
+        #return [tuple(itertools.chain.from_iterable(c.getWishes())) for c in self._conditions]
+        
+    @property
+    def conditions(self):
+        return self._conditions
+    
+    def __str__(self):
+        return "{0} made of: {1}: {2}".format(self._name, self._conditions, self.satisfaction)
+    
+    def __repr__(self):
+        return str(self)
+
+
+
+class Conjunction(Conditonal):
+    '''
+    This class is a pseudo condition composed of two regular conditions. It performs an OR relation.
+    '''
+    
+    def __init__(self, *args, **kwargs):
+        '''
+        Constructor
+        '''
+        super(Conjunction, self).__init__()
+        self._name = kwargs["name"] if "name" in kwargs else "Conjunction {0}".format(Conditonal._instanceCounter)
+        self._conditions = list(args)
+        Disjunction._instanceCounter += 1
+    
+    def addCondition(self, condition):
+        '''
+        This method adds an precondition to the disjunction.
+        '''
+        if isinstance(condition, Condition):
+            self._conditions.append(condition)
+        else:
+            warnings.warn("That's no condition!")
+    
+    @property
+    def satisfaction(self):
+        '''
+        The conjuction of activations is the product of individual satisfactions.
+        '''
+        return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
+    
+    def getWishes(self):
+        l = []
+        for c in self._conditions:
+            el = c.getWishes()
+            l = list(itertools.chain(l, el))
+        return l
+        #return [tuple(itertools.chain.from_iterable(c.getWishes())) for c in self._conditions]
         
     @property
     def conditions(self):
