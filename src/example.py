@@ -121,8 +121,8 @@ if __name__ == '__main__':
     completeMapGoal.addCondition(mapComplete)
     objectsFoundGoal = m.addGoal(Goal("objectsFound"))
     objectsFoundGoal.addCondition(objectsFound)
-    rate = rospy.Rate(10) # 10hz
-    for i in range(42):
+    rate = rospy.Rate(100) # 10hz
+    for i in range(101):
         m.step()
-        batterySensor.update(batterySensor.value - 1/40)
+        batterySensor.update(batterySensor.value - 1/100)
         rate.sleep()

@@ -15,7 +15,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         '''
         Constructor
         '''
@@ -24,7 +24,8 @@ class Manager(object):
         self._behaviours = []
         self._activationThreshold = 10 # not sure how to set this just yet.
         self._activationDecay = .9     # not sure how to set this just yet.
-
+        self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else 7.0 # not sure how to set this just yet.
+        self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
         self._stepCounter = 0
         self.__logFile = open("sensors.log", 'w')
     
