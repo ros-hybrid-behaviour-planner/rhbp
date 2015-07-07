@@ -87,6 +87,10 @@ class Condition(Conditonal):
     
     def __repr__(self):
         return str(self)
+    
+# THINK ABOUT ME:
+# The next two classes make it possible to build arbitrary complex preconditions using logical AND and OR.
+# This notion is visible for the preconditions only: IT IS TRANSPARENT FOR WISHES so the outside world will try to satisfy ALL given conditions even if they are actually ORed 
 
 
 class Disjunction(Conditonal):

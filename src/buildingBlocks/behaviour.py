@@ -141,6 +141,7 @@ class Behaviour(object):
     def getInhibitionFromConflicted(self):
         '''
         This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose preconditions get antagonized when this behaviour runs.
+        It works different from Maes and others: It does not account for behaviours that will make things bad if they are currently OK. It accounts only for things that are not OK and works against behaviours that would make it even worse.
         '''
         inhibitionFromConflictors = []
         for behaviour in self._manager.behaviours:

@@ -20,6 +20,11 @@ class MoveBehaviour(Behaviour):
         super(MoveBehaviour, self).__init__(*args, **kwargs)
         
     def action(self):
+        global homeSensor
+        global homeSelected
+        global mapCoverageSensor
+        global targetSelectedSensor
+        global objectsFoundSensor
         homeSensor.update(homeSelected)
         if not homeSelected:
             mapImprovement = random.random() * .1
