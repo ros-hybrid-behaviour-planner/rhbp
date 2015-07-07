@@ -7,4 +7,4 @@ set grid y
 #set logscale y
 set yrange [-.1:1.1]
 set xtics 1
-plot for [col=1:6] 'sensors.log' using 0:col with lines lw 2 title columnheader
+plot for [col=1:6] 'sensors.log' using 0:col with lines lw 4 title columnheader
