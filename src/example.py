@@ -46,11 +46,11 @@ class MoveBehaviour(Behaviour):
 
 
 if __name__ == '__main__':
-    rospy.init_node('behaviourPlanner', anonymous=True, log_level=rospy.INFO) 
     # some random helper variables
     homeSelected = False
     # create a Manager
     m = Manager(activationThreshold=21)
+    """
     # creating sensors
     batterySensor = m.addSensor(Sensor("batteryLevelSensor"))
     flyingSensor = m.addSensor(Sensor("flyingSensor"))
@@ -127,8 +127,9 @@ if __name__ == '__main__':
     completeMapGoal.addCondition(mapComplete)
     objectsFoundGoal = m.addGoal(Goal("objectsFound"))
     objectsFoundGoal.addCondition(objectsFound)
-    rate = rospy.Rate(100) # 10hz
-    for i in range(101):
+    """
+    rate = rospy.Rate(10) # 10hz
+    for i in range(10):
         m.step()
-        batterySensor.update(batterySensor.value - 1/100)
+#        batterySensor.update(batterySensor.value - 1/100)
         rate.sleep()

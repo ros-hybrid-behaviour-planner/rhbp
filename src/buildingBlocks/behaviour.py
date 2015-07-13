@@ -9,12 +9,12 @@ import operator
 import conditions
 import warnings
 import itertools
+from behaviourPlannerPython.srv import *
 
 
 class Behaviour(object):
     '''
-    This is the smallest entity of an action.
-    It may take a while or finish immediately.
+    This is the internal representation of a behaviour node
     '''
     
     _instanceCounter = 0 # static counter to get distinguishable names
@@ -75,7 +75,7 @@ class Behaviour(object):
         This method computes the activation from the situation.
         It is the average satisfaction of preconditions.
         '''
-        return reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)
+        return 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)  
     
     def getActivationFromGoals(self):
         '''
@@ -257,4 +257,58 @@ class Behaviour(object):
     
     def __repr__(self):
         return self._name
-        
+
+
+
+class BehaviourBase(object):
+    '''
+    This is the base class fot nehaviour nodes in python
+    '''
+    _instanceCounter = 0 # static counter to get distinguishable names
+
+    def __init__(self, name = None, **kwargs):
+        '''
+        Constructor
+        '''
+        self._name = name if name else "BehaviourBase {0}".format(BehaviourBase._instanceCounter)
+        self._getActivationService = rospy.Service(self._name + 'getActivation', getActivation, self.getActivationFromPreconditions)
+        self._getWishesService = rospy.Service(self._name + 'getWishes', getWishes, self.getWishes)
+        self._preconditions = []
+        self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
+        self._correlations = kwargs["correlations"] if "correlations" in kwargs else {}        # Stores sensor correlations in dict in form: sensor <Sensor> : correlation <float> [-1 to 1]. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
+        self._activation = 0.0     # This is the magic activation that it's all about
+        BehaviourBase._instanceCounter += 1
+        self._logFile = open("{0}.log".format(self._name), 'w')
+        self._logFile.write('{0}\n'.format(self._name))
+        rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager")
+        rospy.wait_for_service('addBehaviour')
+        try:
+            registerMe = rospy.ServiceProxy('addBehaviour', addBehaviour)
+            registerMe(self._name)
+            rospy.loginfo("BehaviourBase constructor registered at planner manager")
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception in BehaviourBase constructor: %s", e)
+    
+    def __del__(self):
+        '''
+        Destructor
+        '''
+        try:
+            self._logFile.close()
+            self._getActivationService.shutdown()
+            self._getWishesService.shutdown()
+        except Exception as e:
+            rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
+    
+    
+    def getWishes(self, request):
+        '''
+        This method must return a list of wishes.
+        '''
+        return getWishesResponse()
+
+    def getActivationFromPreconditions(self, request):
+        '''
+        This method must return the activation from the situation.
+        '''
+        return getActivationResponse(0)

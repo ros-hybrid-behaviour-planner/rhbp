@@ -5,6 +5,10 @@ Created on 23.04.2015
 '''
 
 import rospy
+from behaviourPlannerPython.srv import *
+from buildingBlocks.behaviour import Behaviour
+import behaviour
+
 
 class Manager(object):
     '''
@@ -19,6 +23,8 @@ class Manager(object):
         '''
         Constructor
         '''
+        rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
+        rospy.Service('addBehaviour', addBehaviour, self.addBehaviour)
         self._sensors = []
         self._goals = []
         self._behaviours = []
@@ -38,8 +44,28 @@ class Manager(object):
         if self._stepCounter == 0:
             self.__logFile.write("{0}\n".format("\t".join([str(s) for s in self._sensors])))
             self.__threshFile.write("{0}\n".format("activationThreshold"))
-
+            
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
+        for behaviour in self._behaviours:
+            rospy.loginfo("Planner manager set() waiting for service %s", behaviour.name + 'getActivation')
+            rospy.wait_for_service(behaviour.name + 'getActivation')
+            try:
+                getActivationRequest = rospy.ServiceProxy(behaviour.name + 'getActivation', getActivation)
+                activation = getActivationRequest()
+                rospy.loginfo("Behaviour %s report activation of %f", behaviour.name, activation.activation)
+            except rospy.ServiceException as e:
+                rospy.logerr("ROS service exception in Manager step(): %s", e)
+                
+            rospy.loginfo("Planner manager set() waiting for service %s", behaviour.name + 'getWishes')
+            rospy.wait_for_service(behaviour.name + 'getWishes')
+            try:
+                getWishesRequest = rospy.ServiceProxy(behaviour.name + 'getWishes', getWishes)
+                wishes = getWishesRequest()
+                rospy.loginfo("Behaviour %s reports the following wishes: %s", behaviour.name, wishes.wishes)
+            except rospy.ServiceException as e:
+                rospy.logerr("ROS service exception in Manager step(): %s", e)
+                
+        """
         rospy.loginfo("############ SENSOR STATI ############")
         self.__logFile.write("{0}\n".format("\t".join([str(float(s.value)) for s in self._sensors])))
         self.__threshFile.write("{0}\n".format(self._activationThreshold))
@@ -78,7 +104,7 @@ class Manager(object):
         else:
             self._activationThreshold *= .8
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            
+        """
         self._stepCounter += 1
     
     def addSensor(self, sensor):
@@ -89,11 +115,13 @@ class Manager(object):
         self._goals.append(goal)
         return goal
     
-    def addBehaviour(self, behaviour):
+    def addBehaviour(self, request):
+        behaviour = Behaviour(request.name)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
-        return behaviour
+        rospy.loginfo("A behaviour with name %s registered", behaviour.name)
+        return addBehaviourResponse()
     
     @property
     def activationThreshold(self):
