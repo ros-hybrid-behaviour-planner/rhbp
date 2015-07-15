@@ -128,8 +128,8 @@ if __name__ == '__main__':
     objectsFoundGoal = m.addGoal(Goal("objectsFound"))
     objectsFoundGoal.addCondition(objectsFound)
     """
-    rate = rospy.Rate(10) # 10hz
-    for i in range(10):
+    rate = rospy.Rate(1) # 10hz
+    while(True):
         m.step()
 #        batterySensor.update(batterySensor.value - 1/100)
         rate.sleep()

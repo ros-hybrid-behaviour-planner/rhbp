@@ -47,6 +47,7 @@ catkin_python_setup()
 add_message_files(
   FILES
   Wish.msg
+  Correlation.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -55,6 +56,7 @@ add_service_files(
   addBehaviour.srv
   getActivation.srv
   getWishes.srv
+  getCorrelations.srv
 )
 
 ## Generate actions in the 'action' folder

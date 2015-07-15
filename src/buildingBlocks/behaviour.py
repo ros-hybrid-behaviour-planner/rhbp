@@ -9,8 +9,8 @@ import operator
 import conditions
 import warnings
 import itertools
-from behaviourPlannerPython.srv import *
-
+from behaviourPlannerPython.srv import addBehaviour, getActivation, getActivationResponse, getWishes, getWishesResponse, getCorrelations, getCorrelationsResponse
+from behaviourPlannerPython.msg import Wish, Correlation
 
 class Behaviour(object):
     '''
@@ -24,15 +24,15 @@ class Behaviour(object):
         Constructor
         '''
         self._name = name if name else "Behaviour {0}".format(Behaviour._instanceCounter)
-        self._preconditions = []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
-        self._correlations = kwargs["correlations"] if "correlations" in kwargs else {}        # Stores sensor correlations in dict in form: sensor <Sensor> : correlation <float> [-1 to 1]. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
+        self._correlations = {}    # Stores sensor correlations in dict in form: sensor <Sensor> : correlation <float> [-1 to 1]. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. We get this value each step via getActivation service of actual behaviour node
         self._predecessors = []    # List of predecessors of this behaviour. This list is refreshed each iteration based on correlations.
         self._successors = []      # List of successors. This list is refreshed each iteration based on correlations.
         self._conflictors = []     # List of successors. This list is refreshed each iteration based on correlations.
         self._manager = None       # This is the Manager that supplies global variables an access to all foreign objects
         self._activation = 0.0     # This is the magic activation that it's all about
+        self._activationFromPreconditions = 0.0 # We get this value each step via getActivation service of actual behaviour node
         self._activationDecay = .9 # This reduces accumulated activation if the situation does not fit any more
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
@@ -55,13 +55,6 @@ class Behaviour(object):
             self._preconditions.append(precondition)
         else:
             warnings.warn("That's no conditional object!")
-    
-    def getPreconditionSatisfaction(self):
-        '''
-        This method should return the overall activation from all preconditions.
-        In the easiest case this is equivalent to the product of the individual activations.
-        '''
-        return reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1)
     
     def getWishes(self):
         '''
@@ -160,7 +153,7 @@ class Behaviour(object):
         '''
         This method sums up all components of activation to compute the additional activation in this step.
         '''
-        self.__currentActivationStep = self.getActivationFromPreconditions() \
+        self.__currentActivationStep = self._activationFromPreconditions \
             + self.getActivationFromGoals()[0] \
             + self.getInhibitionFromGoals()[0] \
             + self.getActivationFromPredecessors()[0] \
@@ -270,16 +263,14 @@ class BehaviourBase(object):
         '''
         Constructor
         '''
-        self._name = name if name else "BehaviourBase {0}".format(BehaviourBase._instanceCounter)
+        self._name = name if name else "BehaviourBase {0}".format(BehaviourBase._instanceCounter) # a unique name is mandatory
         self._getActivationService = rospy.Service(self._name + 'getActivation', getActivation, self.getActivationFromPreconditions)
         self._getWishesService = rospy.Service(self._name + 'getWishes', getWishes, self.getWishes)
+        self._getCorrelationsService = rospy.Service(self._name + 'getCorrelations', getCorrelations, self.getCorrelations)
         self._preconditions = []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
-        self._correlations = kwargs["correlations"] if "correlations" in kwargs else {}        # Stores sensor correlations in dict in form: sensor <Sensor> : correlation <float> [-1 to 1]. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
-        self._activation = 0.0     # This is the magic activation that it's all about
+        self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         BehaviourBase._instanceCounter += 1
-        self._logFile = open("{0}.log".format(self._name), 'w')
-        self._logFile.write('{0}\n'.format(self._name))
         rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager")
         rospy.wait_for_service('addBehaviour')
         try:
@@ -294,9 +285,9 @@ class BehaviourBase(object):
         Destructor
         '''
         try:
-            self._logFile.close()
             self._getActivationService.shutdown()
             self._getWishesService.shutdown()
+            self._getCorrelationsService.shutdown()            
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
@@ -305,10 +296,25 @@ class BehaviourBase(object):
         '''
         This method must return a list of wishes.
         '''
-        return getWishesResponse()
+        return getWishesResponse([Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))])
+    
+    def getCorrelations(self, request):
+        return getCorrelationsResponse([Correlation(name, value) for (name, value) in self._correlations.iteritems()])
+        
 
     def getActivationFromPreconditions(self, request):
         '''
         This method must return the activation from the situation.
         '''
-        return getActivationResponse(0)
+        return getActivationResponse(1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)) 
+    
+    def addPrecondition(self, precondition):
+        '''
+        This method adds an precondition to the behaviour.
+        There is an AND relationship between all elenents (all have to be fulfilled so that the behaviour is ready)
+        To enable OR behaviour use the pseudo Conditional Disjunction.
+        '''
+        if issubclass(type(precondition), conditions.Conditonal):
+            self._preconditions.append(precondition)
+        else:
+            warnings.warn("That's no conditional object!")

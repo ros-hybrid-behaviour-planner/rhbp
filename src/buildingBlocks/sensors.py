@@ -35,3 +35,11 @@ class Sensor(object):
     
     def __repr__(self):
         return str(self)
+
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self, newName):
+        self._name = newName
