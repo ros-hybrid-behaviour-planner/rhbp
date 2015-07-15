@@ -5,7 +5,7 @@ Created on 23.04.2015
 '''
 
 import rospy
-from behaviourPlannerPython.srv import addBehaviour, addBehaviourResponse, getActivation, getWishes, getCorrelations
+from behaviourPlannerPython.srv import addBehaviour, addBehaviourResponse
 from buildingBlocks.behaviour import Behaviour
 import behaviour
 
@@ -28,74 +28,44 @@ class Manager(object):
         self._sensors = []
         self._goals = []
         self._behaviours = []
-        self._activationThreshold = 10 # not sure how to set this just yet.
         self._activationDecay = .9     # not sure how to set this just yet.
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else 7.0 # not sure how to set this just yet.
         self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
         self._stepCounter = 0
-        self.__logFile = open("sensors.log", 'w')
         self.__threshFile = open("threshold.log", 'w')
         
     def __del__(self):
         self.addBehaviourService.shutdown()
-        self.__logFile.close()
         self.__threshFile.close()
     
     def step(self):
         if self._stepCounter == 0:
-            self.__logFile.write("{0}\n".format("\t".join([str(s) for s in self._sensors])))
             self.__threshFile.write("{0}\n".format("activationThreshold"))
             
+        self.__threshFile.write("{0}\n".format(self._activationThreshold))
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
-            rospy.loginfo("Planner manager step() waiting for service %s", behaviour.name + 'getActivation')
-            rospy.wait_for_service(behaviour.name + 'getActivation')
-            try:
-                getActivationRequest = rospy.ServiceProxy(behaviour.name + 'getActivation', getActivation)
-                activation = getActivationRequest()
-                rospy.loginfo("Behaviour %s reports activation of %f", behaviour.name, activation.activation)
-            except rospy.ServiceException as e:
-                rospy.logerr("ROS service exception in Manager step(): %s", e)
-                
-            rospy.loginfo("Planner manager step() waiting for service %s", behaviour.name + 'getWishes')
-            rospy.wait_for_service(behaviour.name + 'getWishes')
-            try:
-                getWishesRequest = rospy.ServiceProxy(behaviour.name + 'getWishes', getWishes)
-                wishes = getWishesRequest()
-                rospy.loginfo("Behaviour %s reports the following wishes: %s", behaviour.name, wishes.wishes)
-            except rospy.ServiceException as e:
-                rospy.logerr("ROS service exception in Manager step(): %s", e)
-            
-            rospy.loginfo("Planner manager step() waiting for service %s", behaviour.name + 'getCorrelations')
-            rospy.wait_for_service(behaviour.name + 'getCorrelations')
-            try:
-                getCorrelationsRequest = rospy.ServiceProxy(behaviour.name + 'getCorrelations', getCorrelations)
-                correlations = getCorrelationsRequest()
-                rospy.loginfo("Behaviour %s reports the following correlations: %s", behaviour.name, correlations.correlations)
-            except rospy.ServiceException as e:
-                rospy.logerr("ROS service exception in Manager step(): %s", e)
-                
-        """
-        rospy.loginfo("############ SENSOR STATI ############")
-        self.__logFile.write("{0}\n".format("\t".join([str(float(s.value)) for s in self._sensors])))
-        self.__threshFile.write("{0}\n".format(self._activationThreshold))
-        for sensor in self._sensors:
-            rospy.loginfo("%s %s", sensor, sensor.value)
+            behaviour.fetchActivation()                
+            behaviour.fetchWishes()
+            behaviour.fetchCorrelations()
+            behaviour.fetchSatisfaction()
+            behaviour.fetchThreshold()
+        
         rospy.loginfo("############# GOAL STATI #############")
         for goal in self._goals:
             rospy.loginfo("%s satisfaction: %f wishes %s", goal.name, goal.statisfaction, goal.getWishes())
         rospy.loginfo("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             rospy.loginfo("%s", behaviour.name)
-            rospy.loginfo("\twishes %s", behaviour.getWishes())
-            rospy.loginfo("\tactivation from preconditions: %s", behaviour.getActivationFromPreconditions())
+            rospy.loginfo("\twishes %s", behaviour.wishes)
+            rospy.loginfo("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
             rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
             rospy.loginfo("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
             rospy.loginfo("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
             rospy.loginfo("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
             rospy.loginfo("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted())
-            rospy.loginfo("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.getPreconditionSatisfaction()))
+            rospy.loginfo("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
             behaviour.computeActivation()
         for behaviour in self._behaviours:
             rospy.loginfo("activation of %s after this step", behaviour.name)
@@ -108,25 +78,21 @@ class Manager(object):
                 '''
                 TODO: only run behaviours in parallel that do not interfere with each other (have no common actuators) 
                 '''
-                rospy.loginfo("RUNNING BEHAVIOUR %s", behaviour.name)
-                behaviour.execute()
+                rospy.loginfo("WOULD START BEHAVIOUR %s", behaviour.name)
             self._activationThreshold *= (1/.8)
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         else:
             self._activationThreshold *= .8
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        """
         self._stepCounter += 1
     
-    def addSensor(self, sensor):
-        self._sensors.append(sensor)
-        return sensor
     
     def addGoal(self, goal):
         self._goals.append(goal)
         return goal
     
     def addBehaviour(self, request):
+        # TODO: check if already existing and kick out or do nothing
         behaviour = Behaviour(request.name)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
@@ -149,10 +115,6 @@ class Manager(object):
     @activationDecay.setter
     def activationDecay(self, rate):
         self._activationDecay = rate
-        
-    @property
-    def sensors(self):
-        return self._sensors
     
     @property
     def goals(self):

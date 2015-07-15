@@ -57,6 +57,8 @@ add_service_files(
   getActivation.srv
   getWishes.srv
   getCorrelations.srv
+  getThreshold.srv
+  getSatisfaction.srv
 )
 
 ## Generate actions in the 'action' folder
