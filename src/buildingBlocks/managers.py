@@ -75,10 +75,8 @@ class Manager(object):
         executableBehaviours = [x for x in self._behaviours if (x.executable and x.activation >= self._activationThreshold) or x.isExecuting] # make a list of executable or still executing behaviours
         if len(executableBehaviours) > 0:
             for behaviour in executableBehaviours:
-                '''
-                TODO: only run behaviours in parallel that do not interfere with each other (have no common actuators) 
-                '''
-                rospy.loginfo("WOULD START BEHAVIOUR %s", behaviour.name)
+                rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
+                behaviour.start()
             self._activationThreshold *= (1/.8)
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         else:

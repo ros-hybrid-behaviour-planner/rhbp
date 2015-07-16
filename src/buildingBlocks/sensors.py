@@ -4,6 +4,8 @@ Created on 13.04.2015
 @author: stephan
 '''
 
+import rospy
+
 class Sensor(object):
     '''
     This class represents information necessary to make decisions.
@@ -26,7 +28,7 @@ class Sensor(object):
     
     def update(self, newValue):
         '''
-        This method is to refresh the _value. It may serve as a callback for ROS subscriptions or be called from some kind of main loop.
+        This method is to refresh the _value.
         '''
         self._value = newValue
         
@@ -43,3 +45,13 @@ class Sensor(object):
     @name.setter
     def name(self, newName):
         self._name = newName
+
+class TopicSensor(Sensor):
+    def __init__(self, name, topic, messageType):
+        super(TopicSensor, self).__init__(name)
+        self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
+    
+    def subscriptionCallback(self, msg):
+        self.update(msg.data)
+        rospy.loginfo("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
+    

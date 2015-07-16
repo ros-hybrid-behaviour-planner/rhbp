@@ -9,6 +9,7 @@ import conditions
 import operator
 import warnings
 import itertools
+from std_srvs.srv import Empty, EmptyResponse
 from behaviourPlannerPython.srv import addBehaviour, getActivation, getActivationResponse, getWishes, getWishesResponse, getCorrelations, getCorrelationsResponse, getThreshold, getThresholdResponse, getSatisfaction, getSatisfactionResponse
 from behaviourPlannerPython.msg import Wish, Correlation
 
@@ -138,7 +139,7 @@ class Behaviour(object):
             for (sensor, indicator) in goal.getWishes().iteritems():
                 if sensor.name in self._correlations.keys() and self._correlations[sensor.name] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
                     numBehavioursInhibitedBySameGoal = len([b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator < 0.0]) # the variable name says it all
-                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name.name, sensor, [b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator < 0.0])
+                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name, sensor, [b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator < 0.0])
                     inhibitedByGoals.append((goal, self._correlations[sensor.name] * indicator / numBehavioursInhibitedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
     
@@ -212,14 +213,21 @@ class Behaviour(object):
         self.__currentActivationStep = 0.0        
         self.__logFile.write("{0}\n".format(self._activation))
     
-    def execute(self):
+    def start(self):
         '''
-        TODO: communicate with actual behaviour node (actionlib?!)
+        TODO: communicate non-blocking with actual behaviour node (actionlib?!)
         '''
         self._isExecuting = True
-        if self.action() == False: # The action has finished
-            self._isExecuting = False
-            self._activation = 0.0
+        rospy.logdebug("Waiting for service %s", self._name + 'start')
+        rospy.wait_for_service(self._name + 'getThreshold')
+        try:
+            startRequest = rospy.ServiceProxy(self._name + 'start', Empty)
+            startRequest()
+            rospy.loginfo("Started action of %s", self._name)
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'start', e)
+        self._isExecuting = False
+        self._activation = 0.0
             
     @property
     def wishes(self):
@@ -287,7 +295,7 @@ class Behaviour(object):
 
 class BehaviourBase(object):
     '''
-    This is the base class fot nehaviour nodes in python
+    This is the base class for behaviour nodes in python
     '''
     _instanceCounter = 0 # static counter to get distinguishable names
 
@@ -301,12 +309,13 @@ class BehaviourBase(object):
         self._getCorrelationsService = rospy.Service(self._name + 'getCorrelations', getCorrelations, self.getCorrelations)
         self._getThresholdService = rospy.Service(self._name + 'getThreshold', getThreshold, self.getThreshold)
         self._getSatisfactionService = rospy.Service(self._name + 'getSatisfaction', getSatisfaction, self.getSatisfaction)
+        self._startService = rospy.Service(self._name + 'start', Empty, self.startCallback)
         self._preconditions = []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         BehaviourBase._instanceCounter += 1
-        rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager")
+        rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager for behaviour node %s", self._name)
         rospy.wait_for_service('addBehaviour')
         try:
             registerMe = rospy.ServiceProxy('addBehaviour', addBehaviour)
@@ -354,6 +363,28 @@ class BehaviourBase(object):
         else:
             warnings.warn("That's no conditional object!")
     
+    def getThreshold(self, request):
+        '''
+        This method must return the precondition satisfaction threshold required to be executable
+        '''
+        return getThresholdResponse(self._readyThreshold)
+    
+    def getSatisfaction(self, request):
+        '''
+        This method must return the satisfaction of the preconditions.
+        '''
+        return getSatisfactionResponse(reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1))
+    
+    def startCallback(self, dummy):
+        '''
+        This method should switch the behaviour on.
+        This method must not block.
+        '''
+        self._isExecuting = True
+        self.action()
+        self._isExecuting = False
+        return EmptyResponse()
+    
     @property
     def correlations(self):
         return self._correlations
@@ -366,14 +397,8 @@ class BehaviourBase(object):
         '''
         self._correlations = correlations
     
-    def getThreshold(self, request):
-        '''
-        This method must return the precondition satisfaction threshold required to be executable
-        '''
-        return getThresholdResponse(self._readyThreshold)
-    
-    def getSatisfaction(self, request):
-        '''
-        This method must return the satisfaction of the preconditions.
-        '''
-        return getSatisfactionResponse(reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1))
+    def action(self):
+        """
+        This method should so something
+        """
+        pass
