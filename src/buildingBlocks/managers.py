@@ -33,16 +33,16 @@ class Manager(object):
         self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
         self._stepCounter = 0
         self.__threshFile = open("threshold.log", 'w')
+        self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
+
         
     def __del__(self):
         self.addBehaviourService.shutdown()
         self.__threshFile.close()
     
     def step(self):
-        if self._stepCounter == 0:
-            self.__threshFile.write("{0}\n".format("activationThreshold"))
-            
-        self.__threshFile.write("{0}\n".format(self._activationThreshold))
+        self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
+        self.__threshFile.flush()
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         ### collect information about behaviours ###
         for behaviour in self._behaviours:

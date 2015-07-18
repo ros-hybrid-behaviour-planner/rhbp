@@ -160,7 +160,7 @@ class Behaviour(object):
         if self._activation < 0.0:
             self._activation = 0
         self.__currentActivationStep = 0.0        
-        self.__logFile.write("{0}\t{1}\n".format(rospy.Time().now(), self._activation))
+        self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
         self.__logFile.flush()
     
     def start(self):

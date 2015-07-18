@@ -6,5 +6,13 @@ set grid x
 set grid y
 #set logscale y
 set yrange [-.1:1.1]
-set xtics 1
-plot for [col=1:6] 'sensors.log' using 0:col with lines lw 4 title columnheader
+set xdata time
+set timefmt "%s"
+set format x "%H:%M:%.3S"
+plot 'batteryLevelSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'flyingSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'homeSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'mapCoverageSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'objectsFoundSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'targetSelectedSensor.log' using 1:2 with steps lw 4 title columnheader
+

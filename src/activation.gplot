@@ -6,4 +6,7 @@ set grid x
 set grid y
 #set logscale y
 #set xtics 1
-plot for [col=1:5] 'activationFlow.dat' using 2*col-1:2*col with lines lw 4 title columnheader
+set xdata time
+set timefmt "%s"
+set format x "%H:%M:%.3S"
+plot for [col=1:6] 'activationFlow.dat' using 2*col-1:2*col with steps lw 4 title columnheader
