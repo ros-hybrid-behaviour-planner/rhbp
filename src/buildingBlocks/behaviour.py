@@ -280,13 +280,22 @@ class BehaviourBase(object):
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
+    def computeActivation(self):
+        return 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)
+    
+    def getSatisfaction(self):
+        return reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1)
+    
+    def getWishes(self):
+        return [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
+    
     def getStatus(self, request):
         return GetStatusResponse(**{
-                                  "activation"   : 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions),
+                                  "activation"   : self.computeActivation(),
                                   "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
-                                  "satisfaction" : reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1),
+                                  "satisfaction" : self.getSatisfaction(),
                                   "threshold"    : self._readyThreshold,
-                                  "wishes"       : [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
+                                  "wishes"       : self.getWishes()
                                   })
     
     def addPrecondition(self, precondition):
