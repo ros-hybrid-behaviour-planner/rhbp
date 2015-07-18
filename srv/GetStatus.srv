@@ -1,0 +1,6 @@
+---
+float32 activation
+Correlation[] correlations
+float32 satisfaction
+float32 threshold
+Wish[] wishes

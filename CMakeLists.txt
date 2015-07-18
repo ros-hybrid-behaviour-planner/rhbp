@@ -53,12 +53,8 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  addBehaviour.srv
-  getActivation.srv
-  getWishes.srv
-  getCorrelations.srv
-  getThreshold.srv
-  getSatisfaction.srv
+  AddBehaviour.srv
+  GetStatus.srv
 )
 
 ## Generate actions in the 'action' folder

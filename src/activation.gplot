@@ -5,5 +5,5 @@ set key above vertical maxrows 3
 set grid x
 set grid y
 #set logscale y
-set xtics 1
-plot for [col=1:6] 'activationFlow.dat' using 0:col with lines lw 4 title columnheader
+#set xtics 1
+plot for [col=1:5] 'activationFlow.dat' using 2*col-1:2*col with lines lw 4 title columnheader

@@ -50,8 +50,11 @@ class TopicSensor(Sensor):
     def __init__(self, name, topic, messageType):
         super(TopicSensor, self).__init__(name)
         self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
+        self.__logFile = open("{0}.log".format(self._name), 'w')
+        self.__logFile.write('{0}\n'.format(self._name))
     
     def subscriptionCallback(self, msg):
         self.update(msg.data)
-        rospy.loginfo("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
-    
+        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
+        self.__logFile.write("{0}\t{1}\n".format(rospy.Time().now(), self._value))
+        self.__logFile.flush()

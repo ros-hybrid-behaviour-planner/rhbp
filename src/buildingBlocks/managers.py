@@ -5,7 +5,7 @@ Created on 23.04.2015
 '''
 
 import rospy
-from behaviourPlannerPython.srv import addBehaviour, addBehaviourResponse
+from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse
 from buildingBlocks.behaviour import Behaviour
 import behaviour
 
@@ -24,7 +24,7 @@ class Manager(object):
         Constructor
         '''
         rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
-        self.addBehaviourService = rospy.Service('addBehaviour', addBehaviour, self.addBehaviour)
+        self.addBehaviourService = rospy.Service('AddBehaviour', AddBehaviour, self.addBehaviour)
         self._sensors = []
         self._goals = []
         self._behaviours = []
@@ -46,11 +46,7 @@ class Manager(object):
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
-            behaviour.fetchActivation()                
-            behaviour.fetchWishes()
-            behaviour.fetchCorrelations()
-            behaviour.fetchSatisfaction()
-            behaviour.fetchThreshold()
+            behaviour.fetchStatus()
         
         rospy.loginfo("############# GOAL STATI #############")
         for goal in self._goals:
@@ -96,7 +92,7 @@ class Manager(object):
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
         rospy.loginfo("A behaviour with name %s registered", behaviour.name)
-        return addBehaviourResponse()
+        return AddBehaviourResponse()
     
     @property
     def activationThreshold(self):

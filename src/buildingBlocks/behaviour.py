@@ -10,7 +10,7 @@ import operator
 import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from behaviourPlannerPython.srv import addBehaviour, getActivation, getActivationResponse, getWishes, getWishesResponse, getCorrelations, getCorrelationsResponse, getThreshold, getThresholdResponse, getSatisfaction, getSatisfactionResponse
+from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse
 from behaviourPlannerPython.msg import Wish, Correlation
 
 class Behaviour(object):
@@ -37,7 +37,7 @@ class Behaviour(object):
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
         self.__logFile = open("{0}.log".format(self._name), 'w')
-        self.__logFile.write('{0}\n'.format(self._name))
+        self.__logFile.write('Time\t{0}\n'.format(self._name))
     
     def __del__(self):
         '''
@@ -45,75 +45,24 @@ class Behaviour(object):
         '''
         self.__logFile.close()
     
-    def fetchWishes(self):
+    def fetchStatus(self):
         '''
-        This method fetches the wishes from the actual behaviour node via getWishes service call
+        This method fetches the status from the actual behaviour node via GetStatus service call
         '''
-        rospy.logdebug("Waiting for service %s", self._name + 'getWishes')
-        rospy.wait_for_service(self._name + 'getWishes')
+        rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
+        rospy.wait_for_service(self._name + 'GetStatus')
         try:
-            getWishesRequest = rospy.ServiceProxy(self._name + 'getWishes', getWishes)
-            wishes = getWishesRequest()
-            self._wishes = dict([(wish.sensorName, wish.indicator) for wish in wishes.wishes])
-            rospy.logdebug(" %s reports the following wishes: %s", self._name, self._wishes)
+            getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
+            status = getStatusRequest()
+            self._activationFromPreconditions = status.activation
+            self._correlations = dict([(correlation.sensorName, correlation.indicator) for correlation in status.correlations])
+            self._preconditionSatisfaction = status.satisfaction
+            self._readyThreshold = status.threshold
+            self._wishes = dict([(wish.sensorName, wish.indicator) for wish in status.wishes])
+            rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes)
         except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchWishes: %s", e)
-
-    def fetchActivation(self):
-        '''
-        This method fetches the activation from the situation from the actual behaviour node via getActivation service call
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'getActivation')
-        rospy.wait_for_service(self._name + 'getActivation')
-        try:
-            getActivationRequest = rospy.ServiceProxy(self._name + 'getActivation', getActivation)
-            activation = getActivationRequest()
-            rospy.logdebug("%s reports activation of %f", self._name, activation.activation)
-            self._activationFromPreconditions = activation.activation
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchActivation: %s", e)
+            rospy.logerr("ROS service exception in GetStatus: %s", e)
     
-    def fetchCorrelations(self):
-        '''
-        This method fetches the correlations from the actual behaviour node via getCorrelations service call
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'getCorrelations')
-        rospy.wait_for_service(self._name + 'getCorrelations')
-        try:
-            getCorrelationsRequest = rospy.ServiceProxy(self._name + 'getCorrelations', getCorrelations)
-            correlations = getCorrelationsRequest()
-            self._correlations = dict([(correlation.sensorName, correlation.indicator) for correlation in correlations.correlations])
-            rospy.logdebug("Behaviour %s reports the following correlations: %s", self._name, self._correlations)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchCorrelations: %s", e)
-    
-    def fetchSatisfaction(self):
-        '''
-        This method fetches the precondition satisfaction from the actual behaviour node via getSatisfaction service call
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'getSatisfaction')
-        rospy.wait_for_service(self._name + 'getSatisfaction')
-        try:
-            getSatisfactionRequest = rospy.ServiceProxy(self._name + 'getSatisfaction', getSatisfaction)
-            satisfaction = getSatisfactionRequest()
-            self._preconditionSatisfaction = satisfaction.satisfaction
-            rospy.logdebug("Behaviour %s reports the following precondition satisfaction: %s", self._name, self._preconditionSatisfaction)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchSatisfaction: %s", e)
-    
-    def fetchThreshold(self):
-        '''
-        This method fetches the executability threshold from the actual behaviour node via getSatisfaction service call
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'getThreshold')
-        rospy.wait_for_service(self._name + 'getThreshold')
-        try:
-            getThresholdRequest = rospy.ServiceProxy(self._name + 'getThreshold', getThreshold)
-            threshold = getThresholdRequest()
-            self._readyThreshold = threshold.threshold
-            rospy.logdebug("Behaviour %s reports the following executability threshold: %s", self._name, self._readyThreshold)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchThreshold: %s", e)
             
     def getActivationFromGoals(self):
         '''
@@ -211,21 +160,22 @@ class Behaviour(object):
         if self._activation < 0.0:
             self._activation = 0
         self.__currentActivationStep = 0.0        
-        self.__logFile.write("{0}\n".format(self._activation))
+        self.__logFile.write("{0}\t{1}\n".format(rospy.Time().now(), self._activation))
+        self.__logFile.flush()
     
     def start(self):
         '''
         TODO: communicate non-blocking with actual behaviour node (actionlib?!)
         '''
         self._isExecuting = True
-        rospy.logdebug("Waiting for service %s", self._name + 'start')
-        rospy.wait_for_service(self._name + 'getThreshold')
+        rospy.logdebug("Waiting for service %s", self._name + 'Start')
+        rospy.wait_for_service(self._name + 'Start')
         try:
-            startRequest = rospy.ServiceProxy(self._name + 'start', Empty)
+            startRequest = rospy.ServiceProxy(self._name + 'Start', Empty)
             startRequest()
             rospy.loginfo("Started action of %s", self._name)
         except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'start', e)
+            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Start', e)
         self._isExecuting = False
         self._activation = 0.0
             
@@ -304,21 +254,17 @@ class BehaviourBase(object):
         Constructor
         '''
         self._name = name # a unique name is mandatory
-        self._getActivationService = rospy.Service(self._name + 'getActivation', getActivation, self.getActivationFromPreconditions)
-        self._getWishesService = rospy.Service(self._name + 'getWishes', getWishes, self.getWishes)
-        self._getCorrelationsService = rospy.Service(self._name + 'getCorrelations', getCorrelations, self.getCorrelations)
-        self._getThresholdService = rospy.Service(self._name + 'getThreshold', getThreshold, self.getThreshold)
-        self._getSatisfactionService = rospy.Service(self._name + 'getSatisfaction', getSatisfaction, self.getSatisfaction)
-        self._startService = rospy.Service(self._name + 'start', Empty, self.startCallback)
+        self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
+        self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._preconditions = []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         BehaviourBase._instanceCounter += 1
         rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager for behaviour node %s", self._name)
-        rospy.wait_for_service('addBehaviour')
+        rospy.wait_for_service('AddBehaviour')
         try:
-            registerMe = rospy.ServiceProxy('addBehaviour', addBehaviour)
+            registerMe = rospy.ServiceProxy('AddBehaviour', AddBehaviour)
             registerMe(self._name)
             rospy.loginfo("BehaviourBase constructor registered at planner manager for behaviour node %s", self._name)
         except rospy.ServiceException as e:
@@ -329,28 +275,19 @@ class BehaviourBase(object):
         Destructor
         '''
         try:
-            self._getActivationService.shutdown()
-            self._getWishesService.shutdown()
-            self._getCorrelationsService.shutdown()           
-            self._getThresholdService.shutdown()
-            self._getSatisfactionService.shutdown()
+            self._getStatusService.shutdown()
+            self._startService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
-    def getWishes(self, request):
-        '''
-        This method must return a list of wishes.
-        '''
-        return getWishesResponse([Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))])
-    
-    def getCorrelations(self, request):
-        return getCorrelationsResponse([Correlation(name, value) for (name, value) in self._correlations.iteritems()])
-
-    def getActivationFromPreconditions(self, request):
-        '''
-        This method must return the activation from the situation.
-        '''
-        return getActivationResponse(1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)) 
+    def getStatus(self, request):
+        return GetStatusResponse(**{
+                                  "activation"   : 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions),
+                                  "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
+                                  "satisfaction" : reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1),
+                                  "threshold"    : self._readyThreshold,
+                                  "wishes"       : [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
+                                  })
     
     def addPrecondition(self, precondition):
         '''
@@ -362,18 +299,6 @@ class BehaviourBase(object):
             self._preconditions.append(precondition)
         else:
             warnings.warn("That's no conditional object!")
-    
-    def getThreshold(self, request):
-        '''
-        This method must return the precondition satisfaction threshold required to be executable
-        '''
-        return getThresholdResponse(self._readyThreshold)
-    
-    def getSatisfaction(self, request):
-        '''
-        This method must return the satisfaction of the preconditions.
-        '''
-        return getSatisfactionResponse(reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1))
     
     def startCallback(self, dummy):
         '''
