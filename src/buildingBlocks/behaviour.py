@@ -20,19 +20,19 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name = None, **kwargs):
+    def __init__(self, name):
         '''
         Constructor
         '''
         self._name = name if name else "Behaviour {0}".format(Behaviour._instanceCounter)
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
-        self._correlations = {}    # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. We get this value via getCorrelations service of actual behaviour node
-        self._wishes = {}          # Stores wishes exactly like correlations. We get this via getWishes service of actual behaviour node
+        self._correlations = {}    # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. We get this value via getStatus service of actual behaviour node
+        self._wishes = {}          # Stores wishes exactly like correlations. We get this via getStatus service of actual behaviour node
         self._manager = None       # This is the Manager that supplies global variables an access to all foreign objects
         self._activation = 0.0     # This is the magic activation that it's all about
-        self._activationFromPreconditions = 0.0 # We get it via getActivation service of actual behaviour node
-        self._preconditionSatisfaction = 0.0    # We get it via getSatisfaction service of actual behaviour node
-        self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getThreshold service of actual behaviour node.
+        self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
+        self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
+        self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
@@ -61,8 +61,7 @@ class Behaviour(object):
             self._wishes = dict([(wish.sensorName, wish.indicator) for wish in status.wishes])
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes)
         except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GetStatus: %s", e)
-    
+            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
             
     def getActivationFromGoals(self):
         '''
@@ -71,11 +70,11 @@ class Behaviour(object):
         '''
         activatedByGoals = []
         for goal in self._manager.goals:
-            for (sensor, indicator) in goal.getWishes().iteritems():
-                if sensor.name in self._correlations.keys() and self._correlations[sensor.name] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
-                    numBehavioursActivatedBySameGoal = len([b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator > 0.0]) # the variable name says it all
-                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d behaviour(s) that supports %s via %s: %s",  self.name, numBehavioursActivatedBySameGoal, goal.name, sensor.name, [b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator > 0.0])
-                    activatedByGoals.append((goal, self._correlations[sensor.name] * indicator / numBehavioursActivatedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+            for (sensorName, indicator) in goal.wishes.iteritems():
+                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
+                    numBehavioursActivatedBySameGoal = len([b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d behaviour(s) that supports %s via %s: %s",  self.name, numBehavioursActivatedBySameGoal, goal.name, sensorName, [b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0])
+                    activatedByGoals.append((goal, self._correlations[sensorName] * indicator / numBehavioursActivatedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
     def getInhibitionFromGoals(self):
@@ -85,11 +84,11 @@ class Behaviour(object):
         '''
         inhibitedByGoals = []
         for goal in self._manager.goals:
-            for (sensor, indicator) in goal.getWishes().iteritems():
-                if sensor.name in self._correlations.keys() and self._correlations[sensor.name] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
-                    numBehavioursInhibitedBySameGoal = len([b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator < 0.0]) # the variable name says it all
-                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name, sensor, [b for b in self._manager.behaviours if sensor.name in b.correlations.keys() and b.correlations[sensor.name] * indicator < 0.0])
-                    inhibitedByGoals.append((goal, self._correlations[sensor.name] * indicator / numBehavioursInhibitedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
+            for (sensorName, indicator) in goal.wishes.iteritems():
+                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
+                    numBehavioursInhibitedBySameGoal = len([b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator < 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name, sensorName, [b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator < 0.0])
+                    inhibitedByGoals.append((goal, self._correlations[sensorName] * indicator / numBehavioursInhibitedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
     
     def getActivationFromPredecessors(self):
@@ -101,11 +100,11 @@ class Behaviour(object):
         for behaviour in self._manager.behaviours:
             if behaviour == self or not behaviour.executable: # ignore ourselves and non-executable behaviours
                 continue
-            for (sensor, indicator) in self._wishes.iteritems():
-                if sensor in behaviour.correlations.keys() and behaviour.correlations[sensor] *  behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
-                    numSuccessorsOfThatPredecessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.wishes.keys() and b.wishes[sensor] * indicator > 0.0]) # the variable name says it all
-                    rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d successor(s) of %s via %s: %s",  self._name, numSuccessorsOfThatPredecessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.wishes.keys() and b.wishes[sensor] * indicator > 0.0])
-                    activatedByPredecessors.append((behaviour, sensor, behaviour.correlations[sensor] * indicator * behaviour.preconditionSatisfaction / numSuccessorsOfThatPredecessorAffectedByThisCorrelation)) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. numSuccessorsOfThatPredecessorAffectedByThisCorrelation knows how many more behaviours will get activation from this predecessor so we distribute it equally
+            for (sensorName, indicator) in self._wishes.iteritems():
+                if sensorName in behaviour.correlations.keys() and behaviour.correlations[sensorName] *  behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
+                    numSuccessorsOfThatPredecessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensorName in b.wishes.keys() and b.wishes[sensorName] * indicator > 0.0]) # the variable name says it all
+                    rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d successor(s) of %s via %s: %s",  self._name, numSuccessorsOfThatPredecessorAffectedByThisCorrelation, behaviour.name, sensorName, [b for b in self._manager.behaviours if sensorName in b.wishes.keys() and b.wishes[sensorName] * indicator > 0.0])
+                    activatedByPredecessors.append((behaviour, sensorName, behaviour.correlations[sensorName] * indicator * behaviour.preconditionSatisfaction / numSuccessorsOfThatPredecessorAffectedByThisCorrelation)) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. numSuccessorsOfThatPredecessorAffectedByThisCorrelation knows how many more behaviours will get activation from this predecessor so we distribute it equally
         return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
     def getActivationFromSuccessors(self):
@@ -116,12 +115,12 @@ class Behaviour(object):
         for behaviour in self._manager.behaviours:
             if behaviour == self: # ignore ourselves
                 continue
-            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to sensors
-                if sensor in behaviour.wishes.keys():                  # if we affect other behaviours wishes somehow
-                    if behaviour.wishes[sensor] * indicator > 0:       # if we are a predecessor so we get activation from that successor
-                        numPredecessorsOfThatSuccessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0]) # the variable name says it all
-                        rospy.logdebug("Calculating activation from successors for %s. There is/are %d predecessor(s) of %s via %s: %s", self._name, numPredecessorsOfThatSuccessorAffectedByThisCorrelation, behaviour.name, sensor, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * indicator > 0.0])
-                        activatedBySuccessors.append((behaviour, sensor, behaviour.wishes[sensor] * indicator / numPredecessorsOfThatSuccessorAffectedByThisCorrelation)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. numPredecessorsOfThatSuccessorAffectedByThisCorrelation is used to distribute activation among all predecessors
+            for (sensorName, indicator) in self._correlations.iteritems(): # this is what we do to sensors
+                if sensorName in behaviour.wishes.keys():                  # if we affect other behaviours wishes somehow
+                    if behaviour.wishes[sensorName] * indicator > 0:       # if we are a predecessor so we get activation from that successor
+                        numPredecessorsOfThatSuccessorAffectedByThisCorrelation = len([b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0]) # the variable name says it all
+                        rospy.logdebug("Calculating activation from successors for %s. There is/are %d predecessor(s) of %s via %s: %s", self._name, numPredecessorsOfThatSuccessorAffectedByThisCorrelation, behaviour.name, sensorName, [b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0])
+                        activatedBySuccessors.append((behaviour, sensorName, behaviour.wishes[sensorName] * indicator / numPredecessorsOfThatSuccessorAffectedByThisCorrelation)) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. numPredecessorsOfThatSuccessorAffectedByThisCorrelation is used to distribute activation among all predecessors
         return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)), activatedBySuccessors)
 
     def getInhibitionFromConflicted(self):
@@ -133,12 +132,12 @@ class Behaviour(object):
         for behaviour in self._manager.behaviours:
             if behaviour == self: # ignore ourselves
                 continue
-            for (sensor, indicator) in self._correlations.iteritems(): # this is what we do to sensors
-                if sensor in behaviour.wishes.keys():                  # if we affect other behaviours somehow
-                    if behaviour.wishes[sensor] * indicator < 0:       # if we are a conflictor, we get inhibited
-                        numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation = len([b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.wishes[sensor] < 0.0]) # the variable name says it all
-                        rospy.logdebug("Calculating inhibition from conflicted for %s. %s is conflicted via %s by %d behaviour(s): %s", self.name, behaviour.name, sensor, numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, [b for b in self._manager.behaviours if sensor in b.correlations.keys() and b.correlations[sensor] * behaviour.wishes[sensor] < 0.0])
-                        inhibitionFromConflictors.append((behaviour, sensor, behaviour.wishes[sensor] * indicator / numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation)) # The inhibition experienced is my bad influence (my correlation to this sensor) times the wish of the other behaviour concerning this sensor. Actually only the value is needed but it is a tuple for debug purposes. numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation knows how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
+            for (sensorName, indicator) in self._correlations.iteritems(): # this is what we do to sensors
+                if sensorName in behaviour.wishes.keys():                  # if we affect other behaviours somehow
+                    if behaviour.wishes[sensorName] * indicator < 0:       # if we are a conflictor, we get inhibited
+                        numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation = len([b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * behaviour.wishes[sensorName] < 0.0]) # the variable name says it all
+                        rospy.logdebug("Calculating inhibition from conflicted for %s. %s is conflicted via %s by %d behaviour(s): %s", self.name, behaviour.name, sensorName, numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, [b for b in self._manager.behaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * behaviour.wishes[sensorName] < 0.0])
+                        inhibitionFromConflictors.append((behaviour, sensorName, behaviour.wishes[sensorName] * indicator / numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation)) # The inhibition experienced is my bad influence (my correlation to this sensorName) times the wish of the other behaviour concerning this sensorName. Actually only the value is needed but it is a tuple for debug purposes. numBehavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation knows how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
 
     def computeActivation(self):
@@ -226,10 +225,6 @@ class Behaviour(object):
     @property
     def name(self):
         return self._name
-    
-    @name.setter
-    def name(self, newName):
-        self._name = newName
         
     @property
     def isExecuting(self):
@@ -247,7 +242,6 @@ class BehaviourBase(object):
     '''
     This is the base class for behaviour nodes in python
     '''
-    _instanceCounter = 0 # static counter to get distinguishable names
 
     def __init__(self, name, **kwargs):
         '''
@@ -256,11 +250,10 @@ class BehaviourBase(object):
         self._name = name # a unique name is mandatory
         self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
-        self._preconditions = []
+        self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
-        BehaviourBase._instanceCounter += 1
         rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager for behaviour node %s", self._name)
         rospy.wait_for_service('AddBehaviour')
         try:
@@ -281,28 +274,40 @@ class BehaviourBase(object):
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
     def computeActivation(self):
+        """
+        This method should return the activation by the situation (from preconditions) as float [0 to 1]
+        """
         return 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)
     
-    def getSatisfaction(self):
+    def computeSatisfaction(self):
+        """
+        This method should return the satisfaction of the preconditions (the readiness) as float [0 to 1].
+        """
         return reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1)
     
-    def getWishes(self):
+    def computeWishes(self):
+        """
+        This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its preconditions.
+        A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
+        """
         return [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
     
     def getStatus(self, request):
         return GetStatusResponse(**{
                                   "activation"   : self.computeActivation(),
                                   "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
-                                  "satisfaction" : self.getSatisfaction(),
+                                  "satisfaction" : self.computeSatisfaction(),
                                   "threshold"    : self._readyThreshold,
-                                  "wishes"       : self.getWishes()
-                                  })
+                                  "wishes"       : self.computeWishes()
+                                })
     
     def addPrecondition(self, precondition):
         '''
-        This method adds an precondition to the behaviour.
+        This method adds a precondition to the behaviour.
+        It is not mandatory to use this method at all but it may make development easier because the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work with the preconditions added here.
+        If you don't want to use this mechanism then you HAVE TO implement those yourself!
         There is an AND relationship between all elements (all have to be fulfilled so that the behaviour is ready)
-        To enable OR behaviour use the pseudo Conditional Disjunction.
+        To enable OR semantics use the Disjunction object.
         '''
         if issubclass(type(precondition), conditions.Conditonal):
             self._preconditions.append(precondition)

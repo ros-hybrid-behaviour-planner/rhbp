@@ -54,6 +54,7 @@ add_message_files(
 add_service_files(
   FILES
   AddBehaviour.srv
+  AddGoal.srv
   GetStatus.srv
 )
 

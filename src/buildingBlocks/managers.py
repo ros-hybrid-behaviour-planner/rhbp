@@ -5,10 +5,9 @@ Created on 23.04.2015
 '''
 
 import rospy
-from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse
+from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse
 from buildingBlocks.behaviour import Behaviour
-import behaviour
-
+from buildingBlocks.goals import Goal
 
 class Manager(object):
     '''
@@ -25,6 +24,7 @@ class Manager(object):
         '''
         rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
         self.addBehaviourService = rospy.Service('AddBehaviour', AddBehaviour, self.addBehaviour)
+        self.addGoalService = rospy.Service('AddGoal', AddGoal, self.addGoal)
         self._sensors = []
         self._goals = []
         self._behaviours = []
@@ -47,10 +47,12 @@ class Manager(object):
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
             behaviour.fetchStatus()
-        
         rospy.loginfo("############# GOAL STATI #############")
         for goal in self._goals:
-            rospy.loginfo("%s satisfaction: %f wishes %s", goal.name, goal.statisfaction, goal.getWishes())
+            ### collect information about behaviours ###
+            goal.fetchStatus()
+            rospy.loginfo("%s fulfillment: %f wishes %s", goal.name, goal.fulfillment, goal.wishes)
+            # TODO: remove non-permanent goales that were achieved
         rospy.loginfo("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             rospy.loginfo("%s", behaviour.name)
@@ -81,9 +83,14 @@ class Manager(object):
         self._stepCounter += 1
     
     
-    def addGoal(self, goal):
+    def addGoal(self, request):
+        """self._goals.append(goal)
+        return goal"""
+        # TODO: check if already existing and kick out or do nothing
+        goal = Goal(request.name, request.permanent)
         self._goals.append(goal)
-        return goal
+        rospy.loginfo("A goal with name %s registered", goal.name)
+        return AddGoalResponse()
     
     def addBehaviour(self, request):
         # TODO: check if already existing and kick out or do nothing
