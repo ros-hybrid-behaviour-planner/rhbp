@@ -4,3 +4,5 @@ Correlation[] correlations
 float32 satisfaction
 float32 threshold
 Wish[] wishes
+bool isExecuting
+float32 progress

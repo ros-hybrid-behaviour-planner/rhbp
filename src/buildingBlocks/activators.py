@@ -3,6 +3,7 @@
 #@author: stephan
 
 from __future__ import division # force floating point division when using plain /
+import rospy
 
 
 class Activator(object):
@@ -73,7 +74,6 @@ class BooleanActivator(Activator):
         self._desired = desiredValue   # this is the threshold Value
     
     def computeActivation(self, value):
-        assert isinstance(value, bool)
         return self._maxActivation if value == self._desired else self._minActivation
     
     def getDirection(self):

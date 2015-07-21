@@ -8,7 +8,7 @@ import activators
 import warnings
 import operator
 import itertools
-
+import rospy
 
 class Conditonal(object):
     '''
@@ -76,7 +76,11 @@ class Condition(Conditonal):
         '''
         This property specifies to what extend the condition is fulfilled.
         '''
-        return self._activator.computeActivation(self._sensor.value)
+        try:
+            return self._activator.computeActivation(self._sensor.value)
+        except AssertionError:
+            rospy.logwarn("Wrong data type for this activator. Possibly uninitialized sensor %s?", self._sensor.name)
+            return 0.0
     
     @property
     def sensor(self):
@@ -154,7 +158,7 @@ class Conjunction(Conditonal):
         '''
         super(Conjunction, self).__init__()
         self._name = kwargs["name"] if "name" in kwargs else "Conjunction {0}".format(Conditonal._instanceCounter)
-        self._conditions = list(args)
+        self._conditions = list(args) # TODO check types!
         Disjunction._instanceCounter += 1
     
     def addCondition(self, condition):

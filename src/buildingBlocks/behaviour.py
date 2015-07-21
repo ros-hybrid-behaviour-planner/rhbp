@@ -59,6 +59,11 @@ class Behaviour(object):
             self._preconditionSatisfaction = status.satisfaction
             self._readyThreshold = status.threshold
             self._wishes = dict([(wish.sensorName, wish.indicator) for wish in status.wishes])
+            if self._isExecuting == True and status.isExecuting == False:
+                rospy.loginfo("%s finished. resetting activation", self._name)
+                self._activation = 0.0
+            self._isExecuting = status.isExecuting
+            
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
@@ -175,8 +180,6 @@ class Behaviour(object):
             rospy.loginfo("Started action of %s", self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Start', e)
-        self._isExecuting = False
-        self._activation = 0.0
             
     @property
     def wishes(self):
@@ -292,13 +295,22 @@ class BehaviourBase(object):
         """
         return [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
     
+    def getProgress(self):
+        """
+        This method should return the progress of the current activities if isExecuting == True.
+        It there is no current activity the value is ignored and may be filled with a dummy.
+        """
+        return 1.0
+    
     def getStatus(self, request):
         return GetStatusResponse(**{
                                   "activation"   : self.computeActivation(),
                                   "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
                                   "satisfaction" : self.computeSatisfaction(),
                                   "threshold"    : self._readyThreshold,
-                                  "wishes"       : self.computeWishes()
+                                  "wishes"       : self.computeWishes(),
+                                  "isExecuting"  : self._isExecuting,
+                                  "progress"     : self.getProgress()
                                 })
     
     def addPrecondition(self, precondition):
@@ -321,7 +333,6 @@ class BehaviourBase(object):
         '''
         self._isExecuting = True
         self.action()
-        self._isExecuting = False
         return EmptyResponse()
     
     @property
@@ -336,8 +347,17 @@ class BehaviourBase(object):
         '''
         self._correlations = correlations
     
+    @property
+    def readyThreshold(self):
+        return self._readyThreshold
+    
+    @readyThreshold.setter
+    def readyThreshold(self, threshold):
+        self._readyThreshold = threshold
+    
     def action(self):
         """
-        This method should so something
+        This method should be overridden with one that actually does something.
         """
-        pass
+        self._isExecuting = True
+        
