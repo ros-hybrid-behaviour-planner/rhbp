@@ -69,8 +69,7 @@ class GoalBase(object):
     '''
     This is the base class for goals in python
     '''
-
-    def __init__(self, name, permanent = True, conditions = []):
+    def __init__(self, name, permanent = True, conditions = [], plannerPrefix = ""):
         '''
         Constructor
         '''
@@ -78,12 +77,13 @@ class GoalBase(object):
         self._isPermanent = permanent
         self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._conditions = conditions
-        rospy.loginfo("GoalBase constructor waiting for registration at planner manager for behaviour node %s", self._name)
-        rospy.wait_for_service('AddBehaviour')
+        self._plannerPrefix = plannerPrefix # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
+        rospy.loginfo("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+        rospy.wait_for_service(self._plannerPrefix + 'AddGoal')
         try:
-            registerMe = rospy.ServiceProxy('AddGoal', AddGoal)
+            registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddGoal', AddGoal)
             registerMe(self._name, self._isPermanent)
-            rospy.loginfo("GoalBase constructor registered at planner manager for goal node %s", self._name)
+            rospy.loginfo("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
     

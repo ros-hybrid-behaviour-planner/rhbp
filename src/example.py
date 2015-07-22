@@ -12,9 +12,9 @@ from buildingBlocks.managers import Manager
 
 if __name__ == '__main__':
     # create a Manager
-    m = Manager(activationThreshold=21)
+    m = Manager(activationThreshold = 21, prefix = "simulation")
     # some random helper variables
-    batterySensor = TopicSensor("batteryLevelSensor", "/batteryLevel", Float32)
+    batterySensor = TopicSensor("batteryLevelSensor", "/batteryLevel", Float32, True)
     batterySensor.update(1.0)
     batteryPub = rospy.Publisher('/batteryLevel', Float32, queue_size=1)
     batteryPub.publish(1.0)

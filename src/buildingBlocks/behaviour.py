@@ -257,12 +257,13 @@ class BehaviourBase(object):
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
-        rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager for behaviour node %s", self._name)
-        rospy.wait_for_service('AddBehaviour')
+        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
+        rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+        rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
         try:
-            registerMe = rospy.ServiceProxy('AddBehaviour', AddBehaviour)
+            registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddBehaviour', AddBehaviour)
             registerMe(self._name)
-            rospy.loginfo("BehaviourBase constructor registered at planner manager for behaviour node %s", self._name)
+            rospy.loginfo("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in BehaviourBase constructor (for behaviour node %s): %s", self._name, e)
     

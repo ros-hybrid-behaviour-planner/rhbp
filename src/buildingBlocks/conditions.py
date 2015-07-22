@@ -69,7 +69,11 @@ class Condition(Conditonal):
             warnings.warn("That's no activator!")
             
     def getWishes(self):
-        return [(self._sensor, self._activator.getWish(self._sensor.value))]
+        try:
+            return [(self._sensor, self._activator.getWish(self._sensor.value))]
+        except AssertionError:
+            rospy.logwarn("Wrong data type for %s in %s. Possibly uninitialized sensor %s?", self._activator, self._name, self._sensor.name)
+            return []
     
     @property
     def satisfaction(self):
@@ -79,7 +83,7 @@ class Condition(Conditonal):
         try:
             return self._activator.computeActivation(self._sensor.value)
         except AssertionError:
-            rospy.logwarn("Wrong data type for this activator. Possibly uninitialized sensor %s?", self._sensor.name)
+            rospy.logwarn("Wrong data type for %s in %s. Possibly uninitialized sensor %s?", self._activator, self._name, self._sensor.name)
             return 0.0
     
     @property

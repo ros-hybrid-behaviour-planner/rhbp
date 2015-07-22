@@ -23,8 +23,9 @@ class Manager(object):
         Constructor
         '''
         rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
-        self.addBehaviourService = rospy.Service('AddBehaviour', AddBehaviour, self.addBehaviour)
-        self.addGoalService = rospy.Service('AddGoal', AddGoal, self.addGoal)
+        self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
+        self.addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.addBehaviour)
+        self.addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.addGoal)
         self._sensors = []
         self._goals = []
         self._behaviours = []
@@ -34,7 +35,6 @@ class Manager(object):
         self._stepCounter = 0
         self.__threshFile = open("threshold.log", 'w')
         self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
-
         
     def __del__(self):
         self.addBehaviourService.shutdown()
@@ -81,7 +81,6 @@ class Manager(object):
             self._activationThreshold *= .8
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         self._stepCounter += 1
-    
     
     def addGoal(self, request):
         """self._goals.append(goal)
