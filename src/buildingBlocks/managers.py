@@ -5,6 +5,7 @@ Created on 23.04.2015
 '''
 
 import rospy
+import itertools
 from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse
 from buildingBlocks.behaviour import Behaviour
 from buildingBlocks.goals import Goal
@@ -70,7 +71,11 @@ class Manager(object):
             behaviour.commitActivation()
             rospy.loginfo("\tactivation: %f", behaviour.activation)
         rospy.loginfo("############## ACTIONS ###############")
-        executableBehaviours = [x for x in self._behaviours if (x.executable and x.activation >= self._activationThreshold) or x.isExecuting] # make a list of executable or still executing behaviours
+        executableBehaviours = [x for x in self._behaviours if (x.executable and x.activation >= self._activationThreshold) and not x.isExecuting] # make a list of executable  behaviours
+        executedBehaviours = list(filter(lambda x: x.isExecuting, self._behaviours))
+        currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([x.correlations.keys() for x in executedBehaviours])))
+        rospy.loginfo("currentlyInfluencedSensors: %s", currentlyInfluencedSensors)
+        executableBehaviours = list(filter(lambda x: len(currentlyInfluencedSensors.intersection(set(x.correlations.keys()))) == 0, executableBehaviours))
         if len(executableBehaviours) > 0:
             for behaviour in executableBehaviours:
                 rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
