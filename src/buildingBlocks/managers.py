@@ -53,7 +53,8 @@ class Manager(object):
             ### collect information about behaviours ###
             goal.fetchStatus()
             rospy.loginfo("%s fulfillment: %f wishes %s", goal.name, goal.fulfillment, goal.wishes)
-            # TODO: remove non-permanent goales that were achieved
+        self._goals = list(filter(lambda x: x.isPermanent or x.fulfillment < 1.0, self._goals)) # remove non-permanent goales that were achieved
+            
         rospy.loginfo("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             rospy.loginfo("%s", behaviour.name)

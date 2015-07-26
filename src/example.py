@@ -12,7 +12,7 @@ from buildingBlocks.managers import Manager
 
 if __name__ == '__main__':
     # create a Manager
-    m = Manager(activationThreshold = 21, prefix = "simulation")
+    m = Manager(activationThreshold = 21, prefix = "sim")
     # some random helper variables
     batterySensor = TopicSensor("batteryLevelSensor", "/batteryLevel", Float32, True)
     batterySensor.update(1.0)
