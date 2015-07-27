@@ -7,7 +7,7 @@ Created on 23.04.2015
 import rospy
 import itertools
 from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse
-from buildingBlocks.behaviour import Behaviour
+from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
 
 class Manager(object):

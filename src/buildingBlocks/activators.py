@@ -3,8 +3,6 @@
 #@author: stephan
 
 from __future__ import division # force floating point division when using plain /
-import rospy
-
 
 class Activator(object):
     '''
