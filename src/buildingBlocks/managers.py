@@ -6,7 +6,7 @@ Created on 23.04.2015
 
 import rospy
 import itertools
-from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse
+from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse
 from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
 
@@ -25,8 +25,10 @@ class Manager(object):
         '''
         rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
-        self.addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.addBehaviour)
-        self.addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.addGoal)
+        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
+        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
+        self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
+        self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self._sensors = []
         self._goals = []
         self._behaviours = []
@@ -38,7 +40,10 @@ class Manager(object):
         self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
         
     def __del__(self):
-        self.addBehaviourService.shutdown()
+        self.__addBehaviourService.shutdown()
+        self.__addGoalService.shutdown()
+        self.__removeBehaviourService.shutdown()
+        self.__removeGoalService.shutdown()
         self.__threshFile.close()
     
     def step(self):
@@ -88,23 +93,29 @@ class Manager(object):
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         self._stepCounter += 1
     
-    def addGoal(self, request):
-        """self._goals.append(goal)
-        return goal"""
-        # TODO: check if already existing and kick out or do nothing
+    def __addGoal(self, request):
+        self._goals = list(filter(lambda x: x.name != request.name, self._goals)) # kick out existing goals with the same name. 
         goal = Goal(request.name, request.permanent)
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
         return AddGoalResponse()
     
-    def addBehaviour(self, request):
-        # TODO: check if already existing and kick out or do nothing
+    def __addBehaviour(self, request):
+        self._behaviours = list(filter(lambda x: x.name != request.name, self._behaviours)) # kick out existing behaviours with the same name.
         behaviour = Behaviour(request.name)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
         rospy.loginfo("A behaviour with name %s registered", behaviour.name)
         return AddBehaviourResponse()
+    
+    def __removeGoal(self, request):
+        self._goals = list(filter(lambda x: x.name != request.name, self._goals)) # kick out existing goals with that name. 
+        return RemoveGoalResponse()
+    
+    def __removeBehaviour(self, request):
+        self._behaviours = list(filter(lambda x: x.name != request.name, self._behaviours)) # kick out existing behaviours with the same name.
+        return RemoveBehaviourResponse()
     
     @property
     def activationThreshold(self):

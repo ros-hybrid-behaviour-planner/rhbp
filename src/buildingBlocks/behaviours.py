@@ -172,9 +172,9 @@ class Behaviour(object):
         TODO: communicate non-blocking with actual behaviour node (actionlib?!)
         '''
         self._isExecuting = True
-        rospy.logdebug("Waiting for service %s", self._name + 'Start')
-        rospy.wait_for_service(self._name + 'Start')
         try:
+            rospy.logdebug("Waiting for service %s", self._name + 'Start')
+            rospy.wait_for_service(self._name + 'Start')
             startRequest = rospy.ServiceProxy(self._name + 'Start', Empty)
             startRequest()
             rospy.loginfo("Started action of %s", self._name)

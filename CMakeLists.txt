@@ -56,6 +56,8 @@ add_service_files(
   AddBehaviour.srv
   AddGoal.srv
   GetStatus.srv
+  RemoveBehaviour.srv
+  RemoveGoal.srv
 )
 
 ## Generate actions in the 'action' folder
