@@ -14,11 +14,12 @@ class Sensor(object):
     '''
     _instanceCounter = 0
 
-    def __init__(self, name = None):
+    def __init__(self, name = None, optional = False):
         '''
         Constructor
         '''
         self._name = name if name else "Sensor {0}".format(Sensor._instanceCounter)
+        self._optional = optional
         self._value = None # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         Sensor._instanceCounter += 1
 
@@ -31,6 +32,17 @@ class Sensor(object):
         This method is to refresh the _value.
         '''
         self._value = newValue
+        
+    @property
+    def optional(self):
+        return self._optional
+    
+    @optional.setter
+    def optional(self, newValue):
+        if not isinstance(newValue, Bool):
+            rospy.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name, newValue)
+        else:
+            self._optional = newValue
         
     def __str__(self):
         return self._name

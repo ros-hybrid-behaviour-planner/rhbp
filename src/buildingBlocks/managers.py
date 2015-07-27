@@ -31,7 +31,9 @@ class Manager(object):
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self._sensors = []
         self._goals = []
+        self._activeGoals = [] # pre-computed (in step()) list of operational goals
         self._behaviours = []
+        self._activeBehaviours = [] # pre-computed (in step()) list of operational behaviours
         self._activationDecay = .9     # not sure how to set this just yet.
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else 7.0 # not sure how to set this just yet.
         self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
@@ -54,15 +56,19 @@ class Manager(object):
         for behaviour in self._behaviours:
             behaviour.fetchStatus()
         rospy.loginfo("############# GOAL STATI #############")
+        ### collect information about goals ###
         for goal in self._goals:
-            ### collect information about behaviours ###
             goal.fetchStatus()
-            rospy.loginfo("%s fulfillment: %f wishes %s", goal.name, goal.fulfillment, goal.wishes)
-        self._goals = list(filter(lambda x: x.isPermanent or x.fulfillment < 1.0, self._goals)) # remove non-permanent goales that were achieved
-            
+            rospy.loginfo("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
+        #### do housekeeping ###
+        self._goals = filter(lambda x: x.isPermanent or x.fulfillment < 1.0 or not x.active, self._goals) # remove non-permanent goals that were achieved
+        self._activeGoals = filter(lambda x: x.active, self._goals)
+        self._activeBehaviours = filter(lambda x: x.active, self._behaviours)
+        ### log behaviour stuff ###
         rospy.loginfo("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             rospy.loginfo("%s", behaviour.name)
+            rospy.loginfo("\tactive %s", behaviour.active)
             rospy.loginfo("\twishes %s", behaviour.wishes)
             rospy.loginfo("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
             rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
@@ -77,31 +83,31 @@ class Manager(object):
             behaviour.commitActivation()
             rospy.loginfo("\tactivation: %f", behaviour.activation)
         rospy.loginfo("############## ACTIONS ###############")
-        executableBehaviours = [x for x in self._behaviours if (x.executable and x.activation >= self._activationThreshold) and not x.isExecuting] # make a list of executable  behaviours
-        executedBehaviours = list(filter(lambda x: x.isExecuting, self._behaviours))
+        executableBehaviours = [x for x in self._activeBehaviours if (x.executable and x.activation >= self._activationThreshold) and not x.isExecuting] # make a list of executable  behaviours
+        executedBehaviours = filter(lambda x: x.isExecuting, self._activeBehaviours)
         currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([x.correlations.keys() for x in executedBehaviours])))
         rospy.loginfo("currentlyInfluencedSensors: %s", currentlyInfluencedSensors)
-        executableBehaviours = list(filter(lambda x: len(currentlyInfluencedSensors.intersection(set(x.correlations.keys()))) == 0, executableBehaviours))
+        executableBehaviours = filter(lambda x: len(currentlyInfluencedSensors.intersection(set(x.correlations.keys()))) == 0, executableBehaviours)
         if len(executableBehaviours) > 0:
             for behaviour in executableBehaviours:
                 rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
                 behaviour.start()
-            self._activationThreshold *= (1/.8)
+            self._activationThreshold *= (1/.8) # TODO: parameter for activationThresholdDecay
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         else:
-            self._activationThreshold *= .8
+            self._activationThreshold *= .8     # TODO: parameter for activationThresholdDecay
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         self._stepCounter += 1
     
     def __addGoal(self, request):
-        self._goals = list(filter(lambda x: x.name != request.name, self._goals)) # kick out existing goals with the same name. 
+        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with the same name. 
         goal = Goal(request.name, request.permanent)
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
-        self._behaviours = list(filter(lambda x: x.name != request.name, self._behaviours)) # kick out existing behaviours with the same name.
+        self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
         behaviour = Behaviour(request.name)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
@@ -110,11 +116,11 @@ class Manager(object):
         return AddBehaviourResponse()
     
     def __removeGoal(self, request):
-        self._goals = list(filter(lambda x: x.name != request.name, self._goals)) # kick out existing goals with that name. 
+        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name. 
         return RemoveGoalResponse()
     
     def __removeBehaviour(self, request):
-        self._behaviours = list(filter(lambda x: x.name != request.name, self._behaviours)) # kick out existing behaviours with the same name.
+        self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
         return RemoveBehaviourResponse()
     
     @property
@@ -140,3 +146,13 @@ class Manager(object):
     @property
     def behaviours(self):
         return self._behaviours
+    
+    @property
+    def activeBehaviours(self):
+        return self._activeBehaviours
+    
+    @property
+    def activeGoals(self):
+        return self._activeGoals
+    
+    
