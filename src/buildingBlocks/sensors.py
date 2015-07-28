@@ -58,9 +58,12 @@ class Sensor(object):
     def name(self, newName):
         self._name = newName
 
-class TopicSensor(Sensor):
+class SimpleTopicSensor(Sensor):
+    """
+    "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+    """
     def __init__(self, name, topic, messageType, createLog = False):
-        super(TopicSensor, self).__init__(name)
+        super(SimpleTopicSensor, self).__init__(name)
         self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
         self._iShouldCreateLog = createLog
         if self._iShouldCreateLog:

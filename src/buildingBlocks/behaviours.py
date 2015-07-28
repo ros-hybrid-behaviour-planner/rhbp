@@ -77,9 +77,9 @@ class Behaviour(object):
         activatedByGoals = []
         for goal in self._manager.activeGoals:
             for (sensorName, indicator) in goal.wishes.iteritems():
-                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator > 0: # This means we affect the sensor in a way that is desirable by the goal
+                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
                     numBehavioursActivatedBySameGoal = len([b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0]) # the variable name says it all
-                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that supports %s via %s: %s",  self.name, numBehavioursActivatedBySameGoal, goal.name, sensorName, [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0])
+                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s",  self.name, numBehavioursActivatedBySameGoal, goal.name, sensorName, [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0])
                     activatedByGoals.append((goal, self._correlations[sensorName] * indicator / numBehavioursActivatedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
@@ -91,7 +91,7 @@ class Behaviour(object):
         inhibitedByGoals = []
         for goal in self._manager.activeGoals:
             for (sensorName, indicator) in goal.wishes.iteritems():
-                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator < 0: # This means we affect the sensor in a way that is not desirable by the goal
+                if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator < 0.0: # This means we affect the sensor in a way that is not desirable by the goal
                     numBehavioursInhibitedBySameGoal = len([b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator < 0.0]) # the variable name says it all
                     rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that contradict %s via %s: %s",  self.name, numBehavioursInhibitedBySameGoal, goal.name, sensorName, [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator < 0.0])
                     inhibitedByGoals.append((goal, self._correlations[sensorName] * indicator / numBehavioursInhibitedBySameGoal))            # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -150,12 +150,15 @@ class Behaviour(object):
         '''
         This method sums up all components of activation to compute the additional activation in this step.
         '''
-        self.__currentActivationStep = self._activationFromPreconditions \
+        if self._active:
+            self.__currentActivationStep = self._activationFromPreconditions \
             + self.getActivationFromGoals()[0] \
             + self.getInhibitionFromGoals()[0] \
             + self.getActivationFromPredecessors()[0] \
             + self.getActivationFromSuccessors()[0] \
             + self.getInhibitionFromConflicted()[0]
+        else:
+            return 0.0
     
     def commitActivation(self):
         '''

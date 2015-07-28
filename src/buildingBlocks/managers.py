@@ -71,11 +71,12 @@ class Manager(object):
             rospy.loginfo("\tactive %s", behaviour.active)
             rospy.loginfo("\twishes %s", behaviour.wishes)
             rospy.loginfo("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
-            rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
-            rospy.loginfo("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
-            rospy.loginfo("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
-            rospy.loginfo("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
-            rospy.loginfo("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted())
+            if behaviour.active:
+                rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
+                rospy.loginfo("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
+                rospy.loginfo("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
+                rospy.loginfo("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
+                rospy.loginfo("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted())
             rospy.loginfo("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
             behaviour.computeActivation()
         for behaviour in self._behaviours:

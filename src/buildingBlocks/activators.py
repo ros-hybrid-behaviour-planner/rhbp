@@ -72,12 +72,14 @@ class BooleanActivator(Activator):
         self._desired = desiredValue   # this is the threshold Value
     
     def computeActivation(self, value):
+        assert isinstance(value, bool)
         return self._maxActivation if value == self._desired else self._minActivation
     
     def getDirection(self):
         return 1 if self._desired == True else -1
     
     def getWish(self, value):
+        assert isinstance(value, bool)
         if value == self._desired:
             return 0.0
         if self._desired == True:
@@ -187,7 +189,6 @@ class LinearActivator(Activator):
         else:
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
             
-    
     @property
     def valueRange(self):
         return self._fullActivationValue - self._zeroActivationValue
