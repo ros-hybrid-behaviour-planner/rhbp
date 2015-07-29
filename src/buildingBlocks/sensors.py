@@ -39,7 +39,7 @@ class Sensor(object):
     
     @optional.setter
     def optional(self, newValue):
-        if not isinstance(newValue, Bool):
+        if not isinstance(newValue, bool):
             rospy.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name, newValue)
         else:
             self._optional = newValue

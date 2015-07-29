@@ -89,6 +89,7 @@ class Manager(object):
         currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([x.correlations.keys() for x in executedBehaviours])))
         rospy.loginfo("currentlyInfluencedSensors: %s", currentlyInfluencedSensors)
         executableBehaviours = filter(lambda x: len(currentlyInfluencedSensors.intersection(set(x.correlations.keys()))) == 0, executableBehaviours)
+        # TODO: order by activation and re-check mutual exclusion after new behaviour was started
         if len(executableBehaviours) > 0:
             for behaviour in executableBehaviours:
                 rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
