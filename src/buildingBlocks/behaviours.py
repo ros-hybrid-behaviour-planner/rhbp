@@ -323,7 +323,7 @@ class BehaviourBase(object):
         This method should return the progress of the current activities if isExecuting == True.
         It there is no current activity the value is ignored and may be filled with a dummy.
         """
-        return 1.0
+        return 0.5
     
     def getStatus(self, request):
         self._active = True

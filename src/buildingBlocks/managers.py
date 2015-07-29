@@ -96,7 +96,7 @@ class Manager(object):
                 behaviour.start()
             self._activationThreshold *= (1/.8) # TODO: parameter for activationThresholdDecay
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        else:
+        if len(executedBehaviours) == 0 and len(executableBehaviours) == 0:
             self._activationThreshold *= .8     # TODO: parameter for activationThresholdDecay
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         self._stepCounter += 1
