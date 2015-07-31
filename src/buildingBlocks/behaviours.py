@@ -290,33 +290,60 @@ class BehaviourBase(object):
     def computeActivation(self):
         """
         This method should return the activation by the situation (from preconditions) as float [0 to 1]
+        Note that there may be optional sensors 
         """
-        try:
-            return 1.0 if len(self._preconditions) == 0 else reduce(lambda x, y: x + y, (x.satisfaction for x in self._preconditions)) / len(self._preconditions)
-        except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-            self._active = False
-            return 0.0
+        activations = [] # this list gets filled with the activations of the individual preconditions
+        for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
+            try:
+               activations.append(p.satisfaction)
+            except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+                self._active = False
+                return 0.0
+        for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
+            try:
+               activations.append(p.satisfaction)
+            except AssertionError: # we don't care about errors in optional sensors
+                pass
+        return 1.0 if len(activations) == 0 else reduce(lambda x, y: x + y, activations) / len(activations)
+            
     
     def computeSatisfaction(self):
         """
         This method should return the satisfaction of the preconditions (the readiness) as float [0 to 1].
+        If there are functioning optional sensors they are also handled equally like mandatory ones (so they could screw up the overall satisfaction) but if they fail they are just ignored.
         """
-        try:
-            return reduce(operator.mul, (x.satisfaction for x in self._preconditions), 1)
-        except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-            self._active = False
-            return 0.0
+        satisfactions = [] # this list gets filled with the satisfactions of the individual preconditions
+        for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
+            try:
+               satisfactions.append(p.satisfaction)
+            except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+                self._active = False
+                return 0.0
+        for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
+            try:
+               satisfactions.append(p.satisfaction)
+            except AssertionError: # we don't care about errors in optional sensors
+                pass
+        return reduce(operator.mul, satisfactions, 1)
             
     def computeWishes(self):
         """
         This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its preconditions.
         A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
         """
-        try:
-            return [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._preconditions]))]
-        except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-            self._active = False
-            return []
+        wishes = [] # this list gets filled with the satisfactions of the individual preconditions
+        for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
+            try:
+                wishes = list(itertools.chain(wishes, p.getWishes()))
+            except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+                self._active = False
+                return []
+        for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
+            try:
+                wishes = list(itertools.chain(wishes, p.getWishes()))
+            except AssertionError: # we don't care about errors in optional sensors
+                pass
+        return [Wish(item[0].name, item[1]) for item in wishes]
     
     def getProgress(self):
         """
