@@ -34,7 +34,8 @@ class Behaviour(object):
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more
-        self._active = True          # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
+        self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
+        self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
         self.__logFile = open("{0}.log".format(self._name), 'w')
@@ -65,6 +66,8 @@ class Behaviour(object):
                 self._activation = 0.0
             self._isExecuting = status.isExecuting
             self._active = status.active
+            self._priority = status.priority
+            self._interruptable = status.interruptable
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
@@ -237,7 +240,11 @@ class Behaviour(object):
     @property
     def active(self):
         return self._active
-        
+    
+    @property
+    def priority(self):
+        return self.priority
+    
     @property
     def isExecuting(self):
         return self._isExecuting
@@ -267,6 +274,8 @@ class BehaviourBase(object):
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
+        self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
+        self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
         self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service
         try:
             rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
@@ -295,13 +304,13 @@ class BehaviourBase(object):
         activations = [] # this list gets filled with the activations of the individual preconditions
         for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
             try:
-               activations.append(p.satisfaction)
+                activations.append(p.satisfaction)
             except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
                 self._active = False
                 return 0.0
         for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
             try:
-               activations.append(p.satisfaction)
+                activations.append(p.satisfaction)
             except AssertionError: # we don't care about errors in optional sensors
                 pass
         return 1.0 if len(activations) == 0 else reduce(lambda x, y: x + y, activations) / len(activations)
@@ -315,13 +324,13 @@ class BehaviourBase(object):
         satisfactions = [] # this list gets filled with the satisfactions of the individual preconditions
         for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
             try:
-               satisfactions.append(p.satisfaction)
+                satisfactions.append(p.satisfaction)
             except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
                 self._active = False
                 return 0.0
         for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
             try:
-               satisfactions.append(p.satisfaction)
+                satisfactions.append(p.satisfaction)
             except AssertionError: # we don't care about errors in optional sensors
                 pass
         return reduce(operator.mul, satisfactions, 1)
@@ -362,7 +371,9 @@ class BehaviourBase(object):
                                   "wishes"       : self.computeWishes(),
                                   "isExecuting"  : self._isExecuting,
                                   "progress"     : self.getProgress(),
-                                  "active"       : self._active
+                                  "active"       : self._active,
+                                  "priority"     : self._priority,
+                                  "interruptable": self._interruptable
                                 })
     
     def addPrecondition(self, precondition):
@@ -406,6 +417,22 @@ class BehaviourBase(object):
     @readyThreshold.setter
     def readyThreshold(self, threshold):
         self._readyThreshold = threshold
+    
+    @property
+    def priority(self):
+        return self._priority
+    
+    @priority.setter
+    def priority(self, priority):
+        self._priority = priority
+    
+    @property
+    def interruptable(self):
+        return self._interruptable
+    
+    @interruptable.setter
+    def interruptable(self, interruptable):
+        self._interruptable = interruptable
     
     def action(self):
         """
