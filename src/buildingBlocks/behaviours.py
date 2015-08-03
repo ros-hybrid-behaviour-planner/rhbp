@@ -68,7 +68,7 @@ class Behaviour(object):
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
-            rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes)
+            rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
             
@@ -176,10 +176,12 @@ class Behaviour(object):
     
     def start(self):
         '''
-        TODO: communicate non-blocking with actual behaviour node (actionlib?!)
+        This method calls the start service of the actual behaviour.
+        It is expected that this service does not block.
         '''
-        self._isExecuting = True
         assert self._active
+        assert not self._isExecuting
+        self._isExecuting = True
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Start')
             rospy.wait_for_service(self._name + 'Start')
@@ -188,6 +190,23 @@ class Behaviour(object):
             rospy.loginfo("Started action of %s", self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Start', e)
+    
+    def stop(self):
+        '''
+        This method calls the stop service of the actual behaviour.
+        It is expected that this service does not block.
+        '''
+        assert self._active
+        assert self._isExecuting
+        try:
+            rospy.logdebug("Waiting for service %s", self._name + 'Stop')
+            rospy.wait_for_service(self._name + 'Stop')
+            stopRequest = rospy.ServiceProxy(self._name + 'Stop', Empty)
+            stopRequest()
+            rospy.loginfo("Stopping action of %s", self._name)
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Stop', e)
+        self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
             
     @property
     def wishes(self):
@@ -243,7 +262,7 @@ class Behaviour(object):
     
     @property
     def priority(self):
-        return self.priority
+        return self._priority
     
     @property
     def isExecuting(self):
@@ -254,7 +273,6 @@ class Behaviour(object):
     
     def __repr__(self):
         return self._name
-
 
 
 class BehaviourBase(object):
@@ -269,6 +287,7 @@ class BehaviourBase(object):
         self._name = name # a unique name is mandatory
         self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
+        self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
@@ -293,6 +312,7 @@ class BehaviourBase(object):
         try:
             self._getStatusService.shutdown()
             self._startService.shutdown()
+            self._stopService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
@@ -395,7 +415,16 @@ class BehaviourBase(object):
         This method must not block.
         '''
         self._isExecuting = True
-        self.action()
+        self.start()
+        return EmptyResponse()
+    
+    def stopCallback(self, dummy):
+        '''
+        This method should switch the behaviour off.
+        This method must not block.
+        '''
+        self.stop()        
+        self._isExecuting = False
         return EmptyResponse()
     
     @property
@@ -434,9 +463,14 @@ class BehaviourBase(object):
     def interruptable(self, interruptable):
         self._interruptable = interruptable
     
-    def action(self):
+    def start(self):
         """
         This method should be overridden with one that actually does something.
         """
-        self._isExecuting = True
-        
+        pass
+    
+    def stop(self):
+        """
+        This method should be overridden with one that actually does something.
+        """
+        pass       

@@ -12,7 +12,7 @@ import rospy
 from behaviourPlannerPython.srv import AddGoal, GetStatus, GetStatusResponse
 from behaviourPlannerPython.msg import Wish
 
-class Goal(object): #TODO: Although it is similar to Preconditions of a behaviour we accept the code duplication for now
+class Goal(object):
     '''
     This class represents a goal. Goals have conditions that need to be fulfilled.
     '''
@@ -74,7 +74,7 @@ class GoalBase(object):
     '''
     This is the base class for goals in python
     '''
-    def __init__(self, name, permanent = True, conditions = [], plannerPrefix = ""):
+    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = ""):
         '''
         Constructor
         '''
