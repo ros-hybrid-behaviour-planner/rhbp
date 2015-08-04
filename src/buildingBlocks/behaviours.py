@@ -265,6 +265,10 @@ class Behaviour(object):
         return self._priority
     
     @property
+    def interruptable(self):
+        return self._interruptable
+    
+    @property
     def isExecuting(self):
         return self._isExecuting
     

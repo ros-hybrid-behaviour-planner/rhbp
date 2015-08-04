@@ -88,17 +88,21 @@ class Manager(object):
         rospy.loginfo("############## ACTIONS ###############")
         executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
         currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([x.correlations.keys() for x in executedBehaviours])))
+        rospy.loginfo("currently running behaviours: %s", executedBehaviours)
+        rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
-            rospy.loginfo("currently running behaviours: %s", executedBehaviours)
-            rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
             ### now comes a series of tests that a behaviour must pass in order to get started ###
             if not behaviour.active: # it must be active
+                rospy.loginfo("%s will not be started because it is not active", behaviour.name)
                 continue
             if behaviour.isExecuting: # it must not already run
+                rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
                 continue
             if not behaviour.executable: # it must be executable
+                rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
                 continue
             if behaviour.activation < self._activationThreshold: # it must have high-enough activation
+                rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
                 continue
             interferingCorrelations = currentlyInfluencedSensors.intersection(set(behaviour.correlations.keys()))
             if len(interferingCorrelations) > 0: # it must not conflict with an already running behaviour ...
@@ -106,25 +110,31 @@ class Manager(object):
                 assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other). TODO: remove this assertion in case Aggregators are added
                 # This implementation deals with a list although it it clear that there is at most one element.
                 # With Aggregators this is not necessarily the case: There may be multiple behaviours running and affecting the same Aggregator, hence being correlated to the same sensor so they could all appear in this list.
-                stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority, alreadyRunningBehavioursRelatedToConflict) # TODO also take interruptability into consideration
+                stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped
                 if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
+                    rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     for conflictor in stoppableBehaviours:
-                        rospy.loginfo("STOP BEHAVIOUR %s because it has less priority than %s", behaviour.name, conflictor.name)
+                        rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
                         conflictor.stop()
                         executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
                         currentlyInfluencedSensors.difference(set(conflictor.correlations.keys())) # remove all its correlations from the set of currently affected sensors
+                        rospy.loginfo("still running behaviours: %s", executedBehaviours)
+                        rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
+                    rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviours %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, self._activationThreshold, interferingCorrelations)
                     continue
             ### if the behaviour got here it really is ready to be started ###
             rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
             behaviour.start()
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            self._activationThreshold *= (1/.8) # TODO: parameter for activationThresholdDecay
+            self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
             currentlyInfluencedSensors.union(set(behaviour.correlations.keys()))
             executedBehaviours.append(behaviour)
+            rospy.loginfo("now running behaviours: %s", executedBehaviours)
+            rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
         if len(executedBehaviours) == 0:
-            self._activationThreshold *= .8     # TODO: parameter for activationThresholdDecay
+            self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         self._stepCounter += 1
     
