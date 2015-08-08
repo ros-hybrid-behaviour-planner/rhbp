@@ -10,7 +10,7 @@ import operator
 import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse
+from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse
 from behaviourPlannerPython.msg import Wish, Correlation
 
 class Behaviour(object):
@@ -36,6 +36,8 @@ class Behaviour(object):
         self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
+        self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
+        self._activated = True      # This member only exists as proxy for the corrsponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self.__currentActivationStep = 0.0
         Behaviour._instanceCounter += 1
         self.__logFile = open("{0}.log".format(self._name), 'w')
@@ -68,6 +70,7 @@ class Behaviour(object):
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
+            self._activated = status.activated
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
@@ -241,6 +244,14 @@ class Behaviour(object):
         self._activationDecay = rate
         
     @property
+    def manualStart(self):
+        return self._manualStart
+    
+    @manualStart.setter
+    def manualStart(self, status):
+        self._manualStart = status
+        
+    @property
     def manager(self):
         return self._manager
     
@@ -292,6 +303,7 @@ class BehaviourBase(object):
         self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
+        self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
@@ -299,7 +311,9 @@ class BehaviourBase(object):
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
         self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
-        self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service
+        self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
+        self._activated = True # The activate Service sets the value of this property.
+
         try:
             rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
@@ -317,6 +331,7 @@ class BehaviourBase(object):
             self._getStatusService.shutdown()
             self._startService.shutdown()
             self._stopService.shutdown()
+            self._activateService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
@@ -386,7 +401,7 @@ class BehaviourBase(object):
         return 0.5
     
     def getStatus(self, request):
-        self._active = True
+        self._active = self._activated
         return GetStatusResponse(**{
                                   "activation"   : self.computeActivation(),
                                   "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
@@ -395,9 +410,10 @@ class BehaviourBase(object):
                                   "wishes"       : self.computeWishes(),
                                   "isExecuting"  : self._isExecuting,
                                   "progress"     : self.getProgress(),
-                                  "active"       : self._active,
+                                  "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                                   "priority"     : self._priority,
-                                  "interruptable": self._interruptable
+                                  "interruptable": self._interruptable,
+                                  "activated"    : self._activated
                                 })
     
     def addPrecondition(self, precondition):
@@ -430,6 +446,17 @@ class BehaviourBase(object):
         self.stop()        
         self._isExecuting = False
         return EmptyResponse()
+    
+    def activateCallback(self, request):
+        '''
+        This method activates or deactivates the behaviour.
+        This method must not block.
+        '''
+        self._activated = request.active
+        if self._activated == False:
+            self.stop() 
+            self._isExecuting = False
+        return ActivateResponse()
     
     @property
     def correlations(self):

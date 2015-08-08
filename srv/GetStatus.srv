@@ -9,3 +9,4 @@ float32 progress
 bool active
 bool interruptable
 int16 priority
+bool activated

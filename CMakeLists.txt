@@ -58,6 +58,8 @@ add_service_files(
   GetStatus.srv
   RemoveBehaviour.srv
   RemoveGoal.srv
+  ForceStart.srv
+  Activate.srv
 )
 
 ## Generate actions in the 'action' folder

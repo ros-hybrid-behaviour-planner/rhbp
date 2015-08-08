@@ -6,7 +6,7 @@ Created on 23.04.2015
 
 import rospy
 import itertools
-from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse
+from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse
 from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
 
@@ -29,14 +29,14 @@ class Manager(object):
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
+        self.__manualOverrideService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualOverride)
         self._sensors = []
         self._goals = []
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
         self._behaviours = []
         self._activeBehaviours = [] # pre-computed (in step()) list of operational behaviours
-        self._activationDecay = .9     # not sure how to set this just yet.
-        self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else 7.0 # not sure how to set this just yet.
-        self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else .9  # not sure how to set this just yet.
+        self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else rospy.get_param("activationThreshold", 7.0) # not sure how to set this just yet.
+        self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else rospy.get_param("activationDecay", .9) # not sure how to set this just yet.
         self._stepCounter = 0
         self.__threshFile = open("threshold.log", 'w')
         self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
@@ -46,6 +46,7 @@ class Manager(object):
         self.__addGoalService.shutdown()
         self.__removeBehaviourService.shutdown()
         self.__removeGoalService.shutdown()
+        self.__manualOverrideService.shutdown()
         self.__threshFile.close()
     
     def step(self):
@@ -92,25 +93,25 @@ class Manager(object):
         rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
             ### now comes a series of tests that a behaviour must pass in order to get started ###
-            if not behaviour.active: # it must be active
+            if not behaviour.active and not behaviour.manualStart: # it must be active
                 rospy.loginfo("%s will not be started because it is not active", behaviour.name)
                 continue
             if behaviour.isExecuting: # it must not already run
                 rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
                 continue
-            if not behaviour.executable: # it must be executable
+            if not behaviour.executable and not behaviour.manualStart: # it must be executable
                 rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
                 continue
-            if behaviour.activation < self._activationThreshold: # it must have high-enough activation
+            if behaviour.activation < self._activationThreshold and not behaviour.manualStart: # it must have high-enough activation
                 rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
                 continue
             interferingCorrelations = currentlyInfluencedSensors.intersection(set(behaviour.correlations.keys()))
-            if len(interferingCorrelations) > 0: # it must not conflict with an already running behaviour ...
+            if len(interferingCorrelations) > 0 and not behaviour.manualOverride: # it must not conflict with an already running behaviour ...
                 alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set(x.correlations.keys()))) > 0, executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
                 assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other). TODO: remove this assertion in case Aggregators are added
                 # This implementation deals with a list although it it clear that there is at most one element.
                 # With Aggregators this is not necessarily the case: There may be multiple behaviours running and affecting the same Aggregator, hence being correlated to the same sensor so they could all appear in this list.
-                stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped
+                stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
                 if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
                     rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     for conflictor in stoppableBehaviours:
@@ -126,6 +127,8 @@ class Manager(object):
                     continue
             ### if the behaviour got here it really is ready to be started ###
             rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
+            if behaviour.manualStart:
+                rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
             behaviour.start()
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
             self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
@@ -136,6 +139,7 @@ class Manager(object):
         if len(executedBehaviours) == 0:
             self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+        # TODO: publish comprehensive status message about the state of all behaviours and the planer so that rqt can visualize that in a nice interface
         self._stepCounter += 1
     
     #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
@@ -162,6 +166,13 @@ class Manager(object):
     def __removeBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
         return RemoveBehaviourResponse()
+    
+    def __manualOverride(self, request):
+        for behaviour in self._behaviours:
+            if behaviour.name == request.name:
+                behaviour.manualStart = request.forceStart
+                break
+        return ForceStartResponse()
     
     @property
     def activationThreshold(self):
