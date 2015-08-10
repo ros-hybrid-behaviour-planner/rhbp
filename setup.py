@@ -5,8 +5,9 @@ from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
 setup_args = generate_distutils_setup(
-    packages=['buildingBlocks'],
-    package_dir={'': 'src'}
+    packages=['buildingBlocks', 'rqt_planner_gui'],
+    package_dir={'': 'src'},
+    scripts=['scripts/rqt_planner_gui']
 )
 
 setup(**setup_args)
