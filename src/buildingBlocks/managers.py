@@ -6,6 +6,7 @@ Created on 23.04.2015
 
 import rospy
 import itertools
+from behaviourPlannerPython.msg import PlannerStatus
 from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse
 from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
@@ -30,6 +31,7 @@ class Manager(object):
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self.__manualOverrideService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualOverride)
+        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planer/plannerStatus', PlannerStatus, queue_size=1)
         self._sensors = []
         self._goals = []
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
@@ -47,11 +49,14 @@ class Manager(object):
         self.__removeBehaviourService.shutdown()
         self.__removeGoalService.shutdown()
         self.__manualOverrideService.shutdown()
+        self.__statusPublisher.unregister()
         self.__threshFile.close()
     
     def step(self):
+        plannerStatusMessage = PlannerStatus()
         self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
         self.__threshFile.flush()
+        plannerStatusMessage.activationThreshold = self._activationThreshold
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
@@ -136,10 +141,11 @@ class Manager(object):
             executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
-        if len(executedBehaviours) == 0:
+        if len(executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
             self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        # TODO: publish comprehensive status message about the state of all behaviours and the planer so that rqt can visualize that in a nice interface
+        plannerStatusMessage.activationThresholdDecay = rospy.get_param("activationThresholdDecay", .8) # TODO retrieve rosparam only once
+        self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
     
     #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)

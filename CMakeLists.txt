@@ -50,6 +50,8 @@ add_message_files(
   FILES
   Wish.msg
   Correlation.msg
+  Status.msg
+  PlannerStatus.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -182,6 +182,8 @@ class LinearActivator(Activator):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
     
     def getWish(self, value):
+        assert isinstance(value, int) or isinstance(value, float)
+        assert self.valueRange != 0
         if self.getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - value) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
         else:

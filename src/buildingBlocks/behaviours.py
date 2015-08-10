@@ -10,8 +10,8 @@ import operator
 import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
+from behaviourPlannerPython.msg import Wish, Correlation, Status
 from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse
-from behaviourPlannerPython.msg import Wish, Correlation
 
 class Behaviour(object):
     '''
@@ -57,7 +57,7 @@ class Behaviour(object):
         rospy.wait_for_service(self._name + 'GetStatus')
         try:
             getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
-            status = getStatusRequest()
+            status = getStatusRequest().status
             self._activationFromPreconditions = status.activation
             self._correlations = dict([(correlation.sensorName, correlation.indicator) for correlation in status.correlations])
             self._preconditionSatisfaction = status.satisfaction
@@ -71,6 +71,8 @@ class Behaviour(object):
             self._priority = status.priority
             self._interruptable = status.interruptable
             self._activated = status.activated
+            if self._name != status.name:
+                rospy.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
@@ -300,7 +302,7 @@ class BehaviourBase(object):
         Constructor
         '''
         self._name = name # a unique name is mandatory
-        self._getActivationService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
+        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
@@ -402,19 +404,21 @@ class BehaviourBase(object):
     
     def getStatus(self, request):
         self._active = self._activated
-        return GetStatusResponse(**{
-                                  "activation"   : self.computeActivation(),
-                                  "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
-                                  "satisfaction" : self.computeSatisfaction(),
-                                  "threshold"    : self._readyThreshold,
-                                  "wishes"       : self.computeWishes(),
-                                  "isExecuting"  : self._isExecuting,
-                                  "progress"     : self.getProgress(),
-                                  "active"       : self._active, # if any of the above methods failed this property has been set to False by now
-                                  "priority"     : self._priority,
-                                  "interruptable": self._interruptable,
-                                  "activated"    : self._activated
-                                })
+        status = Status(**{
+                           "name"         : self._name, # this is sent for sanity check and planner status messages only
+                           "activation"   : self.computeActivation(),
+                           "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
+                           "satisfaction" : self.computeSatisfaction(),
+                           "threshold"    : self._readyThreshold,
+                           "wishes"       : self.computeWishes(),
+                           "isExecuting"  : self._isExecuting,
+                           "progress"     : self.getProgress(),
+                           "active"       : self._active, # if any of the above methods failed this property has been set to False by now
+                           "priority"     : self._priority,
+                           "interruptable": self._interruptable,
+                           "activated"    : self._activated
+                          })
+        return GetStatusResponse(status)
     
     def addPrecondition(self, precondition):
         '''

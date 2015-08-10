@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>476</width>
-    <height>335</height>
+    <height>364</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -163,7 +163,7 @@
           </widget>
          </item>
          <item row="3" column="1" colspan="2">
-          <widget class="QDoubleSpinBox" name="activationThresholdDoubleSpinBox_2">
+          <widget class="QDoubleSpinBox" name="satisfactionDoubleSpinBox">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -186,7 +186,7 @@
           </widget>
          </item>
          <item row="4" column="1" colspan="2">
-          <widget class="QDoubleSpinBox" name="activationThresholdDoubleSpinBox_3">
+          <widget class="QDoubleSpinBox" name="readyThresholdDoubleSpinBox">
            <property name="enabled">
             <bool>false</bool>
            </property>
