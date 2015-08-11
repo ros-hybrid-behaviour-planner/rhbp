@@ -30,7 +30,7 @@ class Manager(object):
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
-        self.__manualOverrideService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualOverride)
+        self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
         self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planer/plannerStatus', PlannerStatus, queue_size=1)
         self._sensors = []
         self._goals = []
@@ -48,7 +48,7 @@ class Manager(object):
         self.__addGoalService.shutdown()
         self.__removeBehaviourService.shutdown()
         self.__removeGoalService.shutdown()
-        self.__manualOverrideService.shutdown()
+        self.__manualStartService.shutdown()
         self.__statusPublisher.unregister()
         self.__threshFile.close()
     
@@ -111,7 +111,7 @@ class Manager(object):
                 rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
                 continue
             interferingCorrelations = currentlyInfluencedSensors.intersection(set(behaviour.correlations.keys()))
-            if len(interferingCorrelations) > 0 and not behaviour.manualOverride: # it must not conflict with an already running behaviour ...
+            if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
                 alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set(x.correlations.keys()))) > 0, executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
                 assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other). TODO: remove this assertion in case Aggregators are added
                 # This implementation deals with a list although it it clear that there is at most one element.
@@ -128,7 +128,7 @@ class Manager(object):
                         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
-                    rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviours %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, self._activationThreshold, interferingCorrelations)
+                    rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     continue
             ### if the behaviour got here it really is ready to be started ###
             rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
@@ -173,7 +173,7 @@ class Manager(object):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
         return RemoveBehaviourResponse()
     
-    def __manualOverride(self, request):
+    def __manualStart(self, request):
         for behaviour in self._behaviours:
             if behaviour.name == request.name:
                 behaviour.manualStart = request.forceStart
