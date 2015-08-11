@@ -80,6 +80,9 @@
          <enum>QFrame::Plain</enum>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
          <item row="2" column="0">
           <widget class="QLabel" name="activeLabel">
            <property name="sizePolicy">

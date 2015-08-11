@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>506</width>
-    <height>311</height>
+    <height>412</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,7 +40,7 @@
         <x>0</x>
         <y>0</y>
         <width>502</width>
-        <height>307</height>
+        <height>408</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">
@@ -231,6 +231,9 @@
          <property name="title">
           <string>BEHAVIOUS</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
          <layout class="QGridLayout" name="gridLayout_3">
           <property name="leftMargin">
            <number>5</number>
@@ -239,11 +242,41 @@
            <number>5</number>
           </property>
           <property name="rightMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <property name="bottomMargin">
            <number>5</number>
           </property>
+          <item row="0" column="0">
+           <widget class="QFrame" name="behaviourFrame">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Plain</enum>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>3</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+            </layout>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -265,6 +298,9 @@
          <property name="title">
           <string>GOALS</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
          <layout class="QGridLayout" name="gridLayout_4">
           <property name="leftMargin">
            <number>5</number>
@@ -273,11 +309,38 @@
            <number>5</number>
           </property>
           <property name="rightMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <property name="bottomMargin">
            <number>5</number>
           </property>
+          <item row="0" column="0">
+           <widget class="QFrame" name="goalFrame">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Plain</enum>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>3</number>
+             </property>
+            </layout>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -295,5 +358,38 @@
   </layout>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>goalGroupBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>goalFrame</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>246</x>
+     <y>286</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>250</x>
+     <y>293</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>behaviourGroupBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>behaviourFrame</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>246</x>
+     <y>233</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>250</x>
+     <y>240</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

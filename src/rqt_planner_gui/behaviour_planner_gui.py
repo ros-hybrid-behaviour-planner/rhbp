@@ -11,10 +11,13 @@ from python_qt_binding.QtGui import QWidget
 from behaviourWidget import BehaviourWidget
 from goalWidget import GoalWidget
 from behaviourPlannerPython.msg import PlannerStatus
-
+from PyQt4.QtCore import pyqtSignal
 
 
 class Overview(Plugin):
+    updateRequest = pyqtSignal()
+    addBehaviourRequest = pyqtSignal(str)
+    addGoalRequest = pyqtSignal(str)
 
     def __init__(self, context):
         super(Overview, self).__init__(context)
@@ -58,26 +61,45 @@ class Overview(Plugin):
         context.add_widget(self._widget)
         self._widget.activationThresholdDecayPushButton.clicked.connect(self.setActivationThresholdDecay)
         self._widget.plannerPrefixPushButton.clicked.connect(self.setPlannerPrefix)
-        ### demo stuff ###
-        self.addBehaviour("startBehaviour")
-        self.addBehaviour("landBehaviour")
-        rospy.loginfo("started")
-        self.addGoal("returnedHomeGoal")
-
+        # Connect signal so we can refresh Widgets from the main thread        
+        self.updateRequest.connect(self.updateGUI)
+        self.addBehaviourRequest.connect(self.addBehaviourWidget)
+        self.addGoalRequest.connect(self.addGoalWidget)
+        
+    def updateGUI(self):
+        self._widget.update()
     
-    def addBehaviour(self, name):
-        if not name in self.__behaviours:
-            self.__behaviours[name] = BehaviourWidget(name)
-            self._widget.behaviourGroupBox.layout().addWidget(self.__behaviours[name])
-        else:
-            print name, "was already registered"
+    def addBehaviourWidget(self, name):
+        self.__behaviours[name] = BehaviourWidget(name)
+        self._widget.behaviourFrame.layout().addWidget(self.__behaviours[name])
+        
+    def addGoalWidget(self, name):
+        self.__goals[name] = GoalWidget(name)
+        self._widget.goalFrame.layout().addWidget(self.__goals[name])
     
-    def addGoal(self, name):
-        if not name in self.__goals:
-            self.__goals[name] = GoalWidget(name)
-            self._widget.goalGroupBox.layout().addWidget(self.__goals[name])
-        else:
-            print name, "was already registered"
+    def updateBehaviour(self, msg):
+        """
+        Add the behaviour to our management structure if it does not exist in there.
+        Update the behaviour Widget using its refresh() method.
+        """
+        if not msg.name in self.__behaviours:
+            self.addBehaviourRequest.emit(msg.name)
+        try:
+            self.__behaviours[msg.name].refresh(msg)
+        except KeyError as e: # this happens at the first time because the GUI thread with the main loop did not create the widget yet
+            rospy.logdebug("%s", e)
+    
+    def updateGoal(self, msg):
+        """
+        Add the goal to our management structure if it does not exist in there.
+        Update the goal Widget using its refresh() method.
+        """
+        if not msg.name in self.__goals:
+            self.addGoalRequest.emit(msg.name)
+        try:
+            self.__goals[msg.name].refresh(msg)
+        except KeyError as e: # this happens at the first time because the GUI thread with the main loop did not create the widget yet
+            rospy.logdebug("%s", e)
     
     def setActivationThresholdDecay(self):
         rospy.loginfo("setting activationThresholdDecay to %f", self._widget.activationThresholdDecayDoubleSpinBox.value())
@@ -88,19 +110,23 @@ class Overview(Plugin):
         self.__plannerPrefix = self._widget.plannerPrefixEdit.text()
         rospy.loginfo("subscribing to %s", "/" + self.__plannerPrefix + "Planer/plannerStatus")
         self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planer/plannerStatus", PlannerStatus, self.plannerStatusCallback)
-
-    def onBehaviourUpdate(self):
-        rospy.loginfo("onBehaviourUpdate")
     
     def plannerStatusCallback(self, msg):
         rospy.logdebug("received %s", msg)
-        self._widget.activationThresholdDoubleSpinBox.setValue(msg.activationThreshold)
-        if not self._widget.activationThresholdDecayDoubleSpinBox.hasFocus():
-            self._widget.activationThresholdDecayDoubleSpinBox.setValue(msg.activationThresholdDecay)
-        self._widget.influencedSensorsLabel.setText(", ".join(msg.influencedSensors))
-        self._widget.runningBehavioursLabel.setText(", ".join(msg.runningBehaviours))
-        # TODO: do all the behaviour and goal stuff
-
+        try:
+            self._widget.activationThresholdDoubleSpinBox.setValue(msg.activationThreshold)
+            if not self._widget.activationThresholdDecayDoubleSpinBox.hasFocus():
+                self._widget.activationThresholdDecayDoubleSpinBox.setValue(msg.activationThresholdDecay)
+            self._widget.influencedSensorsLabel.setText(", ".join(msg.influencedSensors))
+            self._widget.runningBehavioursLabel.setText(", ".join(msg.runningBehaviours))
+            for behaviour in msg.behaviours:
+                    self.updateBehaviour(behaviour)
+            for goal in msg.goals:
+                self.updateGoal(goal)
+            self.updateRequest.emit() 
+        except Exception as e:
+            rospy.logerr("%s", e)
+        
     def shutdown_plugin(self):
         self.__sub.unregister()
 
