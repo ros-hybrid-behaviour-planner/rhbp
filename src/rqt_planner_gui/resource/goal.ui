@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>476</width>
-    <height>135</height>
+    <height>162</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -80,6 +80,32 @@
          <enum>QFrame::Plain</enum>
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
+         <item row="2" column="0">
+          <widget class="QLabel" name="activeLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>if the behaviour is activated but not active there is an internal problem</string>
+           </property>
+           <property name="text">
+            <string>Active</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QCheckBox" name="activeCheckbox">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
          <item row="0" column="1">
           <widget class="QCheckBox" name="activatedCheckbox">
            <property name="enabled">
@@ -91,7 +117,7 @@
           </widget>
          </item>
          <item row="0" column="0">
-          <widget class="QLabel" name="ActivatedLabel">
+          <widget class="QLabel" name="activatedLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -104,7 +130,7 @@
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="FulfillmentLabel">
+          <widget class="QLabel" name="fulfillmentLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -126,18 +152,8 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
-          <widget class="QCheckBox" name="activeCheckbox">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="ActiveLabel">
+         <item row="3" column="0">
+          <widget class="QLabel" name="wishesDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -148,7 +164,23 @@
             <string>if the behaviour is activated but not active there is an internal problem</string>
            </property>
            <property name="text">
-            <string>Active</string>
+            <string>Wishes</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1" colspan="2">
+          <widget class="QLabel" name="wishesLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>if the behaviour is activated but not active there is an internal problem</string>
+           </property>
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>

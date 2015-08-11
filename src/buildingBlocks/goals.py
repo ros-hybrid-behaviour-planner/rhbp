@@ -25,7 +25,7 @@ class Goal(object):
         self._wishes = {}       # Stores wishes exactly like correlations. We get this via getStatus service of actual goal node
         self._fulfillment = 0.0 # We get it via getStatus service of actual goal node
         self._active = True     # This indicates (if True) that there have been no severe issues in the actual goal node and the goal can be expected to be operational. If the actual goal reports ready == False we will ignore it in activation computation.
-        self._activated = True  # This member only exists as proxy for the corrsponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
+        self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._isPermanent = permanent
 
     
@@ -67,6 +67,10 @@ class Goal(object):
     @property
     def active(self):
         return self._active
+    
+    @property
+    def activated(self):
+        return self._activated
     
     def __str__(self):
         return self._name

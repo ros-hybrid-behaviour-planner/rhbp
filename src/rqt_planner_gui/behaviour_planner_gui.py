@@ -97,6 +97,8 @@ class Overview(Plugin):
         self._widget.activationThresholdDoubleSpinBox.setValue(msg.activationThreshold)
         if not self._widget.activationThresholdDecayDoubleSpinBox.hasFocus():
             self._widget.activationThresholdDecayDoubleSpinBox.setValue(msg.activationThresholdDecay)
+        self._widget.influencedSensorsLabel.setText(", ".join(msg.influencedSensors))
+        self._widget.runningBehavioursLabel.setText(", ".join(msg.runningBehaviours))
         # TODO: do all the behaviour and goal stuff
 
     def shutdown_plugin(self):

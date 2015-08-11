@@ -10,3 +10,4 @@ bool active
 bool interruptable
 int16 priority
 bool activated
+bool executable

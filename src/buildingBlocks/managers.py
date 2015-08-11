@@ -6,7 +6,7 @@ Created on 23.04.2015
 
 import rospy
 import itertools
-from behaviourPlannerPython.msg import PlannerStatus
+from behaviourPlannerPython.msg import PlannerStatus, Status, Correlation, Wish
 from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse
 from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
@@ -65,6 +65,13 @@ class Manager(object):
         ### collect information about goals ###
         for goal in self._goals:
             goal.fetchStatus()
+            statusMessage = Status()
+            statusMessage.name = goal.name
+            statusMessage.wishes = [Wish(name, indicator) for (name, indicator) in goal.wishes.iteritems()]
+            statusMessage.active = goal.active
+            statusMessage.activated = goal.activated
+            statusMessage.satisfaction = goal.fulfillment
+            plannerStatusMessage.goals.append(statusMessage)
             rospy.loginfo("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
         #### do housekeeping ###
         self._goals = filter(lambda x: x.isPermanent or x.fulfillment < 1.0 or not x.active, self._goals) # remove non-permanent goals that were achieved
@@ -97,6 +104,21 @@ class Manager(object):
         rospy.loginfo("currently running behaviours: %s", executedBehaviours)
         rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
+            statusMessage = Status()
+            statusMessage.name = behaviour.name
+            statusMessage.activation = behaviour.activation
+            statusMessage.satisfaction = behaviour.preconditionSatisfaction
+            statusMessage.isExecuting = behaviour.isExecuting
+            statusMessage.progress = behaviour.progress
+            statusMessage.executable = behaviour.executable
+            statusMessage.threshold = behaviour.readyThreshold
+            statusMessage.priority = behaviour.priority
+            statusMessage.interruptable = behaviour.interruptable
+            statusMessage.activated = behaviour.activated
+            statusMessage.active = behaviour.active
+            statusMessage.correlations = [Correlation(name, value) for (name, value) in behaviour.correlations.iteritems()]
+            statusMessage.wishes = [Wish(name, indicator) for (name, indicator) in behaviour.wishes.iteritems()]
+            plannerStatusMessage.behaviours.append(statusMessage)
             ### now comes a series of tests that a behaviour must pass in order to get started ###
             if not behaviour.active and not behaviour.manualStart: # it must be active
                 rospy.loginfo("%s will not be started because it is not active", behaviour.name)
@@ -141,6 +163,8 @@ class Manager(object):
             executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, executedBehaviours)
+        plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
         if len(executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
             self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)

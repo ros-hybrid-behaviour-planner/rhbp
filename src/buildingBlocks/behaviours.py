@@ -32,6 +32,8 @@ class Behaviour(object):
         self._activation = 0.0      # This is the magic activation that it's all about
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
+        self._isExecuting = False   # We get it via getStatus service of actual behaviour node
+        self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
@@ -67,6 +69,7 @@ class Behaviour(object):
                 rospy.loginfo("%s finished. resetting activation", self._name)
                 self._activation = 0.0
             self._isExecuting = status.isExecuting
+            self._progress = status.progress
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
@@ -274,8 +277,16 @@ class Behaviour(object):
         return self._active
     
     @property
+    def activated(self):
+        return self._activated
+    
+    @property
     def priority(self):
         return self._priority
+    
+    @property
+    def progress(self):
+        return self._progress
     
     @property
     def interruptable(self):
