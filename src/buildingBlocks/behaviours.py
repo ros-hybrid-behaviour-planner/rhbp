@@ -11,7 +11,7 @@ import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from behaviourPlannerPython.msg import Wish, Correlation, Status
-from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse
+from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse
 
 class Behaviour(object):
     '''
@@ -187,7 +187,6 @@ class Behaviour(object):
         This method calls the start service of the actual behaviour.
         It is expected that this service does not block.
         '''
-        assert self._active
         assert not self._isExecuting
         self._isExecuting = True
         try:
@@ -204,7 +203,6 @@ class Behaviour(object):
         This method calls the stop service of the actual behaviour.
         It is expected that this service does not block.
         '''
-        assert self._active
         assert self._isExecuting
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Stop')
@@ -317,6 +315,7 @@ class BehaviourBase(object):
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
@@ -345,6 +344,7 @@ class BehaviourBase(object):
             self._startService.shutdown()
             self._stopService.shutdown()
             self._activateService.shutdown()
+            self._priorityService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
@@ -472,6 +472,10 @@ class BehaviourBase(object):
             self.stop() 
             self._isExecuting = False
         return ActivateResponse()
+    
+    def setPriorityCallback(self, request):
+        self._priority = request.priority
+        return PriorityResponse()
     
     @property
     def correlations(self):

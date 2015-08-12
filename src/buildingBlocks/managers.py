@@ -7,7 +7,7 @@ Created on 23.04.2015
 import rospy
 import itertools
 from behaviourPlannerPython.msg import PlannerStatus, Status, Correlation, Wish
-from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse
+from behaviourPlannerPython.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from buildingBlocks.behaviours import Behaviour
 from buildingBlocks.goals import Goal
 
@@ -73,8 +73,13 @@ class Manager(object):
             statusMessage.satisfaction = goal.fulfillment
             plannerStatusMessage.goals.append(statusMessage)
             rospy.loginfo("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
+            if goal.active and not goal.isPermanent and goal.fulfillment >= 1:
+                rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
+                rospy.wait_for_service(goal.name + 'Activate')
+                activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
+                activateRequest(False)
+                rospy.logdebug("Set Activated of %s goal to False", goal.name)
         #### do housekeeping ###
-        self._goals = filter(lambda x: x.isPermanent or x.fulfillment < 1.0 or not x.active, self._goals) # remove non-permanent goals that were achieved
         self._activeGoals = filter(lambda x: x.active, self._goals)
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
         ### log behaviour stuff ###

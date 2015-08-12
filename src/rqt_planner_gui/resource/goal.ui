@@ -164,7 +164,7 @@
             </sizepolicy>
            </property>
            <property name="toolTip">
-            <string>if the behaviour is activated but not active there is an internal problem</string>
+            <string/>
            </property>
            <property name="text">
             <string>Wishes</string>

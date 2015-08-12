@@ -107,7 +107,7 @@
           </widget>
          </item>
          <item row="2" column="1" colspan="2">
-          <widget class="QDoubleSpinBox" name="activationThresholdDoubleSpinBox">
+          <widget class="QDoubleSpinBox" name="activationDoubleSpinBox">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -232,14 +232,14 @@
           </widget>
          </item>
          <item row="9" column="1">
-          <widget class="QSpinBox" name="activationThresholdDecaySpinBox">
+          <widget class="QSpinBox" name="prioritySpinBox">
            <property name="enabled">
             <bool>true</bool>
            </property>
           </widget>
          </item>
          <item row="9" column="2">
-          <widget class="QPushButton" name="activationThresholdDecayPushButton">
+          <widget class="QPushButton" name="priorityPushButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -297,7 +297,7 @@
           </widget>
          </item>
          <item row="5" column="1">
-          <widget class="QCheckBox" name="isExecutableCheckbox">
+          <widget class="QCheckBox" name="executableCheckbox">
            <property name="enabled">
             <bool>false</bool>
            </property>

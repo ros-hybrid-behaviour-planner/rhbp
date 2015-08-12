@@ -64,6 +64,7 @@ add_service_files(
   RemoveGoal.srv
   ForceStart.srv
   Activate.srv
+  Priority.srv
 )
 
 ## Generate actions in the 'action' folder

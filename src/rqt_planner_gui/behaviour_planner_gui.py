@@ -70,7 +70,7 @@ class Overview(Plugin):
         self._widget.update()
     
     def addBehaviourWidget(self, name):
-        self.__behaviours[name] = BehaviourWidget(name)
+        self.__behaviours[name] = BehaviourWidget(name, self)
         self._widget.behaviourFrame.layout().addWidget(self.__behaviours[name])
         
     def addGoalWidget(self, name):
@@ -126,6 +126,10 @@ class Overview(Plugin):
             self.updateRequest.emit() 
         except Exception as e:
             rospy.logerr("%s", e)
+    
+    @property
+    def plannerPrefix(self):
+        return self.__plannerPrefix
         
     def shutdown_plugin(self):
         self.__sub.unregister()
