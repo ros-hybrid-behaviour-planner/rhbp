@@ -15,7 +15,7 @@ from PyQt4.QtCore import pyqtSignal
 
 
 class Overview(Plugin):
-    updateRequest = pyqtSignal()
+    updateRequest = pyqtSignal(dict)
     addBehaviourRequest = pyqtSignal(str)
     addGoalRequest = pyqtSignal(str)
 
@@ -66,8 +66,12 @@ class Overview(Plugin):
         self.addBehaviourRequest.connect(self.addBehaviourWidget)
         self.addGoalRequest.connect(self.addGoalWidget)
         
-    def updateGUI(self):
-        self._widget.update()
+    def updateGUI(self, newValues):
+        self._widget.activationThresholdDoubleSpinBox.setValue(newValues["activationThreshold"])
+        if not self._widget.activationThresholdDecayDoubleSpinBox.hasFocus():
+            self._widget.activationThresholdDecayDoubleSpinBox.setValue(newValues["activationThresholdDecay"])
+        self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
+        self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
     
     def addBehaviourWidget(self, name):
         self.__behaviours[name] = BehaviourWidget(name, self)
@@ -114,16 +118,16 @@ class Overview(Plugin):
     def plannerStatusCallback(self, msg):
         rospy.logdebug("received %s", msg)
         try:
-            self._widget.activationThresholdDoubleSpinBox.setValue(msg.activationThreshold)
-            if not self._widget.activationThresholdDecayDoubleSpinBox.hasFocus():
-                self._widget.activationThresholdDecayDoubleSpinBox.setValue(msg.activationThresholdDecay)
-            self._widget.influencedSensorsLabel.setText(", ".join(msg.influencedSensors))
-            self._widget.runningBehavioursLabel.setText(", ".join(msg.runningBehaviours))
             for behaviour in msg.behaviours:
-                    self.updateBehaviour(behaviour)
+                self.updateBehaviour(behaviour)
             for goal in msg.goals:
                 self.updateGoal(goal)
-            self.updateRequest.emit() 
+            self.updateRequest.emit({
+                                     "activationThreshold" : msg.activationThreshold,
+                                     "activationThresholdDecay" : msg.activationThresholdDecay,
+                                     "influencedSensors" : ", ".join(msg.influencedSensors),
+                                     "runningBehaviours" : ", ".join(msg.runningBehaviours)
+                                    }) 
         except Exception as e:
             rospy.logerr("%s", e)
     

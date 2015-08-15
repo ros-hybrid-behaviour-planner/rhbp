@@ -8,9 +8,12 @@ import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
 from behaviourPlannerPython.srv import Activate, ForceStart, Priority
+from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
 class BehaviourWidget(QWidget):
+    updateGUIsignal = pyqtSignal(dict)
+    
     def __init__(self, name, plugin):
         super(BehaviourWidget, self).__init__()
         self._name = name
@@ -25,35 +28,53 @@ class BehaviourWidget(QWidget):
         self.activatedCheckbox.toggled.connect(self.activationCallback)
         self.forceStartCheckbox.toggled.connect(self.forceStartCallback)
         self.priorityPushButton.clicked.connect(self.setPriorityCallback)
+        self.updateGUIsignal.connect(self.updateGUI)
 
     def __del__(self):
         self.__deleted = True
+    
+    def updateGUI(self, newValues):
+        self.activatedCheckbox.setChecked(newValues["activated"])
+        self.satisfactionDoubleSpinBox.setValue(newValues["satisfaction"])
+        self.satisfactionDoubleSpinBox.setToolTip("{0}".format(newValues["satisfaction"]))
+        self.activeCheckbox.setChecked(newValues["active"])
+        self.wishesLabel.setText(newValues["wishes"])
+        self.wishesLabel.setToolTip(newValues["wishesTooltip"])
+        self.correlationsLabel.setText(newValues["correlations"])
+        self.correlationsLabel.setToolTip(newValues["correlationsTooltip"])
+        self.activationDoubleSpinBox.setValue(newValues["activation"])
+        self.activationDoubleSpinBox.setToolTip("{0}".format(newValues["activation"]))
+        self.readyThresholdDoubleSpinBox.setValue(newValues["readyThreshold"])
+        self.readyThresholdDoubleSpinBox.setToolTip("{0}".format(newValues["readyThreshold"]))
+        self.executableCheckbox.setChecked(newValues["executable"])
+        self.isExecutingCheckbox.setChecked(newValues["isExecuting"])
+        self.progressDoubleSpinBox.setValue(newValues["progress"])
+        self.progressDoubleSpinBox.setToolTip("{0}".format(newValues["progress"]))
+        if not self.prioritySpinBox.hasFocus():
+            self.prioritySpinBox.setValue(newValues["priority"])
+        self.interruptableCheckbox.setChecked(newValues["interruptable"])
         
     def refresh(self, msg):
         """
         Refreshes the widget with data from the new message.
         """
         assert self._name == msg.name
-        self.activatedCheckbox.setChecked(msg.activated)
-        self.satisfactionDoubleSpinBox.setValue(msg.satisfaction)
-        self.activeCheckbox.setChecked(msg.active)
-        self.wishesLabel.setText("\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)))
-        self.wishesLabel.setToolTip("\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes)))
-        self.correlationsLabel.setText("\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.correlations)))
-        self.correlationsLabel.setToolTip("\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.correlations)))
-        self.activationDoubleSpinBox.setValue(msg.activation)
-        self.activationDoubleSpinBox.setToolTip("{0}".format(msg.activation))
-        self.satisfactionDoubleSpinBox.setValue(msg.satisfaction)
-        self.satisfactionDoubleSpinBox.setToolTip("{0}".format(msg.satisfaction))
-        self.readyThresholdDoubleSpinBox.setValue(msg.threshold)
-        self.readyThresholdDoubleSpinBox.setToolTip("{0}".format(msg.threshold))
-        self.executableCheckbox.setChecked(msg.executable)
-        self.isExecutingCheckbox.setChecked(msg.isExecuting)
-        self.progressDoubleSpinBox.setValue(msg.progress)
-        self.progressDoubleSpinBox.setToolTip("{0}".format(msg.progress))
-        if not self.prioritySpinBox.hasFocus():
-            self.prioritySpinBox.setValue(msg.priority)
-        self.interruptableCheckbox.setChecked(msg.interruptable)
+        self.updateGUIsignal.emit({
+                                   "activated" : msg.activated,
+                                   "satisfaction" : msg.satisfaction,
+                                   "active" : msg.active,
+                                   "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
+                                   "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes)),
+                                   "correlations" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.correlations)),
+                                   "correlationsTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.correlations)),
+                                   "activation" : msg.activation,
+                                   "readyThreshold" : msg.threshold,
+                                   "executable" : msg.executable,
+                                   "isExecuting" : msg.isExecuting,
+                                   "progress" : msg.progress,
+                                   "priority" : msg.priority,
+                                   "interruptable" : msg.interruptable
+                                  })
     
     def activationCallback(self, status):
         rospy.logdebug("Waiting for service %s", self._name + 'Activate')

@@ -8,9 +8,11 @@ import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
 from behaviourPlannerPython.srv import Activate
+from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for goal
 class GoalWidget(QWidget):
+    updateGUIsignal = pyqtSignal(dict)
     def __init__(self, name):
         super(GoalWidget, self).__init__()
         self._name = name
@@ -22,20 +24,31 @@ class GoalWidget(QWidget):
         loadUi(ui_file, self)
         self.goalGroupBox.setTitle(self._name)
         self.activatedCheckbox.toggled.connect(self.activationCallback)
+        self.updateGUIsignal.connect(self.updateGUI)
 
     def __del__(self):
         self.__deleted = True
+    
+    def updateGUI(self, newValues):
+        self.activatedCheckbox.setChecked(newValues["activated"])
+        self.fulfillmentDoubleSpinBox.setValue(newValues["fulfillment"])
+        self.fulfillmentDoubleSpinBox.setToolTip("{0}".format(newValues["fulfillment"]))
+        self.activeCheckbox.setChecked(newValues["active"])
+        self.wishesLabel.setText(newValues["wishes"])
+        self.wishesLabel.setToolTip(newValues["wishesTooltip"])
         
     def refresh(self, msg):
         """
         Refreshes the widget with data from the new message.
         """
         assert self._name == msg.name
-        self.activatedCheckbox.setChecked(msg.activated)
-        self.fulfillmentDoubleSpinBox.setValue(msg.satisfaction)
-        self.activeCheckbox.setChecked(msg.active)
-        self.wishesLabel.setText("\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)))
-        self.wishesLabel.setToolTip("\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes)))
+        self.updateGUIsignal.emit({
+                                   "activated" : msg.activated,
+                                   "fulfillment" : msg.satisfaction,
+                                   "active" : msg.active,
+                                   "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
+                                   "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes))
+                                  })
     
     def activationCallback(self, status):
         rospy.logdebug("Waiting for service %s", self._name + 'Activate')
