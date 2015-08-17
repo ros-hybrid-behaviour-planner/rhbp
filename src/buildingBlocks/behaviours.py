@@ -10,8 +10,8 @@ import operator
 import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from behaviourPlannerPython.msg import Wish, Correlation, Status
-from behaviourPlannerPython.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse
+from behaviour_planner.msg import Wish, Correlation, Status
+from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse
 
 class Behaviour(object):
     '''

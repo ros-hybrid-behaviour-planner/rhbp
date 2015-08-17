@@ -10,7 +10,7 @@ from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
 from behaviourWidget import BehaviourWidget
 from goalWidget import GoalWidget
-from behaviourPlannerPython.msg import PlannerStatus
+from behaviour_planner.msg import PlannerStatus
 from PyQt4.QtCore import pyqtSignal
 
 
@@ -27,7 +27,7 @@ class Overview(Plugin):
         self.__plannerPrefix = ""
         
         # Give QObjects reasonable names
-        self.setObjectName('BehaviourPlannerOverview')
+        self.setObjectName('behaviour_planner_overview')
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -45,7 +45,7 @@ class Overview(Plugin):
         # Create QWidget
         self._widget = QWidget()
         # Get path to UI file which should be in the "resource" folder of this node
-        ui_file = os.path.join(rospkg.RosPack().get_path('behaviourPlannerPython'), 'src', 'rqt_planner_gui', 'resource', 'overview.ui')
+        ui_file = os.path.join(rospkg.RosPack().get_path('behaviour_planner'), 'src', 'rqt_planner_gui', 'resource', 'overview.ui')
         # Extend the widget with all attributes and children from UI file
         loadUi(ui_file, self._widget)
         # Give QObjects reasonable names

@@ -9,8 +9,8 @@ import conditions
 import warnings
 import itertools
 import rospy
-from behaviourPlannerPython.msg import Wish, Status
-from behaviourPlannerPython.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse
+from behaviour_planner.msg import Wish, Status
+from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse
 
 class Goal(object):
     '''

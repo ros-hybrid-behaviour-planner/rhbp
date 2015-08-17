@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>behaviourPlannerPython</name>
+  <name>behaviour_planner</name>
   <version>0.0.1</version>
-  <description>The behaviourPlannerPython package</description>
+  <description>The behaviour_planner package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/behaviourPlannerPython</url> -->
+  <!-- <url type="website">http://wiki.ros.org/behaviour_planner</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
@@ -46,8 +46,6 @@
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
-  
-
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
