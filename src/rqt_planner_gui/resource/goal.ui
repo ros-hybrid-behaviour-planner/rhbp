@@ -84,7 +84,7 @@
           <number>0</number>
          </property>
          <item row="2" column="0">
-          <widget class="QLabel" name="activeLabel">
+          <widget class="QLabel" name="activeDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -96,16 +96,6 @@
            </property>
            <property name="text">
             <string>Active</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QCheckBox" name="activeCheckbox">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string/>
            </property>
           </widget>
          </item>
@@ -184,6 +174,22 @@
            </property>
            <property name="text">
             <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1" colspan="2">
+          <widget class="QLabel" name="activeLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>if the behaviour is activated but not active there is an internal problem</string>
+           </property>
+           <property name="text">
+            <string>Active</string>
            </property>
           </widget>
          </item>

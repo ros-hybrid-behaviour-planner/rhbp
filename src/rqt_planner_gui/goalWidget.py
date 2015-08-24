@@ -33,7 +33,7 @@ class GoalWidget(QWidget):
         self.activatedCheckbox.setChecked(newValues["activated"])
         self.fulfillmentDoubleSpinBox.setValue(newValues["fulfillment"])
         self.fulfillmentDoubleSpinBox.setToolTip("{0}".format(newValues["fulfillment"]))
-        self.activeCheckbox.setChecked(newValues["active"])
+        self.activeLabel.setText(newValues["active"])
         self.wishesLabel.setText(newValues["wishes"])
         self.wishesLabel.setToolTip(newValues["wishesTooltip"])
         
@@ -45,7 +45,7 @@ class GoalWidget(QWidget):
         self.updateGUIsignal.emit({
                                    "activated" : msg.activated,
                                    "fulfillment" : msg.satisfaction,
-                                   "active" : msg.active,
+                                   "active" : str(msg.active),
                                    "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
                                    "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes))
                                   })

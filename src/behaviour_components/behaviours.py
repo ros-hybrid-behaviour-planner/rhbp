@@ -33,6 +33,7 @@ class Behaviour(object):
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
         self._isExecuting = False   # We get it via getStatus service of actual behaviour node
+        self._interruptable = False # We get it via getStatus service of actual behaviour node
         self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more

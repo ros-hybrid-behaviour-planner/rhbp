@@ -40,7 +40,7 @@ class Overview(Plugin):
             rospy.loginfo("using planner prefix %s", self.__plannerPrefix)
         
         # subscribe to our information source
-        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planer/plannerStatus", PlannerStatus, self.plannerStatusCallback)
+        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planner/plannerStatus", PlannerStatus, self.plannerStatusCallback)
             
         # Create QWidget
         self._widget = QWidget()
@@ -112,8 +112,8 @@ class Overview(Plugin):
     def setPlannerPrefix(self):
         self.__sub.unregister()
         self.__plannerPrefix = self._widget.plannerPrefixEdit.text()
-        rospy.loginfo("subscribing to %s", "/" + self.__plannerPrefix + "Planer/plannerStatus")
-        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planer/plannerStatus", PlannerStatus, self.plannerStatusCallback)
+        rospy.loginfo("subscribing to %s", "/" + self.__plannerPrefix + "Planner/plannerStatus")
+        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planner/plannerStatus", PlannerStatus, self.plannerStatusCallback)
     
     def plannerStatusCallback(self, msg):
         rospy.logdebug("received %s", msg)

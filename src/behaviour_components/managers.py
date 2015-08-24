@@ -31,7 +31,7 @@ class Manager(object):
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
-        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planer/plannerStatus', PlannerStatus, queue_size=1)
+        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
         self._sensors = []
         self._goals = []
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
@@ -61,7 +61,7 @@ class Manager(object):
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
             behaviour.fetchStatus()
-        rospy.loginfo("############# GOAL STATI #############")
+        rospy.logdebug("############# GOAL STATI #############")
         ### collect information about goals ###
         for goal in self._goals:
             goal.fetchStatus()
@@ -72,7 +72,7 @@ class Manager(object):
             statusMessage.activated = goal.activated
             statusMessage.satisfaction = goal.fulfillment
             plannerStatusMessage.goals.append(statusMessage)
-            rospy.loginfo("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
+            rospy.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
             if goal.active and not goal.isPermanent and goal.fulfillment >= 1:
                 rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
                 rospy.wait_for_service(goal.name + 'Activate')
@@ -83,25 +83,25 @@ class Manager(object):
         self._activeGoals = filter(lambda x: x.active, self._goals)
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
         ### log behaviour stuff ###
-        rospy.loginfo("########## BEHAVIOUR  STUFF ##########")
+        rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
-            rospy.loginfo("%s", behaviour.name)
-            rospy.loginfo("\tactive %s", behaviour.active)
-            rospy.loginfo("\twishes %s", behaviour.wishes)
-            rospy.loginfo("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
+            rospy.logdebug("%s", behaviour.name)
+            rospy.logdebug("\tactive %s", behaviour.active)
+            rospy.logdebug("\twishes %s", behaviour.wishes)
+            rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
             if behaviour.active:
-                rospy.loginfo("\tactivation from goals: %s", behaviour.getActivationFromGoals())
-                rospy.loginfo("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
-                rospy.loginfo("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
-                rospy.loginfo("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
-                rospy.loginfo("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted())
-            rospy.loginfo("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
+                rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals())
+                rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals())
+                rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors())
+                rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors())
+                rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted())
+            rospy.logdebug("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
             ### do the activation computation ###
             behaviour.computeActivation()
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
             behaviour.commitActivation()
-            rospy.loginfo("activation of %s after this step: %f", behaviour.name, behaviour.activation)
+            rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
         rospy.loginfo("current activation threshold: %f", self._activationThreshold)
         rospy.loginfo("############## ACTIONS ###############")
         executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
