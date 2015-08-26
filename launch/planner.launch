@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="behaviour_planner" type="example.py" name="behaviour_planner_node" output="screen"></node>
+</launch>
