@@ -24,7 +24,7 @@ class Manager(object):
         '''
         Constructor
         '''
-        rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.INFO)
+        rospy.init_node('behaviourPlannerManager', anonymous=True, log_level=rospy.DEBUG)
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
