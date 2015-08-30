@@ -150,7 +150,7 @@ class Manager(object):
                         rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
                         conflictor.stop()
                         executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
-                        currentlyInfluencedSensors.difference(set(conflictor.correlations.keys())) # remove all its correlations from the set of currently affected sensors
+                        currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set(conflictor.correlations.keys())) # remove all its correlations from the set of currently affected sensors
                         rospy.loginfo("still running behaviours: %s", executedBehaviours)
                         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
@@ -164,7 +164,7 @@ class Manager(object):
             behaviour.start()
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
             self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
-            currentlyInfluencedSensors.union(set(behaviour.correlations.keys()))
+            currentlyInfluencedSensors = currentlyInfluencedSensors.union(set(behaviour.correlations.keys()))
             executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)

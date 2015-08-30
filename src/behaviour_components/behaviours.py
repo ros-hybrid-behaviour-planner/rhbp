@@ -92,9 +92,9 @@ class Behaviour(object):
                 if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
                     behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0] # the variable name says it all
                     totalActivation = self._correlations[sensorName] * indicator
-                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation)
+                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active goal(s) that support(s) %s via %s: %s with a total activation of %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation)
                     activatedByGoals.append((goal, totalActivation / len(behavioursActivatedBySameGoal)))        # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)) / len(activatedByGoals), activatedByGoals)
+        return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
     def getInhibitionFromGoals(self):
         '''
@@ -109,7 +109,7 @@ class Behaviour(object):
                     # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                     # So we take -(1 - abs(indicator) * self._correlations[sensorName]) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
                     totalInhibition = -(1 - abs(indicator) * self._correlations[sensorName])
-                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, sensorName, behavioursInhibitedBySameGoal, totalInhibition)
+                    rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d goal(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, sensorName, behavioursInhibitedBySameGoal, totalInhibition)
                     inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
                 elif sensorName in self._correlations.keys() and self._correlations[sensorName] != 0 and self._correlations[sensorName] * indicator == 0:  # That means the goals was achieved but we would undo that
                     behavioursInhibitedBySameGoal = [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and self._correlations[sensorName] != 0 and b.correlations[sensorName] * indicator == 0] # the variable name says it all
@@ -133,7 +133,7 @@ class Behaviour(object):
                     totalActivation = behaviour.correlations[sensorName] * indicator
                     rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",  self._name, len(successorsAffectedByThisPredecessorsCorrellation), behaviour.name, sensorName, successorsAffectedByThisPredecessorsCorrellation, totalActivation)
                     activatedByPredecessors.append((behaviour, sensorName, totalActivation / len(successorsAffectedByThisPredecessorsCorrellation))) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. numSuccessorsOfThatPredecessorAffectedByThisCorrelation knows how many more behaviours will get activation from this predecessor so we distribute it equally
-        return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)) / len(activatedByPredecessors), activatedByPredecessors)
+        return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
     def getActivationFromSuccessors(self):
         '''
@@ -146,6 +146,7 @@ class Behaviour(object):
             for (sensorName, indicator) in self._correlations.iteritems(): # this is what we do to sensors
                 if sensorName in behaviour.wishes.keys():                  # if we affect other behaviours wishes somehow
                     if behaviour.wishes[sensorName] * indicator > 0:       # if we are a predecessor so we get activation from that successor
+                        # TODO: The following list is incorrect. It should list all behaviours that have sensorName in their wishes with the same indicator as out correlation has to this sensor
                         predecessorsAffectingSuccessorsByThisCorrelation = [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0] # the variable name says it all
                         totalActivation = behaviour.wishes[sensorName] * indicator
                         rospy.logdebug("Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f", self._name, len(predecessorsAffectingSuccessorsByThisCorrelation), behaviour.name, sensorName, predecessorsAffectingSuccessorsByThisCorrelation, totalActivation)
