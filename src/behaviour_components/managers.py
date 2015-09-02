@@ -6,6 +6,7 @@ Created on 23.04.2015
 
 import rospy
 import itertools
+from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
@@ -31,6 +32,8 @@ class Manager(object):
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
+        self.__pauseService = rospy.Service(self._prefix + 'Pause', Empty, self.__pauseCallback)
+        self.__resumeService = rospy.Service(self._prefix + 'Resume', Empty, self.__resumeCallback)
         self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
         self._sensors = []
         self._goals = []
@@ -42,6 +45,7 @@ class Manager(object):
         self._stepCounter = 0
         self.__threshFile = open("threshold.log", 'w')
         self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
+        self.__running = True # toggled by the pause and resume services
         
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -53,6 +57,8 @@ class Manager(object):
         self.__threshFile.close()
     
     def step(self):
+        if not self.__running:
+            return
         plannerStatusMessage = PlannerStatus()
         self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
         self.__threshFile.flush()
@@ -193,6 +199,14 @@ class Manager(object):
         self._behaviours.append(behaviour)
         rospy.loginfo("A behaviour with name %s registered", behaviour.name)
         return AddBehaviourResponse()
+    
+    def __pauseCallback(self, dummy):
+        self.__running = False
+        return EmptyResponse()
+    
+    def __resumeCallback(self, dummy):
+        self.__running = True
+        return EmptyResponse()
     
     def __removeGoal(self, request):
         self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name. 

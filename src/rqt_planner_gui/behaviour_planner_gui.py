@@ -5,6 +5,7 @@
 import os
 import rospy
 import rospkg
+from std_srvs.srv import Empty
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
@@ -61,6 +62,8 @@ class Overview(Plugin):
         context.add_widget(self._widget)
         self._widget.activationThresholdDecayPushButton.clicked.connect(self.setActivationThresholdDecay)
         self._widget.plannerPrefixPushButton.clicked.connect(self.setPlannerPrefix)
+        self._widget.pausePushButton.toggled.connect(self.pauseButtonCallback)
+
         # Connect signal so we can refresh Widgets from the main thread        
         self.updateRequest.connect(self.updateGUI)
         self.addBehaviourRequest.connect(self.addBehaviourWidget)
@@ -80,6 +83,23 @@ class Overview(Plugin):
     def addGoalWidget(self, name):
         self.__goals[name] = GoalWidget(name)
         self._widget.goalFrame.layout().addWidget(self.__goals[name])
+    
+    def pauseButtonCallback(self, status):
+        try:
+            if status == True:
+                rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Pause')
+                rospy.wait_for_service(self.__plannerPrefix + 'Pause')
+                pauseRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Pause', Empty)
+                pauseRequest()
+                self._widget.pausePushButton.setText("resume")
+            else:
+                rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Resume')
+                rospy.wait_for_service(self.__plannerPrefix + 'Resume')
+                resumeRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Resume', Empty)
+                resumeRequest()
+                self._widget.pausePushButton.setText("pause")
+        except Exception as e:
+            rospy.logerr("error while toggling pause or resume: %s", str(e))
     
     def updateBehaviour(self, msg):
         """
