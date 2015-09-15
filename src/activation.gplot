@@ -9,4 +9,5 @@ set grid y
 #set xdata time
 #set timefmt "%s"
 #set format x "%H:%M:%.3S"
-plot for [col=1:11] 'activationFlow.dat' using 2*col-1:2*col with steps lw 4 title columnheader
+N = system("awk 'NR==1{print NF}' activationFlow.dat")
+plot for [col=1:N/2] 'activationFlow.dat' using 2*col-1:2*col with steps lw 4 title columnheader

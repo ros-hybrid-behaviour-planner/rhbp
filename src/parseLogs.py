@@ -13,23 +13,11 @@ stepRegex = re.compile(r'###################################### STEP (\d+) #####
 thresholdRegex = re.compile(r'(\d+-\d+-\d+\s+\d+:\d+:\d+,\d+):\s+current\s+activation\s+threshold:\s+(\d+\.\d+)')
 
 behaviours = {
-    "PickUpSprayer" : None,
-    "PickUpSander" : None,
-    "PickUpBoard" : None,
-    "PutDownSprayer" : None,
-    "PutDownSander" : None,
-    "PutDownBoard" : None,
-    "SandBoardInHand" : None,
-    "SandBoardInVise" : None,
-    "SprayPaintSelf" : None,
-    "PlaceBoardInVise" : None,
-    "threshold" : None
+    "threshold" : {} # well, this is no nehaviour but it is only a variable name anyway
 }
 
 with open("activationFlow.dat", 'w') as outfile:
-    for (behaviour, data) in behaviours.iteritems():
-        outfile.write("Time\t" + behaviour + "\t")
-    outfile.write("\n")
+    currentStep = 0
     with open(logfile, 'r') as infile:
         for line in infile.readlines():
             match = activationRegex.search(line)
@@ -37,22 +25,30 @@ with open("activationFlow.dat", 'w') as outfile:
                 print match.group(0)
                 dt = datetime.datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S,%f")
                 ts = (dt - datetime.datetime(1970, 1, 1)).total_seconds()
-                behaviours[match.group(2)] = (ts, float(match.group(3)))
+                if match.group(2) in behaviours:
+                    behaviours[match.group(2)][currentStep] = (ts, float(match.group(3)))
+                else:
+                    behaviours[match.group(2)] = {currentStep : (ts, float(match.group(3)))}
                 continue
             match = thresholdRegex.search(line)
             if match:
                 print match.group(0)
                 dt = datetime.datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S,%f")
                 ts = (dt - datetime.datetime(1970, 1, 1)).total_seconds()
-                behaviours["threshold"] = (ts, float(match.group(2)))
+                behaviours["threshold"][currentStep] = (ts, float(match.group(2)))
                 continue
             match = stepRegex.search(line)
             if match:
                 print match.group(0)
-                try:
-                    for (behaviour, data) in behaviours.iteritems():
-                        outfile.write(match.group(1) + "\t" + str(data[1]) + "\t")
-                    outfile.write("\n")
-                except:
-                    pass
-
+                currentStep = int(match.group(1))
+        # now that parsing is done we create suitable output for gnuplot  
+        for behaviour in behaviours.keys():
+            outfile.write("Time\t" + behaviour + "\t")
+        outfile.write("\n")
+        for step in reduce(lambda x, y: set(x).union(set(y)), [e.keys() for b,e in behaviours.iteritems()]): # trust me, we are iterating over all steps where at least behaviour delivered data!
+            for (behaviour, data) in behaviours.iteritems():
+                if step in data:
+                    outfile.write(str(step) + "\t" + str(data[step][1]) + "\t")
+                else:
+                    outfile.write(" \t \t")
+            outfile.write("\n")
