@@ -65,6 +65,7 @@ add_service_files(
   ForceStart.srv
   Activate.srv
   Priority.srv
+  GetPDDL.srv
 )
 
 ## Generate actions in the 'action' folder

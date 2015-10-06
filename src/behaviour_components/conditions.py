@@ -34,6 +34,12 @@ class Conditonal(object):
         '''
         raise NotImplementedError()
     
+    def getPDDL(self):
+        '''
+        This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        '''
+        raise NotImplementedError()
+    
     @property
     def optional(self):
         raise NotImplementedError()
@@ -81,6 +87,9 @@ class Condition(Conditonal):
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._activator, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
+        
+    def getPDDL(self):
+        return self._activator.getPDDL(self._sensor.name)
     
     @property
     def satisfaction(self):
@@ -152,6 +161,9 @@ class Disjunction(Conditonal):
         for c in self._conditions:
             l = list(itertools.chain(l, c.getWishes()))
         return l
+    
+    def getPDDL(self):
+        return "(or " + " ".join([x.getPDDL() for x in self._conditions]) + ")"
         
     @property
     def conditions(self):
@@ -208,6 +220,9 @@ class Conjunction(Conditonal):
         for c in self._conditions:
             l = list(itertools.chain(l, c.getWishes()))
         return l
+    
+    def getPDDL(self):
+        return "(and " + " ".join([x.getPDDL() for x in self._conditions]) + ")"
         
     @property
     def conditions(self):

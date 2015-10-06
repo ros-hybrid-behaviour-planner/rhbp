@@ -56,6 +56,11 @@ class Manager(object):
         self.__statusPublisher.unregister()
         self.__threshFile.close()
     
+    def fetchPDDL(self):
+        with open("robotDomain.pddl", 'a') as outfile:
+            for behaviour in self._behaviours:
+                outfile.write(behaviour.fetchPDDL())
+    
     def step(self):
         if not self.__running:
             return

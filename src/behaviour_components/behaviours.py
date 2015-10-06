@@ -11,7 +11,7 @@ import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import Wish, Correlation, Status
-from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse
+from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse, GetPDDL, GetPDDLResponse
 
 class Behaviour(object):
     '''
@@ -79,7 +79,21 @@ class Behaviour(object):
                 rospy.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)    
+            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)  
+    
+    def fetchPDDL(self):
+        '''
+        This method fetches the status from the actual behaviour node via GetStatus service call
+        '''
+        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
+        rospy.wait_for_service(self._name + 'PDDL')
+        try:
+            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
+            pddl = getPDDLRequest().pddl
+            rospy.logdebug("%s", pddl)
+            return pddl
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception in getPDDL of %s: %s", self._name, e)
             
     def getActivationFromGoals(self):
         '''
@@ -335,6 +349,7 @@ class BehaviourBase(object):
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
+        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
@@ -365,6 +380,7 @@ class BehaviourBase(object):
             self._stopService.shutdown()
             self._activateService.shutdown()
             self._priorityService.shutdown()
+            self._pddlService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
     
@@ -432,6 +448,28 @@ class BehaviourBase(object):
         It there is no current activity the value is ignored and may be filled with a dummy.
         """
         return 0.5
+    
+    def getActionPDDL(self):
+        """
+        This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        """
+        snippet = "(:action {0}\n".format(self._name)
+        snippet += ":parameters ()\n"
+        preconds = [x.getPDDL() for x in self._preconditions]
+        if len(preconds) > 1:
+            snippet += ":precondition (and " + " ".join(preconds) + ")\n"
+        elif len(preconds) == 1:
+            snippet += ":precondition " + preconds[0] + "\n"
+        effects = ["(" + c + ")" if i > 0 else "(not (" + c + "))" for (c, i) in self._correlations.iteritems()]
+        if len(effects) > 1:
+            snippet += ":effect (and " + " ".join(effects) + ")\n"
+        elif len(effects) == 1:
+            snippet += ":effect " + effects[0] + "\n"
+        snippet += ")\n"
+        return snippet
+
+    def pddlCallback(self, dummy):
+        return GetPDDLResponse(**{"pddl" : self.getActionPDDL()})
     
     def getStatus(self, request):
         self._active = self._activated
