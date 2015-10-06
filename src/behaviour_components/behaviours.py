@@ -12,6 +12,7 @@ import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import Wish, Correlation, Status
 from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse, GetPDDL, GetPDDLResponse
+from util import PDDL
 
 class Behaviour(object):
     '''
@@ -83,15 +84,15 @@ class Behaviour(object):
     
     def fetchPDDL(self):
         '''
-        This method fetches the status from the actual behaviour node via GetStatus service call
+        This method fetches the status from the actual behaviour node via GetPDDLservice call
         '''
         rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
         rospy.wait_for_service(self._name + 'PDDL')
         try:
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
-            pddl = getPDDLRequest().pddl
-            rospy.logdebug("%s", pddl)
-            return pddl
+            pddl = getPDDLRequest()
+            rospy.logdebug("\n%s", pddl)
+            return PDDL(statement = pddl.statement, predicates = pddl.predicates)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in getPDDL of %s: %s", self._name, e)
             
@@ -453,23 +454,25 @@ class BehaviourBase(object):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
-        snippet = "(:action {0}\n".format(self._name)
-        snippet += ":parameters ()\n"
+        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name))
         preconds = [x.getPDDL() for x in self._preconditions]
+        pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
+        pddl.predicates = pddl.predicates.union(set(self._correlations.keys())) # adds those from the correlations
         if len(preconds) > 1:
-            snippet += ":precondition (and " + " ".join(preconds) + ")\n"
+            pddl.statement += ":precondition (and " + " ".join(map(lambda x: x.statement, preconds)) + ")\n"
         elif len(preconds) == 1:
-            snippet += ":precondition " + preconds[0] + "\n"
-        effects = ["(" + c + ")" if i > 0 else "(not (" + c + "))" for (c, i) in self._correlations.iteritems()]
+            pddl.statement += ":precondition " + preconds[0].statement + "\n"
+        effects = ["(" + sensorName + ")" if indicator > 0 else "(not (" + sensorName + "))" for (sensorName, indicator) in self._correlations.iteritems()]
         if len(effects) > 1:
-            snippet += ":effect (and " + " ".join(effects) + ")\n"
+            pddl.statement += ":effect (and " + " ".join(effects) + ")\n"
         elif len(effects) == 1:
-            snippet += ":effect " + effects[0] + "\n"
-        snippet += ")\n"
-        return snippet
+            pddl.statement += ":effect " + effects[0] + "\n"
+        pddl.statement += ")\n"
+        return pddl
 
     def pddlCallback(self, dummy):
-        return GetPDDLResponse(**{"pddl" : self.getActionPDDL()})
+        pddl = self.getActionPDDL()
+        return GetPDDLResponse(**{"statement" : pddl.statement, "predicates" : list(pddl.predicates)})
     
     def getStatus(self, request):
         self._active = self._activated

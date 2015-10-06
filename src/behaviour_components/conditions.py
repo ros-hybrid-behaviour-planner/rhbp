@@ -9,6 +9,7 @@ import warnings
 import operator
 import itertools
 import rospy
+from util import PDDL
 
 class Conditonal(object):
     '''
@@ -163,7 +164,13 @@ class Disjunction(Conditonal):
         return l
     
     def getPDDL(self):
-        return "(or " + " ".join([x.getPDDL() for x in self._conditions]) + ")"
+        pddl = PDDL(statement = "(or")
+        for c in self._conditions:
+            cond_pddl = c.getPDDL()
+            pddl.statement += " {0}".format(cond_pddl.statement)
+            pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
+        pddl.statement += ")"
+        return pddl
         
     @property
     def conditions(self):
@@ -222,7 +229,13 @@ class Conjunction(Conditonal):
         return l
     
     def getPDDL(self):
-        return "(and " + " ".join([x.getPDDL() for x in self._conditions]) + ")"
+        pddl = PDDL(statement = "(and")
+        for c in self._conditions:
+            cond_pddl = c.getPDDL()
+            pddl.statement += " {0}".format(cond_pddl.statement)
+            pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
+        pddl.statement += ")"
+        return pddl
         
     @property
     def conditions(self):

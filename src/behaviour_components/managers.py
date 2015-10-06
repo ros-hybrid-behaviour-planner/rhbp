@@ -11,6 +11,7 @@ from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
+from behaviour_components.util import PDDL
 
 class Manager(object):
     '''
@@ -58,8 +59,15 @@ class Manager(object):
     
     def fetchPDDL(self):
         with open("robotDomain.pddl", 'a') as outfile:
+            pddl = PDDL()
+            outfile.write("(define (domain {0})\n".format(self._prefix))
             for behaviour in self._behaviours:
-                outfile.write(behaviour.fetchPDDL())
+                actionPDDL = behaviour.fetchPDDL()
+                pddl.statement += actionPDDL.statement
+                pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
+            outfile.write("(:predicates " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n")
+            outfile.write(pddl.statement)
+            outfile.write(")")
     
     def step(self):
         if not self.__running:

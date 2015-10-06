@@ -1,2 +1,3 @@
 ---
-string pddl
+string statement
+string[] predicates

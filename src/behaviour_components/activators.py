@@ -3,6 +3,7 @@
 #@author: stephan
 
 from __future__ import division # force floating point division when using plain /
+from util import PDDL
 
 class Activator(object):
     '''
@@ -93,7 +94,7 @@ class BooleanActivator(Activator):
         return -1.0
     
     def getPDDL(self, sensorName):
-        return "(" + sensorName + ")" if self._desired == True else "(not (" + sensorName + "))"
+        return PDDL(statement = "(" + sensorName + ")" if self._desired == True else "(not (" + sensorName + "))", predicates = sensorName)
     
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -163,7 +164,7 @@ class ThresholdActivator(Activator):
             return float(self.getDirection())
     
     def getPDDL(self, sensorName):
-        return "threshold condition for " + sensorName
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), predicates = sensorName)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -202,7 +203,7 @@ class LinearActivator(Activator):
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
     def getPDDL(self, sensorName):
-        return "linear condition for " + sensorName
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._fullActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._fullActivationValue), predicates = sensorName)  # TODO: This is not actually correct: We treat the linear activator like a simple threshold. How can we do better?
             
     @property
     def valueRange(self):
