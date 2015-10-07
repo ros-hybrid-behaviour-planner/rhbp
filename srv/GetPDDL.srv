@@ -1,3 +1,4 @@
 ---
 string statement
 string[] predicates
+string[] functions

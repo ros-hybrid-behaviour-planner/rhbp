@@ -12,7 +12,7 @@ class PDDL(object):
     """
     This class wraps PDDL fragments while building statements. It is used to collect predicates that are used in the statement for easier domain description generation.
     """
-    def __init__(self, statement = None, predicates = None):
+    def __init__(self, statement = None, predicates = None, functions = None):
         if statement is not None:
             self.statement = statement
         else:
@@ -24,6 +24,16 @@ class PDDL(object):
                 self.predicates = set([predicates])
         else:
             self.predicates = set()
+        if functions is not None:
+            if type(functions) is list:
+                self.functions = set(functions)
+            else:
+                self.functions = set([functions])
+        else:
+            self.functions = set()
+    
+    def __repr__(self):
+        return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement
 
 class Effect(object):
     """
@@ -45,10 +55,11 @@ class Effect(object):
             obr += 1
         if self.sensorType is bool:
             pddl.statement += self.sensorName if self.indicator > 0 else "not ({0})".format(self.sensorName)
+            pddl.predicates.add(self.sensorName) # TODO: What about other predicates employed in conditions by user??
         else: # its numeric and not bool
             pddl.statement += "{0} ({1}) {2}".format("increase" if self.indicator > 0.0 else "decrease", self.sensorName, self.realWorldImpact)
+            pddl.functions.add(self.sensorName) # TODO: What about other functions employed in conditions by user??
         pddl.statement += ")" * obr # close the brackets
-        pddl.predicates.add(self.sensorName) # TODO: What about other predicates employed in conditions by user??
         return pddl
         
         

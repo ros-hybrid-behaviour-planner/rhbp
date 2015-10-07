@@ -65,7 +65,9 @@ class Manager(object):
                 actionPDDL = behaviour.fetchPDDL()
                 pddl.statement += actionPDDL.statement
                 pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
+                pddl.functions = pddl.functions.union(actionPDDL.functions)
             outfile.write("(:predicates " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n")
+            outfile.write("(:functions " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n")
             outfile.write(pddl.statement)
             outfile.write(")")
     

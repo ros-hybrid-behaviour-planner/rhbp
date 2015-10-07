@@ -92,7 +92,7 @@ class Behaviour(object):
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
             rospy.logdebug("\n%s", pddl)
-            return PDDL(statement = pddl.statement, predicates = pddl.predicates)
+            return PDDL(statement = pddl.statement, predicates = pddl.predicates, functions = pddl.functions)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in getPDDL of %s: %s", self._name, e)
             
@@ -358,6 +358,7 @@ class BehaviourBase(object):
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
+        self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
         self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
         self._activated = True # The activate Service sets the value of this property.
@@ -454,25 +455,27 @@ class BehaviourBase(object):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
-        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name))
+        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name), functions = "costs")
         preconds = [x.getPDDL() for x in self._preconditions]
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
+        pddl.functions = pddl.functions.union(*map(lambda x: x.functions, preconds)) # unites all functions in preconditions
         if len(preconds) > 1:
             pddl.statement += ":precondition (and " + " ".join(map(lambda x: x.statement, preconds)) + ")\n"
         elif len(preconds) == 1:
             pddl.statement += ":precondition " + preconds[0].statement + "\n"
         effects = [x.getPDDL() for x in self._correlations]
         pddl.predicates = pddl.predicates.union(*map(lambda x: x.predicates, effects)) # adds predicates from the effects
+        pddl.functions = pddl.functions.union(*map(lambda x: x.functions, effects)) # adds functions from the effects
         if len(effects) > 1:
-            pddl.statement += ":effect (and " + " ".join(map(lambda x: x.statement, effects)) + ")\n"
+            pddl.statement += ":effect (and (increase (costs) {0}) ".format(self._actionCost) + " ".join(map(lambda x: x.statement, effects)) + ")\n"
         elif len(effects) == 1:
-            pddl.statement += ":effect " + effects[0].statement + "\n"
+            pddl.statement += ":effect (and (increase (costs) {0}) {1})\n".format(self._actionCost, effects[0].statement)
         pddl.statement += ")\n"
         return pddl
 
     def pddlCallback(self, dummy):
         pddl = self.getActionPDDL()
-        return GetPDDLResponse(**{"statement" : pddl.statement, "predicates" : list(pddl.predicates)})
+        return GetPDDLResponse(**{"statement" : pddl.statement, "predicates" : list(pddl.predicates), "functions" : list(pddl.functions)})
     
     def getStatus(self, request):
         self._active = self._activated

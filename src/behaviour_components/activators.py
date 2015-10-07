@@ -164,7 +164,7 @@ class ThresholdActivator(Activator):
             return float(self.getDirection())
     
     def getPDDL(self, sensorName):
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), predicates = sensorName)
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -203,7 +203,7 @@ class LinearActivator(Activator):
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
     def getPDDL(self, sensorName):
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._fullActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._fullActivationValue), predicates = sensorName)  # TODO: This is not actually correct: We treat the linear activator like a simple threshold. How can we do better?
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._fullActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._fullActivationValue), functions = sensorName)  # TODO: This is not actually correct: We treat the linear activator like a simple threshold. How can we do better?
             
     @property
     def valueRange(self):

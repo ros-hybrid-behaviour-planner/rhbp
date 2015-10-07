@@ -169,6 +169,7 @@ class Disjunction(Conditonal):
             cond_pddl = c.getPDDL()
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
+            pddl.functions = pddl.functions.union(cond_pddl.functions)
         pddl.statement += ")"
         return pddl
         
@@ -234,6 +235,7 @@ class Conjunction(Conditonal):
             cond_pddl = c.getPDDL()
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
+            pddl.functions = pddl.functions.union(cond_pddl.functions)
         pddl.statement += ")"
         return pddl
         
