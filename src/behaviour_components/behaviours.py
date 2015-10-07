@@ -354,7 +354,7 @@ class BehaviourBase(object):
         self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
-        self._correlations = kwargs["correlations"] if "correlations" in kwargs else {} # Stores sensor correlations in dict in form: {sensor name <string> : correlation <float> [-1 to 1]}. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. # be careful with the sensor Name! It has to actually match something that exists!
+        self._correlations = kwargs["correlations"] if "correlations" in kwargs else [] # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning: sensorName -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. Optional condition -> a piece of pddl when this effect happens. # Be careful with the sensorName! It has to actually match something that exists!
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
@@ -383,7 +383,7 @@ class BehaviourBase(object):
             self._priorityService.shutdown()
             self._pddlService.shutdown()
         except Exception as e:
-            rospy.logerr("Fucked up in destructor of BehaviourBase: %s", e)
+            rospy.logerr("Error in destructor of BehaviourBase: %s", e)
     
     def computeActivation(self):
         """
@@ -457,16 +457,16 @@ class BehaviourBase(object):
         pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name))
         preconds = [x.getPDDL() for x in self._preconditions]
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
-        pddl.predicates = pddl.predicates.union(set(self._correlations.keys())) # adds those from the correlations
         if len(preconds) > 1:
             pddl.statement += ":precondition (and " + " ".join(map(lambda x: x.statement, preconds)) + ")\n"
         elif len(preconds) == 1:
             pddl.statement += ":precondition " + preconds[0].statement + "\n"
-        effects = ["(" + sensorName + ")" if indicator > 0 else "(not (" + sensorName + "))" for (sensorName, indicator) in self._correlations.iteritems()]
+        effects = [x.getPDDL() for x in self._correlations]
+        pddl.predicates = pddl.predicates.union(*map(lambda x: x.predicates, effects)) # adds predicates from the effects
         if len(effects) > 1:
-            pddl.statement += ":effect (and " + " ".join(effects) + ")\n"
+            pddl.statement += ":effect (and " + " ".join(map(lambda x: x.statement, effects)) + ")\n"
         elif len(effects) == 1:
-            pddl.statement += ":effect " + effects[0] + "\n"
+            pddl.statement += ":effect " + effects[0].statement + "\n"
         pddl.statement += ")\n"
         return pddl
 
@@ -479,7 +479,7 @@ class BehaviourBase(object):
         status = Status(**{
                            "name"         : self._name, # this is sent for sanity check and planner status messages only
                            "activation"   : self.computeActivation(),
-                           "correlations" : [Correlation(name, value) for (name, value) in self._correlations.iteritems()],
+                           "correlations" : [Correlation(x.sensorName, x.indicator) for x in self._correlations],
                            "satisfaction" : self.computeSatisfaction(),
                            "threshold"    : self._readyThreshold,
                            "wishes"       : self.computeWishes(),
@@ -546,7 +546,7 @@ class BehaviourBase(object):
     def correlations(self, correlations):
         '''
         This is for initializing the correlations.
-        correlations must be a dict of form {sensor name <string> : correlation <float> [-1 to 1]}.
+        correlations must be an util.Effect object.
         '''
         self._correlations = correlations
     

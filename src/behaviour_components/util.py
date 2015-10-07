@@ -30,8 +30,31 @@ class Effect(object):
     This class models effects and their combinations.
     All effects (correlations) are assumed to happen simultaneously except otherwise stated.
     """
-    def __init__(self, mutuallyExclusiveWith):
-        """
-        TODO: implement me
-        """
-        raise NotImplementedError
+    def __init__(self, sensorName, indicator, sensorType = bool, realWorldImpact = 1.0, condition = None):
+        self.sensorName = sensorName
+        self.indicator = indicator
+        self.sensorType = sensorType
+        self.realWorldImpact = realWorldImpact
+        self.condition = condition
+        
+    def getPDDL(self):
+        pddl = PDDL(statement = "(")
+        obr = 1 # count opened brackets
+        if self.condition is not None:
+            pddl.statement += "when ({0}) (".format(self.condition)
+            obr += 1
+        if self.sensorType is bool:
+            pddl.statement += self.sensorName if self.indicator > 0 else "not ({0})".format(self.sensorName)
+        else: # its numeric and not bool
+            pddl.statement += "{0} ({1}) {2}".format("increase" if self.indicator > 0.0 else "decrease", self.sensorName, self.realWorldImpact)
+        pddl.statement += ")" * obr # close the brackets
+        pddl.predicates.add(self.sensorName) # TODO: What about other predicates employed in conditions by user??
+        return pddl
+        
+        
+        
+        
+        
+        
+        
+        
