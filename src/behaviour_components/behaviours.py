@@ -84,7 +84,7 @@ class Behaviour(object):
     
     def fetchPDDL(self):
         '''
-        This method fetches the status from the actual behaviour node via GetPDDLservice call
+        This method fetches the PDDL from the actual behaviour node via GetPDDLservice call
         '''
         rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
         rospy.wait_for_service(self._name + 'PDDL')
@@ -472,10 +472,14 @@ class BehaviourBase(object):
             pddl.statement += ":effect (and (increase (costs) {0}) {1})\n".format(self._actionCost, effects[0].statement)
         pddl.statement += ")\n"
         return pddl
+    
+    def getStatePDDL(self):
+        return ""
 
     def pddlCallback(self, dummy):
         pddl = self.getActionPDDL()
-        return GetPDDLResponse(**{"statement" : pddl.statement, "predicates" : list(pddl.predicates), "functions" : list(pddl.functions)})
+        sensorState = self.getStatePDDL()
+        return GetPDDLResponse(**{"statement" : pddl.statement, "predicates" : list(pddl.predicates), "functions" : list(pddl.functions), "state" : sensorState})
     
     def getStatus(self, request):
         self._active = self._activated

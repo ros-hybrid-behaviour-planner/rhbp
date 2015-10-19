@@ -70,6 +70,15 @@ class Manager(object):
             outfile.write("(:functions " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n")
             outfile.write(pddl.statement)
             outfile.write(")")
+        
+        with open("robotProblem.pddl", 'a') as outfile:
+            pddl = PDDL()
+            outfile.write("(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t)\n".format(self._prefix))
+            goalConditions = []
+            for goal in self._goals:
+                goalConditions.append(goal.fetchPDDL().statement)
+            outfile.write("\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions)))
+            outfile.write(")\n")
     
     def step(self):
         if not self.__running:

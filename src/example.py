@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 '''
 Created on 13.04.2015
 
@@ -9,7 +9,7 @@ from behaviour_components.managers import Manager
 
 if __name__ == '__main__':
     m = Manager(activationThreshold = 21, prefix = "sim")
-    rate = rospy.Rate(3) # 5hz
+    rate = rospy.Rate(3) # 3hz
     while(True):
         # m.step()
         m.fetchPDDL()

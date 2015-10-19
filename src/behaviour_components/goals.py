@@ -10,7 +10,8 @@ import warnings
 import itertools
 import rospy
 from behaviour_planner.msg import Wish, Status
-from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse
+from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse
+from util import PDDL
 
 class Goal(object):
     '''
@@ -28,6 +29,19 @@ class Goal(object):
         self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._isPermanent = permanent
 
+    def fetchPDDL(self):
+        '''
+        This method fetches the PDDL from the actual behaviour node via GetPDDLservice call
+        '''
+        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
+        rospy.wait_for_service(self._name + 'PDDL')
+        try:
+            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
+            pddl = getPDDLRequest()
+            rospy.logdebug("\n%s", pddl)
+            return PDDL(statement = pddl.statement, predicates = pddl.predicates, functions = pddl.functions)
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception in getPDDL of %s: %s", self._name, e)
     
     def fetchStatus(self):
         '''
@@ -90,6 +104,7 @@ class GoalBase(object):
         self._isPermanent = permanent
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
+        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._conditions = conditions
         self._plannerPrefix = plannerPrefix # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         self._active = True # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
@@ -110,7 +125,8 @@ class GoalBase(object):
         '''
         try:
             self._getStatusService.shutdown()
-            self.__ctivateService.shutdown()
+            self._activateService.shutdown()
+            self._pddlService.shutdown();
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
     
@@ -134,6 +150,17 @@ class GoalBase(object):
         except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False
             return []
+        
+    def getStatePDDL(self):
+        return ""
+    
+    def getGoalPDDL(self):
+        return " ".join([x.getPDDL().statement for x in self._conditions])
+
+    def pddlCallback(self, dummy):
+        pddl = self.getGoalPDDL()
+        sensorState = self.getStatePDDL()
+        return GetPDDLResponse(**{"statement" : pddl, "state" : sensorState})
     
     def getStatus(self, request):
         self._active = self._activated
