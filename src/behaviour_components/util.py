@@ -4,9 +4,9 @@ Created on 06.10.2015
 @author: stephan
 '''
 from __future__ import division # force floating point division when using plain /
-import operator
-import itertools
+import re
 import rospy
+
 
 class PDDL(object):
     """
@@ -47,7 +47,7 @@ class Effect(object):
         self.realWorldImpact = realWorldImpact
         self.condition = condition
         
-    def getPDDL(self):
+    def getEffectPDDL(self):
         pddl = PDDL(statement = "(")
         obr = 1 # count opened brackets
         if self.condition is not None:
@@ -63,9 +63,63 @@ class Effect(object):
         return pddl
         
         
-        
-        
-        
-        
-        
-        
+def tokenizePDDL(pddlString):
+    '''
+    This function returns a list of first level tokens.
+    Tokens are enclosed in braces.
+    '''
+    if not re.search(r'\(', pddlString):
+        return []
+    tokens = []
+    snippet = ""
+    obr = 0
+    for c in pddlString:
+        snippet += c
+        if c == '(':
+            obr += 1
+        elif c == ')':
+            obr -= 1
+            if obr == 0:
+                tokens.append(snippet.strip())
+                snippet = ""
+    if obr != 0:
+        rospy.logwarn("incorrect PDDL (not matching brackets) passed to tokenizePDDL(): %s", pddlString)
+    return tokens
+
+def mergeStatePDDL(PDDLone, PDDLtwo):
+    '''
+    This function merges PDDLone into PDDLtwo (in place
+    '''
+    for x in tokenizePDDL(PDDLone.statement):
+        # find out sensorName and type of currently processed token (must be declared in either functions or predicates sets)
+        sensorName = ""
+        statementIsPredicate = False
+        for sn in PDDLone.predicates:
+            if sn in x:
+                sensorName = sn
+                statementIsPredicate = True
+                break
+        if not sensorName:
+            for sn in PDDLone.functions:
+                if sn in x:
+                    sensorName = sn
+                    break
+        if not sensorName: # sanity check
+            rospy.logwarn("inconsistent PDDL data structure: statement %s does not contain any of the declared in predicates (%s) or functions (%s)", x, PDDLone.predicates, PDDLone.functions)
+        if statementIsPredicate:
+            if sensorName in PDDLtwo.predicates:
+                if not x in tokenizePDDL(PDDLtwo.statement):
+                    rospy.logwarn("predicate %s declared differently than before in %s", x, PDDLtwo.statement)
+            else:
+                PDDLtwo.predicates.add(sensorName)
+                PDDLtwo.statement += "\n\t\t{0}".format(x)
+        else: # statement is function
+            if sensorName in PDDLtwo.functions:
+                if not x in tokenizePDDL(PDDLtwo.statement):
+                    rospy.logwarn("function %s declared differently than before in %s", x, PDDLtwo.statement)
+            else:
+                PDDLtwo.functions.add(sensorName)
+                PDDLtwo.statement += "\n\t\t{0}".format(x)
+    return PDDLtwo
+    
+    

@@ -11,7 +11,7 @@ from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
-from behaviour_components.util import PDDL
+from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL
 
 class Manager(object):
     '''
@@ -58,11 +58,11 @@ class Manager(object):
         self.__threshFile.close()
     
     def fetchPDDL(self):
+        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._behaviours]
         with open("robotDomain.pddl", 'a') as outfile:
             pddl = PDDL()
             outfile.write("(define (domain {0})\n".format(self._prefix))
-            for behaviour in self._behaviours:
-                actionPDDL = behaviour.fetchPDDL()
+            for actionPDDL, _statePDDL in behaviourPDDLs:
                 pddl.statement += actionPDDL.statement
                 pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
                 pddl.functions = pddl.functions.union(actionPDDL.functions)
@@ -71,9 +71,14 @@ class Manager(object):
             outfile.write(pddl.statement)
             outfile.write(")")
         
+        mergedStatePDDL = PDDL()
+        for _actionPDDL, statePDDL in behaviourPDDLs:
+            print "######################################\nstatePDDL", statePDDL.statement, "tokenized", tokenizePDDL(statePDDL.statement), "mergedPDDL", mergedStatePDDL.statement, "\n###############################################\n"
+            mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+        
         with open("robotProblem.pddl", 'a') as outfile:
             pddl = PDDL()
-            outfile.write("(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t)\n".format(self._prefix))
+            outfile.write("(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, mergedStatePDDL.statement))
             goalConditions = []
             for goal in self._goals:
                 goalConditions.append(goal.fetchPDDL().statement)

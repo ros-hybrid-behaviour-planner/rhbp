@@ -1,5 +1,8 @@
 ---
-string statement
-string[] predicates
-string[] functions
-string state
+string actionStatement
+string[] actionPredicates
+string[] actionFunctions
+string stateStatement
+string[] statePredicates
+string[] stateFunctions
+string goalStatement

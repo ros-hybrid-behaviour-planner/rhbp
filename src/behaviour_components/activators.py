@@ -53,9 +53,24 @@ class Activator(object):
         '''
         raise NotImplementedError()
     
-    def getPDDL(self):
+    def getPreconditionPDDL(self, sensorName):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        '''
+        raise NotImplementedError()
+    
+    def getStatePDDL(self, sensorName, value):
+        '''
+        This method should produce a valid PDDL statement describing the current state (the (normalized) value) of sensor sensorName in a form suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        '''
+        raise NotImplementedError()
+    
+    def getNormalizedValue(self, value):
+        '''
+        This method should return either 
+                                        a float which represents the sensor reading in a single-dimensional fashion for use as numeric fluent by the symbolic planner
+                                  or
+                                        a Bool if the sensor represents a predicate and not a numeric fluent.
         '''
         raise NotImplementedError()
     
@@ -93,8 +108,14 @@ class BooleanActivator(Activator):
             return 1.0
         return -1.0
     
-    def getPDDL(self, sensorName):
+    def getPreconditionPDDL(self, sensorName):
         return PDDL(statement = "(" + sensorName + ")" if self._desired == True else "(not (" + sensorName + "))", predicates = sensorName)
+    
+    def getStatePDDL(self, sensorName, value):
+        return PDDL(statement = "(" + sensorName + ")" if self.getNormalizedValue(value) == True else "(not (" + sensorName + "))", predicates = sensorName)
+    
+    def getNormalizedValue(self, value):
+        return value
     
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -163,8 +184,14 @@ class ThresholdActivator(Activator):
         else:
             return float(self.getDirection())
     
-    def getPDDL(self, sensorName):
+    def getPreconditionPDDL(self, sensorName):
         return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
+    
+    def getStatePDDL(self, sensorName, value):
+        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(self.getNormalizedValue(value)), functions = sensorName)
+
+    def getNormalizedValue(self, value):
+        return value    
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -202,8 +229,14 @@ class LinearActivator(Activator):
         else:
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
-    def getPDDL(self, sensorName):
+    def getPreconditionPDDL(self, sensorName):
         return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._fullActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._fullActivationValue), functions = sensorName)  # TODO: This is not actually correct: We treat the linear activator like a simple threshold. How can we do better?
+    
+    def getStatePDDL(self, sensorName, value):
+        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(self.getNormalizedValue(value)), functions = sensorName)
+    
+    def getNormalizedValue(self, value):
+        return value
             
     @property
     def valueRange(self):

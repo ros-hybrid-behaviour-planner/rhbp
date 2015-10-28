@@ -35,10 +35,16 @@ class Conditonal(object):
         '''
         raise NotImplementedError()
     
-    def getPDDL(self):
+    def getPreconditionPDDL(self):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         '''
+        raise NotImplementedError()
+    
+    def getStatePDDL(self):
+        '''
+        This method should produce  a list of valid PDDL statements describing the (initial) state of the world suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+         '''
         raise NotImplementedError()
     
     @property
@@ -89,9 +95,12 @@ class Condition(Conditonal):
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._activator, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
         
-    def getPDDL(self):
-        return self._activator.getPDDL(self._sensor.name)
+    def getPreconditionPDDL(self):
+        return self._activator.getPreconditionPDDL(self._sensor.name)
     
+    def getStatePDDL(self):
+        return [self._activator.getStatePDDL(self._sensor.name, self._sensor.value)]
+
     @property
     def satisfaction(self):
         '''
@@ -163,15 +172,18 @@ class Disjunction(Conditonal):
             l = list(itertools.chain(l, c.getWishes()))
         return l
     
-    def getPDDL(self):
+    def getPreconditionPDDL(self):
         pddl = PDDL(statement = "(or")
         for c in self._conditions:
-            cond_pddl = c.getPDDL()
+            cond_pddl = c.getPreconditionPDDL()
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
             pddl.functions = pddl.functions.union(cond_pddl.functions)
         pddl.statement += ")"
         return pddl
+    
+    def getStatePDDL(self):
+        return list(itertools.chain.from_iterable([c.getStatePDDL() for c in self._conditions])) # this list may contain duplicates but the behaviour will take care of that.
         
     @property
     def conditions(self):
@@ -229,15 +241,18 @@ class Conjunction(Conditonal):
             l = list(itertools.chain(l, c.getWishes()))
         return l
     
-    def getPDDL(self):
+    def getPreconditionPDDL(self):
         pddl = PDDL(statement = "(and")
         for c in self._conditions:
-            cond_pddl = c.getPDDL()
+            cond_pddl = c.getPreconditionPDDL()
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
             pddl.functions = pddl.functions.union(cond_pddl.functions)
         pddl.statement += ")"
         return pddl
+    
+    def getStatePDDL(self):
+        return list(itertools.chain.from_iterable([c.getStatePDDL() for c in self._conditions])) # this list may contain duplicates but the behaviour will take care of that.
         
     @property
     def conditions(self):

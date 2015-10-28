@@ -39,9 +39,9 @@ class Goal(object):
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
             rospy.logdebug("\n%s", pddl)
-            return PDDL(statement = pddl.statement, predicates = pddl.predicates, functions = pddl.functions)
+            return PDDL(statement = pddl.goalStatement)
         except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in getPDDL of %s: %s", self._name, e)
+            rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
     
     def fetchStatus(self):
         '''
@@ -150,17 +150,13 @@ class GoalBase(object):
         except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False
             return []
-        
-    def getStatePDDL(self):
-        return ""
-    
+
     def getGoalPDDL(self):
-        return " ".join([x.getPDDL().statement for x in self._conditions])
+        return " ".join([x.getPreconditionPDDL().statement for x in self._conditions])
 
     def pddlCallback(self, dummy):
         pddl = self.getGoalPDDL()
-        sensorState = self.getStatePDDL()
-        return GetPDDLResponse(**{"statement" : pddl, "state" : sensorState})
+        return GetPDDLResponse(**{"goalStatement" : pddl})
     
     def getStatus(self, request):
         self._active = self._activated
