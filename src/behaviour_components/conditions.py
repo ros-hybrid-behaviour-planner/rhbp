@@ -121,7 +121,7 @@ class Condition(Conditonal):
         return self._sensor.optional
     
     def __str__(self):
-        return "{0} {{{1} + {2}: {3}}}".format(self._name, self._sensor, self._activator, self.satisfaction)
+        return "{0} {{{1} + {2}: v: {3}, s: {4}}}".format(self._name, self._sensor, self._activator, self._sensor.value, self.satisfaction)
     
     def __repr__(self):
         return str(self)

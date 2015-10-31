@@ -33,7 +33,6 @@ class Behaviour(object):
         self._activation = 0.0      # This is the magic activation that it's all about
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
-        self._isExecuting = False   # We get it via getStatus service of actual behaviour node
         self._interruptable = False # We get it via getStatus service of actual behaviour node
         self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
@@ -107,7 +106,7 @@ class Behaviour(object):
                 if sensorName in self._correlations.keys() and self._correlations[sensorName] * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
                     behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if sensorName in b.correlations.keys() and b.correlations[sensorName] * indicator > 0.0] # the variable name says it all
                     totalActivation = self._correlations[sensorName] * indicator * rospy.get_param("goalBias", 1.0)
-                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active goal(s) that support(s) %s via %s: %s with a total activation of %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation)
+                    rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation)
                     activatedByGoals.append((goal, totalActivation / len(behavioursActivatedBySameGoal)))        # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     

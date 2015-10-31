@@ -9,8 +9,8 @@ from behaviour_components.managers import Manager
 
 if __name__ == '__main__':
     m = Manager(activationThreshold = 21, prefix = "sim")
-    rate = rospy.Rate(3) # 3hz
+    rate = rospy.Rate(1) # 1Hz
     while(True):
-        # m.step()
-        m.fetchPDDL()
+        m.step()
+        # m.fetchPDDL()
         rate.sleep()

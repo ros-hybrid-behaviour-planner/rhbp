@@ -145,7 +145,7 @@ class ThresholdActivator(Activator):
     @threshold.setter
     def threshold(self, thresholdValue):
         assert isinstance(thresholdValue, int) or isinstance(thresholdValue, float)
-        self._fullActivationValue = float(thresholdValue);
+        self._threshold = float(thresholdValue);
     
     @property
     def minimum(self):
@@ -170,7 +170,7 @@ class ThresholdActivator(Activator):
         if self._isMinimum:
             return self._maxActivation if value >= self._threshold else self._minActivation
         else:
-            return self._maxActivation if value < self._threshold else self._minActivation
+            return self._maxActivation if value <= self._threshold else self._minActivation
     
     def getDirection(self):
         return 1 if self._isMinimum else -1
