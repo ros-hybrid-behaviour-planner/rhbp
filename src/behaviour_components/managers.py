@@ -41,6 +41,7 @@ class Manager(object):
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
         self._behaviours = []
         self._activeBehaviours = [] # pre-computed (in step()) list of operational behaviours
+        self._totalActivation = 0.0 # pre-computed (in step()) sum all activations of active behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else rospy.get_param("activationThreshold", 7.0) # not sure how to set this just yet.
         self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else rospy.get_param("activationDecay", .9) # not sure how to set this just yet.
         self._stepCounter = 0
@@ -92,10 +93,15 @@ class Manager(object):
         self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
         self.__threshFile.flush()
         plannerStatusMessage.activationThreshold = self._activationThreshold
+        self._totalActivation = 0.0
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
             behaviour.fetchStatus()
+            if behaviour.active:
+                self._totalActivation += behaviour.activation
+        if self._totalActivation == 0.0:
+            self._totalActivation = 1.0 # the behaviours are going to divide by this so make sure it is non-zero
         rospy.logdebug("############# GOAL STATI #############")
         ### collect information about goals ###
         for goal in self._goals:
@@ -284,4 +290,6 @@ class Manager(object):
     def activeGoals(self):
         return self._activeGoals
     
-    
+    @property
+    def totalActivation(self):
+        return self._totalActivation
