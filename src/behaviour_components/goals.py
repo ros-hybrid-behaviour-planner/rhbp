@@ -23,7 +23,7 @@ class Goal(object):
         Constructor
         '''
         self._name = name
-        self._wishes = {}       # Stores wishes exactly like correlations. We get this via getStatus service of actual goal node
+        self._wishes = []       # Stores wishes s list of (sensor name <string> : indicator <float> [-1 to 1]) tuples. We get this via getStatus service of actual goal node
         self._fulfillment = 0.0 # We get it via getStatus service of actual goal node
         self._active = True     # This indicates (if True) that there have been no severe issues in the actual goal node and the goal can be expected to be operational. If the actual goal reports ready == False we will ignore it in activation computation.
         self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
@@ -53,7 +53,7 @@ class Goal(object):
             getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
             status = getStatusRequest().status
             self._fulfillment = status.satisfaction
-            self._wishes = dict([(wish.sensorName, wish.indicator) for wish in status.wishes])
+            self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
             self._active = status.active
             self._activated = status.activated
             if self._name != status.name:
