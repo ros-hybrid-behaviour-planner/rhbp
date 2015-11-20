@@ -9,7 +9,7 @@ import rospy
 class Sensor(object):
     '''
     This class represents information necessary to make decisions.
-    Although it is not abstract it will be barely useful and should be used as base class for actual clever implementations that for example subscribe to ROS topics.
+    Although it is not abstract it will be barely useful and should be used as base class for actual clever implementations that for planner_node subscribe to ROS topics.
     
     '''
     _instanceCounter = 0

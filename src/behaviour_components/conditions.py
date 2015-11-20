@@ -86,7 +86,7 @@ class Condition(Conditonal):
             
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
         Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
         '''
         try:

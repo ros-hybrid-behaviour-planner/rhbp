@@ -429,7 +429,7 @@ class BehaviourBase(object):
         This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its preconditions.
         A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
         """
-        wishes = [] # this list gets filled with the satisfactions of the individual preconditions
+        wishes = [] # this list gets filled with the wishes of the individual preconditions
         for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
             try:
                 wishes = list(itertools.chain(wishes, p.getWishes()))
