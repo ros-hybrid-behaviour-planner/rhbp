@@ -1,5 +1,6 @@
 (define (domain sim)
-(:predicates (selfPaintedSensor)
+(:predicates
+    (selfPaintedSensor)
     (viseEmptySensor)
     (operationalSensor)
     (rightHandEmptySensor)
@@ -9,7 +10,8 @@
     (boardInHandSensor)
     (leftHandEmptySensor)
     (boardInViseSensor))
-(:functions (costs)
+(:functions
+    (costs)
     (sprayerHandSensor)
     (sanderHandSensor)
     (boardHandSensor))

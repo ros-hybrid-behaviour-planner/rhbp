@@ -1,5 +1,7 @@
 from distutils.core import setup, Extension
 from catkin_pkg.python_setup import generate_distutils_setup
+import os
+import sysconfig
 
 ffModule = Extension('ff',
                      define_macros = [('PYTHON', '1')],
@@ -20,7 +22,11 @@ ffModule = Extension('ff',
                                 "scan-ops_pddl.tab.c"
                                ]
                      )
-setup_args = generate_distutils_setup()
-setup_args["ext_modules"] = [ffModule]
-#print setup_args
+setup_args = generate_distutils_setup(ext_modules = [ffModule])
 setup(**setup_args)
+#for name,value in distutils.sysconfig.get_config_vars().iteritems():
+#    print("{0}={1}".format(name, value))
+#print(sysconfig.get_paths())
+#print(setup_args)
+#with open("setup.cfg", "w") as config:
+#    config.write("[install]\ninstall_lib={0}/lib".format(os.environ['CMAKE_INSTALL_PREFIX']))
