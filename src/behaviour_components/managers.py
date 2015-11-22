@@ -22,11 +22,11 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, logLevel = rospy.INFO, **kwargs):
         '''
         Constructor
         '''
-        rospy.init_node('behaviourPlannerManager', log_level=rospy.DEBUG)
+        rospy.init_node('behaviourPlannerManager', log_level = logLevel)
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
@@ -59,32 +59,40 @@ class Manager(object):
         self.__threshFile.close()
     
     def fetchPDDL(self):
+        '''
+        This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns a tuple of
+        (domainPDDL, problemPDDL) strings ready for ff.
+        '''
         behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._behaviours]
-        with open("robotDomain.pddl", 'a') as outfile:
-            pddl = PDDL()
-            outfile.write("(define (domain {0})\n".format(self._prefix))
-            for actionPDDL, _statePDDL in behaviourPDDLs:
-                pddl.statement += actionPDDL.statement
-                pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
-                pddl.functions = pddl.functions.union(actionPDDL.functions)
-            outfile.write("(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n")
-            outfile.write("(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n")
-            outfile.write(pddl.statement)
-            outfile.write(")")
+        pddl = PDDL()
+        for actionPDDL, _statePDDL in behaviourPDDLs:
+            pddl.statement += actionPDDL.statement
+            pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
+            pddl.functions = pddl.functions.union(actionPDDL.functions)
+        domainPDDL = "(define (domain {0})\n".format(self._prefix)
+        domainPDDL += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
+        domainPDDL += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
+        domainPDDL += pddl.statement + ")"
         
         mergedStatePDDL = PDDL()
         for _actionPDDL, statePDDL in behaviourPDDLs:
-            print "######################################\nstatePDDL", statePDDL.statement, "tokenized", tokenizePDDL(statePDDL.statement), "mergedPDDL", mergedStatePDDL.statement, "\n###############################################\n"
+            rospy.logdebug("######################################\nstatePDDL %s\ntokenized %s\nmergedPDDL %s\n###############################################", statePDDL.statement, tokenizePDDL(statePDDL.statement), mergedStatePDDL.statement)
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
         
-        with open("robotProblem.pddl", 'a') as outfile:
-            pddl = PDDL()
-            outfile.write("(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, mergedStatePDDL.statement))
-            goalConditions = []
-            for goal in self._goals:
-                goalConditions.append(goal.fetchPDDL().statement)
-            outfile.write("\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions)))
-            outfile.write(")\n")
+        pddl = PDDL()
+        goalConditions = []
+        for goal in self._goals:
+            goalConditions.append(goal.fetchPDDL().statement)
+        problemPDDL = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, mergedStatePDDL.statement)
+        problemPDDL += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
+        problemPDDL += ")\n"
+        
+        with open("robotDomain{0}.pddl".format(self._stepCounter), 'w') as outfile:
+            outfile.write(domainPDDL)
+            
+        with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
+            outfile.write(problemPDDL)
+        return (domainPDDL, problemPDDL)
     
     def step(self):
         if not self.__running:

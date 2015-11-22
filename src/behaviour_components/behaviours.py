@@ -95,7 +95,8 @@ class Behaviour(object):
     
     def fetchPDDL(self):
         '''
-        This method fetches the PDDL from the actual behaviour node via GetPDDLservice call
+        This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
+        It returns a tuple of (action_pddl, state_pddl).
         '''
         rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
         rospy.wait_for_service(self._name + 'PDDL')
