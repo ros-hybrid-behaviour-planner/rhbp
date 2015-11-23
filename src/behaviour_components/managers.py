@@ -98,7 +98,7 @@ class Manager(object):
         statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
         rospy.logdebug("statePDDL %s", statePDDL.statement)
         
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, statePDDL.statement)
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._prefix, statePDDL.statement)
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
         # debugging only
