@@ -6,12 +6,13 @@ Created on 23.04.2015
 
 import rospy
 import itertools
+import re
 from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
-from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges
+from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex
 import ffp
 
 class Manager(object):
@@ -71,38 +72,44 @@ class Manager(object):
         As a side effect, is also computes the sensor changes that happened between the last invocation and now.
         '''
         behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._behaviours]
+        goalPDDLs = [goal.fetchPDDL() for goal in self._goals]
         pddl = PDDL()
         for actionPDDL, _statePDDL in behaviourPDDLs:
             pddl.statement += actionPDDL.statement
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
             pddl.functions = pddl.functions.union(actionPDDL.functions)
-        domainPDDL = "(define (domain {0})\n".format(self._prefix)
-        domainPDDL += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
-        domainPDDL += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
-        domainPDDL += pddl.statement + ")"
+        domainPDDLString = "(define (domain {0})\n".format(self._prefix)
+        domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
+        domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
+        domainPDDLString += pddl.statement + ")"
         
         mergedStatePDDL = PDDL()
         for _actionPDDL, statePDDL in behaviourPDDLs:
             rospy.logdebug("######################################\nstatePDDL %s\ntokenized %s\nmergedPDDL %s\n###############################################", statePDDL.statement, tokenizePDDL(statePDDL.statement), mergedStatePDDL.statement)
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
         
-        pddl = PDDL()
         goalConditions = []
-        for goal in self._goals:
-            goalConditions.append(goal.fetchPDDL().statement)
-        problemPDDL = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, mergedStatePDDL.statement)
-        problemPDDL += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
-        problemPDDL += ")\n"
+        for goalPDDL, statePDDL in goalPDDLs:
+            rospy.logdebug("######################################\nstatePDDL %s\ntokenized %s\nmergedPDDL %s\n###############################################", statePDDL.statement, tokenizePDDL(statePDDL.statement), mergedStatePDDL.statement)
+            mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+            goalConditions.append(goalPDDL.statement)
         
+        # filter out negative predicates. FF can't handle them!
+        statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
+        rospy.logdebug("statePDDL %s", statePDDL.statement)
+        
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0){1}\n\t)\n".format(self._prefix, statePDDL.statement)
+        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
+        problemPDDLString += ")\n"
+        # debugging only
         with open("robotDomain{0}.pddl".format(self._stepCounter), 'w') as outfile:
-            outfile.write(domainPDDL)
-            
+            outfile.write(domainPDDLString)
         with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
-            outfile.write(problemPDDL)
-        
-        self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, mergedStatePDDL)
-        self.__previousStatePDDL = mergedStatePDDL
-        return (domainPDDL, problemPDDL)
+            outfile.write(problemPDDLString)
+        # compute changes
+        self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
+        self.__previousStatePDDL = statePDDL
+        return (domainPDDLString, problemPDDLString)
     
     def planIfNecessary(self):
         '''
@@ -111,7 +118,8 @@ class Manager(object):
         1) Behaviours or Goals have been added or removed
         2) The state of the world has changed an this change is not caused by the next behaviour in the plan
         3) An unexpected behaviour was running (not head of the plan)
-        4) Nothing happened for a long time
+        4) Nothing happened for a long time <-- this is still TBD
+        5) The last planning attempt was unsuccessful
         '''
         pddl = self.fetchPDDL() # this also updates our self.__sensorChanges dictionary
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
@@ -140,9 +148,9 @@ class Manager(object):
                 for index in sorted(self.__plan["actions"].keys()): # walk along the plan
                     for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
                         if behaviour.name == self.__plan["actions"][index] and behaviour.justFinished:
-                            if self.__planExecutionIndex == index: # if it was a planned behaviour and it was its turn to finish
-                                self.__planExecutionIndex += 1 # we expect the following behaviour to finish next
-                            else: # otherwise
+                            if self.__planExecutionIndex == index: # if it was a planned behaviour and it finished
+                                self.__planExecutionIndex += 1 # we are one step ahead in our plan
+                            else: # or otherwise
                                 unexpectedBehaviourFinished = True # it was unexpected
 
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:

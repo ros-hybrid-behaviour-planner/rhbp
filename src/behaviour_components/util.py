@@ -7,6 +7,8 @@ from __future__ import division # force floating point division when using plain
 import re
 import rospy
 
+functionRegex = re.compile(r'\s*\(\s*=\s*\(\s*([a-zA-Z0-9_\.-]+)\s*\)\s*([-+]?[0-9]*\.?[0-9]+)\s*\)\s*')
+predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s*\)\s*')
 
 class PDDL(object):
     """
@@ -127,8 +129,6 @@ def parseStatePDDL(pddl):
     This function creates a {sensor name <string> : value} dictionary of a state PDDL object.
     '''
     state = {}
-    functionRegex = re.compile(r'\s*\(\s*=\s*\(\s*([a-zA-Z0-9_\.-]+)\s*\)\s*([-+]?[0-9]*\.?[0-9]+)\s*\)\s*')
-    predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s*\)\s*')
     for token in tokenizePDDL(pddl.statement):
         match =  functionRegex.search(token)
         if match: # it is a function value declaration

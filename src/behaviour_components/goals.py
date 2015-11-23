@@ -11,7 +11,8 @@ import itertools
 import rospy
 from behaviour_planner.msg import Wish, Status
 from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse
-from util import PDDL
+from util import PDDL, mergeStatePDDL
+
 
 class Goal(object):
     '''
@@ -32,6 +33,7 @@ class Goal(object):
     def fetchPDDL(self):
         '''
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call
+        It returns a tuple of (goal_pddl, state_pddl).
         '''
         rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
         rospy.wait_for_service(self._name + 'PDDL')
@@ -39,7 +41,7 @@ class Goal(object):
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
             rospy.logdebug("\n%s", pddl)
-            return PDDL(statement = pddl.goalStatement)
+            return (PDDL(statement = pddl.goalStatement), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
     
@@ -151,12 +153,23 @@ class GoalBase(object):
             self._active = False
             return []
 
-    def getGoalPDDL(self):
+    def getGoalStatements(self):
         return " ".join([x.getPreconditionPDDL().statement for x in self._conditions])
+    
+    def getStatePDDL(self):
+        pddl = PDDL()
+        for c in self._conditions :
+            for s in c.getStatePDDL(): # it is a list
+                pddl = mergeStatePDDL(s, pddl)
+        return pddl                      
 
     def pddlCallback(self, dummy):
-        pddl = self.getGoalPDDL()
-        return GetPDDLResponse(**{"goalStatement" : pddl})
+        goalStatements = self.getGoalStatements()
+        statePDDL = self.getStatePDDL()
+        return GetPDDLResponse(**{"goalStatement" : goalStatements,
+                                  "stateStatement" : statePDDL.statement,
+                                  "statePredicates" : list(statePDDL.predicates),
+                                  "stateFunctions" : list(statePDDL.functions)})
     
     def getStatus(self, request):
         self._active = self._activated
