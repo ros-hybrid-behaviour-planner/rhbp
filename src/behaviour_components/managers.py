@@ -201,7 +201,7 @@ class Manager(object):
                 activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
                 activateRequest(False)
                 rospy.logdebug("Set Activated of %s goal to False", goal.name)
-        #### do housekeeping ###
+        ### do housekeeping ###
         self._activeGoals = filter(lambda x: x.active, self._goals)
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
         ### use the symbolic planner if necessary ###
@@ -225,13 +225,13 @@ class Manager(object):
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
             behaviour.commitActivation()
-        #    rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
-        #rospy.loginfo("current activation threshold: %f", self._activationThreshold)
+            rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
+        rospy.loginfo("current activation threshold: %f", self._activationThreshold)
         rospy.loginfo("############## ACTIONS ###############")
         self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
         currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
-        #rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
-        #rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
+        rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
+        rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
             statusMessage = Status()
             statusMessage.name = behaviour.name
@@ -250,16 +250,16 @@ class Manager(object):
             plannerStatusMessage.behaviours.append(statusMessage)
             ### now comes a series of tests that a behaviour must pass in order to get started ###
             if not behaviour.active and not behaviour.manualStart: # it must be active
-        #        rospy.loginfo("%s will not be started because it is not active", behaviour.name)
+                rospy.loginfo("%s will not be started because it is not active", behaviour.name)
                 continue
             if behaviour.isExecuting: # it must not already run
-        #        rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
+                rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
                 continue
             if not behaviour.executable and not behaviour.manualStart: # it must be executable
-        #        rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
+                rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
                 continue
             if behaviour.activation < self._activationThreshold and not behaviour.manualStart: # it must have high-enough activation
-        #        rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
+                rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
                 continue
             interferingCorrelations = currentlyInfluencedSensors.intersection(set([item[0] for item in behaviour.correlations]))
             if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
@@ -269,34 +269,34 @@ class Manager(object):
                 # With Aggregators this is not necessarily the case: There may be multiple behaviours running and affecting the same Aggregator, hence being correlated to the same sensor so they could all appear in this list.
                 stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
                 if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
-        #            rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                    rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     for conflictor in stoppableBehaviours:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
                         conflictor.stop()
                         self.__executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
                         currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in conflictor.correlations])) # remove all its correlations from the set of currently affected sensors
-        #                rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
-        #                rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+                        rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
+                        rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
-        #            rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                    rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     continue
             ### if the behaviour got here it really is ready to be started ###
             rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
             if behaviour.manualStart:
                 rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
             behaviour.start()
-        #    rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+            rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
             self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
             currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
             self.__executedBehaviours.append(behaviour)
-        #    rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
-        #    rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+            rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
+            rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
         if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
             self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
-        #    rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+            rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         plannerStatusMessage.activationThresholdDecay = rospy.get_param("activationThresholdDecay", .8) # TODO retrieve rosparam only once
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1

@@ -9,7 +9,7 @@ from behaviour_components.managers import Manager
 
 if __name__ == '__main__':
     m = Manager(logLevel = rospy.DEBUG, activationThreshold = 21, prefix = "sim")
-    rate = rospy.Rate(.5) # .5Hz
+    rate = rospy.Rate(1) # 1Hz
     while(True):
         m.step()
         rate.sleep()
