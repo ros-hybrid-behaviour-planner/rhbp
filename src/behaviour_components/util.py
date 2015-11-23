@@ -88,7 +88,7 @@ def tokenizePDDL(pddlString):
 
 def mergeStatePDDL(PDDLone, PDDLtwo):
     '''
-    This function merges PDDLone into PDDLtwo (in place
+    This function merges PDDLone into PDDLtwo (in place)
     '''
     for x in tokenizePDDL(PDDLone.statement):
         # find out sensorName and type of currently processed token (must be declared in either functions or predicates sets)
@@ -121,5 +121,44 @@ def mergeStatePDDL(PDDLone, PDDLtwo):
                 PDDLtwo.functions.add(sensorName)
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
     return PDDLtwo
-    
-    
+
+def parseStatePDDL(pddl):
+    '''
+    This function creates a {sensor name <string> : value} dictionary of a state PDDL object.
+    '''
+    state = {}
+    functionRegex = re.compile(r'\s*\(\s*=\s*\(\s*([a-zA-Z0-9_\.-]+)\s*\)\s*([-+]?[0-9]*\.?[0-9]+)\s*\)\s*')
+    predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s*\)\s*')
+    for token in tokenizePDDL(pddl.statement):
+        match =  functionRegex.search(token)
+        if match: # it is a function value declaration
+            state[match.group(1)] = float(match.group(2))
+        else: # it must be a predicate
+            match =  predicateRegex.search(token)
+            if match: # it actually is a predicate
+                if match.group(2): # it is negated
+                    state[match.group(3)] = False
+                else:
+                    state[match.group(3)] = True
+    return state
+            
+        
+def getStatePDDLchanges(oldPDDL, newPDDL):
+    '''
+    This function creates a {sensor name <string> : indicator <float [-1 - 1]} dictionary of state changes.
+    '''
+    changes = {}
+    oldState = parseStatePDDL(oldPDDL)
+    newState = parseStatePDDL(newPDDL)
+    for (sensorName, value) in newState.iteritems():
+        if sensorName in oldState:
+            if isinstance(value, bool): # it is a predicate
+                if oldState[sensorName] == True and value == False:
+                    changes[sensorName] = -1.0
+                if oldState[sensorName] == False and value == True:
+                    changes[sensorName] = 1.0
+            else: # it must be float then
+                if value != oldState[sensorName]:
+                    changes[sensorName] = value - oldState[sensorName]
+    return changes
+                

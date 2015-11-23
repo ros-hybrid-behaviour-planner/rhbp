@@ -509,7 +509,7 @@ class BehaviourBase(object):
         return pddl                      
 
     def pddlCallback(self, dummy):
-        actions = self.getActionPDDL()
+        actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
         state = self.getStatePDDL()
         return GetPDDLResponse(**{"actionStatement" : actions.statement, 
                                   "actionPredicates" : list(actions.predicates),

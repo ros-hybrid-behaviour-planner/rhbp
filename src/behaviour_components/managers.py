@@ -11,7 +11,8 @@ from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
-from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL
+from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges
+import ffp
 
 class Manager(object):
     '''
@@ -48,6 +49,9 @@ class Manager(object):
         self.__threshFile = open("threshold.log", 'w')
         self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
         self.__running = True # toggled by the pause and resume services
+        self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
+        self.__previousStatePDDL = PDDL()
+        self.__sensorChanges = {} # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
         
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -62,6 +66,7 @@ class Manager(object):
         '''
         This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns a tuple of
         (domainPDDL, problemPDDL) strings ready for ff.
+        As a side effect, is also computes the sensor changes that happened between the last invocation and now.
         '''
         behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._behaviours]
         pddl = PDDL()
@@ -92,7 +97,40 @@ class Manager(object):
             
         with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
             outfile.write(problemPDDL)
+        
+        self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, mergedStatePDDL)
+        self.__previousStatePDDL = mergedStatePDDL
         return (domainPDDL, problemPDDL)
+    
+    def planIfNecessary(self):
+        '''
+        this method plans using the symbolic planner it it is required to do so.
+        Replanning is required whenever any or many of the following conditions is/are met:
+        1) Behaviours or Goals have been added or removed
+        2) The state of the world has changed an this change is not caused by the next behaviour in the plan
+        3) Nothing happened for a long time
+        '''
+        pddl = self.fetchPDDL() # this also updates our self.__sensorChanges dictionary
+        # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
+        changesWereExpected = True
+        for sensorName, indicator in self.__sensorChanges:
+            changeWasExpected = False
+            for behaviour in self.__executedBehaviours:
+                for item in behaviour.correlations:
+                    if item[0] == sensorName and item[1] * indicator > 0: # the observed change happened because of the running behaviour (at least the behaviour is correlated to the changed sensor in the correct way)
+                        changeWasExpected = True
+                        break
+                if changeWasExpected:
+                    break
+            if not changeWasExpected:
+                changesWereExpected = False
+                break
+        if self.__replanningNeeded or not changesWereExpected:
+            try:
+                rospy.loginfo("### PLANNING ###\nbecause replanning was needed: %s, changes were unexpected: %s\n%s", self.__replanningNeeded, not changesWereExpected, ffp.plan(pddl[0], pddl[1]))
+                self.__replanningNeeded = False
+            except Exception as e:
+                rospy.logerr("%s", e)
     
     def step(self):
         if not self.__running:
@@ -131,6 +169,8 @@ class Manager(object):
         #### do housekeeping ###
         self._activeGoals = filter(lambda x: x.active, self._goals)
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
+        ### use the symbolic planner if necessary ###
+        self.planIfNecessary()
         ### log behaviour stuff ###
         rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
@@ -153,9 +193,9 @@ class Manager(object):
             rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
         rospy.loginfo("current activation threshold: %f", self._activationThreshold)
         rospy.loginfo("############## ACTIONS ###############")
-        executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
-        currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in executedBehaviours])))
-        rospy.loginfo("currently running behaviours: %s", executedBehaviours)
+        self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
+        currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
+        rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
         rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
             statusMessage = Status()
@@ -188,7 +228,7 @@ class Manager(object):
                 continue
             interferingCorrelations = currentlyInfluencedSensors.intersection(set([item[0] for item in behaviour.correlations]))
             if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
-                alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
+                alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
                 assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other). TODO: remove this assertion in case Aggregators are added
                 # This implementation deals with a list although it it clear that there is at most one element.
                 # With Aggregators this is not necessarily the case: There may be multiple behaviours running and affecting the same Aggregator, hence being correlated to the same sensor so they could all appear in this list.
@@ -198,9 +238,9 @@ class Manager(object):
                     for conflictor in stoppableBehaviours:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
                         conflictor.stop()
-                        executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
+                        self.__executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
                         currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in conflictor.correlations])) # remove all its correlations from the set of currently affected sensors
-                        rospy.loginfo("still running behaviours: %s", executedBehaviours)
+                        rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
                         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
@@ -214,12 +254,12 @@ class Manager(object):
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
             self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
             currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
-            executedBehaviours.append(behaviour)
-            rospy.loginfo("now running behaviours: %s", executedBehaviours)
+            self.__executedBehaviours.append(behaviour)
+            rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
-        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, executedBehaviours)
+        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
-        if len(executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
+        if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
             self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         plannerStatusMessage.activationThresholdDecay = rospy.get_param("activationThresholdDecay", .8) # TODO retrieve rosparam only once
@@ -232,6 +272,7 @@ class Manager(object):
         goal = Goal(request.name, request.permanent)
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
+        self.__replanningNeeded = True;
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
@@ -241,6 +282,7 @@ class Manager(object):
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
         rospy.loginfo("A behaviour with name %s registered", behaviour.name)
+        self.__replanningNeeded = True;
         return AddBehaviourResponse()
     
     def __pauseCallback(self, dummy):
@@ -252,11 +294,13 @@ class Manager(object):
         return EmptyResponse()
     
     def __removeGoal(self, request):
-        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name. 
+        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name.
+        self.__replanningNeeded = True;
         return RemoveGoalResponse()
     
     def __removeBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
+        self.__replanningNeeded = True;
         return RemoveBehaviourResponse()
     
     def __manualStart(self, request):
