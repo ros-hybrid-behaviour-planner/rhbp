@@ -42,6 +42,7 @@ class Behaviour(object):
         self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
         self._activated = True      # This member only exists as proxy for the corrsponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self.__currentActivationStep = 0.0
+        self.__justFinished = False # This is set to True by fetchStatus if the  behaviour has just finished its job
         Behaviour._instanceCounter += 1
         self.__logFile = open("{0}.log".format(self._name), 'w')
         self.__logFile.write('Time\t{0}\n'.format(self._name))
@@ -68,6 +69,7 @@ class Behaviour(object):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
+        self.__justFinished = False
         rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
         rospy.wait_for_service(self._name + 'GetStatus')
         try:
@@ -81,6 +83,7 @@ class Behaviour(object):
             if self._isExecuting == True and status.isExecuting == False:
                 rospy.loginfo("%s finished. resetting activation", self._name)
                 self._activation = 0.0
+                self.__justFinished = True
             self._isExecuting = status.isExecuting
             self._progress = status.progress
             self._active = status.active
@@ -357,12 +360,16 @@ class Behaviour(object):
     def isExecuting(self):
         return self._isExecuting
     
+    @property
+    def justFinished(self):
+        return self.__justFinished
+    
     def __str__(self):
         return self._name
     
     def __repr__(self):
         return self._name
-
+    
 
 class BehaviourBase(object):
     '''
