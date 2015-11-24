@@ -477,7 +477,18 @@ class BehaviourBase(object):
                 wishes = list(itertools.chain(wishes, p.getWishes()))
             except AssertionError: # we don't care about errors in optional sensors
                 pass
+        wishes = self.__filterWishes(wishes)
         return [Wish(item[0].name, item[1]) for item in wishes]
+    
+    def __filterWishes(self, wishes):
+        filteredWishes = {}
+        for sensor, indicator in wishes:
+            if not sensor.name in filteredWishes:
+                filteredWishes[sensor.name] = (sensor, indicator)
+            else:
+                if abs(filteredWishes[sensor.name][1]) > abs(indicator):
+                    filteredWishes[sensor.name] = (sensor, indicator)
+        return filteredWishes.values()
     
     def getProgress(self):
         """

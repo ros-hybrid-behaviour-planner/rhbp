@@ -6,7 +6,6 @@ Created on 23.04.2015
 
 import rospy
 import itertools
-import re
 from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
 from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
