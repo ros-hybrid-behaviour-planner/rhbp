@@ -1,6 +1,6 @@
 <launch>
 	<node pkg="behaviour_planner" type="planner_node.py" name="behaviour_planner_node" output="screen">
-	   <param name="behaviourBias" type="double" value="7.0" />
+	   <param name="behaviourBias" type="double" value="6.5" />
 	   <param name="goalBias" type="double" value="1.0" />
 	</node>
 </launch>
