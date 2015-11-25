@@ -138,20 +138,20 @@ class Manager(object):
         # the next part is a little plan execution monitoring
         # it tracks progress on the plan and finds out if something unexpected finished. FIXME: there might be behaviours like collision avoidance the are expected to run alongside with the planned behaviours.
         unexpectedBehaviourFinished = False
+        # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
         if self.__plan:
-            # make sure the finished behaviour was part of the plan at all
             for behaviour in self.__executedBehaviours:
-                if behaviour.justFinished and behaviour.name not in self.__plan["actions"].values():
+                if behaviour.justFinished and behaviour.name not in [name for index, name in self.__plan["actions"].iteritems() if index >= self.__planExecutionIndex]:
                     unexpectedBehaviourFinished = True # it was unexpected
             if not unexpectedBehaviourFinished: # if we detected a deviation from the plan we can already stop here
-                for index in sorted(self.__plan["actions"].keys()): # walk along the plan
+                for index in filter(lambda x: x >= self.__planExecutionIndex, sorted(self.__plan["actions"].keys())): # walk along the remaining plan
                     for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
                         if behaviour.name == self.__plan["actions"][index] and behaviour.justFinished:
                             if self.__planExecutionIndex == index: # if it was a planned behaviour and it finished
                                 self.__planExecutionIndex += 1 # we are one step ahead in our plan
                             else: # or otherwise
                                 unexpectedBehaviourFinished = True # it was unexpected
-
+        # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
             try:
                 rospy.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
@@ -218,6 +218,7 @@ class Manager(object):
                 rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = True))
                 rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = True))
                 rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = True))
+                rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = True))
             rospy.logdebug("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
             ### do the activation computation ###
             behaviour.computeActivation()
@@ -379,3 +380,15 @@ class Manager(object):
     @property
     def totalActivation(self):
         return self._totalActivation
+    
+    @property
+    def planExecutionIndex(self):
+        return self.__planExecutionIndex
+    
+    @property
+    def plan(self):
+        if self.__plan:
+            return self.__plan["actions"]
+        else:
+            return None
+    

@@ -223,6 +223,16 @@ class Behaviour(object):
                         inhibitionFromConflictors.append((behaviour, sensorName, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) # The inhibition experienced is my bad influence (my correlation to this sensorName) times the wish of the other behaviour concerning this sensorName. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) knows how many more behaviours cause the same harm to this conflictor so its inhibition shall be distributed among them.
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)) / len(inhibitionFromConflictors), inhibitionFromConflictors)
 
+    def getActivationFromPlan(self, logging = False):
+        '''
+        This method computes the activation this behaviour receives because of its place on the plan.
+        Behaviours at the top of the list will be activated most, other not so much.
+        '''
+        for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan.keys())): # walk along the plan starting at where we are
+            if self._manager.plan[index] == self._name: # if we are on the plan
+                return (1 / (index - self._manager.planExecutionIndex + 1) * rospy.get_param("~planBias", 1.0), index) # index in zero-based
+        return (0.0, -1)
+       
     def computeActivation(self):
         '''
         This method sums up all components of activation to compute the additional activation in this step.
@@ -233,7 +243,8 @@ class Behaviour(object):
                                          + self.getInhibitionFromGoals()[0] \
                                          + self.getActivationFromPredecessors()[0] \
                                          + self.getActivationFromSuccessors()[0] \
-                                         + self.getInhibitionFromConflicted()[0]
+                                         + self.getInhibitionFromConflicted()[0] \
+                                         + self.getActivationFromPlan()[0]
         else:
             return 0.0
     
