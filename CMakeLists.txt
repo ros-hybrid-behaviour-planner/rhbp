@@ -120,6 +120,22 @@ include_directories(
 #   src/${PROJECT_NAME}/metric_ff_v2_1.cpp
 # )
 
+
+# use distutils to build the extension module
+SET(PYTHON_EXECUTABLE python2)
+add_custom_target(ff.so ALL
+                COMMAND ${PYTHON_EXECUTABLE} setup.py build_ext --inplace
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+        )
+# move the built extension module into the correct location (this is a total hack)
+add_custom_target(ff ALL
+                COMMAND mkdir -p ${CATKIN_DEVEL_PREFIX}/lib && cp ff.so ${CATKIN_DEVEL_PREFIX}/lib
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+        )
+
+# make sure the above commands run in the correct order
+add_dependencies(ff ff.so)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
