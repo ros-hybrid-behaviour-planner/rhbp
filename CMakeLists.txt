@@ -121,6 +121,21 @@ include_directories(
 #   src/${PROJECT_NAME}/ffp.cpp
 # )
 
+# use distutils to build the extension module
+SET(PYTHON_EXECUTABLE python2)
+add_custom_target(ffp.so ALL
+                COMMAND ${PYTHON_EXECUTABLE} setup.py build
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+        )
+# move the built extension module into the correct location (this is a total hack)
+add_custom_target(ffp ALL
+                COMMAND ${PYTHON_EXECUTABLE} setup.py install --prefix=${CATKIN_DEVEL_PREFIX}
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+        )
+
+# make sure the above commands run in the correct order
+add_dependencies(ffp ffp.so)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
