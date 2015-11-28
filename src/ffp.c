@@ -105,7 +105,41 @@ static PyObject* plan(PyObject* self, PyObject* args, PyObject* kw){
 			if((currentBytesRead = read(pipefd[0], (char*) &len + totalBytesRead, sizeof(Py_ssize_t) - totalBytesRead)) > 0)
 				totalBytesRead += currentBytesRead;
 			else{
-                waitpid(pid, NULL, WNOHANG);
+				int status = 0;
+                waitpid(pid, &status, WNOHANG);
+                /*
+                 * Although not reading a result size means that planning went wrong there are two expected cases of this happening:
+                 * The first is when the planner exited 0x42 which means that all goals are already satisfied and there is nothing to do.
+                 * The second case is that the problem cannot be solved because it is provably impossible. In this case the FF exits with 0xFF.
+                 */
+                if(WIFEXITED(status)){ // if the child exited normally and did not crash
+                	PyObject* result =  PyDict_New();
+                	if(!result)
+                		return NULL;
+                	PyObject* actions =  PyDict_New();
+                	if(!actions)
+                		return NULL;
+                	if(PyDict_SetItemString(result, "actions", actions) != 0)
+                		return NULL;
+                	Py_DecRef(actions);
+                	if(WEXITSTATUS(status) == 0x42){ // all goals are already fulfilled
+                		PyObject* cost_value = PyFloat_FromDouble(0);
+                		if(!cost_value)
+                			return NULL;
+                		if(PyDict_SetItemString(result, "cost", cost_value) != 0)
+                			return NULL;
+                		Py_DecRef(cost_value);
+                		return result;
+                	} else if(WEXITSTATUS(status) == 0xFF){ // plan not solvable
+                		PyObject* cost_value = PyFloat_FromDouble(-1); // This is the indicator for the python the planning problem is impossible
+                		if(!cost_value)
+                			return NULL;
+                		if(PyDict_SetItemString(result, "cost", cost_value) != 0)
+                			return NULL;
+                		Py_DecRef(cost_value);
+                		return result;
+                	}
+                }
 				PyErr_SetString(PlannerProxyError, "Failed to read result size from child");
 				return NULL;
 			}
