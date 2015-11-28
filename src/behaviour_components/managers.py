@@ -157,7 +157,7 @@ class Manager(object):
                 rospy.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
                 self.__plan = ffp.plan(pddl[0], pddl[1])
                 rospy.loginfo("PLAN: %s", self.__plan)
-                self.__replanningNeeded = False
+                self.__replanningNeeded = False # TODO: Not sure if we may want to re-plan if the last attempt said that there is no plan. But actually it makes only sense if the situation changed as well (and in this case the change probably unexpected so we'd plan anyway)
                 self.__planExecutionIndex = 0
             except Exception as e:
                 rospy.logerr("%s", e)
@@ -388,7 +388,7 @@ class Manager(object):
     @property
     def plan(self):
         if self.__plan:
-            return self.__plan["actions"]
+            return self.__plan
         else:
             return None
     

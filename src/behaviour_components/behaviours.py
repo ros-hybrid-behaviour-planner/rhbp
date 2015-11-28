@@ -228,8 +228,10 @@ class Behaviour(object):
         This method computes the activation this behaviour receives because of its place on the plan.
         Behaviours at the top of the list will be activated most, other not so much.
         '''
-        for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan.keys())): # walk along the plan starting at where we are
-            if self._manager.plan[index] == self._name: # if we are on the plan
+        if self._manager.plan and "cost" in self._manager.plan and self._manager.plan["cost"] == -1.0:
+            return (0.0, 0xFF)
+        for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan["actions"].keys())): # walk along the plan starting at where we are
+            if self._manager.plan["actions"][index] == self._name: # if we are on the plan
                 return (1 / (index - self._manager.planExecutionIndex + 1) * rospy.get_param("~planBias", 1.0), index) # index in zero-based
         return (0.0, -1)
        
