@@ -832,11 +832,11 @@ void create_final_goal_state( void )
   if ( ggoal->connective == TRU ) {
     printf("\nff: goal can be simplified to TRUE. The empty plan solves it\n\n");
     gnum_plan_ops = 0;
-    exit( 1 );
+    exit( 0x42 );
   }
   if ( ggoal->connective == FAL ) {
     printf("\nff: goal can be simplified to FALSE. No plan will solve it\n\n");
-    exit( 1 );
+    exit( 0xFF );
   }
 
   switch ( ggoal->connective ) {
