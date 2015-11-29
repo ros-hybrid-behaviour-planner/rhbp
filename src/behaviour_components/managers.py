@@ -52,8 +52,9 @@ class Manager(object):
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
         self.__sensorChanges = {} # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
-        self.__plan = {}
-        self.__planExecutionIndex = 0
+        self._plan = {}
+        self._planExecutionIndex = 0
+        self.__goalPDDLs = {}
         
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -70,8 +71,8 @@ class Manager(object):
         (domainPDDL, problemPDDL) strings ready for ff.
         As a side effect, is also computes the sensor changes that happened between the last invocation and now.
         '''
-        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._behaviours]
-        goalPDDLs = [goal.fetchPDDL() for goal in self._goals]
+        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._activeBehaviours]
+        self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in self._activeGoals}
         pddl = PDDL()
         for actionPDDL, _statePDDL in behaviourPDDLs:
             pddl.statement += actionPDDL.statement
@@ -81,34 +82,47 @@ class Manager(object):
         domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
         domainPDDLString += pddl.statement + ")"
-        
         mergedStatePDDL = PDDL()
         for _actionPDDL, statePDDL in behaviourPDDLs:
-            rospy.logdebug("######################################\nstatePDDL %s\ntokenized %s\nmergedPDDL %s\n###############################################", statePDDL.statement, tokenizePDDL(statePDDL.statement), mergedStatePDDL.statement)
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
-        
-        goalConditions = []
-        for goalPDDL, statePDDL in goalPDDLs:
-            rospy.logdebug("######################################\nstatePDDL %s\ntokenized %s\nmergedPDDL %s\n###############################################", statePDDL.statement, tokenizePDDL(statePDDL.statement), mergedStatePDDL.statement)
+        for _goalPDDL, statePDDL in self.__goalPDDLs.values():
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
-            goalConditions.append(goalPDDL.statement)
-        
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
         rospy.logdebug("statePDDL %s", statePDDL.statement)
-        
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._prefix, statePDDL.statement)
-        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
-        problemPDDLString += ")\n"
         # debugging only
         with open("robotDomain{0}.pddl".format(self._stepCounter), 'w') as outfile:
             outfile.write(domainPDDLString)
-        with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
-            outfile.write(problemPDDLString)
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
-        return (domainPDDLString, problemPDDLString)
+        return domainPDDLString
+    
+    def createProblemPDDL(self, goals):
+        '''
+        This method creates the problem PDDL for a given set of goals.
+        It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
+        '''
+        goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._prefix, self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
+        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
+        problemPDDLString += ")\n"
+        # debugging only
+        with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
+            outfile.write(problemPDDLString)
+        return problemPDDLString
+    
+    def priorityGoalSequences(self):
+        '''
+        This is a generator that generates goal sequences with descending priorities.
+        It yields sorted lists with the most important goal at the front and strips away one element from the back at each iteration.
+        After the most important goal was the only remaining element in the list the same process repeats for the second most important goals and so on.
+        '''
+        sortedGoals = sorted(self._activeGoals, key=lambda x: x.priority, reverse = True)
+        numElements = len(sortedGoals)
+        for i in xrange(0, numElements, 1):
+            for j in xrange(numElements, i, -1):
+                yield sortedGoals[i : j]
     
     def planIfNecessary(self):
         '''
@@ -120,7 +134,7 @@ class Manager(object):
         4) Nothing happened for a long time <-- this is still TBD
         5) The last planning attempt was unsuccessful
         '''
-        pddl = self.fetchPDDL() # this also updates our self.__sensorChanges dictionary
+        domainPDDL = self.fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensorName, indicator in self.__sensorChanges.iteritems():
@@ -139,32 +153,43 @@ class Manager(object):
         # it tracks progress on the plan and finds out if something unexpected finished. FIXME: there might be behaviours like collision avoidance the are expected to run alongside with the planned behaviours.
         unexpectedBehaviourFinished = False
         # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
-        if self.__plan:
+        if self._plan:
             for behaviour in self.__executedBehaviours:
-                if behaviour.justFinished and behaviour.name not in [name for index, name in self.__plan["actions"].iteritems() if index >= self.__planExecutionIndex]:
+                if behaviour.justFinished and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
                     unexpectedBehaviourFinished = True # it was unexpected
             if not unexpectedBehaviourFinished: # if we detected a deviation from the plan we can already stop here
-                for index in filter(lambda x: x >= self.__planExecutionIndex, sorted(self.__plan["actions"].keys())): # walk along the remaining plan
+                for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())): # walk along the remaining plan
                     for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
-                        if behaviour.name == self.__plan["actions"][index] and behaviour.justFinished:
-                            if self.__planExecutionIndex == index: # if it was a planned behaviour and it finished
-                                self.__planExecutionIndex += 1 # we are one step ahead in our plan
+                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:
+                            if self._planExecutionIndex == index: # if it was a planned behaviour and it finished
+                                self._planExecutionIndex += 1 # we are one step ahead in our plan
                             else: # or otherwise
                                 unexpectedBehaviourFinished = True # it was unexpected
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
-            try:
-                rospy.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
-                self.__plan = ffp.plan(pddl[0], pddl[1])
-                rospy.loginfo("PLAN: %s", self.__plan)
-                self.__replanningNeeded = False # TODO: Not sure if we may want to re-plan if the last attempt said that there is no plan. But actually it makes only sense if the situation changed as well (and in this case the change probably unexpected so we'd plan anyway)
-                self.__planExecutionIndex = 0
-            except Exception as e:
-                rospy.logerr("%s", e)
-                self.__replanningNeeded = True # in case of planning exceptions try again next iteration
+            rospy.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
+            # now we need to make the best of our planning problem:
+            # In cases where the full set of goals can't be reached because the planner does not find a solution a reduced set should be used.
+            # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
+            # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in descending order until a reachable goal is found.
+            for goalSequence in self.priorityGoalSequences():
+                try:
+                    rospy.logdebug("trying to reach goals %s", goalSequence)
+                    problemPDDL = self.createProblemPDDL(goalSequence)
+                    tmpPlan = ffp.plan(domainPDDL, problemPDDL)
+                    if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
+                        rospy.loginfo("FOUND PLAN: %s", tmpPlan)
+                        self._plan = tmpPlan
+                        self.__replanningNeeded = False
+                        self._planExecutionIndex = 0
+                        break
+                    else:
+                        rospy.loginfo("PROBLEM IMPOSSIBLE")
+                except Exception as e:
+                    rospy.logerr("PLANNER ERROR: %s", e)
+                    self.__replanningNeeded = True # in case of planning exceptions try again next iteration
         else:
-            rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self.__planExecutionIndex)
-
+            rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
     def step(self):
         if not self.__running:
@@ -384,12 +409,12 @@ class Manager(object):
     
     @property
     def planExecutionIndex(self):
-        return self.__planExecutionIndex
+        return self._planExecutionIndex
     
     @property
     def plan(self):
-        if self.__plan:
-            return self.__plan
+        if self._plan:
+            return self._plan
         else:
             return None
     

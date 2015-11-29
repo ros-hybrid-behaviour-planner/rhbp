@@ -228,7 +228,7 @@ class Behaviour(object):
         This method computes the activation this behaviour receives because of its place on the plan.
         Behaviours at the top of the list will be activated most, other not so much.
         '''
-        if self._manager.plan and "cost" in self._manager.plan and self._manager.plan["cost"] == -1.0:
+        if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
             return (0.0, 0xFF)
         for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan["actions"].keys())): # walk along the plan starting at where we are
             if self._manager.plan["actions"][index] == self._name: # if we are on the plan
@@ -495,6 +495,11 @@ class BehaviourBase(object):
         return [Wish(item[0].name, item[1]) for item in wishes]
     
     def __filterWishes(self, wishes):
+        '''
+        This method filters out all but the smallest wish per sensor name.
+        The idea behind that is that wishes concerning the same sensor are probably disjunctive and that the behaviour is satisfied if one of the options it has are fulfilled.
+        The caller must ensure that this assumption holds true, otherwise it strip away legitimate wishes without which the behaviour's preconditions can never be met.
+        '''
         filteredWishes = {}
         for sensor, indicator in wishes:
             if not sensor.name in filteredWishes:
@@ -536,7 +541,7 @@ class BehaviourBase(object):
     def getStatePDDL(self):
         pddl = PDDL()
         for p in self._preconditions:
-            for s in p.getStatePDDL(): # it is a list
+            for s in p.getStatePDDL(): # it is a list because it may come from a composed condition
                 pddl = mergeStatePDDL(s, pddl)
         return pddl                      
 
