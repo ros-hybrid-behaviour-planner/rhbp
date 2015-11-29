@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from behaviour_planner.srv import Activate
+from behaviour_planner.srv import Activate, Priority
 from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for goal
@@ -24,6 +24,7 @@ class GoalWidget(QWidget):
         loadUi(ui_file, self)
         self.goalGroupBox.setTitle(self._name)
         self.activatedCheckbox.toggled.connect(self.activationCallback)
+        self.priorityButton.clicked.connect(self.setPriorityCallback)
         self.updateGUIsignal.connect(self.updateGUI)
 
     def __del__(self):
@@ -36,6 +37,8 @@ class GoalWidget(QWidget):
         self.activeLabel.setText(newValues["active"])
         self.wishesLabel.setText(newValues["wishes"])
         self.wishesLabel.setToolTip(newValues["wishesTooltip"])
+        if not self.prioritySpinBox.hasFocus():
+            self.prioritySpinBox.setValue(newValues["priority"])
         
     def refresh(self, msg):
         """
@@ -46,6 +49,7 @@ class GoalWidget(QWidget):
                                    "activated" : msg.activated,
                                    "fulfillment" : msg.satisfaction,
                                    "active" : str(msg.active),
+                                   "priority" : msg.priority,
                                    "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
                                    "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes))
                                   })
@@ -57,3 +61,9 @@ class GoalWidget(QWidget):
         activateRequest(status)
         rospy.logdebug("Set activated of %s goal to %s", self._name, status)
        
+    def setPriorityCallback(self):
+        rospy.logdebug("Waiting for service %s", self._name + 'Priority')
+        rospy.wait_for_service(self._name + 'Priority')
+        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', Priority)
+        priorityRequest(self.prioritySpinBox.value())
+        rospy.logdebug("Set priority of %s to %s", self._name, self.prioritySpinBox.value())

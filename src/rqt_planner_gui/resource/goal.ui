@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>476</width>
-    <height>162</height>
+    <width>407</width>
+    <height>208</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -83,7 +83,7 @@
          <property name="rightMargin">
           <number>0</number>
          </property>
-         <item row="2" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="activeDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -145,7 +145,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="wishesDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -161,7 +161,7 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1" colspan="2">
+         <item row="4" column="1" colspan="2">
           <widget class="QLabel" name="wishesLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -177,7 +177,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="1" colspan="2">
+         <item row="3" column="1" colspan="2">
           <widget class="QLabel" name="activeLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -190,6 +190,36 @@
            </property>
            <property name="text">
             <string>Active</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Priority</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="prioritySpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="QPushButton" name="priorityButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>set</string>
            </property>
           </widget>
          </item>

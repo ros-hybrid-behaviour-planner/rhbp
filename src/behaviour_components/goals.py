@@ -10,7 +10,7 @@ import warnings
 import itertools
 import rospy
 from behaviour_planner.msg import Wish, Status
-from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse
+from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, Priority, PriorityResponse
 from util import PDDL, mergeStatePDDL
 
 
@@ -29,6 +29,7 @@ class Goal(object):
         self._active = True     # This indicates (if True) that there have been no severe issues in the actual goal node and the goal can be expected to be operational. If the actual goal reports ready == False we will ignore it in activation computation.
         self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._isPermanent = permanent
+        self._priority = 0
 
     def fetchPDDL(self):
         '''
@@ -58,6 +59,7 @@ class Goal(object):
             self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
             self._active = status.active
             self._activated = status.activated
+            self._priority = status.priority
             if self._name != status.name:
                 rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self._name, self._fulfillment, self._wishes)
@@ -88,17 +90,22 @@ class Goal(object):
     def activated(self):
         return self._activated
     
+    @property
+    def priority(self):
+        return self._priority
+    
     def __str__(self):
         return self._name
     
     def __repr__(self):
         return self._name
+    
 
 class GoalBase(object):
     '''
     This is the base class for goals in python
     '''
-    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = ""):
+    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0):
         '''
         Constructor
         '''
@@ -107,10 +114,12 @@ class GoalBase(object):
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
         self._conditions = conditions
         self._plannerPrefix = plannerPrefix # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         self._active = True # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = True # The activate Service sets the value of this property.
+        self._priority = priority # The higher the (unsigned) number the higher the importance
 
         try:
             rospy.loginfo("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
@@ -129,6 +138,7 @@ class GoalBase(object):
             self._getStatusService.shutdown()
             self._activateService.shutdown()
             self._pddlService.shutdown();
+            self._priorityService.shutdown();
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
     
@@ -178,7 +188,8 @@ class GoalBase(object):
                         "satisfaction" : self.computeSatisfaction(),
                         "wishes"       : self.computeWishes(),
                         "active"       : self._active,
-                        "activated"    : self._activated
+                        "activated"    : self._activated,
+                        "priority"     : self._priority
                        })
         return GetStatusResponse(status)
     
@@ -189,6 +200,10 @@ class GoalBase(object):
         '''
         self._activated = request.active
         return ActivateResponse()
+    
+    def setPriorityCallback(self, request):
+        self._priority = request.priority
+        return PriorityResponse()
     
     def addCondition(self, condition):
         '''
