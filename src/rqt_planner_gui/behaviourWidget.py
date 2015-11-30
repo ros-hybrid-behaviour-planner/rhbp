@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from behaviour_planner.srv import Activate, ForceStart, Priority
+from behaviour_planner.srv import Activate, ForceStart, SetInteger
 from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
@@ -28,6 +28,7 @@ class BehaviourWidget(QWidget):
         self.activatedCheckbox.toggled.connect(self.activationCallback)
         self.forceStartButton.toggled.connect(self.forceStartCallback)
         self.priorityPushButton.clicked.connect(self.setPriorityCallback)
+        self.executionTimeoutPushButton.clicked.connect(self.setExecutionTimeoutCallback)
         self.updateGUIsignal.connect(self.updateGUI)
 
     def __del__(self):
@@ -50,8 +51,11 @@ class BehaviourWidget(QWidget):
         self.isExecutingLabel.setText(newValues["isExecuting"])
         self.progressDoubleSpinBox.setValue(newValues["progress"])
         self.progressDoubleSpinBox.setToolTip("{0}".format(newValues["progress"]))
+        self.executionTimeSpinBox.setValue(newValues["executionTime"])
         if not self.prioritySpinBox.hasFocus():
             self.prioritySpinBox.setValue(newValues["priority"])
+        if not self.executionTimeoutSpinBox.hasFocus():
+            self.executionTimeoutSpinBox.setValue(newValues["executionTimeout"])
         self.interruptableLabel.setText(newValues["interruptable"])
         
     def refresh(self, msg):
@@ -71,6 +75,8 @@ class BehaviourWidget(QWidget):
                                    "readyThreshold" : msg.threshold,
                                    "executable" : str(msg.executable),
                                    "isExecuting" : str(msg.isExecuting),
+                                   "executionTimeout" : msg.executionTimeout,
+                                   "executionTime" : msg.executionTime,
                                    "progress" : msg.progress,
                                    "priority" : msg.priority,
                                    "interruptable" : str(msg.interruptable)
@@ -97,7 +103,14 @@ class BehaviourWidget(QWidget):
     def setPriorityCallback(self):
         rospy.logdebug("Waiting for service %s", self._name + 'Priority')
         rospy.wait_for_service(self._name + 'Priority')
-        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', Priority)
+        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', SetInteger)
         priorityRequest(self.prioritySpinBox.value())
         rospy.logdebug("Set priority of %s to %s", self._name, self.prioritySpinBox.value())
+    
+    def setExecutionTimeoutCallback(self):
+        rospy.logdebug("Waiting for service %s", self._name + 'ExecutionTimeout')
+        rospy.wait_for_service(self._name + 'ExecutionTimeout')
+        priorityRequest = rospy.ServiceProxy(self._name + 'ExecutionTimeout', SetInteger)
+        priorityRequest(self.executionTimeoutSpinBox.value())
+        rospy.logdebug("Set executionTimeout of %s to %s", self._name, self.executionTimeoutSpinBox.value())
         

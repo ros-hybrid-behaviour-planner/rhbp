@@ -10,7 +10,7 @@ import warnings
 import itertools
 import rospy
 from behaviour_planner.msg import Wish, Status
-from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, Priority, PriorityResponse
+from behaviour_planner.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
 from util import PDDL, mergeStatePDDL
 
 
@@ -114,7 +114,7 @@ class GoalBase(object):
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
-        self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
         self._conditions = conditions
         self._plannerPrefix = plannerPrefix # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         self._active = True # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
@@ -122,11 +122,11 @@ class GoalBase(object):
         self._priority = priority # The higher the (unsigned) number the higher the importance
 
         try:
-            rospy.loginfo("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+            rospy.logdebug("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddGoal')
             registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddGoal', AddGoal)
             registerMe(self._name, self._isPermanent)
-            rospy.loginfo("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s", self._plannerPrefix, self._name)
+            rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
     
@@ -202,8 +202,8 @@ class GoalBase(object):
         return ActivateResponse()
     
     def setPriorityCallback(self, request):
-        self._priority = request.priority
-        return PriorityResponse()
+        self._priority = request.value
+        return SetIntegerResponse()
     
     def addCondition(self, condition):
         '''

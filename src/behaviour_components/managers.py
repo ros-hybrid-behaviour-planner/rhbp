@@ -130,8 +130,8 @@ class Manager(object):
         Replanning is required whenever any or many of the following conditions is/are met:
         1) Behaviours or Goals have been added or removed
         2) The state of the world has changed an this change is not caused by the next behaviour in the plan
-        3) An unexpected behaviour was running (not head of the plan)
-        4) Nothing happened for a long time <-- this is still TBD
+        3) An unexpected behaviour was running (not head of the plan or flagged as independentFromPlanner)
+        4) An interruptable behaviour timed out
         5) The last planning attempt was unsuccessful
         '''
         domainPDDL = self.fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
@@ -150,20 +150,21 @@ class Manager(object):
                 changesWereExpected = False
                 break
         # the next part is a little plan execution monitoring
-        # it tracks progress on the plan and finds out if something unexpected finished. FIXME: there might be behaviours like collision avoidance the are expected to run alongside with the planned behaviours.
+        # it tracks progress on the plan and finds out if something unexpected finished.
         unexpectedBehaviourFinished = False
         # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
         if self._plan:
             for behaviour in self.__executedBehaviours:
-                if behaviour.justFinished and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
+                if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
                     unexpectedBehaviourFinished = True # it was unexpected
-            if not unexpectedBehaviourFinished: # if we detected a deviation from the plan we can already stop here
+                    break
+            if not unexpectedBehaviourFinished: # if we found a behaviour that executed that was not part of the plan (and not flagged independentromPlan) we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
                 for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())): # walk along the remaining plan
                     for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
-                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:
+                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:  # inspect the behaviour at the current index of the plan
                             if self._planExecutionIndex == index: # if it was a planned behaviour and it finished
                                 self._planExecutionIndex += 1 # we are one step ahead in our plan
-                            else: # or otherwise
+                            elif not behaviour.independentFromPlanner: # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
                                 unexpectedBehaviourFinished = True # it was unexpected
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
@@ -259,27 +260,22 @@ class Manager(object):
         rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
         rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
         for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
-            statusMessage = Status()
-            statusMessage.name = behaviour.name
-            statusMessage.activation = behaviour.activation
-            statusMessage.satisfaction = behaviour.preconditionSatisfaction
-            statusMessage.isExecuting = behaviour.isExecuting
-            statusMessage.progress = behaviour.progress
-            statusMessage.executable = behaviour.executable
-            statusMessage.threshold = behaviour.readyThreshold
-            statusMessage.priority = behaviour.priority
-            statusMessage.interruptable = behaviour.interruptable
-            statusMessage.activated = behaviour.activated
-            statusMessage.active = behaviour.active
-            statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
-            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
-            plannerStatusMessage.behaviours.append(statusMessage)
             ### now comes a series of tests that a behaviour must pass in order to get started ###
             if not behaviour.active and not behaviour.manualStart: # it must be active
                 rospy.loginfo("%s will not be started because it is not active", behaviour.name)
                 continue
             if behaviour.isExecuting: # it must not already run
                 rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
+                if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout and behaviour.interruptable:
+                    rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
+                    behaviour.stop()
+                    self.__executedBehaviours.remove(behaviour) # remove it from the list of executed behaviours
+                    currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in behaviour.correlations])) # remove all its correlations from the set of currently affected sensors
+                    rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
+                    rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+                    self.__replanningNeeded = True # this is unusual so replan
+                else:
+                    behaviour.executionTime += 1
                 continue
             if not behaviour.executable and not behaviour.manualStart: # it must be executable
                 rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
@@ -290,9 +286,8 @@ class Manager(object):
             interferingCorrelations = currentlyInfluencedSensors.intersection(set([item[0] for item in behaviour.correlations]))
             if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
                 alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
-                assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other). TODO: remove this assertion in case Aggregators are added
+                assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
                 # This implementation deals with a list although it it clear that there is at most one element.
-                # With Aggregators this is not necessarily the case: There may be multiple behaviours running and affecting the same Aggregator, hence being correlated to the same sensor so they could all appear in this list.
                 stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
                 if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
                     rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
@@ -318,6 +313,24 @@ class Manager(object):
             self.__executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+            # collect all that stuff for the rqt gui
+            statusMessage = Status()
+            statusMessage.name = behaviour.name
+            statusMessage.activation = behaviour.activation
+            statusMessage.satisfaction = behaviour.preconditionSatisfaction
+            statusMessage.isExecuting = behaviour.isExecuting
+            statusMessage.executionTimeout = behaviour.executionTimeout
+            statusMessage.executionTime = behaviour.executionTime
+            statusMessage.progress = behaviour.progress
+            statusMessage.executable = behaviour.executable
+            statusMessage.threshold = behaviour.readyThreshold
+            statusMessage.priority = behaviour.priority
+            statusMessage.interruptable = behaviour.interruptable
+            statusMessage.activated = behaviour.activated
+            statusMessage.active = behaviour.active
+            statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
+            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
+            plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
         if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
@@ -338,7 +351,7 @@ class Manager(object):
     
     def __addBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        behaviour = Behaviour(request.name)
+        behaviour = Behaviour(request.name, request.independentFromPlanner)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)

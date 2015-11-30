@@ -65,7 +65,7 @@ add_service_files(
   RemoveGoal.srv
   ForceStart.srv
   Activate.srv
-  Priority.srv
+  SetInteger.srv
   GetPDDL.srv
 )
 

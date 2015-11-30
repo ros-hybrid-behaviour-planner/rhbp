@@ -11,7 +11,7 @@ import warnings
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from behaviour_planner.msg import Wish, Correlation, Status
-from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, Priority, PriorityResponse, GetPDDL, GetPDDLResponse
+from behaviour_planner.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
 from util import PDDL, mergeStatePDDL
 
 class Behaviour(object):
@@ -21,7 +21,7 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name):
+    def __init__(self, name, independentFromPlanner = False):
         '''
         Constructor
         '''
@@ -40,9 +40,12 @@ class Behaviour(object):
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
         self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
-        self._activated = True      # This member only exists as proxy for the corrsponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
+        self._activated = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
+        self._executionTimeout = -1 # The maximum allowed execution steps. If set to -1 infinite. We get it via getStatus service of actual behaviour node
+        self._executionTime = -1    # The time the behaviour is running (in steps)
+        self._independentFromPlanner = independentFromPlanner
         self.__currentActivationStep = 0.0
-        self.__justFinished = False # This is set to True by fetchStatus if the  behaviour has just finished its job
+        self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         Behaviour._instanceCounter += 1
         self.__logFile = open("{0}.log".format(self._name), 'w')
         self.__logFile.write('Time\t{0}\n'.format(self._name))
@@ -69,7 +72,7 @@ class Behaviour(object):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
-        self.__justFinished = False
+        self._justFinished = False
         rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
         rospy.wait_for_service(self._name + 'GetStatus')
         try:
@@ -83,13 +86,15 @@ class Behaviour(object):
             if self._isExecuting == True and status.isExecuting == False:
                 rospy.loginfo("%s finished. resetting activation", self._name)
                 self._activation = 0.0
-                self.__justFinished = True
+                self._executionTime = -1
+                self._justFinished = True
             self._isExecuting = status.isExecuting
             self._progress = status.progress
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
             self._activated = status.activated
+            self._executionTimeout = status.executionTimeout
             if self._name != status.name:
                 rospy.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
@@ -268,6 +273,7 @@ class Behaviour(object):
         '''
         assert not self._isExecuting
         self._isExecuting = True
+        self._executionTime = 0
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Start')
             rospy.wait_for_service(self._name + 'Start')
@@ -283,6 +289,7 @@ class Behaviour(object):
         It is expected that this service does not block.
         '''
         assert self._isExecuting
+        self._executionTime = -1
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Stop')
             rospy.wait_for_service(self._name + 'Stop')
@@ -375,7 +382,23 @@ class Behaviour(object):
     
     @property
     def justFinished(self):
-        return self.__justFinished
+        return self._justFinished
+    
+    @property
+    def independentFromPlanner(self):
+        return self._independentFromPlanner
+    
+    @property
+    def executionTimeout(self):
+        return self._executionTimeout
+    
+    @property
+    def executionTime(self):
+        return self._executionTime
+    
+    @executionTime.setter
+    def executionTime(self, value):
+        self._executionTime = value
     
     def __str__(self):
         return self._name
@@ -399,7 +422,8 @@ class BehaviourBase(object):
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
-        self._priorityService = rospy.Service(self._name + 'Priority', Priority, self.setPriorityCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
+        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger, self.setExecutionTimeoutCallback)
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else [] # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning: sensorName -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. Optional condition -> a piece of pddl when this effect happens. # Be careful with the sensorName! It has to actually match something that exists!
@@ -408,15 +432,17 @@ class BehaviourBase(object):
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
         self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
+        self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False # This determines whether the manager will treat it as an error and re-plan if the behaviour run but wasn't part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
+        self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1 # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again) 
         self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
         self._activated = True # The activate Service sets the value of this property.
 
         try:
-            rospy.loginfo("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+            rospy.logdebug("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
             registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddBehaviour', AddBehaviour)
-            registerMe(self._name)
-            rospy.loginfo("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+            registerMe(self._name, self._independentFromPlanner)
+            rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in BehaviourBase constructor (for behaviour node %s): %s", self._name, e)
     
@@ -430,6 +456,7 @@ class BehaviourBase(object):
             self._stopService.shutdown()
             self._activateService.shutdown()
             self._priorityService.shutdown()
+            self._executionTimeoutService.shutdown()
             self._pddlService.shutdown()
         except Exception as e:
             rospy.logerr("Error in destructor of BehaviourBase: %s", e)
@@ -566,6 +593,7 @@ class BehaviourBase(object):
                            "threshold"    : self._readyThreshold,
                            "wishes"       : self.computeWishes(),
                            "isExecuting"  : self._isExecuting,
+                           "executionTimeout" : self._executionTimeout,
                            "progress"     : self.getProgress(),
                            "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                            "priority"     : self._priority,
@@ -617,8 +645,12 @@ class BehaviourBase(object):
         return ActivateResponse()
     
     def setPriorityCallback(self, request):
-        self._priority = request.priority
-        return PriorityResponse()
+        self._priority = request.value
+        return SetIntegerResponse()
+    
+    def setExecutionTimeoutCallback(self, request):
+        self._executionTimeout = request.value
+        return SetIntegerResponse()
     
     @property
     def correlations(self):
@@ -647,6 +679,14 @@ class BehaviourBase(object):
     @priority.setter
     def priority(self, priority):
         self._priority = priority
+    
+    @property
+    def executionTimeout(self):
+        return self._executionTimeout
+    
+    @executionTimeout.setter
+    def executionTimeout(self, timeout):
+        self._executionTimeout = timeout
     
     @property
     def interruptable(self):

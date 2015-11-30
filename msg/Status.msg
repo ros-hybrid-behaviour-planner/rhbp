@@ -5,9 +5,11 @@ float32 satisfaction
 float32 threshold
 Wish[] wishes
 bool isExecuting
+int32 executionTimeout
+int32 executionTime
 float32 progress
 bool active
 bool interruptable
-int16 priority
+int32 priority
 bool activated
 bool executable
