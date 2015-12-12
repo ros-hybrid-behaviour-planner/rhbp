@@ -150,7 +150,7 @@ class Behaviour(object):
                     if correlation * indicator < 0.0: #This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(indicator * correlation)) * rospy.get_param("~goalBias", 1.0)
+                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * rospy.get_param("~goalBias", 1.0)
                         if logging:
                             rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, sensorName, behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
