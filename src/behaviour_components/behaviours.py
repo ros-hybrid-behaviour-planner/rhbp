@@ -217,7 +217,7 @@ class Behaviour(object):
                     if wish * correlation < 0.0:       # if we make an existing conflict stronger
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish * correlation)) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~behaviourBias", 1.0)
+                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~behaviourBias", 1.0)
                         if logging:
                             rospy.logdebug("Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f", self.name, behaviour.name, sensorName, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, sensorName, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) #  Actually only the value is needed but it is a tuple for debug purposes. The length of behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation says how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
