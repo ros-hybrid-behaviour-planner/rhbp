@@ -150,12 +150,12 @@ class Behaviour(object):
                     if correlation * indicator < 0.0: #This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * rospy.get_param("~conflictorias", 1.0)
+                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * rospy.get_param("~conflictorBias", 1.0)
                         if logging:
                             rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, sensorName, behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-                    elif correlation != 0 and correlation * indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
-                        totalInhibition = -abs(correlation) * rospy.get_param("~conflictorias", 1.0)
+                    elif correlation != 0 and indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
+                        totalInhibition = -abs(correlation) * rospy.get_param("~conflictorBias", 1.0)
                         if logging:
                             rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, sensorName, behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -217,14 +217,14 @@ class Behaviour(object):
                     if wish * correlation < 0.0:       # if we make an existing conflict stronger
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorias", 1.0)
+                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorBias", 1.0)
                         if logging:
                             rospy.logdebug("Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f", self.name, behaviour.name, sensorName, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, sensorName, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) #  Actually only the value is needed but it is a tuple for debug purposes. The length of behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation says how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
-                    elif wish * correlation == 0 and correlation != 0:    # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
-                        totalInhibition = -abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorias", 1.0)
+                    elif wish * correlation == 0.0 and wish == 0:    # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
+                        totalInhibition = -abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorBias", 1.0)
                         if logging:
-                            rospy.logdebug("Calculating inhibition from conflicted for %s. %s is undone via %s by %d behaviour(s): %s by a total score of %f", self.name, behaviour.name, sensorName, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
+                            rospy.logdebug("Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f", self.name, behaviour.name, sensorName, wish, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, sensorName, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) # The inhibition experienced is my bad influence (my correlation to this sensorName) times the wish of the other behaviour concerning this sensorName. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) knows how many more behaviours cause the same harm to this conflictor so its inhibition shall be distributed among them.
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
 

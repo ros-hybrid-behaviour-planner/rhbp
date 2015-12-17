@@ -1,10 +1,10 @@
 <launch>
 	<node pkg="behaviour_planner" type="planner_node.py" name="behaviour_planner_node" output="screen">
-	   <param name="situationBias" type="double" value="1.0" />
-	   <param name="predecessorBias" type="double" value="1.0" />
-       <param name="successorBias" type="double" value="1.0" />
-       <param name="conflictorias" type="double" value="1.0" />
-	   <param name="goalBias" type="double" value="1.0" />
-	   <param name="planBias" type="double" value="1.0" />
+	   <param name="situationBias" type="double" value="0.7" />
+	   <param name="predecessorBias" type="double" value="3.0" />
+       <param name="successorBias" type="double" value="2.0" />
+       <param name="conflictorBias" type="double" value="2.5" />
+	   <param name="goalBias" type="double" value="0.7" />
+	   <param name="planBias" type="double" value="0.0" />
 	</node>
 </launch>
