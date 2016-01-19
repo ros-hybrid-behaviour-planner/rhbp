@@ -23,11 +23,10 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, logLevel = rospy.INFO, **kwargs):
+    def __init__(self, **kwargs):
         '''
         Constructor
         '''
-        rospy.init_node('behaviourPlannerManager', log_level = logLevel)
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
