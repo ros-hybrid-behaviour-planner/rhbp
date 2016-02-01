@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from behaviour_planner.srv import Activate, Priority
+from behaviour_planner.srv import Activate, SetInteger
 from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for goal
@@ -64,6 +64,6 @@ class GoalWidget(QWidget):
     def setPriorityCallback(self):
         rospy.logdebug("Waiting for service %s", self._name + 'Priority')
         rospy.wait_for_service(self._name + 'Priority')
-        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', Priority)
+        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', SetInteger)
         priorityRequest(self.prioritySpinBox.value())
         rospy.logdebug("Set priority of %s to %s", self._name, self.prioritySpinBox.value())
