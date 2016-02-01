@@ -116,10 +116,22 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(ffp
-#   src/${PROJECT_NAME}/ffp.cpp
-# )
+# get the ${PYTHON_EXECUTABLE}
+INCLUDE(FindPythonInterp)
+
+#determine if we are using dist-packages on a Debian derviate or site-packages for most other distros
+execute_process (
+        COMMAND "${PYTHON_EXECUTABLE}" -c "from distutils.sysconfig import get_python_lib; site=get_python_lib(); site=site[site.rindex('/')+1:] ;print site"
+        OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+#get the python version for the correct path
+execute_process (
+        COMMAND "${PYTHON_EXECUTABLE}" -c "from distutils.sysconfig import get_python_version; print get_python_version()"
+        OUTPUT_VARIABLE PYTHON_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 # use distutils to build the extension module
 SET(PYTHON_EXECUTABLE python2)
@@ -127,9 +139,10 @@ add_custom_target(ffp.so ALL
                 COMMAND ${PYTHON_EXECUTABLE} setup.py build
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
         )
+
 # move the built extension module into the correct location (this is a total hack)
 add_custom_target(ffp ALL
-                COMMAND ${PYTHON_EXECUTABLE} setup.py install --prefix=${CATKIN_DEVEL_PREFIX}
+                COMMAND ${PYTHON_EXECUTABLE} setup.py install --install-lib=${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES}
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
         )
 
