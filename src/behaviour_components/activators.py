@@ -230,7 +230,7 @@ class LinearActivator(Activator):
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
     def getPreconditionPDDL(self, sensorName):
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._fullActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._fullActivationValue), functions = sensorName)  # TODO: This is not actually correct: We treat the linear activator like a simple threshold. How can we do better?
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._zeroActivationValue), functions = sensorName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
     
     def getStatePDDL(self, sensorName, value):
         return PDDL(statement = "( = (" + sensorName + ") {0} )".format(self.getNormalizedValue(value)), functions = sensorName)

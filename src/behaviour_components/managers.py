@@ -107,7 +107,7 @@ class Manager(object):
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
         # debugging only
-        with open("robotProblem{0}.pddl".format(self._stepCounter), 'w') as outfile:
+        with open("robotProblem{0}{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile:
             outfile.write(problemPDDLString)
         return problemPDDLString
     
@@ -226,6 +226,7 @@ class Manager(object):
                 activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
                 activateRequest(False)
                 rospy.logdebug("Set Activated of %s goal to False", goal.name)
+                goal.active = False # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
         ### do housekeeping ###
         self._activeGoals = filter(lambda x: x.active, self._goals)
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
@@ -252,6 +253,24 @@ class Manager(object):
         for behaviour in self._behaviours:
             behaviour.commitActivation()
             rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
+            # collect all that stuff for the rqt gui
+            statusMessage = Status()
+            statusMessage.name = behaviour.name
+            statusMessage.activation = behaviour.activation
+            statusMessage.satisfaction = behaviour.preconditionSatisfaction
+            statusMessage.isExecuting = behaviour.isExecuting
+            statusMessage.executionTimeout = behaviour.executionTimeout
+            statusMessage.executionTime = behaviour.executionTime
+            statusMessage.progress = behaviour.progress
+            statusMessage.executable = behaviour.executable
+            statusMessage.threshold = behaviour.readyThreshold
+            statusMessage.priority = behaviour.priority
+            statusMessage.interruptable = behaviour.interruptable
+            statusMessage.activated = behaviour.activated
+            statusMessage.active = behaviour.active
+            statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
+            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
+            plannerStatusMessage.behaviours.append(statusMessage)
         rospy.loginfo("current activation threshold: %f", self._activationThreshold)
         rospy.loginfo("############## ACTIONS ###############")
         self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
@@ -312,24 +331,6 @@ class Manager(object):
             self.__executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
-            # collect all that stuff for the rqt gui
-            statusMessage = Status()
-            statusMessage.name = behaviour.name
-            statusMessage.activation = behaviour.activation
-            statusMessage.satisfaction = behaviour.preconditionSatisfaction
-            statusMessage.isExecuting = behaviour.isExecuting
-            statusMessage.executionTimeout = behaviour.executionTimeout
-            statusMessage.executionTime = behaviour.executionTime
-            statusMessage.progress = behaviour.progress
-            statusMessage.executable = behaviour.executable
-            statusMessage.threshold = behaviour.readyThreshold
-            statusMessage.priority = behaviour.priority
-            statusMessage.interruptable = behaviour.interruptable
-            statusMessage.activated = behaviour.activated
-            statusMessage.active = behaviour.active
-            statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
-            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
-            plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
         if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:

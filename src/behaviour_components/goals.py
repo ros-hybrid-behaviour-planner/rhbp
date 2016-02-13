@@ -86,6 +86,10 @@ class Goal(object):
     def active(self):
         return self._active
     
+    @active.setter
+    def active(self, value):
+        self._active = value
+    
     @property
     def activated(self):
         return self._activated
