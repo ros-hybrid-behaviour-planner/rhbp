@@ -4,7 +4,6 @@ Created on 13.04.2015
 @author: stephan
 '''
 
-import activators
 import warnings
 import operator
 import itertools
@@ -56,75 +55,6 @@ class Conditonal(object):
     
     def __repr__(self):
         return str(self)
-
-
-class Condition(Conditonal):
-    '''
-    This class wraps a sensor and an activator to build a condition and produce a satisfaction value
-    '''
-    _instanceCounter = 0 # static _instanceCounter to get distinguishable names
-
-    def __init__(self, sensor, activator, name = None):
-        '''
-        Constructor
-        '''
-        super(Condition, self).__init__()
-        self._name = name if name else "Condition {0}".format(Conditonal._instanceCounter)
-        self._sensor = sensor
-        self._activator = activator
-        
-    @property
-    def activator(self):
-        return self._activator
-    
-    @activator.setter
-    def activator(self, newActivator):
-        if issubclass(newActivator, activators.Activator):
-            self._activator = newActivator
-        else:
-            warnings.warn("That's no activator!")
-            
-    def getWishes(self):
-        '''
-        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
-        Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
-        '''
-        try:
-            return [(self._sensor, self._activator.getWish(self._sensor.value))]
-        except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._activator, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
-            raise
-        
-    def getPreconditionPDDL(self):
-        return self._activator.getPreconditionPDDL(self._sensor.name)
-    
-    def getStatePDDL(self):
-        return [self._activator.getStatePDDL(self._sensor.name, self._sensor.value)]
-
-    @property
-    def satisfaction(self):
-        '''
-        This property specifies to what extend the condition is fulfilled.
-        '''
-        try:
-            return self._activator.computeActivation(self._sensor.value)
-        except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._activator, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
-            raise
-    
-    @property
-    def sensor(self):
-        return self._sensor
-    
-    @property
-    def optional(self):
-        return self._sensor.optional
-    
-    def __str__(self):
-        return "{0} {{{1} + {2}: v: {3}, s: {4}}}".format(self._name, self._sensor, self._activator, self._sensor.value, self.satisfaction)
-    
-    def __repr__(self):
-        return str(self)
     
 # THINK ABOUT ME:
 # The next two classes make it possible to build arbitrary complex preconditions using logical AND and OR.
@@ -150,7 +80,7 @@ class Disjunction(Conditonal):
         '''
         This method adds an precondition to the disjunction.
         '''
-        if isinstance(condition, Condition):
+        if isinstance(condition, Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
@@ -219,7 +149,7 @@ class Conjunction(Conditonal):
         '''
         This method adds an precondition to the disjunction.
         '''
-        if isinstance(condition, Condition):
+        if isinstance(condition, Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
