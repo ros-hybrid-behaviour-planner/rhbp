@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(metric_ff_v2_1)
+project(metric_ff)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -120,17 +120,19 @@ include_directories(
 #   src/${PROJECT_NAME}/metric_ff_v2_1.cpp
 # )
 
+message( CURRENT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+message( CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 
 # use distutils to build the extension module
 SET(PYTHON_EXECUTABLE python2)
 add_custom_target(ff.so ALL
                 COMMAND ${PYTHON_EXECUTABLE} setup.py build_ext --inplace
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 # move the built extension module into the correct location (this is a total hack)
 add_custom_target(ff ALL
                 COMMAND mkdir -p ${CATKIN_DEVEL_PREFIX}/lib && cp ff.so ${CATKIN_DEVEL_PREFIX}/lib
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
 # make sure the above commands run in the correct order

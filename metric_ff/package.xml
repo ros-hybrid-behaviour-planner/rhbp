@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>metric_ff_v2_1</name>
-  <version>0.0.1</version>
-  <description>The metric_ff_v2_1 package</description>
+  <name>metric_ff</name>
+  <version>2.1.0</version>
+  <description>CMake wrapper for metric_ff_v2_1 package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

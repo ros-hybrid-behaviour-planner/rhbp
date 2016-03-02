@@ -6,7 +6,7 @@ project(ffp)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
-  metric_ff_v2_1
+  metric_ff
 )
 
 ## System dependencies are found with CMake's conventions
@@ -137,13 +137,13 @@ execute_process (
 SET(PYTHON_EXECUTABLE python2)
 add_custom_target(ffp.so ALL
                 COMMAND ${PYTHON_EXECUTABLE} setup.py build
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
 # move the built extension module into the correct location (this is a total hack)
 add_custom_target(ffp ALL
                 COMMAND ${PYTHON_EXECUTABLE} setup.py install --install-lib=${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES}
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
 # make sure the above commands run in the correct order

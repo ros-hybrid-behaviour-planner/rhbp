@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="behaviour_planner" type="planner_node.py" name="behaviour_planner_node" output="screen">
+    <node pkg="rhbp_core" type="planner_node.py" name="behaviour_planner_node" output="screen">
         <param name="situationBias" type="double" value="0.7" />
         <param name="predecessorBias" type="double" value="1.0" />
         <param name="successorBias" type="double" value="1.0" />

@@ -7,8 +7,8 @@ Created on 23.04.2015
 import rospy
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from behaviour_planner.msg import PlannerStatus, Status, Correlation, Wish
-from behaviour_planner.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
+from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
+from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
 from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex
