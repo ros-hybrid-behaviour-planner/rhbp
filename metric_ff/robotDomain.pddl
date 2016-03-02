@@ -1,0 +1,68 @@
+(define (domain sim)
+(:predicates
+    (selfPaintedSensor)
+    (viseEmptySensor)
+    (operationalSensor)
+    (rightHandEmptySensor)
+    (sanderInHandSensor)
+    (boardSandedSensor)
+    (sprayerInHandSensor)
+    (boardInHandSensor)
+    (leftHandEmptySensor)
+    (boardInViseSensor))
+(:functions
+    (costs)
+    (sprayerHandSensor)
+    (sanderHandSensor)
+    (boardHandSensor))
+(:action PickUpSprayer
+:parameters ()
+:precondition (and (or (leftHandEmptySensor) (rightHandEmptySensor)) (not (sprayerInHandSensor)))
+:effect (and (increase (costs) 1.0) (when (leftHandEmptySensor) (not (leftHandEmptySensor))) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (not (rightHandEmptySensor))) (sprayerInHandSensor) (when (leftHandEmptySensor) (increase (sprayerHandSensor) 1.0)) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (decrease (sprayerHandSensor) 1.0)))
+)
+(:action PickUpSander
+:parameters ()
+:precondition (and (or (leftHandEmptySensor) (rightHandEmptySensor)) (not (sanderInHandSensor)))
+:effect (and (increase (costs) 1.0) (when (leftHandEmptySensor) (not (leftHandEmptySensor))) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (not (rightHandEmptySensor))) (sanderInHandSensor) (when (leftHandEmptySensor) (increase (sanderHandSensor) 1.0)) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (decrease (sanderHandSensor) 1.0)))
+)
+(:action PickUpBoard
+:parameters ()
+:precondition (and (or (leftHandEmptySensor) (rightHandEmptySensor)) (not (boardInHandSensor)) (not (boardInViseSensor)))
+:effect (and (increase (costs) 1.0) (when (leftHandEmptySensor) (not (leftHandEmptySensor))) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (not (rightHandEmptySensor))) (boardInHandSensor) (when (leftHandEmptySensor) (increase (boardHandSensor) 1.0)) (when (and (rightHandEmptySensor) (not (leftHandEmptySensor))) (decrease (boardHandSensor) 1.0)))
+)
+(:action PutDownSprayer
+:parameters ()
+:precondition (sprayerInHandSensor)
+:effect (and (increase (costs) 1.0) (when (> (sprayerHandSensor) 0) (leftHandEmptySensor)) (when (< (sprayerHandSensor) 0) (rightHandEmptySensor)) (not (sprayerInHandSensor)) (when (< (sprayerHandSensor) 0) (increase (sprayerHandSensor) 1.0)) (when (> (sprayerHandSensor) 0) (decrease (sprayerHandSensor) 1.0)))
+)
+(:action PutDownSander
+:parameters ()
+:precondition (sanderInHandSensor)
+:effect (and (increase (costs) 1.0) (when (> (sanderHandSensor) 0) (leftHandEmptySensor)) (when (< (sanderHandSensor) 0) (rightHandEmptySensor)) (not (sanderInHandSensor)) (when (< (sanderHandSensor) 0) (increase (sanderHandSensor) 1.0)) (when (> (sanderHandSensor) 0) (decrease (sanderHandSensor) 1.0)))
+)
+(:action PutDownBoard
+:parameters ()
+:precondition (boardInHandSensor)
+:effect (and (increase (costs) 1.0) (when (> (boardHandSensor) 0) (leftHandEmptySensor)) (when (< (boardHandSensor) 0) (rightHandEmptySensor)) (not (boardInHandSensor)) (when (< (boardHandSensor) 0) (increase (boardHandSensor) 1.0)) (when (> (boardHandSensor) 0) (decrease (boardHandSensor) 1.0)))
+)
+(:action SandBoardInHand
+:parameters ()
+:precondition (and (operationalSensor) (boardInHandSensor) (sanderInHandSensor))
+:effect (and (increase (costs) 1.0) (boardSandedSensor))
+)
+(:action SandBoardInVise
+:parameters ()
+:precondition (and (operationalSensor) (boardInViseSensor) (sanderInHandSensor))
+:effect (and (increase (costs) 1.0) (boardSandedSensor))
+)
+(:action SprayPaintSelf
+:parameters ()
+:precondition (and (operationalSensor) (sprayerInHandSensor))
+:effect (and (increase (costs) 1.0) (not (operationalSensor)) (selfPaintedSensor))
+)
+(:action PlaceBoardInVise
+:parameters ()
+:precondition (and (boardInHandSensor) (viseEmptySensor))
+:effect (and (increase (costs) 1.0) (not (boardInHandSensor)) (not (viseEmptySensor)) (boardInViseSensor) (when (< (boardHandSensor) 0) (increase (boardHandSensor) 1.0)) (when (> (boardHandSensor) 0) (decrease (boardHandSensor) 1.0)))
+)
+)
