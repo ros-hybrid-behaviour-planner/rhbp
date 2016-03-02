@@ -76,3 +76,22 @@ class SimpleTopicSensor(Sensor):
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()
+
+class PassThroughTopicSensor(Sensor):
+    """
+    "PassThrough" because the sensor just forwards the received msg
+    """
+    def __init__(self, name, topic, messageType, createLog = False):
+        super(PassThroughTopicSensor, self).__init__(name)
+        self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
+        self._iShouldCreateLog = createLog
+        if self._iShouldCreateLog:
+            self._logFile = open("{0}.log".format(self._name), 'w')
+            self._logFile.write('{0}\n'.format(self._name))
+    
+    def subscriptionCallback(self, msg):
+        self.update(msg)
+        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
+        if self._iShouldCreateLog:
+            self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
+            self._logFile.flush()
