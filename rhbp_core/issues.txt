@@ -1,0 +1,30 @@
+###############
+# open issues #
+###############
+
+action should be able to have a duration and not block the behaviour network
+    if so: how to communicte with them / control them
+        start
+        interrupt
+        preempt
+        how to detect when finished?
+    *************
+    actionlib
+    rosservice
+    
+execute only behaviours in parallel that don't interfere with each other
+    or only those that are aggreagatable
+    *************
+    look for common actuators to decide
+
+activation must spread in a well-defined manner
+    aggregation introduces integral groth of waiting behaviours at the moment
+    *************
+    look at Maes again!
+
+PDDL generation
+    preconditions and effects must be known
+
+FD interface
+
+timimg check interface

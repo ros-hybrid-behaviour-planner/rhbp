@@ -1,0 +1,13 @@
+set terminal pdf size 21,10
+set output 'activation.pdf'
+set title "activation"
+set key above vertical maxrows 3
+set grid x
+set grid y
+#set logscale y
+#set xtics 1
+#set xdata time
+#set timefmt "%s"
+#set format x "%H:%M:%.3S"
+N = system("awk 'NR==1{print NF}' activationFlow.dat")
+plot for [col=1:N/2] 'activationFlow.dat' using 2*col-1:2*col with linespoints lw 4 title columnheader

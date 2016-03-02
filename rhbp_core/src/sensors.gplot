@@ -1,0 +1,18 @@
+set terminal pdf size 21,10
+set output 'sensors.pdf'
+set title "sensors"
+set key above vertical maxrows 3
+set grid x
+set grid y
+#set logscale y
+set yrange [-.1:1.1]
+set xdata time
+set timefmt "%s"
+set format x "%H:%M:%.3S"
+plot 'batteryLevelSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'flyingSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'homeSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'mapCoverageSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'objectsFoundSensor.log' using 1:2 with steps lw 4 title columnheader, \
+'targetSelectedSensor.log' using 1:2 with steps lw 4 title columnheader
+
