@@ -47,7 +47,7 @@ class Activator(conditions.Conditonal):
         '''
         raise NotImplementedError()
     
-    def getDirection(self):
+    def _getDirection(self):
         '''
         This method should return the direction that increases activation. +1 means rising, -1 means falling
         '''
@@ -59,44 +59,44 @@ class Activator(conditions.Conditonal):
         Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
         '''
         try:
-            return [(self._sensor, self.getSensorWish())]
+            return [(self._sensor, self._getSensorWish(self._sensor))]
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
     
-    def getSensorWish(self):
+    def getPreconditionPDDL(self):
+        return self._getSensorPreconditionPDDL(self._sensor)
+    
+    def getStatePDDL(self):
+        return [self._getSensorStatePDDL(self._sensor)]
+    
+    def _getSensorWish(self, sensor):
         '''
         This method should return an indicator (float in range [-1, 1]) how much and in what direction the value should change in order to reach more activation.
         1 means the value should become true or increase, 0 it should stay the same and -1 it should decrease or become false.
         '''
         raise NotImplementedError()
     
-    def getPreconditionPDDL(self):
-        return self.getSensorPreconditionPDDL()
-    
-    def getStatePDDL(self):
-        return [self.getSensorStatePDDL()]
-    
-    def getSensorPreconditionPDDL(self):
+    def _getSensorPreconditionPDDL(self, sensor):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         '''
         raise NotImplementedError()
     
-    def getSensorStatePDDL(self):
+    def _getSensorStatePDDL(self, sensor):
         '''
         This method should produce a valid PDDL statement describing the current state (the (normalized) value) of sensor sensorName in a form suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         '''
         raise NotImplementedError()
     
-    def getNormalizedValue(self):
+    def _getNormalizedSensorValue(self, sensor):
         '''
         This method should return either 
                                         a float which represents the sensor reading in a single-dimensional fashion for use as numeric fluent by the symbolic planner
                                   or
                                         a Bool if the sensor represents a predicate and not a numeric fluent.
         '''
-        return self._sensor.value
+        return sensor.value
     
     @property
     def satisfaction(self):
@@ -137,15 +137,15 @@ class BooleanActivator(Activator):
         self._desired = desiredValue   # this is the threshold Value
     
     def computeActivation(self):
-        value = self.getNormalizedValue()
+        value = self._getNormalizedSensorValue(self._sensor)
         assert isinstance(value, bool)
         return self._maxActivation if value == self._desired else self._minActivation
     
-    def getDirection(self):
+    def _getDirection(self):
         return 1 if self._desired == True else -1
     
-    def getSensorWish(self):
-        value = self.getNormalizedValue()
+    def _getSensorWish(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
         assert isinstance(value, bool)
         if value == self._desired:
             return 0.0
@@ -153,14 +153,12 @@ class BooleanActivator(Activator):
             return 1.0
         return -1.0
     
-    def getSensorPreconditionPDDL(self):
-        sensorName = self._sensor.name
-        return PDDL(statement = "(" + sensorName + ")" if self._desired == True else "(not (" + sensorName + "))", predicates = sensorName)
+    def _getSensorPreconditionPDDL(self, sensor):
+        return PDDL(statement = "(" + sensor.name + ")" if self._desired == True else "(not (" + sensor.name + "))", predicates = sensor.name)
     
-    def getSensorStatePDDL(self):
-        sensorName = self._sensor.name
-        value = self.getNormalizedValue()
-        return PDDL(statement = "(" + sensorName + ")" if value == True else "(not (" + sensorName + "))", predicates = sensorName)
+    def _getSensorStatePDDL(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
+        return PDDL(statement = "(" + sensor.name + ")" if value == True else "(not (" + sensor.name + "))", predicates = sensor.name)
         
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -210,34 +208,33 @@ class ThresholdActivator(Activator):
         self._valueRange = valueRange
     
     def computeActivation(self):
-        value = self.getNormalizedValue()
+        value = self._getNormalizedSensorValue()
         assert isinstance(value, int) or isinstance(value, float)
         if self._isMinimum:
             return self._maxActivation if value >= self._threshold else self._minActivation
         else:
             return self._maxActivation if value <= self._threshold else self._minActivation
     
-    def getDirection(self):
+    def _getDirection(self):
         return 1 if self._isMinimum else -1
 
-    def getSensorWish(self):
-        value = self.getNormalizedValue()
+    def _getSensorWish(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
         assert isinstance(value, int) or isinstance(value, float)
         if self.computeActivation(value) == self._maxActivation: # no change is required
             return 0.0
         if self._valueRange:
             return sorted((-1.0, (self._threshold - value) / self._valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
         else:
-            return float(self.getDirection())
+            return float(self._getDirection())
     
-    def getSensorPreconditionPDDL(self):
+    def _getSensorPreconditionPDDL(self, sensor):
         sensorName = self._sensor.name
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
+        return PDDL(statement = "( >= (" + sensor.name + ") {0} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + sensor.name + ") {0} )".format(self._threshold), functions = sensor.name)
     
-    def getSensorStatePDDL(self):
-        sensorName = self._sensor.name
-        value = self.getNormalizedValue()
-        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(value), functions = sensorName)
+    def _getSensorStatePDDL(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
+        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(value), functions = sensor.name)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -258,32 +255,30 @@ class LinearActivator(Activator):
         self._fullActivationValue = float(fullActivationValue) # This value (and other values further away from _threshold in this direction) means total activation
     
     def computeActivation(self):
-        value = self.getNormalizedValue()
+        value = self._getNormalizedSensorValue(self._sensor)
         assert isinstance(value, int) or isinstance(value, float)
         assert self.valueRange != 0
         rawActivation = (value - self._zeroActivationValue) / self.valueRange
         return sorted((self._minActivation, rawActivation * self.activationRange + self._minActivation, self._maxActivation))[1] # clamp to activation range
     
-    def getDirection(self):
+    def _getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
     
-    def getSensorWish(self):
-        value = self.getNormalizedValue()
+    def _getSensorWish(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
         assert isinstance(value, int) or isinstance(value, float)
         assert self.valueRange != 0
-        if self.getDirection() > 0:
+        if self._getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - value) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
         else:
             return sorted((-1.0, (self._fullActivationValue - value) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
-    def getSensorPreconditionPDDL(self):
-        sensorName = self._sensor.name
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._zeroActivationValue), functions = sensorName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
+    def _getSensorPreconditionPDDL(self, sensor):
+        return PDDL(statement = "( >= (" + sensor.name + ") {0} )".format(self._zeroActivationValue) if self._getDirection() == 1 else "( <= (" + sensor.name + ") {0} )".format(self._zeroActivationValue), functions = sensor.name)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
     
-    def getSensorStatePDDL(self):
-        sensorName = self._sensor.name
-        value = self.getNormalizedValue()
-        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(value), functions = sensorName)
+    def _getSensorStatePDDL(self, sensor):
+        value = self._getNormalizedSensorValue(sensor)
+        return PDDL(statement = "( = (" + sensor.name + ") {0} )".format(value), functions = sensor.name)
                 
     @property
     def valueRange(self):
