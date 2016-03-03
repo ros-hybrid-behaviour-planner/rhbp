@@ -14,13 +14,13 @@ class Sensor(object):
     '''
     _instanceCounter = 0
 
-    def __init__(self, name = None, optional = False):
+    def __init__(self, name = None, optional = False, initialValue = None):
         '''
         Constructor
         '''
         self._name = name if name else "Sensor {0}".format(Sensor._instanceCounter)
         self._optional = optional
-        self._value = None # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._value = initialValue # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         Sensor._instanceCounter += 1
 
     @property
@@ -62,8 +62,8 @@ class SimpleTopicSensor(Sensor):
     """
     "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
     """
-    def __init__(self, name, topic, messageType, createLog = False):
-        super(SimpleTopicSensor, self).__init__(name)
+    def __init__(self, name, topic, messageType, initialValue = None, createLog = False):
+        super(SimpleTopicSensor, self).__init__(name = name, initialValue = initialValue)
         self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
         self._iShouldCreateLog = createLog
         if self._iShouldCreateLog:
@@ -81,8 +81,8 @@ class PassThroughTopicSensor(Sensor):
     """
     "PassThrough" because the sensor just forwards the received msg
     """
-    def __init__(self, name, topic, messageType, createLog = False):
-        super(PassThroughTopicSensor, self).__init__(name)
+    def __init__(self, name, topic, messageType, initialValue = None, createLog = False):
+        super(PassThroughTopicSensor, self).__init__(name = name, initialValue = initialValue)
         self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
         self._iShouldCreateLog = createLog
         if self._iShouldCreateLog:
