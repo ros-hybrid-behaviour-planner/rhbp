@@ -73,7 +73,6 @@ class Disjunction(Conditonal):
         super(Disjunction, self).__init__()
         self._name = kwargs["name"] if "name" in kwargs else "Disjunction {0}".format(Conditonal._instanceCounter)
         self._conditions = list(args)
-        Disjunction._instanceCounter += 1
     
     def addCondition(self, condition):
         '''
@@ -125,10 +124,6 @@ class Disjunction(Conditonal):
     def __str__(self):
         return "{0} made of: {1}: {2}".format(self._name, self._conditions, self.satisfaction)
     
-    def __repr__(self):
-        return str(self)
-
-
 
 class Conjunction(Conditonal):
     '''
@@ -142,7 +137,6 @@ class Conjunction(Conditonal):
         super(Conjunction, self).__init__()
         self._name = kwargs["name"] if "name" in kwargs else "Conjunction {0}".format(Conditonal._instanceCounter)
         self._conditions = list(args) # TODO check types!
-        Disjunction._instanceCounter += 1
     
     def addCondition(self, condition):
         '''
@@ -193,6 +187,56 @@ class Conjunction(Conditonal):
     
     def __str__(self):
         return "{0} made of: {1}: {2}".format(self._name, self._conditions, self.satisfaction)
+        
     
-    def __repr__(self):
-        return str(self)
+class Negation(Conditonal):
+    '''
+    This class is a pseudo conditional composed of another conditional that is going to be negated
+    '''
+    
+    def __init__(self, conditional):
+        '''
+        Constructor
+        '''
+        super(Negation, self).__init__()
+        self._name = "Negation {0}".format(Conditonal._instanceCounter)
+        assert isinstance(conditional, Conditonal), "Only Conditionals can be negated"
+        self._condition = conditional
+        
+    @property
+    def satisfaction(self):
+        '''
+        The negated satisfaction
+        '''
+        return self._condition.satisfaction() * -1
+    
+    def getWishes(self):
+        '''
+        returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
+        Each component of the conjunction contributes its wish to the list.
+        '''
+        wishes = self._condition.getWishes()
+        
+        l = []
+        for w in wishes:
+            l.append((w[0],w[1] * -1)) #negation
+        return l
+    
+    def getPreconditionPDDL(self): 
+        '''
+        The negated precondition PDDL
+        '''       
+        pddl = self._condition.getPreconditionPDDL()
+        pddl.statement = "(not {0})".format(pddl.statement)
+        return pddl
+    
+    def getStatePDDL(self):
+        return self._condition.getStatePDDL()
+            
+    @property
+    def optional(self):
+        return self._condition.optional
+    
+    def __str__(self):
+        return "{0} of {1}".format(self._name, self._condition)
+    

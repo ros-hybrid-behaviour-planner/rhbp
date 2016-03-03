@@ -19,7 +19,7 @@ class Activator(conditions.Conditonal):
         Constructor
         '''
         super(Activator, self).__init__()
-        self._name = name if name else "Activator {0}".format(Conditonal._instanceCounter)
+        self._name = name if name else "Activator {0}".format(Activator._instanceCounter)
         self._sensor = sensor
         self._minActivation = float(minActivation)
         self._maxActivation = float(maxActivation)
