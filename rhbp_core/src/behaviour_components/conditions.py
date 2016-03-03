@@ -7,7 +7,6 @@ Created on 13.04.2015
 import warnings
 import operator
 import itertools
-import rospy
 from util import PDDL
 
 class Conditonal(object):
