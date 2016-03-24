@@ -145,6 +145,13 @@ class GoalBase(object):
             self._priorityService.shutdown();
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
+            
+    def updateComputation(self):
+        """
+        Updates all subentities of the behaviour in order to do computations only once
+        """
+        for p in self._conditions:
+            p.updateComputation()
     
     def computeSatisfaction(self):
         """
@@ -178,6 +185,7 @@ class GoalBase(object):
         return pddl                      
 
     def pddlCallback(self, dummy):
+        self.updateComputation()
         goalStatements = self.getGoalStatements()
         statePDDL = self.getStatePDDL()
         return GetPDDLResponse(**{"goalStatement" : goalStatements,
@@ -186,6 +194,7 @@ class GoalBase(object):
                                   "stateFunctions" : list(statePDDL.functions)})
     
     def getStatus(self, request):
+        self.updateComputation()
         self._active = self._activated
         status = Status(**{
                         "name"         : self._name,

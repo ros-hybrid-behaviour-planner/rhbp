@@ -1,7 +1,7 @@
 '''
 Created on 13.04.2015
 
-@author: stephan
+@author: wypler,hrabia
 ''' 
 from __future__ import division # force floating point division when using plain /
 import rospy
@@ -464,6 +464,15 @@ class BehaviourBase(object):
             self._pddlService.shutdown()
         except Exception as e:
             rospy.logerr("Error in destructor of BehaviourBase: %s", e)
+            
+            
+    def updateComputation(self):
+        """
+        Updates all subentities of the behaviour in order to do computations only once
+        """
+        for p in self._preconditions:
+            p.updateComputation()
+        
     
     def computeActivation(self):
         """
@@ -588,6 +597,8 @@ class BehaviourBase(object):
                                  })
     
     def getStatus(self, request):
+        #update everything before generating the status message
+        self.updateComputation()
         self._active = self._activated
         status = Status(**{
                            "name"         : self._name, # this is sent for sanity check and planner status messages only

@@ -1,7 +1,7 @@
 '''
 Created on 13.04.2015
 
-@author: stephan
+@author: wypler, hrabia
 '''
 
 import rospy
