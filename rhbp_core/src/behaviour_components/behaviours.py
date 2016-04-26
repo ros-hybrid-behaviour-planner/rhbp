@@ -421,7 +421,7 @@ class BehaviourBase(object):
         Constructor
         '''
         self._name = name # a unique name is mandatory
-        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
+        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatusCallback)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
@@ -596,7 +596,7 @@ class BehaviourBase(object):
                                   "stateFunctions" : list(state.functions)
                                  })
     
-    def getStatus(self, request):
+    def getStatusCallback(self, request):
         #update everything before generating the status message
         self.updateComputation()
         self._active = self._activated

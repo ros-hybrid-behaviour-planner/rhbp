@@ -243,7 +243,7 @@ class ThresholdActivator(Activator):
     
     def _getSensorStatePDDL(self, sensor):
         value = self._normalizedSensorValues[sensor]
-        return PDDL(statement = "( = (" + sensorName + ") {0} )".format(value), functions = sensor.name)
+        return PDDL(statement = "( = (" + sensor.name + ") {0} )".format(value), functions = sensor.name)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
