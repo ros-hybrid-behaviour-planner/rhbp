@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from behaviour_planner.srv import Activate, SetInteger
+from rhbp_core.srv import Activate, SetInteger
 from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for goal

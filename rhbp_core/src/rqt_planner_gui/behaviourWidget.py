@@ -1,13 +1,13 @@
 ## rqt widget displaying a behaviour
 #Created on 10.08.2015
-#@author: stephan
+#@author: stephan wypler
 
 import os
 import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
-from behaviour_planner.srv import Activate, ForceStart, SetInteger
+from rhbp_core.srv import Activate, ForceStart, SetInteger
 from PyQt4.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
@@ -21,7 +21,7 @@ class BehaviourWidget(QWidget):
         # Give QObjects reasonable names
         self.setObjectName(self._name + 'Widget')
         # Get path to UI file which should be in the "resource" folder of this node
-        ui_file = os.path.join(rospkg.RosPack().get_path('behaviour_planner'), 'src', 'rqt_planner_gui', 'resource', 'behaviour.ui')
+        ui_file = os.path.join(rospkg.RosPack().get_path('rhbp_core'), 'src', 'rqt_planner_gui', 'resource', 'behaviour.ui')
         # Extend the widget with all attributes and children from UI file
         loadUi(ui_file, self)
         self.behaviourGroupBox.setTitle(self._name)
