@@ -111,6 +111,7 @@ class MultiSensorCondition(Condition):
         self._activator = activator
 
         self._normalizedSensorValues = dict.fromkeys(self._sensors, 0)
+        self._sensorSatisfactions = dict.fromkeys(self._sensors, 0)
 
         self._satisfaction = 0
 
@@ -121,13 +122,9 @@ class MultiSensorCondition(Condition):
         '''
         self._normalize()
 
-        self._reduceSatisfaction()
+        self._computeSatisfactions()
 
-    def _reduceSatisfaction(self):
-        '''
-        This class has to be implemented specific to used sensors and application
-        '''
-        raise NotImplementedError()
+        self._satisfaction = self._reduceSatisfaction()
 
     def _normalize(self):
         '''
@@ -136,6 +133,21 @@ class MultiSensorCondition(Condition):
         '''
         for s in self._sensors:
             self._normalizedSensorValues[s] = s.value
+
+    def _computeSatisfactions(self):
+        '''
+        This method is a base implementation that calculates the satisfaction for each sensor
+        It can also be omitted if the _reduceSatisfaction method is not usind the _sensorSatisfactions dict
+        '''
+        for s in self._sensors:
+            self._sensorSatisfactions[s] = self._activator.computeActivation(self._normalizedSensorValues[s])
+
+    def _reduceSatisfaction(self):
+        '''
+        This class has to be implemented specific to used sensors and application
+        It has to return a new satisfaction value
+        '''
+        raise NotImplementedError()
 
     def getWishes(self):
         '''
@@ -165,13 +177,6 @@ class MultiSensorCondition(Condition):
     def getStatePDDL(self):
         #Calling getSensorStatePDDL for all sensors
         return [self._activator.getSensorStatePDDL(s.name, self._normalizedSensorValues[s]) for s in self._sensors]
-
-    @property
-    def satisfaction(self):
-        '''
-        This property specifies to what extend the condition is fulfilled.
-        '''
-        return self._satisfaction
 
     @property
     def optional(self):
