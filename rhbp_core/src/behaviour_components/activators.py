@@ -271,10 +271,9 @@ class BooleanActivator(Activator):
         super(BooleanActivator, self).__init__(minActivation, maxActivation, name)
         self._desired = desiredValue   # this is the threshold Value
     
-    def computeActivation(self):
-        value = self._normalizedSensorValues[self._sensors[0]] #TODO support multiple sensors
-        assert isinstance(value, bool)
-        return self._maxActivation if value == self._desired else self._minActivation
+    def computeActivation(self, normalizedValue):
+        assert isinstance(normalizedValue, bool)
+        return self._maxActivation if normalizedValue == self._desired else self._minActivation
     
     def getDirection(self):
         return 1 if self._desired == True else -1
@@ -340,13 +339,12 @@ class ThresholdActivator(Activator):
         assert isinstance(valueRange, int) or isinstance(valueRange, float)
         self._valueRange = valueRange
     
-    def computeActivation(self):
-        value = self._normalizedSensorValues[self._sensors[0]]#TODO support multiple sensors
-        assert isinstance(value, int) or isinstance(value, float)
+    def computeActivation(self, normalizedValue):
+        assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
         if self._isMinimum:
-            return self._maxActivation if value >= self._threshold else self._minActivation
+            return self._maxActivation if normalizedValue >= self._threshold else self._minActivation
         else:
-            return self._maxActivation if value <= self._threshold else self._minActivation
+            return self._maxActivation if normalizedValue <= self._threshold else self._minActivation
     
     def getDirection(self):
         return 1 if self._isMinimum else -1
@@ -358,10 +356,10 @@ class ThresholdActivator(Activator):
         if self._valueRange:
             return sorted((-1.0, (self._threshold - normalizedValue) / self._valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
         else:
-            return float(self._getDirection())
+            return float(self.getDirection())
 
     def getSensorPreconditionPDDL(self, sensorName):
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
     
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         return PDDL(statement = "( = (" + sensorName + ") {0} )".format(normalizedValue), functions = sensorName)
@@ -384,11 +382,10 @@ class LinearActivator(Activator):
         self._zeroActivationValue = float(zeroActivationValue) # Activation raises linearly between this value and _fullActivationValue (it remains 0 until here))
         self._fullActivationValue = float(fullActivationValue) # This value (and other values further away from _threshold in this direction) means total activation
     
-    def computeActivation(self):
-        value = self._normalizedSensorValues[self._sensors[0]]#TODO support multiple sensors
-        assert isinstance(value, int) or isinstance(value, float)
+    def computeActivation(self, normalizedValue):
+        assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
         assert self.valueRange != 0
-        rawActivation = (value - self._zeroActivationValue) / self.valueRange
+        rawActivation = (normalizedValue - self._zeroActivationValue) / self.valueRange
         return sorted((self._minActivation, rawActivation * self.activationRange + self._minActivation, self._maxActivation))[1] # clamp to activation range
     
     def getDirection(self):
@@ -398,13 +395,13 @@ class LinearActivator(Activator):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
 
         assert self.valueRange != 0
-        if self._getDirection() > 0:
+        if self.getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
         else:
             return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
     def getSensorPreconditionPDDL(self, sensorName):
-        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._zeroActivationValue) if self._getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._zeroActivationValue), functions = sensorName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
+        return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._zeroActivationValue), functions = sensorName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         return PDDL(statement = "( = (" + sensorName + ") {0} )".format(normalizedValue), functions = sensorName)
