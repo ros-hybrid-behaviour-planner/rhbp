@@ -19,6 +19,12 @@ class Conditonal(object):
     def __init__(self):
         Conditonal._instanceCounter += 1
         
+    def updateComputation(self):
+        '''
+        This method is called once per step and should trigger complex computations that should be cached
+        '''
+        pass
+        
     @property
     def satisfaction(self):
         '''
@@ -82,6 +88,10 @@ class Disjunction(Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
+            
+    def updateComputation(self):
+        for c in self._conditions:
+            c.updateComputation()
     
     @property
     def satisfaction(self):
@@ -146,6 +156,10 @@ class Conjunction(Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
+            
+    def updateComputation(self):
+        for c in self._conditions:
+            c.updateComputation()
     
     @property
     def satisfaction(self):
@@ -202,6 +216,9 @@ class Negation(Conditonal):
         self._name = "Negation {0}".format(Conditonal._instanceCounter)
         assert isinstance(conditional, Conditonal), "Only Conditionals can be negated"
         self._condition = conditional
+        
+    def updateComputation(self):
+        self._condition.updateComputation()
         
     @property
     def satisfaction(self):

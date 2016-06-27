@@ -27,7 +27,6 @@ class Condition(Conditonal):
         self._normalizedSensorValue = self._normalize()
         self._satisfaction = 0
 
-
     def updateComputation(self):
         '''
         This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
@@ -59,7 +58,7 @@ class Condition(Conditonal):
         try:
             return [(self._sensor, self._activator.getSensorWish(self._normalizedSensorValue))]
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
     
     def getPreconditionPDDL(self):
@@ -146,7 +145,7 @@ class MultiSensorCondition(Condition):
         try:
             return [(s, self._activator.getSensorWish(self._normalizedSensorValues[s])) for s in self._sensors]
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
 
     def getPreconditionPDDL(self):
@@ -268,13 +267,13 @@ class BooleanActivator(Activator):
         self._desired = desiredValue   # this is the threshold Value
     
     def computeActivation(self):
-        value = self._getNormalizedSensorValue(self._sensor)
+        value = self._normalizedSensorValues[self._sensors[0]] #TODO support multiple sensors
         assert isinstance(value, bool)
         return self._maxActivation if value == self._desired else self._minActivation
     
     def getDirection(self):
         return 1 if self._desired == True else -1
-    
+
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
         if normalizedValue == self._desired:
@@ -285,7 +284,7 @@ class BooleanActivator(Activator):
     
     def getSensorPreconditionPDDL(self, sensorName):
         return PDDL(statement = "(" + sensorName + ")" if self._desired == True else "(not (" + sensorName + "))", predicates = sensorName)
-    
+
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         return PDDL(statement = "(" + sensorName + ")" if normalizedValue == True else "(not (" + sensorName + "))", predicates = sensorName)
         
@@ -337,7 +336,7 @@ class ThresholdActivator(Activator):
         self._valueRange = valueRange
     
     def computeActivation(self):
-        value = self._getNormalizedSensorValue()
+        value = self._normalizedSensorValues[self._sensors[0]]#TODO support multiple sensors
         assert isinstance(value, int) or isinstance(value, float)
         if self._isMinimum:
             return self._maxActivation if value >= self._threshold else self._minActivation
@@ -355,7 +354,7 @@ class ThresholdActivator(Activator):
             return sorted((-1.0, (self._threshold - normalizedValue) / self._valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
         else:
             return float(self._getDirection())
-    
+
     def getSensorPreconditionPDDL(self, sensorName):
         return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._threshold), functions = sensorName)
     
@@ -381,7 +380,7 @@ class LinearActivator(Activator):
         self._fullActivationValue = float(fullActivationValue) # This value (and other values further away from _threshold in this direction) means total activation
     
     def computeActivation(self):
-        value = self._getNormalizedSensorValue(self._sensor)
+        value = self._normalizedSensorValues[self._sensors[0]]#TODO support multiple sensors
         assert isinstance(value, int) or isinstance(value, float)
         assert self.valueRange != 0
         rawActivation = (value - self._zeroActivationValue) / self.valueRange
@@ -389,9 +388,10 @@ class LinearActivator(Activator):
     
     def getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
-    
+
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
+
         assert self.valueRange != 0
         if self._getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
@@ -400,10 +400,10 @@ class LinearActivator(Activator):
         
     def getSensorPreconditionPDDL(self, sensorName):
         return PDDL(statement = "( >= (" + sensorName + ") {0} )".format(self._zeroActivationValue) if self._getDirection() == 1 else "( <= (" + sensorName + ") {0} )".format(self._zeroActivationValue), functions = sensorName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
-    
+
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         return PDDL(statement = "( = (" + sensorName + ") {0} )".format(normalizedValue), functions = sensorName)
-                
+
     @property
     def valueRange(self):
         return self._fullActivationValue - self._zeroActivationValue
