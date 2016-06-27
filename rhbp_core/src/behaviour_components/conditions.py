@@ -79,6 +79,7 @@ class Disjunction(Conditonal):
         super(Disjunction, self).__init__()
         self._name = kwargs["name"] if "name" in kwargs else "Disjunction {0}".format(Conditonal._instanceCounter)
         self._conditions = list(args)
+        self._satisfaction = 0
     
     def addCondition(self, condition):
         '''
@@ -92,13 +93,15 @@ class Disjunction(Conditonal):
     def updateComputation(self):
         for c in self._conditions:
             c.updateComputation()
-    
-    @property
-    def satisfaction(self):
+
         '''
         The disjunction of activations is the highest satisfaction.
         '''
-        return max((x.satisfaction for x in self._conditions))
+        self._satisfaction = max((x.satisfaction for x in self._conditions))
+    
+    @property
+    def satisfaction(self):
+        return self._satisfaction
     
     def getWishes(self):
         '''
@@ -147,6 +150,7 @@ class Conjunction(Conditonal):
         super(Conjunction, self).__init__()
         self._name = kwargs["name"] if "name" in kwargs else "Conjunction {0}".format(Conditonal._instanceCounter)
         self._conditions = list(args) # TODO check types!
+        self._satisfaction = 0
     
     def addCondition(self, condition):
         '''
@@ -160,13 +164,15 @@ class Conjunction(Conditonal):
     def updateComputation(self):
         for c in self._conditions:
             c.updateComputation()
-    
-    @property
-    def satisfaction(self):
+
         '''
         The conjuction of activations is the product of individual satisfactions.
         '''
-        return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
+        self._satisfaction = reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
+    
+    @property
+    def satisfaction(self):
+        return self._satisfaction
     
     def getWishes(self):
         '''
