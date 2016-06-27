@@ -24,7 +24,7 @@ class Condition(Conditonal):
         self._sensor = sensor
         self._activator = activator
 
-        self._normalizedSensorValue = self._normalize()
+        self._normalizedSensorValue = 0
         self._satisfaction = 0
 
     def updateComputation(self):
@@ -74,7 +74,7 @@ class Condition(Conditonal):
         '''
         return self._satisfaction
 
-    # TODO check if we really need the following properties!!!!
+    # TODO check if we really need the following property!!!!
     @property
     def sensor(self):
         rospy.logwarn("called sensor optional")
@@ -82,7 +82,6 @@ class Condition(Conditonal):
 
     @property
     def optional(self):
-        rospy.logwarn("called condition optional")
         return self._sensor.optional
         
     def __str__(self):
