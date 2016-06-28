@@ -92,7 +92,7 @@ def mergeStatePDDL(PDDLone, PDDLtwo):
     '''
     This function merges PDDLone into PDDLtwo (in place)
     '''
-    rospy.logwarn("PDDL1: %s, PDDL2: %s",str(PDDLone), str(PDDLtwo))
+    #rospy.logwarn("PDDL1: %s, PDDL2: %s",str(PDDLone), str(PDDLtwo))
     
     for x in tokenizePDDL(PDDLone.statement):
         # find out sensorName and type of currently processed token (must be declared in either functions or predicates sets)
