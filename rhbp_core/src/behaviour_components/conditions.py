@@ -231,7 +231,7 @@ class Negation(Conditonal):
         '''
         The negated satisfaction
         '''
-        return self._condition.satisfaction * -1
+        return 1 - self._condition.satisfaction
     
     def getWishes(self):
         '''
