@@ -113,14 +113,14 @@ def mergeStatePDDL(PDDLone, PDDLtwo):
         if statementIsPredicate:
             if sensorName in PDDLtwo.predicates:
                 if not x in tokenizePDDL(PDDLtwo.statement):
-                    rospy.logwarn("predicate %s declared differently than before %s vs %s", x, PDDLone.statement, PDDLtwo.statement)
+                    rospy.logwarn("predicate declared differently than before %s vs %s", x, PDDLtwo.statement)
             else:
                 PDDLtwo.predicates.add(sensorName)
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
         else: # statement is function
             if sensorName in PDDLtwo.functions:
                 if not x in tokenizePDDL(PDDLtwo.statement):
-                    rospy.logwarn("function %s declared differently than before %s vs %s", x, PDDLone.statement, PDDLtwo.statement)
+                    rospy.logwarn("function declared differently than before %s vs %s", x, PDDLtwo.statement)
             else:
                 PDDLtwo.functions.add(sensorName)
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
