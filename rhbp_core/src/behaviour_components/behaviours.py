@@ -244,6 +244,7 @@ class Behaviour(object):
         '''
         This method sums up all components of activation to compute the additional activation in this step.
         '''
+        #TODO this is also calculated several times, if the single functions are accessed from outside
         if self._active:
             self.__currentActivationStep = self._activationFromPreconditions *  rospy.get_param("~situationBias", 1.0) \
                                          + self.getActivationFromGoals()[0] \
@@ -470,6 +471,10 @@ class BehaviourBase(object):
         """
         Updates all subentities of the behaviour in order to do computations only once
         """
+
+        #first synchronize the input data before doing the calculation
+        for p in self._preconditions:
+            p.sync()
         for p in self._preconditions:
             p.updateComputation()
         

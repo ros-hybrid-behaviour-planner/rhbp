@@ -232,9 +232,12 @@ class Manager(object):
         self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
         ### use the symbolic planner if necessary ###
         self.planIfNecessary()
+
         ### log behaviour stuff ###
         rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
+            ### do the activation computation ###
+            behaviour.computeActivation()
             rospy.logdebug("%s", behaviour.name)
             rospy.logdebug("\tactive %s", behaviour.active)
             rospy.logdebug("\twishes %s", behaviour.wishes)
@@ -247,8 +250,7 @@ class Manager(object):
                 rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = True))
                 rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = True))
             rospy.logdebug("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
-            ### do the activation computation ###
-            behaviour.computeActivation()
+
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
             behaviour.commitActivation()
