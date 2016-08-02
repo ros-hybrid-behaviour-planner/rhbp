@@ -27,6 +27,9 @@ class Condition(Conditonal):
         self._normalizedSensorValue = 0
         self._satisfaction = 0
 
+    def sync(self):
+        self._sensor.sync()
+
     def updateComputation(self):
         '''
         This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
@@ -46,7 +49,7 @@ class Condition(Conditonal):
         Normalize the current sensor value into a floating point number
         '''
         if self._sensor:
-            return self._sensor.value
+            return self._sensor.value()
         else:
            return 0
 
@@ -114,6 +117,10 @@ class MultiSensorCondition(Condition):
 
         self._satisfaction = 0
 
+
+    def sync(self):
+        for s in self._sensors:
+            s.sync()
 
     def updateComputation(self):
         '''

@@ -18,6 +18,14 @@ class Conditonal(object):
     
     def __init__(self):
         Conditonal._instanceCounter += 1
+
+    def sync(self):
+        '''
+        Synchronize the current input state of all used components
+        Should be called before updateComputation
+        '''
+
+        raise NotImplementedError()
         
     def updateComputation(self):
         '''
@@ -89,6 +97,10 @@ class Disjunction(Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
+
+    def sync(self):
+        for c in self._conditions:
+            c.sync()
             
     def updateComputation(self):
         for c in self._conditions:
@@ -98,6 +110,8 @@ class Disjunction(Conditonal):
         The disjunction of activations is the highest satisfaction.
         '''
         self._satisfaction = max((x.satisfaction for x in self._conditions))
+
+
     
     @property
     def satisfaction(self):
@@ -160,7 +174,11 @@ class Conjunction(Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
-            
+
+    def sync(self):
+        for c in self._conditions:
+            c.sync()
+
     def updateComputation(self):
         for c in self._conditions:
             c.updateComputation()
@@ -222,7 +240,10 @@ class Negation(Conditonal):
         self._name = "Negation {0}".format(Conditonal._instanceCounter)
         assert isinstance(conditional, Conditonal), "Only Conditionals can be negated"
         self._condition = conditional
-        
+
+    def sync(self):
+        self._condition.sync()
+
     def updateComputation(self):
         self._condition.updateComputation()
         
