@@ -49,7 +49,7 @@ class Condition(Conditonal):
         Normalize the current sensor value into a floating point number
         '''
         if self._sensor:
-            return self._sensor.valueSync()
+            return self._sensor.value()
         else:
            return 0
 
@@ -138,7 +138,7 @@ class MultiSensorCondition(Condition):
         This also allows to reduce several sensors into one normalized value
         '''
         for s in self._sensors:
-            self._normalizedSensorValues[s] = s.valueSync
+            self._normalizedSensorValues[s] = s.value
 
     def _computeSatisfactions(self):
         '''

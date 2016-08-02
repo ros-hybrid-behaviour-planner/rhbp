@@ -21,7 +21,7 @@ class Sensor(object):
         self._name = name if name else "Sensor {0}".format(Sensor._instanceCounter)
         self._optional = optional
         self._value = initialValue # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
-        self._syncValue = initialValue
+        self._latestValue = initialValue
 
         Sensor._instanceCounter += 1
 
@@ -30,22 +30,22 @@ class Sensor(object):
         Keep a explicit copy of the current value
         returns the just stored value
         '''
-        self._syncValue = self._value
-        return  self._syncValue
+        self._value = self._latestValue
+        return  self._value
 
     def update(self, newValue):
         '''
         This method is to refresh the _value.
         '''
-        self._value = newValue
+        self._latestValue = newValue
 
     @property
     def value(self):
         return self._value
 
     @property
-    def valueSync(self):
-        return self._syncValue
+    def latestValue(self):
+        return self._latestValue
 
     @property
     def optional(self):
