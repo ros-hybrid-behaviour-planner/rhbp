@@ -88,7 +88,6 @@ class Manager(object):
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
-        rospy.logdebug("statePDDL %s", statePDDL.statement)
         # debugging only
         with open("robotDomain{0}.pddl".format(self._stepCounter), 'w') as outfile:
             outfile.write(domainPDDLString)
