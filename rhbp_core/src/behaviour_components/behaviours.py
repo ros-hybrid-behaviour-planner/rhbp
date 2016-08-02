@@ -111,7 +111,6 @@ class Behaviour(object):
         try:
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            rospy.logdebug("\n%s", pddl)
             return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
