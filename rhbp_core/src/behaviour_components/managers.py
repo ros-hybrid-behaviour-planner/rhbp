@@ -63,6 +63,9 @@ class Manager(object):
         self.__manualStartService.shutdown()
         self.__statusPublisher.unregister()
         self.__threshFile.close()
+
+    def _getDomainName(self):
+        return self._prefix if self._prefix else "UNNAMED"
     
     def fetchPDDL(self):
         '''
@@ -77,7 +80,7 @@ class Manager(object):
             pddl.statement += actionPDDL.statement
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
             pddl.functions = pddl.functions.union(actionPDDL.functions)
-        domainPDDLString = "(define (domain {0})\n".format(self._prefix)
+        domainPDDLString = "(define (domain {0})\n".format(self._getDomainName())
         domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
         domainPDDLString += pddl.statement + ")"
@@ -89,7 +92,7 @@ class Manager(object):
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
         # debugging only
-        with open("robotDomain{0}.pddl".format(self._stepCounter), 'w') as outfile:
+        with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile: #TODO only in debug mode
             outfile.write(domainPDDLString)
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
@@ -102,11 +105,11 @@ class Manager(object):
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
         '''
         goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._prefix, self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
         # debugging only
-        with open("robotProblem{0}{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile:
+        with open("pddl{0}Problem{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile: #TODO only in debug mode
             outfile.write(problemPDDLString)
         return problemPDDLString
     
