@@ -210,7 +210,7 @@ class Activator(object):
         self._maxActivation = float(maxActivation)
 
     def getPDDLFunctionName(self, sensorName):
-        return self._name + '#' + sensorName
+        return self._name + '_' + sensorName
 
     @property
     def minActivation(self):
@@ -371,11 +371,11 @@ class ThresholdActivator(Activator):
 
     def getSensorPreconditionPDDL(self, sensorName):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0} )".format(self._threshold), functions = functionName)
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
     
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( = (" + functionName + ") {0} )".format(normalizedValue), functions = functionName)
+        return PDDL(statement = "( = (" + functionName + ") {0:f} )".format(normalizedValue), functions = functionName)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -415,11 +415,11 @@ class LinearActivator(Activator):
         
     def getSensorPreconditionPDDL(self, sensorName):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + functionName + ") {0} )".format(self._zeroActivationValue), functions = functionName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._zeroActivationValue), functions = functionName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( = (" + functionName + ") {0} )".format(normalizedValue), functions = functionName)
+        return PDDL(statement = "( = (" + functionName + ") {0:f} )".format(normalizedValue), functions = functionName)
 
     @property
     def valueRange(self):
