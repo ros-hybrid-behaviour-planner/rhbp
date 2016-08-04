@@ -99,7 +99,7 @@ catkin_python_setup()
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES metric_ff_v2_1
+#  LIBRARIES metric_ff
 #  CATKIN_DEPENDS rospy
 #  DEPENDS system_lib
 )
@@ -115,23 +115,33 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(metric_ff_v2_1
-#   src/${PROJECT_NAME}/metric_ff_v2_1.cpp
-# )
+# get the ${PYTHON_EXECUTABLE}
+INCLUDE(FindPythonInterp)
 
-message( CURRENT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-message( CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR})
+#determine if we are using dist-packages on a Debian derviate or site-packages for most other distros
+execute_process (
+        COMMAND "${PYTHON_EXECUTABLE}" -c "from distutils.sysconfig import get_python_lib; site=get_python_lib(); site=site[site.rindex('/')+1:] ;print site"
+        OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+#get the python version for the correct path
+execute_process (
+        COMMAND "${PYTHON_EXECUTABLE}" -c "from distutils.sysconfig import get_python_version; print get_python_version()"
+        OUTPUT_VARIABLE PYTHON_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 # use distutils to build the extension module
 SET(PYTHON_EXECUTABLE python2)
 add_custom_target(ff.so ALL
-                COMMAND ${PYTHON_EXECUTABLE} setup.py build_ext --inplace
+                COMMAND ${PYTHON_EXECUTABLE} setup.py build
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
+
 # move the built extension module into the correct location (this is a total hack)
 add_custom_target(ff ALL
-                COMMAND mkdir -p ${CATKIN_DEVEL_PREFIX}/lib && cp ff.so ${CATKIN_DEVEL_PREFIX}/lib
+                COMMAND ${PYTHON_EXECUTABLE} setup.py install --install-lib=${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
@@ -141,10 +151,25 @@ add_dependencies(ff ff.so)
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(metric_ff_v2_1 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(metric_ff ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(metric_ff_v2_1_node src/metric_ff_v2_1_node.cpp)
+# creating an additional executable for testing
+add_executable(${PROJECT_NAME} 
+    main.c
+    memory.c
+    output.c
+    parse.c
+    expressions.c
+    inst_pre.c
+    inst_easy.c
+    inst_hard.c
+    inst_final.c
+    relax.c
+    search.c
+    scan-fct_pddl.tab.c
+    scan-ops_pddl.tab.c
+)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
