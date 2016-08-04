@@ -532,6 +532,7 @@ void create_integer_representation( void )
 	  printf("\n\nunknown optimization method %s. check input files\n\n", 
 		 gparse_optimization);
 	}
+	printf("\n\nunknown exit %s\n\n", gparse_optimization);
 	exit( 1 );
       }
       if ( strcmp( gparse_optimization, "MAXIMIZE" ) == SAME ||
@@ -1357,11 +1358,11 @@ void normalize_all_wffs( void )
   if ( ggoal->connective == TRU ) {
     printf("\nff: goal can be simplified to TRUE. The empty plan solves it\n\n");
     gnum_plan_ops = 0;
-    exit( 1 );
+    exit( 0x42 );
   }
   if ( ggoal->connective == FAL ) {
     printf("\nff: goal can be simplified to FALSE. No plan will solve it\n\n");
-    exit( 1 );
+    exit( 0xFF );
   }
 
   /* put goal into DNF right away: fully instantiated already

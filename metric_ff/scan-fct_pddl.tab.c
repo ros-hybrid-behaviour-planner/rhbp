@@ -2513,7 +2513,7 @@ int parse_fct_from_memory(const char* problemPDDL){
     FILE * fp = fmemopen((void*) problemPDDL, strlen(problemPDDL) + 1, "r"); // +1 because the terminating 0 byte is part of out buffer and may be read.
     if(fp == NULL) {
         PyErr_SetString(PyExc_IOError, "can't create memory mapped file for problem");
-        return 1;
+        return 0;
     }
     gact_filename = "problem";
     lineno = 1;
@@ -2521,10 +2521,11 @@ int parse_fct_from_memory(const char* problemPDDL){
     
     if(yyparse() != 0){
         fclose(fp);/* and close file again */
+        PyErr_SetString(PyExc_IOError, "Could not parse fct");
         return 1;
+    }else{
+      fclose(fp);/* and close file again */
+      return 0;
     }
-    
-    fclose(fp);/* and close file again */
-    return 0;
 }
 #endif

@@ -2786,11 +2786,12 @@ int parse_ops_from_memory(const char* domainPDDL){
     
     if(yyparse() != 0){
         fclose(fp);/* and close file again */
+        //PyErr_SetString(PyExc_IOError, "Could not parse domain PDDL");
         return 1;
+    }else{
+        fclose(fp);/* and close file again */
+        return 0;
     }
-    
-    fclose(fp);/* and close file again */
-    return 0;
 }
 #endif
 
