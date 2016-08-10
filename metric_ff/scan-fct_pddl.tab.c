@@ -2447,24 +2447,20 @@ void fcterr( int errno, char *par ) {
 
 #if defined(PYTHON)
 void yyerror( char *msg ){
-  int size = snprintf(NULL, 0, "%s: syntax error in line %d, '%s'", gact_filename, lineno, yytext);
-  char* a = malloc(size + 1);
-  sprintf(a, "%s: syntax error in line %d, '%s'", gact_filename, lineno, yytext);
+  char* a = NULL;
+  if ( sact_err_par ) {
+    static const char sformat[] = "%s: syntax error in line %d, '%s': %s%s\n";
+    int size = snprintf(NULL, 0, sformat, gact_filename, lineno, yytext, serrmsg[sact_err], sact_err_par);
+    a = malloc(size + 1);
+    sprintf(a, sformat, gact_filename, lineno, yytext, serrmsg[sact_err], sact_err_par);
+  } else {
+    static const char sformat[] = "%s: syntax error in line %d, '%s': %s\n";
+    int size = snprintf(NULL, 0, sformat, gact_filename, lineno, yytext, serrmsg[sact_err]);
+    a = malloc(size + 1);
+    sprintf(a, sformat, gact_filename, lineno, yytext, serrmsg[sact_err]);
+  }
   PyErr_SetString(FFError, a);
   free(a);
-  if ( sact_err_par ) {
-    size = snprintf(NULL, 0, "%s: syntax error in line %d, '%s': %s%s", gact_filename, lineno, yytext, serrmsg[sact_err], sact_err_par);
-    a = malloc(size + 1);
-    sprintf(a, "%s: syntax error in line %d, '%s': %s%s", gact_filename, lineno, yytext, serrmsg[sact_err], sact_err_par);
-    PyErr_SetString(FFError, a);
-    free(a);
-  } else {
-    size = snprintf(NULL, 0, "%s: syntax error in line %d, '%s': %s%s", gact_filename, lineno, yytext, serrmsg[sact_err]);
-    a = malloc(size + 1);
-    sprintf(a, "%s: syntax error in line %d, '%s': %s", gact_filename, lineno, yytext, serrmsg[sact_err]);
-    PyErr_SetString(FFError, a);
-    free(a);
-  }
 }
 #else
 void yyerror( char *msg ){

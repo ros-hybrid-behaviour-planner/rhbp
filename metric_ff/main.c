@@ -996,6 +996,7 @@ static PyObject* doActualPlanning(Bool pythonMode){
 #else
 static void doActualPlanning(Bool pythonMode){
 #endif
+
     /* This is needed to get all types.
      */
     build_orig_constant_list();
@@ -1008,10 +1009,8 @@ static void doActualPlanning(Bool pythonMode){
         exit( 1 );
     }
 
-
     /* now instantiate operators;
      */
-
 
     /**************************
      * first do PREPROCESSING *
@@ -1201,6 +1200,7 @@ static void doActualPlanning(Bool pythonMode){
         }
     } else {
         if ( gcmd_line.search_config == 4 && !goptimization_established ) {
+            printf("\nError! Optimization criterion not established.\nA*epsilon not defined.\n\n");
             exit( 1 );
         }
     }
@@ -1534,28 +1534,40 @@ static char* get_op_name( int index ){
 
 static PyObject* get_regular_plan( void ){
     PyObject* result =  PyDict_New();
-    if(!result)
+    if(!result){
+        PyErr_SetString(FFError, "Could not create python dict");
         return NULL;
+    }
     PyObject* actions =  PyDict_New();
-    if(!actions)
+    if(!actions){
+        PyErr_SetString(FFError, "Could not create python dict");
         return NULL;
+    }
     int i;
     float cost = 0;
 
     for ( i = 0; i < gnum_plan_ops; i++ ) {
         PyObject* key = PyInt_FromLong(i);
-        if(!key)
-            return NULL;
+        if(!key){
+          PyErr_SetString(FFError, "Could not create python int");
+          return NULL;
+        }
         char* name = get_op_name(gplan_ops[i]);
-        if(!name)
+        if(!name){
             return PyErr_NoMemory();
+        }
         PyObject* value = PyString_FromString(name);
-        if(!value)
+        if(!value){
+            PyErr_SetString(FFError, "Could not create python string");
             return NULL;
-        if(name)
+        }
+        if(name){
             free(name);
-        if(PyDict_SetItem(actions, key, value) != 0)
+        }
+        if(PyDict_SetItem(actions, key, value) != 0){
+            PyErr_SetString(FFError, "Could set python dict action item");
             return NULL;
+        }
         Py_DecRef(key);
         Py_DecRef(value);
         if ( goptimization_established ) {
@@ -1564,14 +1576,21 @@ static PyObject* get_regular_plan( void ){
     }
     if ( goptimization_established ) {
         PyObject* cost_value = PyFloat_FromDouble(cost);
-        if(!cost_value)
+        if(!cost_value){
+            PyErr_SetString(FFError, "Could not parse python cost");
             return NULL;
+        }
         if(PyDict_SetItemString(result, "cost", cost_value) != 0)
+        {
+            PyErr_SetString(FFError, "Could not set python cost");
             return NULL;
+        }
         Py_DecRef(cost_value);
     }
-    if(PyDict_SetItemString(result, "actions", actions) != 0)
+    if(PyDict_SetItemString(result, "actions", actions) != 0){
+        PyErr_SetString(FFError, "Could not set actions");
         return NULL;
+    }
     Py_DecRef(actions);
     return result;
 }
@@ -1579,11 +1598,15 @@ static PyObject* get_regular_plan( void ){
 static PyObject* get_special_plan( BfsNode *last ){
     static int *ops = NULL;
     PyObject* result =  PyDict_New();
-    if(!result)
+    if(!result){
+        PyErr_SetString(FFError, "Could not create python dict");
         return NULL;
+    }
     PyObject* actions =  PyDict_New();
-    if(!actions)
+    if(!actions){
+        PyErr_SetString(FFError, "Could not create python dict");
         return NULL;
+    }
 
     BfsNode *i;
     int j, num_ops;
@@ -1615,18 +1638,26 @@ static PyObject* get_special_plan( BfsNode *last ){
     cost = 0;
     for ( j = 0; j < gnum_plan_ops; j++ ) {
         PyObject* key = PyInt_FromLong(j);
-        if(!key)
+        if(!key){
+            PyErr_SetString(FFError, "Could not create python int");
             return NULL;
+        }
         char* name = get_op_name(gplan_ops[j]);
-        if(!name)
+        if(!name){
             return PyErr_NoMemory();
+        }
         PyObject* value = PyString_FromString(name);
-        if(!value)
+        if(!value){
+            PyErr_SetString(FFError, "Could not create python string");
             return NULL;
-        if(name)
+        }
+        if(name){
             free(name);
-        if(PyDict_SetItem(actions, key, value) != 0)
+        }
+        if(PyDict_SetItem(actions, key, value) != 0){
+            PyErr_SetString(FFError, "Could set python dict action item");
             return NULL;
+        }
         Py_DecRef(key);
         Py_DecRef(value);
         if ( goptimization_established ) {
@@ -1635,19 +1666,26 @@ static PyObject* get_special_plan( BfsNode *last ){
     }
     if ( goptimization_established ) {
         PyObject* cost_value = PyFloat_FromDouble(cost);
-        if(!cost_value)
+        if(!cost_value){
+            PyErr_SetString(FFError, "Could not parse python cost");
             return NULL;
-        if(PyDict_SetItemString(result, "cost", cost_value) != 0)
+        }
+        if(PyDict_SetItemString(result, "cost", cost_value) != 0){
+            PyErr_SetString(FFError, "Could not set python cost");
             return NULL;
+        }
         Py_DecRef(cost_value);
     }
-    if(PyDict_SetItemString(result, "actions", actions) != 0)
+    if(PyDict_SetItemString(result, "actions", actions) != 0){
+        PyErr_SetString(FFError, "Could not set actions");
         return NULL;
+    }
     Py_DecRef(actions);
     return result;
 }
 
 PyObject* ff_plan(PyObject* self, PyObject* args, PyObject* kw){
+
     cleanup();
     const char* domainPDDL = "";
     const char* problemPDDL = "";
@@ -1670,7 +1708,11 @@ PyObject* ff_plan(PyObject* self, PyObject* args, PyObject* kw){
     gcmd_line.cost_bound = -1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kw, "ss|iifii", keywords, &domainPDDL, &problemPDDL, &gcmd_line.search_config, &gcmd_line.w, &gcmd_line.cost_bound, &gcmd_line.cost_rplans, &gcmd_line.debug))
-        return NULL;
+    {
+      PyErr_SetString(PyExc_ValueError, "Could not parse keywords");
+      return NULL;
+    }
+
     // printf("domain: %s\nproblem: %s\nsearch mode: %d\nweight: %d\ncost bound: %f\ncostMinimization: %d\ndebug: %d\n", domainPDDL, problemPDDL, gcmd_line.search_config, gcmd_line.w, gcmd_line.cost_bound, gcmd_line.cost_rplans, gcmd_line.debug);
     if (0 > gcmd_line.search_config || gcmd_line.search_config > 5) {
         PyErr_SetString(PyExc_ValueError, "unknown search configuration. Must be 0 to 5.");
@@ -1703,19 +1745,23 @@ PyObject* ff_plan(PyObject* self, PyObject* args, PyObject* kw){
     if ( gcmd_line.display_info >= 1 ) {
         printf("\nff: parsing domain");
     }
+
     /* it is important for the pddl language to define the domain before
      * reading the problem
      */
-    if(parse_ops_from_memory(domainPDDL) != 0)
+    if(parse_ops_from_memory(domainPDDL) != 0){
         return NULL; // error has already been set.
+    }
 
     /* problem file (facts)
      */
     if ( gcmd_line.display_info >= 1 ) {
         printf(" ... done.\nff: parsing problem");
     }
-    if(parse_fct_from_memory(problemPDDL) != 0)
+
+    if(parse_fct_from_memory(problemPDDL) != 0){
         return NULL; // error has already been set.
+    }
     if ( gcmd_line.display_info >= 1 ) {
         printf(" ... done.\n\n");
     }
