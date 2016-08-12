@@ -3,7 +3,7 @@
 ###############
 
 action should be able to have a duration and not block the behaviour network
-    if so: how to communicte with them / control them
+    if so: how to communicate with them / control them
         start
         interrupt
         preempt
@@ -18,7 +18,7 @@ execute only behaviours in parallel that don't interfere with each other
     look for common actuators to decide
 
 activation must spread in a well-defined manner
-    aggregation introduces integral groth of waiting behaviours at the moment
+    aggregation introduces integral growth of waiting behaviours at the moment
     *************
     look at Maes again!
 
@@ -27,4 +27,4 @@ PDDL generation
 
 FD interface
 
-timimg check interface
+timing check interface
