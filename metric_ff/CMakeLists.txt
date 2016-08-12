@@ -139,14 +139,21 @@ add_custom_target(ff.so ALL
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
-# move the built extension module into the correct location (this is a total hack)
-add_custom_target(ff ALL
-                COMMAND ${PYTHON_EXECUTABLE} setup.py install --install-lib=${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES}
+# move the built extension module into the correct python site packages location
+add_custom_target(ff_python_install ALL
+                COMMAND ${PYTHON_EXECUTABLE} setup.py install --install-lib=${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES} 
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+
+# copy built extension module library into lib folder for dynamic loading
+add_custom_target(ff_ffp_install ALL
+                COMMAND cp ${CATKIN_DEVEL_PREFIX}/lib/python${PYTHON_VERSION}/${PYTHON_SITE_PACKAGES}/ff.so ${CATKIN_DEVEL_PREFIX}/lib
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
 # make sure the above commands run in the correct order
-add_dependencies(ff ff.so)
+add_dependencies(ff_python_install ff.so)
+add_dependencies(ff_ffp_install ff.so)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
