@@ -81,6 +81,8 @@ class Manager(object):
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
             pddl.functions = pddl.functions.union(actionPDDL.functions)
         domainPDDLString = "(define (domain {0})\n".format(self._getDomainName())
+        #Update requirements if necessary
+        domainPDDLString += "(:requirements :strips :adl :equality :negation :conditional-effects :fluents)\n"
         domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
         domainPDDLString += pddl.statement + ")"
