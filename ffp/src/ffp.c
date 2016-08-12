@@ -39,7 +39,7 @@ static PyObject* plan(PyObject* self, PyObject* args, PyObject* kw)
     PyObject* (*ff_plan)(PyObject*, PyObject*, PyObject*);
     void (*initff)(void);
     char *error;
-    handle = dlopen("libff_clib.so", RTLD_LAZY | RTLD_GLOBAL);
+    handle = dlopen("ff.so", RTLD_LAZY | RTLD_GLOBAL);
     if (!handle)
     {
       puts(dlerror());
