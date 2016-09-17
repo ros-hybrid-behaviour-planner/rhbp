@@ -438,3 +438,22 @@ class Manager(object):
         else:
             return None
     
+class ManagerControl(object):
+    '''
+    Helper class for remotely controlling the manager
+    '''
+
+    def __init__(self, plannerPrefix=""):
+        self.__plannerPrefix = plannerPrefix
+
+    def pause(self):
+        rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Pause')
+        rospy.wait_for_service(self.__plannerPrefix + 'Pause')
+        pauseRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Pause', Empty)
+        pauseRequest()
+
+    def resume(self):
+        rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Resume')
+        rospy.wait_for_service(self.__plannerPrefix + 'Resume')
+        resumeRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Resume', Empty)
+        resumeRequest()
