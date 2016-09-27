@@ -4,6 +4,7 @@
 
 from __future__ import division # force floating point division when using plain /
 from util import PDDL
+from std_msgs.msg import Float32
 import rospy
 
 from conditions import Conditonal
@@ -19,7 +20,7 @@ class Condition(Conditonal):
         '''
         Constructor
         '''
-        super(Conditonal, self).__init__()
+        super(Condition, self).__init__()
         self._name = name if name else "Condition{0}".format(Condition._instanceCounter)
         self._sensor = sensor
         self._activator = activator
@@ -193,6 +194,34 @@ class MultiSensorCondition(Condition):
 
     def __repr__(self):
         return str(self)
+
+class PublisherCondition(Condition):
+    '''
+    This is a extended condition that automatically publishes the normalized value
+    of the sensor used by this condition
+    '''
+    _instanceCounter = 0  # static _instanceCounter to get distinguishable names
+
+    def __init__(self, sensor, activator, name=None):
+        '''
+        Constructor
+        '''
+        super(PublisherCondition, self).__init__(sensor=sensor,activator=activator,name=name)
+
+        self._topic_name = name + '/normalized'
+
+        self.__pub = rospy.Publisher(self._topic_name, Float32, queue_size=10)
+
+    def updateComputation(self):
+
+        super(PublisherCondition, self).updateComputation()
+        self.__pub.publish(self._normalizedSensorValue)
+
+    @property
+    def topic_name(self):
+        return self._topic_name
+
+
 
 
 class Activator(object):
