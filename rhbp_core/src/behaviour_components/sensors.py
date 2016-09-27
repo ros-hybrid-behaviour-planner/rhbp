@@ -5,6 +5,7 @@ Created on 13.04.2015
 '''
 
 import rospy
+import utils.ros_helpers
 
 class Sensor(object):
     '''
@@ -14,14 +15,14 @@ class Sensor(object):
     '''
     _instanceCounter = 0
 
-    def __init__(self, name = None, optional = False, initialValue = None):
+    def __init__(self, name = None, optional = False, initial_value = None):
         '''
         Constructor
         '''
         self._name = name if name else "Sensor {0}".format(Sensor._instanceCounter)
         self._optional = optional
-        self._value = initialValue # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
-        self._latestValue = initialValue
+        self._value = initial_value # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._latestValue = initial_value
 
         Sensor._instanceCounter += 1
 
@@ -75,35 +76,39 @@ class Sensor(object):
 class SimpleTopicSensor(Sensor):
     """
     "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+    :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
     """
-    def __init__(self, name, topic, messageType, initialValue = None, createLog = False):
-        super(SimpleTopicSensor, self).__init__(name = name, initialValue = initialValue)
-        self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
-        self._iShouldCreateLog = createLog
-        if self._iShouldCreateLog:
-            self._logFile = open("{0}.log".format(self._name), 'w')
-            self._logFile.write('{0}\n'.format(self._name))
+    def __init__(self, name, topic, message_type = None, initial_value = None, create_log = False):
+        super(SimpleTopicSensor, self).__init__(name = name, initial_value= initial_value)
+
+        # if the type is not specified, try to detect it automatically
+        if message_type is None:
+            messageType = utils.ros_helpers.get_topic_type(topic)
+
+        if messageType is not None:
+            self._sub = rospy.Subscriber(topic, messageType, self.subscription_callback)
+            self._iShouldCreateLog = create_log
+            if self._iShouldCreateLog:
+                self._logFile = open("{0}.log".format(self._name), 'w')
+                self._logFile.write('{0}\n'.format(self._name))
+        else:
+            rospy.logerr("Could not determine message type of: " + topic)
     
-    def subscriptionCallback(self, msg):
+    def subscription_callback(self, msg):
         self.update(msg.data)
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()
 
-class PassThroughTopicSensor(Sensor):
+class PassThroughTopicSensor(SimpleTopicSensor):
     """
     "PassThrough" because the sensor just forwards the received msg
     """
-    def __init__(self, name, topic, messageType, initialValue = None, createLog = False):
-        super(PassThroughTopicSensor, self).__init__(name = name, initialValue = initialValue)
-        self._sub = rospy.Subscriber(topic, messageType, self.subscriptionCallback)
-        self._iShouldCreateLog = createLog
-        if self._iShouldCreateLog:
-            self._logFile = open("{0}.log".format(self._name), 'w')
-            self._logFile.write('{0}\n'.format(self._name))
-    
-    def subscriptionCallback(self, msg):
+    def __init__(self, name, topic, message_type = None,  initial_value = None, create_log = False):
+        super(PassThroughTopicSensor, self).__init__(name = name, topic=topic, message_type = message_type, initial_value = initial_value, create_log=create_log)
+
+    def subscription_callback(self, msg):
         self.update(msg)
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
         if self._iShouldCreateLog:
