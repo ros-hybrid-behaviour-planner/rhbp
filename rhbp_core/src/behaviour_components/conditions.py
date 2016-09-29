@@ -62,6 +62,10 @@ class Conditonal(object):
     @property
     def optional(self):
         raise NotImplementedError()
+
+    @property
+    def conditions(self):
+        raise NotImplementedError()
     
     def __str__(self):
         return "Conditional"
@@ -139,6 +143,16 @@ class Disjunction(Conditonal):
     
     def getStatePDDL(self):
         return list(itertools.chain.from_iterable([c.getStatePDDL() for c in self._conditions])) # this list may contain duplicates but the behaviour will take care of that.
+
+    def getSatisfiedConditions(self, ready_threshold):
+        '''
+        return the list of all satisfied conditions of this disjunction based on the given ready_threshold
+        the list is sorted by satisfaction value in decending order
+        This allows a behaviour to check which precondition have been responsible for the activation
+        '''
+        satisfied_conditions = [con for con in self._conditions if con.satisfaction >= ready_threshold]
+
+        return sorted(satisfied_conditions,key=lambda con:con.satisfaction,reverse=True)
         
     @property
     def conditions(self):
@@ -280,6 +294,10 @@ class Negation(Conditonal):
     @property
     def optional(self):
         return self._condition.optional
+
+    @property
+    def conditions(self):
+        return self._condition
     
     def __str__(self):
         return "{0} of {1}".format(self._name, self._condition)
