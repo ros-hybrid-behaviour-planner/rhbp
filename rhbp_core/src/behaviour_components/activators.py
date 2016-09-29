@@ -208,7 +208,7 @@ class PublisherCondition(Condition):
         '''
         super(PublisherCondition, self).__init__(sensor=sensor,activator=activator,name=name)
 
-        self._topic_name = name + '/normalized'
+        self._topic_name = activator.getPDDLFunctionName(sensorName=sensor.name)
 
         self.__pub = rospy.Publisher(self._topic_name, Float32, queue_size=10)
 
@@ -220,8 +220,6 @@ class PublisherCondition(Condition):
     @property
     def topic_name(self):
         return self._topic_name
-
-
 
 
 class Activator(object):
