@@ -42,11 +42,17 @@ class Manager(object):
         self._behaviours = []
         self._activeBehaviours = [] # pre-computed (in step()) list of operational behaviours
         self._totalActivation = 0.0 # pre-computed (in step()) sum all activations of active behaviours
-        self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs else rospy.get_param("activationThreshold", 7.0) # not sure how to set this just yet.
-        self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else rospy.get_param("activationDecay", .9) # not sure how to set this just yet.
+        self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
+            else rospy.get_param("~activationThreshold", 7.0) # not sure how to set this just yet.
+        self._activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else rospy.get_param(
+            "~activationDecay", .9) # not sure how to set this just yet.
+        self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
+            "~createLogFiles", False)  # not sure how to set this just yet.
         self._stepCounter = 0
-        self.__threshFile = open("threshold.log", 'w')
-        self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
+
+        if self._create_log_files:
+            self.__threshFile = open("threshold.log", 'w')
+            self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
         self.__running = True # toggled by the pause and resume services
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
@@ -106,9 +112,9 @@ class Manager(object):
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
-        # debugging only
-        with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile: #TODO only in debug mode
-            outfile.write(domainPDDLString)
+        if self._create_log_files:  # debugging only
+            with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile: #TODO only in debug mode
+                outfile.write(domainPDDLString)
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
@@ -123,9 +129,10 @@ class Manager(object):
         problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
-        # debugging only
-        with open("pddl{0}Problem{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile: #TODO only in debug mode
-            outfile.write(problemPDDLString)
+
+        if self._create_log_files:  # debugging only
+            with open("pddl{0}Problem{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile: #TODO only in debug mode
+                outfile.write(problemPDDLString)
         return problemPDDLString
     
     def priorityGoalSequences(self):
@@ -212,8 +219,9 @@ class Manager(object):
         if not self.__running:
             return
         plannerStatusMessage = PlannerStatus()
-        self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
-        self.__threshFile.flush()
+        if self._create_log_files:  # debugging only
+            self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
+            self.__threshFile.flush()
         plannerStatusMessage.activationThreshold = self._activationThreshold
         self._totalActivation = 0.0
         rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
@@ -345,7 +353,7 @@ class Manager(object):
                 rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
             behaviour.start()
             rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            self._activationThreshold *= (1 / rospy.get_param("activationThresholdDecay", .8))
+            self._activationThreshold *= (1 / rospy.get_param("~activationThresholdDecay", .8))
             currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
             self.__executedBehaviours.append(behaviour)
             rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
@@ -353,9 +361,9 @@ class Manager(object):
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
         if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-            self._activationThreshold *= rospy.get_param("activationThresholdDecay", .8)
+            self._activationThreshold *= rospy.get_param("~activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        plannerStatusMessage.activationThresholdDecay = rospy.get_param("activationThresholdDecay", .8) # TODO retrieve rosparam only once
+        plannerStatusMessage.activationThresholdDecay = rospy.get_param("~activationThresholdDecay", .8) # TODO retrieve rosparam only once
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
     
@@ -370,7 +378,7 @@ class Manager(object):
     
     def __addBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        behaviour = Behaviour(request.name, request.independentFromPlanner)
+        behaviour = Behaviour(request.name, request.independentFromPlanner, self._create_log_files)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)

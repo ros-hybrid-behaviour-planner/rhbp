@@ -21,7 +21,7 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, independentFromPlanner = False):
+    def __init__(self, name, independentFromPlanner = False, create_log_files = False):
         '''
         Constructor
         '''
@@ -43,12 +43,14 @@ class Behaviour(object):
         self._activated = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._executionTimeout = -1 # The maximum allowed execution steps. If set to -1 infinite. We get it via getStatus service of actual behaviour node
         self._executionTime = -1    # The time the behaviour is running (in steps)
+        self._create_log_files = create_log_files
         self._independentFromPlanner = independentFromPlanner
         self.__currentActivationStep = 0.0
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         Behaviour._instanceCounter += 1
-        self.__logFile = open("{0}.log".format(self._name), 'w')
-        self.__logFile.write('Time\t{0}\n'.format(self._name))
+        if self._create_log_files:
+            self.__logFile = open("{0}.log".format(self._name), 'w')
+            self.__logFile.write('Time\t{0}\n'.format(self._name))
     
     def __del__(self):
         '''
@@ -262,9 +264,10 @@ class Behaviour(object):
         self._activation = self._activation * self._activationDecay + self.__currentActivationStep
         if self._activation < 0.0:
             self._activation = 0
-        self.__currentActivationStep = 0.0        
-        self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
-        self.__logFile.flush()
+        self.__currentActivationStep = 0.0
+        if self._create_log_files:
+            self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
+            self.__logFile.flush()
     
     def start(self):
         '''

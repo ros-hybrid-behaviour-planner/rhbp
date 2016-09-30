@@ -9,6 +9,7 @@
         <param name="frequency" type="double" value="1.0" />
         <param name="activationThreshold" type="double" value="7.0" />
         <param name="prefix" type="string" value="sim" />
+        <param name="createLogFiles" type="bool" value="false"/>
     </node>
 </launch>
 
