@@ -5,7 +5,7 @@ Created on 13.04.2015
 '''
 
 import rospy
-import utils.ros_helpers
+import util
 
 class Sensor(object):
     '''
@@ -19,7 +19,8 @@ class Sensor(object):
         '''
         Constructor
         '''
-        self._name = name if name else "Sensor {0}".format(Sensor._instanceCounter)
+        self._name = name if name else "Sensor_{0}".format(Sensor._instanceCounter)
+        self._name = util.create_valid_pddl_name(self._name)
         self._optional = optional
         self._value = initial_value # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
@@ -76,14 +77,23 @@ class Sensor(object):
 class SimpleTopicSensor(Sensor):
     """
     "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+    :param topic: topic name to subscribe to
+    :param name: name of the sensor, if None a name is generated from the topic
     :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
     """
-    def __init__(self, name, topic, message_type = None, initial_value = None, create_log = False):
-        super(SimpleTopicSensor, self).__init__(name = name, initial_value= initial_value)
+    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+
+        if name is None:
+            if topic is None:
+                raise ValueError("Invalid name and topic")
+            else :
+                name = util.create_valid_pddl_name(topic)
+
+        super(SimpleTopicSensor, self).__init__(name=name, initial_value=initial_value)
 
         # if the type is not specified, try to detect it automatically
         if message_type is None:
-            messageType = utils.ros_helpers.get_topic_type(topic)
+            messageType = util.get_topic_type(topic)
 
         if messageType is not None:
             self._sub = rospy.Subscriber(topic, messageType, self.subscription_callback)
@@ -106,7 +116,7 @@ class PassThroughTopicSensor(SimpleTopicSensor):
     "PassThrough" because the sensor just forwards the received msg
     """
     def __init__(self, name, topic, message_type = None,  initial_value = None, create_log = False):
-        super(PassThroughTopicSensor, self).__init__(name = name, topic=topic, message_type = message_type, initial_value = initial_value, create_log=create_log)
+        super(PassThroughTopicSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)
 
     def subscription_callback(self, msg):
         self.update(msg)

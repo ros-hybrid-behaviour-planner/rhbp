@@ -1,7 +1,7 @@
 '''
 Created on 06.10.2015
 
-@author: stephan
+@author: wypler, hrabia
 '''
 from __future__ import division # force floating point division when using plain /
 import re
@@ -163,4 +163,12 @@ def getStatePDDLchanges(oldPDDL, newPDDL):
                 if value != oldState[sensorName]:
                     changes[sensorName] = value - oldState[sensorName]
     return changes
-                
+
+def create_valid_pddl_name(str):
+    """
+    Function converts a given string into a pddl valid name
+    :param str: string to convert
+    :type str: String
+    """
+    return ''.join(e for e in str if e.isalnum() or '_')
+

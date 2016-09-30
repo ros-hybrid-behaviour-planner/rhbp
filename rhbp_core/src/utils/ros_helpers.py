@@ -47,6 +47,3 @@ def get_topic_type(topic_name):
         return None
     else:
         return get_message_class(topic_info[0], True)
-
-
-
