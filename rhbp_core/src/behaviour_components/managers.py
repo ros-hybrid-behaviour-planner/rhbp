@@ -76,10 +76,18 @@ class Manager(object):
         behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._activeBehaviours]
         self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in self._activeGoals}
         pddl = PDDL()
-        for actionPDDL, _statePDDL in behaviourPDDLs:
+        #Get relevant domain information from behaviour pddls
+        for actionPDDL, statePDDL in behaviourPDDLs:
             pddl.statement += actionPDDL.statement
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
             pddl.functions = pddl.functions.union(actionPDDL.functions)
+            pddl.functions = pddl.functions.union(statePDDL.functions)
+        # Get relevant domain information from goal pddls
+        for goal, goal_pddl in self.__goalPDDLs.iteritems():
+            # pddl.statement and  pddl.predicates are not needed from goals for the domain description
+            actionPDDL, statePDDL = goal_pddl
+            pddl.functions = pddl.functions.union(actionPDDL.functions)
+            pddl.functions = pddl.functions.union(statePDDL.functions)
         domainPDDLString = "(define (domain {0})\n".format(self._getDomainName())
         #Update requirements if necessary
         #Actually :fluents could just be :numeric-fluents, but this is not accepted by metric-ff
@@ -92,8 +100,12 @@ class Manager(object):
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
         for _goalPDDL, statePDDL in self.__goalPDDLs.values():
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+
         # filter out negative predicates. FF can't handle them!
-        statePDDL = PDDL(statement = "\n\t\t".join(filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement))))# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
+        statePDDL = PDDL(statement = "\n\t\t".join(
+            filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
+        )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
+
         # debugging only
         with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile: #TODO only in debug mode
             outfile.write(domainPDDLString)
