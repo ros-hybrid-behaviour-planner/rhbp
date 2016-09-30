@@ -19,7 +19,7 @@ class GoalWidget(QWidget):
         # Give QObjects reasonable names
         self.setObjectName(self._name + 'Widget')
         # Get path to UI file which should be in the "resource" folder of this node
-        ui_file = os.path.join(rospkg.RosPack().get_path('behaviour_planner'), 'src', 'rqt_planner_gui', 'resource', 'goal.ui')
+        ui_file = os.path.join(rospkg.RosPack().get_path('rhbp_core'), 'src', 'rqt_planner_gui', 'resource', 'goal.ui')
         # Extend the widget with all attributes and children from UI file
         loadUi(ui_file, self)
         self.goalGroupBox.setTitle(self._name)
