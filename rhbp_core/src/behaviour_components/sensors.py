@@ -92,6 +92,7 @@ class SimpleTopicSensor(Sensor):
 
         super(SimpleTopicSensor, self).__init__(name=name, initial_value=initial_value)
 
+        self._topic_name = topic
         # if the type is not specified, try to detect it automatically
         if message_type is None:
             messageType = get_topic_type(topic)
@@ -111,6 +112,10 @@ class SimpleTopicSensor(Sensor):
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()
+
+    @property
+    def topic_name(self):
+        return self._topic_name
 
 class PassThroughTopicSensor(SimpleTopicSensor):
     """
