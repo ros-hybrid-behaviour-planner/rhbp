@@ -71,6 +71,13 @@ class Condition(Conditonal):
     def getStatePDDL(self):
         return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue)]
 
+    def getFunctionNames(self):
+        """
+        Provides a list of virtual sensor activator function names
+        :return list of function namestrings
+        """
+        return [self._activator.getPDDLFunctionName(self._sensor.name)]
+
     @property
     def satisfaction(self):
         '''
@@ -180,10 +187,16 @@ class MultiSensorCondition(Condition):
         pddl.statement += ")"
         return pddl
 
-
     def getStatePDDL(self):
         #Calling getSensorStatePDDL for all sensors
         return [self._activator.getSensorStatePDDL(s.name, self._normalizedSensorValues[s]) for s in self._sensors]
+
+    def getFunctionNames(self):
+        """
+        Provides a list of virtual sensor activator function names
+        :return list of function namestrings
+        """
+        return [self._activator.getPDDLFunctionName(s.name) for s in self._sensors]
 
     @property
     def optional(self):
