@@ -202,6 +202,10 @@ class MultiSensorCondition(Condition):
     def optional(self):
         return reduce(lambda x, y: x and y, self._sensors, False)
 
+    @property
+    def sensors(self):
+        return  self._sensors
+
     def __str__(self):
         return "{0} {1}".format(self._name, self.satisfaction)
 
