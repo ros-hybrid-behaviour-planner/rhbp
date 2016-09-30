@@ -12,7 +12,7 @@ import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
-from util import PDDL, mergeStatePDDL
+from pddl import PDDL, mergeStatePDDL
 
 class Behaviour(object):
     '''

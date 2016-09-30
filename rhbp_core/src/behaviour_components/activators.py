@@ -3,7 +3,7 @@
 #@author: wypler, hrabia
 
 from __future__ import division # force floating point division when using plain /
-from util import PDDL
+from pddl import PDDL
 from std_msgs.msg import Float32
 import rospy
 

@@ -7,7 +7,7 @@ Created on 13.04.2015
 import warnings
 import operator
 import itertools
-from util import PDDL
+from pddl import PDDL
 
 class Conditonal(object):
     '''

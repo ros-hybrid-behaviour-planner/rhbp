@@ -11,7 +11,7 @@ from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
-from behaviour_components.util import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex
+from behaviour_components.pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex
 import ffp
 
 class Manager(object):

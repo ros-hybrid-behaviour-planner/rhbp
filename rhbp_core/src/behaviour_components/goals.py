@@ -11,7 +11,7 @@ import itertools
 import rospy
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
-from util import PDDL, mergeStatePDDL
+from pddl import PDDL, mergeStatePDDL
 
 
 class Goal(object):
