@@ -28,14 +28,6 @@ class Manager(object):
         Constructor
         '''
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
-        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
-        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
-        self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
-        self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
-        self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
-        self.__pauseService = rospy.Service(self._prefix + 'Pause', Empty, self.__pauseCallback)
-        self.__resumeService = rospy.Service(self._prefix + 'Resume', Empty, self.__resumeCallback)
-        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
         self._sensors = []
         self._goals = []
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
@@ -53,14 +45,25 @@ class Manager(object):
         if self._create_log_files:
             self.__threshFile = open("threshold.log", 'w')
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
-        self.__running = True # toggled by the pause and resume services
+
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
         self.__sensorChanges = {} # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
         self._plan = {}
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
-        
+
+        self.__running = True # toggled by the pause and resume services
+
+        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
+        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
+        self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
+        self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
+        self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
+        self.__pauseService = rospy.Service(self._prefix + 'Pause', Empty, self.__pauseCallback)
+        self.__resumeService = rospy.Service(self._prefix + 'Resume', Empty, self.__resumeCallback)
+        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
+
     def __del__(self):
         self.__addBehaviourService.shutdown()
         self.__addGoalService.shutdown()
@@ -311,14 +314,14 @@ class Manager(object):
                 continue
             if behaviour.isExecuting: # it must not already run
                 rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
-                if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout and behaviour.interruptable:
+                if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
+                        and behaviour.interruptable:
                     rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
-                    behaviour.stop()
-                    self.__executedBehaviours.remove(behaviour) # remove it from the list of executed behaviours
-                    currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in behaviour.correlations])) # remove all its correlations from the set of currently affected sensors
-                    rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
-                    rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
                     self.__replanningNeeded = True # this is unusual so replan
+                elif not behaviour.executable or behaviour.activation < self._activationThreshold:
+                    rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
                 else:
                     behaviour.executionTime += 1
                 continue
@@ -338,11 +341,7 @@ class Manager(object):
                     rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     for conflictor in stoppableBehaviours:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
-                        conflictor.stop()
-                        self.__executedBehaviours.remove(conflictor) # remove it from the list of executed behaviours
-                        currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in conflictor.correlations])) # remove all its correlations from the set of currently affected sensors
-                        rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
-                        rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+                        currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
                     rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
@@ -366,7 +365,16 @@ class Manager(object):
         plannerStatusMessage.activationThresholdDecay = rospy.get_param("~activationThresholdDecay", .8) # TODO retrieve rosparam only once
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
-    
+
+    def stop_behaviour(self, behaviour, currentlyInfluencedSensors):
+        behaviour.stop()
+        self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
+        currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in
+                                                                                behaviour.correlations]))  # remove all its correlations from the set of currently affected sensors
+        rospy.loginfo("still running behaviours: %s", self.__executedBehaviours)
+        rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+        return currentlyInfluencedSensors
+
     #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
     def __addGoal(self, request):
         self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with the same name. 
