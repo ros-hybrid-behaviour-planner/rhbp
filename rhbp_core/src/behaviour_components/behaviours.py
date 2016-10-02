@@ -129,9 +129,10 @@ class Behaviour(object):
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(sensorName)))]
                 for correlation in self.matchingCorrelations(sensorName):
                     if correlation * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
-                        totalActivation = correlation * indicator * rospy.get_param("~goalBias", 1.0)
+                        goal_bias = rospy.get_param("~goalBias", 1.0)
+                        totalActivation = correlation * indicator * goal_bias
                         if logging:
-                            rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation, rospy.get_param("~goalBias"))
+                            rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation, goal_bias)
                         activatedByGoals.append((goal, totalActivation / len(behavioursActivatedBySameGoal)))        # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
@@ -248,12 +249,12 @@ class Behaviour(object):
         #TODO this is also calculated several times, if the single functions are accessed from outside
         if self._active:
             self.__currentActivationStep = self._activationFromPreconditions *  rospy.get_param("~situationBias", 1.0) \
-                                         + self.getActivationFromGoals()[0] \
-                                         + self.getInhibitionFromGoals()[0] \
-                                         + self.getActivationFromPredecessors()[0] \
-                                         + self.getActivationFromSuccessors()[0] \
-                                         + self.getInhibitionFromConflicted()[0] \
-                                         + self.getActivationFromPlan()[0]
+                                         + self.getActivationFromGoals(logging=False)[0] \
+                                         + self.getInhibitionFromGoals(logging=False)[0] \
+                                         + self.getActivationFromPredecessors(logging=False)[0] \
+                                         + self.getActivationFromSuccessors(logging=False)[0] \
+                                         + self.getInhibitionFromConflicted(logging=False)[0] \
+                                         + self.getActivationFromPlan(logging=False)[0]
         else:
             return 0.0
     
