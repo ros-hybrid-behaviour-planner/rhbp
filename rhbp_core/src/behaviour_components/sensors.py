@@ -95,10 +95,10 @@ class SimpleTopicSensor(Sensor):
         self._topic_name = topic
         # if the type is not specified, try to detect it automatically
         if message_type is None:
-            messageType = get_topic_type(topic)
+            message_type = get_topic_type(topic)
 
-        if messageType is not None:
-            self._sub = rospy.Subscriber(topic, messageType, self.subscription_callback)
+        if message_type is not None:
+            self._sub = rospy.Subscriber(topic, message_type, self.subscription_callback)
             self._iShouldCreateLog = create_log
             if self._iShouldCreateLog:
                 self._logFile = open("{0}.log".format(self._name), 'w')
