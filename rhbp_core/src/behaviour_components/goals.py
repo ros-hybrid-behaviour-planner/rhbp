@@ -1,7 +1,7 @@
 '''
 Created on 22.04.2015
 
-@author: stephan
+@author: wypler, hrabia
 '''
 
 import operator
@@ -9,6 +9,11 @@ import conditions
 import warnings
 import itertools
 import rospy
+from std_msgs.msg import Bool
+
+from activators import Condition,BooleanActivator
+from sensors import SimpleTopicSensor
+
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
 from pddl import PDDL, mergeStatePDDL
@@ -229,3 +234,34 @@ class GoalBase(object):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no conditional object!")
+
+
+class PublisherGoal(GoalBase):
+    """
+    Goal class which publishes its activation state as ROS topic
+    """
+
+    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0):
+        """
+        Without manual goal activation/deaction only permanent=False does make sense
+        """
+        super(PublisherGoal,self).__init__(name=name,permanent=permanent,conditions=conditions,plannerPrefix=plannerPrefix,priority=priority)
+
+        self.__topic_name = self._name + "_activated"
+        self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=10)
+
+
+    def updateComputation(self):
+        super(PublisherGoal, self).updateComputation()
+        self.__pub.publish(self._activated)
+
+    def create_condition(self):
+        """
+        Creating a new condition object based on the positive goal activation state --> full activation on activated goal
+        :returns new condition object
+        """
+        condition_name = self._name + "_condition"
+        sensor_name = self._name + "_sensor"
+        sensor = SimpleTopicSensor(name=sensor_name,topic=self.__topic_name,message_type=Bool,initial_value=self._activated)
+        activator = BooleanActivator()
+        return Condition(name=condition_name, sensor=sensor, activator=activator )
