@@ -50,7 +50,7 @@ class Condition(Conditonal):
         Normalize the current sensor value into a floating point number
         '''
         if self._sensor:
-            return self._sensor.value()
+            return self._sensor.value
         else:
            return 0
 
