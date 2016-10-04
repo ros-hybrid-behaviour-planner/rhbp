@@ -93,6 +93,8 @@ class Manager(object):
             pddl.functions = pddl.functions.union(statePDDL.functions)
         # Get relevant domain information from goal pddls
         for goal, goal_pddl in self.__goalPDDLs.iteritems():
+            if goal_pddl is None:
+                continue
             # pddl.statement and  pddl.predicates are not needed from goals for the domain description
             actionPDDL, statePDDL = goal_pddl
             pddl.functions = pddl.functions.union(actionPDDL.functions)
@@ -107,8 +109,10 @@ class Manager(object):
         mergedStatePDDL = PDDL()
         for _actionPDDL, statePDDL in behaviourPDDLs:
             mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
-        for _goalPDDL, statePDDL in self.__goalPDDLs.values():
-            mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+        for v in self.__goalPDDLs.itervalues():
+            if not v is None:
+                _goalPDDL, statePDDL = v
+                mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
 
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement = "\n\t\t".join(
