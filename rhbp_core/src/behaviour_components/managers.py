@@ -367,6 +367,7 @@ class Manager(object):
             self._activationThreshold *= rospy.get_param("~activationThresholdDecay", .8)
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
         plannerStatusMessage.activationThresholdDecay = rospy.get_param("~activationThresholdDecay", .8) # TODO retrieve rosparam only once
+        plannerStatusMessage.stepCounter = self._stepCounter
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
 

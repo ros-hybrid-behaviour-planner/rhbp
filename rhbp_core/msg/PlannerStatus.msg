@@ -4,3 +4,4 @@ float32  activationThreshold
 float32  activationThresholdDecay
 string[] runningBehaviours
 string[] influencedSensors
+int32    stepCounter
