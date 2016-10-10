@@ -1511,7 +1511,7 @@ static char* get_op_name( int index ){
     int i;
     Action *a = gop_conn[index].action;
     if ( !a->norm_operator && !a->pseudo_action ) {
-        printf("REACH-GOAL");
+        //printf("REACH-GOAL");
         size = snprintf(NULL, 0, "REACH-GOAL");
         buffer = calloc(size + 1, sizeof(char));
         if(!buffer)

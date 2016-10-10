@@ -974,7 +974,7 @@ void print_Action( Action *a )
 
   if ( !a->norm_operator &&
        !a->pseudo_action ) {
-    printf("\n\nAction REACH-GOAL");
+    //printf("\n\nAction REACH-GOAL");
   } else {
     printf("\n\nAction %s", a->name ); 
     for ( i = 0; i < a->num_name_vars; i++ ) {
@@ -1103,7 +1103,7 @@ void print_Action_name( Action *a )
 
   if ( !a->norm_operator &&
        !a->pseudo_action ) {
-    printf("REACH-GOAL");
+    //printf("REACH-GOAL");
   } else {
     printf("%s", a->name ); 
     for ( i = 0; i < a->num_name_vars; i++ ) {
