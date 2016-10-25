@@ -124,6 +124,7 @@ class Behaviour(object):
         '''
         activatedByGoals = []
         for goal in self._manager.activeGoals:
+            #check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for (sensorName, indicator) in goal.wishes:
                 # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours will get activation from the goal).
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(sensorName)))]
@@ -173,7 +174,7 @@ class Behaviour(object):
             if behaviour == self or not behaviour.executable: # ignore ourselves and non-executable predecessors
                 continue
             for (sensorName, indicator) in self._wishes: # this is what we wish from a predecessor
-                # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor).
+                # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingWishes(sensorName)))]
                 for correlation in behaviour.matchingCorrelations(sensorName): # correlations that the behaviour (potential predecessor) has to the sensor of this wish
                     if correlation * behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
@@ -247,14 +248,15 @@ class Behaviour(object):
         This method sums up all components of activation to compute the additional activation in this step.
         '''
         #TODO this is also calculated several times, if the single functions are accessed from outside
+        with_extensive_logging = False
         if self._active:
             self.__currentActivationStep = self._activationFromPreconditions *  rospy.get_param("~situationBias", 1.0) \
-                                         + self.getActivationFromGoals(logging=False)[0] \
-                                         + self.getInhibitionFromGoals(logging=False)[0] \
-                                         + self.getActivationFromPredecessors(logging=False)[0] \
-                                         + self.getActivationFromSuccessors(logging=False)[0] \
-                                         + self.getInhibitionFromConflicted(logging=False)[0] \
-                                         + self.getActivationFromPlan(logging=False)[0]
+                                         + self.getActivationFromGoals(logging=with_extensive_logging)[0] \
+                                         + self.getInhibitionFromGoals(logging=with_extensive_logging)[0] \
+                                         + self.getActivationFromPredecessors(logging=with_extensive_logging)[0] \
+                                         + self.getActivationFromSuccessors(logging=with_extensive_logging)[0] \
+                                         + self.getInhibitionFromConflicted(logging=with_extensive_logging)[0] \
+                                         + self.getActivationFromPlan(logging=with_extensive_logging)[0]
         else:
             return 0.0
     
@@ -480,45 +482,41 @@ class BehaviourBase(object):
             p.sync()
         for p in self._preconditions:
             p.updateComputation()
-        
+
+    def _get_satisfactions(self):
+        """
+        :returns a list filled with satisfactions of the individual preconditions
+        """
+        satisfactions = []  # this
+        for p in filter(lambda x: x.optional == False, self._preconditions):  # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
+            try:
+                satisfactions.append(p.satisfaction)
+            except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+                self._active = False
+                return 0.0
+        for p in filter(lambda x: x.optional == True, self._preconditions):  # now check optional sensors
+            try:
+                satisfactions.append(p.satisfaction)
+            except AssertionError:  # we don't care about errors in optional sensors
+                pass
+        return satisfactions
     
     def computeActivation(self):
         """
-        This method should return the activation by the situation (from preconditions) as float [0 to 1]
+        This method returns the activation by the situation (from preconditions) as float [0 to 1]
         Note that there may be optional sensors 
         """
-        activations = [] # this list gets filled with the activations of the individual preconditions
-        for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
-            try:
-                activations.append(p.satisfaction)
-            except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-                self._active = False
-                return 0.0
-        for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
-            try:
-                activations.append(p.satisfaction)
-            except AssertionError: # we don't care about errors in optional sensors
-                pass
+        activations = self._get_satisfactions()
         return 1.0 if len(activations) == 0 else reduce(lambda x, y: x + y, activations) / len(activations)
             
     
     def computeSatisfaction(self):
         """
-        This method should return the satisfaction of the preconditions (the readiness) as float [0 to 1].
+        This method returns the satisfaction of the preconditions (the readiness) as float [0 to 1].
         If there are functioning optional sensors they are also handled equally like mandatory ones (so they could screw up the overall satisfaction) but if they fail they are just ignored.
+        The aggreagation of the satisfaction values is different to the activation calculation 
         """
-        satisfactions = [] # this list gets filled with the satisfactions of the individual preconditions
-        for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
-            try:
-                satisfactions.append(p.satisfaction)
-            except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-                self._active = False
-                return 0.0
-        for p in filter(lambda x: x.optional == True, self._preconditions): # now check optional sensors
-            try:
-                satisfactions.append(p.satisfaction)
-            except AssertionError: # we don't care about errors in optional sensors
-                pass
+        satisfactions = self._get_satisfactions()
         return reduce(operator.mul, satisfactions, 1)
             
     def computeWishes(self):
