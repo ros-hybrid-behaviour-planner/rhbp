@@ -120,7 +120,7 @@ class Manager(object):
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
         if self._create_log_files:  # debugging only
-            with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile: #TODO only in debug mode
+            with open("pddl{0}Domain.pddl".format(self._stepCounter), 'w') as outfile:
                 outfile.write(domainPDDLString)
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
@@ -138,7 +138,7 @@ class Manager(object):
         problemPDDLString += ")\n"
 
         if self._create_log_files:  # debugging only
-            with open("pddl{0}Problem{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile: #TODO only in debug mode
+            with open("pddl{0}Problem_{1}.pddl".format(self._stepCounter, ''.join((str(g) for g in goals))), 'w') as outfile:
                 outfile.write(problemPDDLString)
         return problemPDDLString
     

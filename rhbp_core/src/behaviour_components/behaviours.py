@@ -606,6 +606,8 @@ class BehaviourBase(object):
         #update everything before generating the status message
         self.updateComputation()
         self._active = self._activated
+        # TODO possible improvement is providing computeSatisfaction and cimputeActivation with a precalulated list of satisfactions
+        # this would eliminate the doubled calculation of it
         status = Status(**{
                            "name"         : self._name, # this is sent for sanity check and planner status messages only
                            "activation"   : self.computeActivation(),

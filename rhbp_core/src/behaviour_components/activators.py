@@ -455,6 +455,7 @@ class LinearActivator(Activator):
         if self.getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
         else:
+
             return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
         
     def getSensorPreconditionPDDL(self, sensorName):
