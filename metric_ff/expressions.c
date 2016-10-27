@@ -2309,7 +2309,14 @@ Bool setup_effect_costs( void )
       gtt = glnf_metric.pC[i];
       continue;
     }
-    if ( !ginitial_state.f_D[glnf_metric.pF[i]] ) break;
+    //check if all functions are properly initialized
+    if ( !ginitial_state.f_D[glnf_metric.pF[i]] ){
+      if ( gcmd_line.display_info ) {
+            printf("\nwarning: missing function initialization");
+          }
+      break;
+    }
+
   }
   if ( i < glnf_metric.num_pF ) {
     if ( gcmd_line.display_info ) {
