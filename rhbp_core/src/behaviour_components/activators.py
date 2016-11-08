@@ -279,12 +279,6 @@ class Activator(object):
         '''
         raise NotImplementedError()
 
-    def getDirection(self):
-        '''
-        This method should return the direction that increases activation. +1 means rising, -1 means falling
-        '''
-        raise NotImplementedError()
-
     def getSensorWish(self, normalizedValue):
         '''
         This method should return an indicator (float in range [-1, 1]) how much and in what direction the value should change in order to reach more activation.
@@ -327,9 +321,6 @@ class BooleanActivator(Activator):
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
         return self._maxActivation if normalizedValue == self._desired else self._minActivation
-    
-    def getDirection(self):
-        return 1 if self._desired == True else -1
 
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
@@ -401,7 +392,7 @@ class ThresholdActivator(Activator):
         else:
             return self._maxActivation if normalizedValue <= self._threshold else self._minActivation
     
-    def getDirection(self):
+    def _getDirection(self):
         return 1 if self._isMinimum else -1
 
     def getSensorWish(self, normalizedValue):
@@ -411,11 +402,11 @@ class ThresholdActivator(Activator):
         if self._valueRange:
             return sorted((-1.0, (self._threshold - normalizedValue) / self._valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
         else:
-            return float(self.getDirection())
+            return float(self._getDirection())
 
     def getSensorPreconditionPDDL(self, sensorName):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
     
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
@@ -445,14 +436,14 @@ class LinearActivator(Activator):
         rawActivation = (normalizedValue - self._zeroActivationValue) / self.valueRange
         return sorted((self._minActivation, rawActivation * self.activationRange + self._minActivation, self._maxActivation))[1] # clamp to activation range
     
-    def getDirection(self):
+    def _getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
 
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
 
         assert self.valueRange != 0
-        if self.getDirection() > 0:
+        if self._getDirection() > 0:
             return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
         else:
 
@@ -460,7 +451,7 @@ class LinearActivator(Activator):
         
     def getSensorPreconditionPDDL(self, sensorName):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._zeroActivationValue) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._zeroActivationValue), functions = functionName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._zeroActivationValue) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._zeroActivationValue), functions = functionName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
