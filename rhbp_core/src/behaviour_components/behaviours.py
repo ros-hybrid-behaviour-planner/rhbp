@@ -437,7 +437,7 @@ class BehaviourBase(object):
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else [] # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning: sensorName -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. Optional condition -> a piece of pddl when this effect happens. # Be careful with the sensorName! It has to actually match something that exists!
-        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
+        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
         self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
@@ -567,7 +567,7 @@ class BehaviourBase(object):
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
         pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name), functions = "costs")
-        preconds = [x.getPreconditionPDDL() for x in self._preconditions]
+        preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions]
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, preconds)) # unites all functions in preconditions
         if len(preconds) > 1:
@@ -606,7 +606,7 @@ class BehaviourBase(object):
         #update everything before generating the status message
         self.updateComputation()
         self._active = self._activated
-        # TODO possible improvement is providing computeSatisfaction and cimputeActivation with a precalulated list of satisfactions
+        # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
         # this would eliminate the doubled calculation of it
         status = Status(**{
                            "name"         : self._name, # this is sent for sanity check and planner status messages only

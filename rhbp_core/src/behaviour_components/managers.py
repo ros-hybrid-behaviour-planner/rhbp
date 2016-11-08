@@ -252,7 +252,7 @@ class Manager(object):
             statusMessage.priority = goal.priority
             plannerStatusMessage.goals.append(statusMessage)
             rospy.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
-            if goal.active and not goal.isPermanent and goal.fulfillment >= 1:
+            if goal.active and not goal.isPermanent and goal.satisfied:
                 rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
                 rospy.wait_for_service(goal.name + 'Activate')
                 activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)

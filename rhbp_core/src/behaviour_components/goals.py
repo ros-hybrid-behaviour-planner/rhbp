@@ -35,6 +35,7 @@ class Goal(object):
         self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._isPermanent = permanent
         self._priority = 0
+        self._satisfaction_threshold = 1.0
 
     def fetchPDDL(self):
         '''
@@ -64,6 +65,7 @@ class Goal(object):
             self._active = status.active
             self._activated = status.activated
             self._priority = status.priority
+            self._satisfaction_threshold = status.threshold
             if self._name != status.name:
                 rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self._name, self._fulfillment, self._wishes)
@@ -81,6 +83,10 @@ class Goal(object):
     @property
     def fulfillment(self):
         return self._fulfillment
+
+    @property
+    def satisfied(self):
+        return self._fulfillment >= self._satisfaction_threshold
     
     @property
     def isPermanent(self):
@@ -113,7 +119,7 @@ class GoalBase(object):
     '''
     This is the base class for goals in python
     '''
-    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0):
+    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0, satisfaction_threshold = 1.0):
         '''
         Constructor
         '''
@@ -128,6 +134,7 @@ class GoalBase(object):
         self._active = True # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = True # The activate Service sets the value of this property.
         self._priority = priority # The higher the (unsigned) number the higher the importance
+        self._satisfaction_threshold = satisfaction_threshold #treshhold that defines when the goal is satisfied/fulfilled from the preconditions
 
         try:
             rospy.logdebug("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
@@ -179,7 +186,7 @@ class GoalBase(object):
             return []
 
     def getGoalStatements(self):
-        return " ".join([x.getPreconditionPDDL().statement for x in self._conditions])
+        return " ".join([x.getPreconditionPDDL(self._satisfaction_threshold).statement for x in self._conditions])
     
     def getStatePDDL(self):
         pddl = PDDL()
@@ -201,12 +208,13 @@ class GoalBase(object):
         self.updateComputation()
         self._active = self._activated
         status = Status(**{
-                        "name"         : self._name,
-                        "satisfaction" : self.computeSatisfaction(),
-                        "wishes"       : self.computeWishes(),
-                        "active"       : self._active,
-                        "activated"    : self._activated,
-                        "priority"     : self._priority
+                        "name"          : self._name,
+                        "satisfaction"  : self.computeSatisfaction(),
+                        "wishes"        : self.computeWishes(),
+                        "active"        : self._active,
+                        "activated"     : self._activated,
+                        "priority"      : self._priority,
+                        "threshold"     : self._satisfaction_threshold
                        })
         return GetStatusResponse(status)
     
@@ -241,11 +249,11 @@ class PublisherGoal(GoalBase):
     Goal class which publishes its activation state as ROS topic
     """
 
-    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0):
+    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0, satisfaction_threshold = 1.0):
         """
         Without manual goal activation/deaction only permanent=False does make sense
         """
-        super(PublisherGoal,self).__init__(name=name,permanent=permanent,conditions=conditions,plannerPrefix=plannerPrefix,priority=priority)
+        super(PublisherGoal,self).__init__(name=name, permanent=permanent, conditions=conditions, plannerPrefix=plannerPrefix, priority=priority, satisfaction_threshold=satisfaction_threshold)
 
         self.__topic_name = self._name + "_activated"
         self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=10)

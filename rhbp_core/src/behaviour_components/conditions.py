@@ -47,9 +47,11 @@ class Conditonal(object):
         '''
         raise NotImplementedError()
     
-    def getPreconditionPDDL(self):
+    def getPreconditionPDDL(self, satisfaction_threshold):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        :param satisfaction_threshold: threshold value that specifies when a precondition is considered valid, range [0,1]
+        :returns pddl.PDDL() object instance
         '''
         raise NotImplementedError()
     
@@ -131,10 +133,10 @@ class Disjunction(Conditonal):
             l = list(itertools.chain(l, c.getWishes()))
         return l
     
-    def getPreconditionPDDL(self):
+    def getPreconditionPDDL(self, satisfaction_threshold):
         pddl = PDDL(statement = "(or")
         for c in self._conditions:
-            cond_pddl = c.getPreconditionPDDL()
+            cond_pddl = c.getPreconditionPDDL(satisfaction_threshold)
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
             pddl.functions = pddl.functions.union(cond_pddl.functions)
@@ -216,10 +218,10 @@ class Conjunction(Conditonal):
             l = list(itertools.chain(l, c.getWishes()))
         return l
     
-    def getPreconditionPDDL(self):
+    def getPreconditionPDDL(self, satisfaction_threshold):
         pddl = PDDL(statement = "(and")
         for c in self._conditions:
-            cond_pddl = c.getPreconditionPDDL()
+            cond_pddl = c.getPreconditionPDDL(satisfaction_threshold)
             pddl.statement += " {0}".format(cond_pddl.statement)
             pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
             pddl.functions = pddl.functions.union(cond_pddl.functions)
@@ -280,11 +282,11 @@ class Negation(Conditonal):
             l.append((w[0],w[1] * -1)) #negation
         return l
     
-    def getPreconditionPDDL(self): 
+    def getPreconditionPDDL(self, satisfaction_threshold):
         '''
         The negated precondition PDDL
         '''       
-        pddl = self._condition.getPreconditionPDDL()
+        pddl = self._condition.getPreconditionPDDL(satisfaction_threshold)
         pddl.statement = "(not {0})".format(pddl.statement)
         return pddl
     

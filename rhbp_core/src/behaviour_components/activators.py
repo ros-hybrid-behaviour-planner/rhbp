@@ -65,8 +65,8 @@ class Condition(Conditonal):
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
     
-    def getPreconditionPDDL(self):
-        return self._activator.getSensorPreconditionPDDL(self._sensor.name)
+    def getPreconditionPDDL(self, satisfaction_threshold):
+        return self._activator.getSensorPreconditionPDDL(self._sensor.name, satisfaction_threshold)
     
     def getStatePDDL(self):
         return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue)]
@@ -174,9 +174,9 @@ class MultiSensorCondition(Condition):
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
 
-    def getPreconditionPDDL(self):
+    def getPreconditionPDDL(self, satisfaction_threshold):
         # Calling getSensorPreconditionPDDL for all sensors
-        conditions = [self._activator.getSensorPreconditionPDDL(s.name) for s in self._sensors]
+        conditions = [self._activator.getSensorPreconditionPDDL(s.name, satisfaction_threshold) for s in self._sensors]
 
         # TODO this code is copy pasted from conjuction condition
         pddl = PDDL(statement = "(and")
@@ -286,9 +286,11 @@ class Activator(object):
         '''
         raise NotImplementedError()
 
-    def getSensorPreconditionPDDL(self, sensorName):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
+        :param sensorName: name of the considered sensor
+        :param satisfaction_threshold: threshold value when the conditions becomes valid(true), this hint is not necessarily used, it depends on the activator function, range [0,1]
         '''
         raise NotImplementedError()
 
@@ -330,7 +332,7 @@ class BooleanActivator(Activator):
             return 1.0
         return -1.0
     
-    def getSensorPreconditionPDDL(self, sensorName):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement = "(" + functionName + ")" if self._desired == True else "(not (" + functionName + "))", predicates = functionName)
 
@@ -404,7 +406,7 @@ class ThresholdActivator(Activator):
         else:
             return float(self._getDirection())
 
-    def getSensorPreconditionPDDL(self, sensorName):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
     
@@ -444,14 +446,28 @@ class LinearActivator(Activator):
 
         assert self.valueRange != 0
         if self._getDirection() > 0:
-            return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1] # return how much is missing clamped to [0, 1]
+            # return how much is missing clamped to [0, 1]
+            return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1]
         else:
+            # return how much is there more than desired clamped to [-1, 0]
+            return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1]
 
-            return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1] # return how much is there more than desired clamped to [-1, 0]
-        
-    def getSensorPreconditionPDDL(self, sensorName):
+    def _calculate_satisfaction_bound(self, satisfaction_threshold):
+        '''
+        Calculates the activator specific activation threshold
+        :param behaviour satisfaction_threshold, range [0,1]
+        :return: a satisfaction bound in relation to the activator bounds
+        '''
+        if satisfaction_threshold < 0 or satisfaction_threshold > 1:
+            raise ValueError("satisfaction_threshold is " + str(satisfaction_threshold) + " and not in [0,1]")
+        delta = self._fullActivationValue - self._zeroActivationValue
+
+        return self._zeroActivationValue + (delta * satisfaction_threshold)
+
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._zeroActivationValue) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._zeroActivationValue), functions = functionName)  # TODO: This is not actually correct: The lower bound is actually not satisfying. How can we do better?
+        satisfaction_bound = self._calculate_satisfaction_bound(satisfaction_threshold)
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
