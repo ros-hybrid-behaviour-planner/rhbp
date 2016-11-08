@@ -152,8 +152,9 @@ add_custom_target(ff_ffp_install ALL
         )
 
 # make sure the above commands run in the correct order
-add_dependencies(ff_python_install ff.so)
-add_dependencies(ff_ffp_install ff.so)
+add_dependencies(ff.so ff_python_install)
+add_dependencies(ff_ffp_install ff_python_install)
+add_dependencies(ff.so ff_ffp_install)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
