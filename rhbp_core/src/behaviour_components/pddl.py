@@ -126,6 +126,22 @@ def mergeStatePDDL(PDDLone, PDDLtwo):
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
     return PDDLtwo
 
+
+def init_missing_functions(domain_pddl, state_pddl):
+    '''
+    This function initialises all functions in the state pddl which are mentioned in the domain pddl but not yet initialised
+    :param domain_pddl: the domain pddl object
+    :param state_pddl: the state pddl object
+    :return: adjusted state_pddl
+    '''
+    uninitialized_functions = domain_pddl.functions.difference(state_pddl.functions)
+
+    state_pddl.statement += "".join("\n\t\t( = ({0}) 0)".format(x) for x in uninitialized_functions)
+
+    state_pddl.functions = state_pddl.functions.union(uninitialized_functions)
+
+    return state_pddl
+
 def parseStatePDDL(pddl):
     '''
     This function creates a {sensor name <string> : value} dictionary of a state PDDL object.

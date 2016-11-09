@@ -1,7 +1,7 @@
 '''
 Created on 23.04.2015
 
-@author: stephan
+@author: wypler,hrabia
 '''
 
 import rospy
@@ -11,7 +11,7 @@ from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from behaviour_components.behaviours import Behaviour
 from behaviour_components.goals import Goal
-from behaviour_components.pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex
+from behaviour_components.pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions
 import ffp
 
 class Manager(object):
@@ -114,6 +114,8 @@ class Manager(object):
                 _goalPDDL, statePDDL = v
                 mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
 
+        mergedStatePDDL = init_missing_functions(pddl, mergedStatePDDL)
+
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement = "\n\t\t".join(
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
@@ -133,7 +135,7 @@ class Manager(object):
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
         '''
         goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t(= (costs) 0)\n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
 
