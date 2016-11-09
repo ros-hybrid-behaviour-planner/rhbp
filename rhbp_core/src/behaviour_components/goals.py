@@ -53,7 +53,7 @@ class Goal(object):
     
     def fetchStatus(self):
         '''
-        This method fetches the status from the actual behaviour node via GetStatus service call
+        This method fetches the status from the actual goal node via GetStatus service call
         '''
         rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
         rospy.wait_for_service(self._name + 'GetStatus')
@@ -161,6 +161,8 @@ class GoalBase(object):
         """
         Updates all subentities of the behaviour in order to do computations only once
         """
+        for p in self._conditions:
+            p.sync()
         for p in self._conditions:
             p.updateComputation()
     
