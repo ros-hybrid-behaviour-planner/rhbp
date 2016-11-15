@@ -44,6 +44,9 @@ class Sensor(object):
 
     @property
     def value(self):
+        if self._value is None:
+            raise Exception("Sensor value is not initialised")
+
         return self._value
 
     @property
@@ -126,7 +129,7 @@ class PassThroughTopicSensor(SimpleTopicSensor):
 
     def subscription_callback(self, msg):
         self.update(msg)
-        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
+        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()

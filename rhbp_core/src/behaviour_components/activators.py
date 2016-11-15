@@ -35,7 +35,12 @@ class Condition(Conditonal):
         '''
         This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
         '''
-        self._normalizedSensorValue = self._normalize()
+        try:
+            self._normalizedSensorValue = self._normalize()
+        except Exception as e:
+            rospy.logwarn("Normalization failed: " + e.message)
+            self._satisfaction = 0.0
+            return
 
         try:
             self._satisfaction = self._activator.computeActivation(self._normalizedSensorValue)
@@ -43,7 +48,8 @@ class Condition(Conditonal):
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor,
                           self._name, type(self._sensor.value), " optional" if self._sensor.optional else "",
                           self._sensor.name)
-            raise
+            self._satisfaction = 0.0
+            return
 
     def _normalize(self):
         '''
@@ -52,7 +58,7 @@ class Condition(Conditonal):
         if self._sensor:
             return self._sensor.value
         else:
-           return 0
+           raise Exception("Sensor not available")
 
     def getWishes(self):
         '''
@@ -134,11 +140,17 @@ class MultiSensorCondition(Condition):
         '''
         This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
         '''
-        self._normalize()
+        try:
+            self._normalize()
 
-        self._computeSatisfactions()
+            self._computeSatisfactions()
 
-        self._satisfaction = self._reduceSatisfaction()
+            self._satisfaction = self._reduceSatisfaction()
+
+        except Exception as e:
+            rospy.logwarn("updateComputation failed: " +e.message)
+            self._satisfaction = 0.0
+            return
 
     def _normalize(self):
         '''
@@ -434,9 +446,13 @@ class LinearActivator(Activator):
     
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
-        assert self.valueRange != 0
-        rawActivation = (normalizedValue - self._zeroActivationValue) / self.valueRange
-        return sorted((self._minActivation, rawActivation * self.activationRange + self._minActivation, self._maxActivation))[1] # clamp to activation range
+        value_range = self.valueRange
+        assert value_range != 0
+
+        raw_activation = (normalizedValue - self._zeroActivationValue) / value_range
+
+        activation = raw_activation * self.activationRange + self._minActivation
+        return sorted((self._minActivation, activation, self._maxActivation))[1] # clamp to activation range
     
     def _getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
@@ -447,7 +463,7 @@ class LinearActivator(Activator):
         assert self.valueRange != 0
         if self._getDirection() > 0:
             # return how much is missing clamped to [0, 1]
-            return sorted((0.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 1.0))[1]
+            return sorted((0.0, (self._fullActivationValue - normalizedValue) / self.valueRange, 1.0))[1]
         else:
             # return how much is there more than desired clamped to [-1, 0]
             return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1]
@@ -460,9 +476,8 @@ class LinearActivator(Activator):
         '''
         if satisfaction_threshold < 0 or satisfaction_threshold > 1:
             raise ValueError("satisfaction_threshold is " + str(satisfaction_threshold) + " and not in [0,1]")
-        delta = self._fullActivationValue - self._zeroActivationValue
 
-        return self._zeroActivationValue + (delta * satisfaction_threshold)
+        return self._zeroActivationValue + (self.valueRange * satisfaction_threshold)
 
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
