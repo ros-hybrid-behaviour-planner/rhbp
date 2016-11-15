@@ -122,6 +122,7 @@ class Behaviour(object):
         This method computes the activation from goals.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
         '''
+        goal_bias = rospy.get_param("~goalBias", 1.0)
         activatedByGoals = []
         for goal in self._manager.activeGoals:
             #check for each sensor in the goal wishes for behaviours that have sensor effect correlations
@@ -130,7 +131,6 @@ class Behaviour(object):
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(sensorName)))]
                 for correlation in self.matchingCorrelations(sensorName):
                     if correlation * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
-                        goal_bias = rospy.get_param("~goalBias", 1.0)
                         totalActivation = correlation * indicator * goal_bias
                         if logging:
                             rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, sensorName, behavioursActivatedBySameGoal, totalActivation, goal_bias)
@@ -514,7 +514,7 @@ class BehaviourBase(object):
         """
         This method returns the satisfaction of the preconditions (the readiness) as float [0 to 1].
         If there are functioning optional sensors they are also handled equally like mandatory ones (so they could screw up the overall satisfaction) but if they fail they are just ignored.
-        The aggreagation of the satisfaction values is different to the activation calculation 
+        The aggregation of the satisfaction values is different to the activation calculation
         """
         satisfactions = self._get_satisfactions()
         return reduce(operator.mul, satisfactions, 1)
