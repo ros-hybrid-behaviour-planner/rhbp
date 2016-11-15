@@ -325,8 +325,11 @@ class Manager(object):
                     rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
                     currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
                     self.__replanningNeeded = True # this is unusual so replan
-                elif not behaviour.executable or behaviour.activation < self._activationThreshold:
+                elif not behaviour.executable:
                     rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
+                elif behaviour.activation < self._activationThreshold:
+                    rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
                     currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
                 else:
                     behaviour.executionTime += 1
