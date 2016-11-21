@@ -279,7 +279,13 @@ class Negation(Conditonal):
         
         l = []
         for w in wishes:
-            l.append((w[0],w[1] * -1)) #negation
+            wish_value = w[1]
+            if wish_value > 0:
+                wish_value = (1 - wish_value) * -1
+            else:
+                wish_value = (1 - abs(wish_value))
+
+            l.append((w[0], wish_value)) #negation
         return l
     
     def getPreconditionPDDL(self, satisfaction_threshold):
