@@ -49,7 +49,7 @@ class LinearActivatorTestSuite(unittest.TestCase):
         wish = activator.getSensorWish(5)
         self.assertEqual(wish, -0.5)
 
-    def test_decreasing_range_small_activation(self):
+    def test_decreasing_range_large_activation(self):
         activator = activators.LinearActivator(zeroActivationValue=10, fullActivationValue=0, minActivation=0,
                                                maxActivation=1)
 
@@ -60,7 +60,7 @@ class LinearActivatorTestSuite(unittest.TestCase):
         self.assertEqual(wish, -0.1)
 
 
-    def test_decreasing_range_large_activation(self):
+    def test_decreasing_range_small_activation(self):
         activator = activators.LinearActivator(zeroActivationValue=10, fullActivationValue=0, minActivation=0,
                                                maxActivation=1)
 
@@ -69,6 +69,17 @@ class LinearActivatorTestSuite(unittest.TestCase):
 
         wish = activator.getSensorWish(9)
         self.assertEqual(wish, -0.9)
+
+
+    def test_decreasing_range_small_activation2(self):
+        activator = activators.LinearActivator(zeroActivationValue=10, fullActivationValue=5, minActivation=0,
+                                               maxActivation=1)
+
+        activation = activator.computeActivation(9)
+        self.assertEqual(activation, 0.2)
+
+        wish = activator.getSensorWish(9)
+        self.assertEqual(wish, -0.8)
 
 if __name__ == '__main__':
     unittest.main()
