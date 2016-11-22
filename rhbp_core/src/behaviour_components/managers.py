@@ -311,7 +311,7 @@ class Manager(object):
             rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging))
             rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging))
             rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = with_extensive_logging))
-            rospy.logdebug("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
+            rospy.logdebug("\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
