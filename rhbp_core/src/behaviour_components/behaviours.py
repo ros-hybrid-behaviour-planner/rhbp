@@ -488,8 +488,9 @@ class BehaviourBase(object):
         for p in self._preconditions:
             p.updateComputation()
 
-    def _get_satisfactions(self):
+    def _get_satisfactions(self, include_optional=True):
         """
+        :param include_optional: include optional conditions in the collection
         :returns a list filled with satisfactions of the individual preconditions
         """
         satisfactions = []  # this
@@ -499,11 +500,13 @@ class BehaviourBase(object):
             except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
                 self._active = False
                 return 0.0
-        for p in filter(lambda x: x.optional == True, self._preconditions):  # now check optional sensors
-            try:
-                satisfactions.append(p.satisfaction)
-            except AssertionError:  # we don't care about errors in optional sensors
-                pass
+        if include_optional:
+            for p in filter(lambda x: x.optional == True, self._preconditions):  # now check optional sensors
+                try:
+                    satisfactions.append(p.satisfaction)
+                except AssertionError as e:  # we don't care about errors in optional sensors
+                    rospy.logwarn(e)
+                    pass
         return satisfactions
     
     def computeActivation(self):
@@ -511,8 +514,11 @@ class BehaviourBase(object):
         This method returns the activation by the situation (from preconditions) as float [0 to 1]
         Note that there may be optional sensors 
         """
-        activations = self._get_satisfactions()
-        return 1.0 if len(activations) == 0 else reduce(lambda x, y: x + y, activations) / len(activations)
+        activations = self._get_satisfactions(include_optional=True)
+
+        activation_value = 1.0 if len(activations) == 0 else reduce(lambda x, y: x + y, activations) / len(activations)
+
+        return activation_value
             
     
     def computeSatisfaction(self):
@@ -521,7 +527,7 @@ class BehaviourBase(object):
         If there are functioning optional sensors they are also handled equally like mandatory ones (so they could screw up the overall satisfaction) but if they fail they are just ignored.
         The aggregation of the satisfaction values is different to the activation calculation
         """
-        satisfactions = self._get_satisfactions()
+        satisfactions = self._get_satisfactions(include_optional=False)
         return reduce(operator.mul, satisfactions, 1)
             
     def computeWishes(self):
