@@ -75,6 +75,7 @@ class Overview(Plugin):
             self._widget.activationThresholdDecayDoubleSpinBox.setValue(newValues["activationThresholdDecay"])
         self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
         self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
+        self.setPauseResumeButton(True) # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
         self.__behaviours[name] = BehaviourWidget(name, self)
@@ -83,6 +84,15 @@ class Overview(Plugin):
     def addGoalWidget(self, name):
         self.__goals[name] = GoalWidget(name)
         self._widget.goalFrame.layout().addWidget(self.__goals[name])
+
+
+    def setPauseResumeButton(self, running):
+        if running:
+            self._widget.pausePushButton.setText("pause")
+            self._widget.pausePushButton.setChecked(False)
+        else:
+            self._widget.pausePushButton.setText("resume")
+            self._widget.pausePushButton.setChecked(True)
     
     def pauseButtonCallback(self, status):
         try:
@@ -91,13 +101,13 @@ class Overview(Plugin):
                 rospy.wait_for_service(self.__plannerPrefix + 'Pause')
                 pauseRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Pause', Empty)
                 pauseRequest()
-                self._widget.pausePushButton.setText("resume")
+                self.setPauseResumeButton(False)
             else:
                 rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Resume')
                 rospy.wait_for_service(self.__plannerPrefix + 'Resume')
                 resumeRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Resume', Empty)
                 resumeRequest()
-                self._widget.pausePushButton.setText("pause")
+                self.setPauseResumeButton(True)
         except Exception as e:
             rospy.logerr("error while toggling pause or resume: %s", str(e))
     
