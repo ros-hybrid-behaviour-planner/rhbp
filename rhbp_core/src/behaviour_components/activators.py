@@ -103,6 +103,10 @@ class Condition(Conditonal):
     @property
     def optional(self):
         return self._sensor.optional
+
+    @optional.setter
+    def optional(self, value):
+        self._sensor.optional = value
         
     def __str__(self):
         return "{0} {{{1} : v: {2}, s: {3}}}".format(self._name, self._sensor, self._normalizedSensorValue, self._satisfaction)
