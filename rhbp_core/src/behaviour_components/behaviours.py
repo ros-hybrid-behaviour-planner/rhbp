@@ -43,6 +43,7 @@ class Behaviour(object):
         self._activated = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._executionTimeout = -1 # The maximum allowed execution steps. If set to -1 infinite. We get it via getStatus service of actual behaviour node
         self._executionTime = -1    # The time the behaviour is running (in steps)
+        self._reset_activation = True
         self._create_log_files = create_log_files
         self._independentFromPlanner = independentFromPlanner
         self.__currentActivationStep = 0.0
@@ -87,7 +88,8 @@ class Behaviour(object):
             self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
             if self._isExecuting == True and status.isExecuting == False:
                 rospy.loginfo("%s finished. resetting activation", self._name)
-                self._activation = 0.0
+                if self._reset_activation:
+                    self._activation = 0.0
                 self._executionTime = -1
                 self._justFinished = True
             self._isExecuting = status.isExecuting
@@ -289,13 +291,16 @@ class Behaviour(object):
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Start', e)
     
-    def stop(self):
+    def stop(self, reset_activation = True):
         '''
         This method calls the stop service of the actual behaviour.
         It is expected that this service does not block.
+        :param reset_activation: boolean if activation has to be reset
         '''
         assert self._isExecuting
         self._executionTime = -1
+        self._reset_activation = reset_activation
+
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Stop')
             rospy.wait_for_service(self._name + 'Stop')

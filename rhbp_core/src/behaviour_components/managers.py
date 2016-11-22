@@ -187,6 +187,10 @@ class Manager(object):
         4) An interruptable behaviour timed out
         5) The last planning attempt was unsuccessful
         '''
+
+        if rospy.get_param("~planBias", 1.0) == 0.0:
+            return # return if planner is disabled
+
         domainPDDL = self.fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
@@ -294,17 +298,19 @@ class Manager(object):
         for behaviour in self._behaviours:
             ### do the activation computation ###
             behaviour.computeActivation()
+
+            #TODO This could be made dependent on the log state in order to save calculation
+            with_extensive_logging = False
             rospy.logdebug("%s", behaviour.name)
             rospy.logdebug("\tactive %s", behaviour.active)
             rospy.logdebug("\twishes %s", behaviour.wishes)
             rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
-            if behaviour.active:
-                rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = True))
-                rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = True))
-                rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = True))
-                rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = True))
-                rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = True))
-                rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = True))
+            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging))
+            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging))
+            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging))
+            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging))
+            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging))
+            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = with_extensive_logging))
             rospy.logdebug("\texecutable: {0} ({1})".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
         ### commit the activation computed in this step ###
@@ -345,14 +351,14 @@ class Manager(object):
                 if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                         and behaviour.interruptable:
                     rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
                     self.__replanningNeeded = True # this is unusual so replan
                 elif not behaviour.executable:
                     rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
                 elif behaviour.activation < self._activationThreshold:
                     rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors)
+                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
                 else:
                     behaviour.executionTime += 1
                 continue
@@ -372,7 +378,7 @@ class Manager(object):
                     rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                     for conflictor in stoppableBehaviours:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
-                        currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors)
+                        currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors, True)
                     ### we have now made room for the higher-priority behaviour ###
                 else:
                     rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
@@ -398,8 +404,8 @@ class Manager(object):
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
 
-    def stop_behaviour(self, behaviour, currentlyInfluencedSensors):
-        behaviour.stop()
+    def stop_behaviour(self, behaviour, currentlyInfluencedSensors, reset_activation = True):
+        behaviour.stop(reset_activation)
         self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
         currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in
                                                                                 behaviour.correlations]))  # remove all its correlations from the set of currently affected sensors
