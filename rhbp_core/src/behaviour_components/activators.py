@@ -60,6 +60,9 @@ class Condition(Conditonal):
         else:
            raise Exception("Sensor not available")
 
+    def getDirections(self):
+        return {self._sensor: self._activator.getDirection()}
+
     def getWishes(self):
         '''
         returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
@@ -174,6 +177,10 @@ class MultiSensorCondition(Condition):
         It has to return a new satisfaction value
         '''
         raise NotImplementedError()
+
+    def getDirections(self):
+
+        return {sensor: self._activator.getDirection() for sensor in self._sensors}
 
     def getWishes(self):
         '''
@@ -291,6 +298,13 @@ class Activator(object):
         '''
         raise NotImplementedError()
 
+    def getDirection(self):
+        """
+        Provide information if an increase or decrease of the sensor value is the intended direction for increasing the satisfaction
+        :return: +1 for increase and -1 for decrease
+        """
+        raise NotImplementedError()
+
     def getSensorWish(self, normalizedValue):
         '''
         This method should return an indicator (float in range [-1, 1]) how much and in what direction the value should change in order to reach more activation.
@@ -335,6 +349,9 @@ class BooleanActivator(Activator):
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
         return self._maxActivation if normalizedValue == self._desired else self._minActivation
+
+    def getDirection(self):
+        return 1 if self._desired else -1
 
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
@@ -406,7 +423,7 @@ class ThresholdActivator(Activator):
         else:
             return self._maxActivation if normalizedValue <= self._threshold else self._minActivation
     
-    def _getDirection(self):
+    def getDirection(self):
         return 1 if self._isMinimum else -1
 
     def getSensorWish(self, normalizedValue):
@@ -416,11 +433,11 @@ class ThresholdActivator(Activator):
         if self._valueRange:
             return sorted((-1.0, (self._threshold - normalizedValue) / self._valueRange, 1.0))[1] # return how much is missing clamped to [-1, 1]
         else:
-            return float(self._getDirection())
+            return float(self.getDirection())
 
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
     
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
@@ -454,19 +471,24 @@ class LinearActivator(Activator):
         activation = raw_activation * self.activationRange + self._minActivation
         return sorted((self._minActivation, activation, self._maxActivation))[1] # clamp to activation range
     
-    def _getDirection(self):
+    def getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
 
     def getSensorWish(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
 
         assert self.valueRange != 0
-        if self._getDirection() > 0:
+
+        wish_value = 0
+
+        if self.getDirection() > 0:
             # return how much is missing clamped to [0, 1]
-            return sorted((0.0, (self._fullActivationValue - normalizedValue) / self.valueRange, 1.0))[1]
+            wish_value = sorted((0.0, (self._fullActivationValue - normalizedValue) / self.valueRange, 1.0))[1]
         else:
             # return how much is there more than desired clamped to [-1, 0]
-            return sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1]
+            wish_value = sorted((-1.0, (self._fullActivationValue - normalizedValue) / abs(self.valueRange), 0.0))[1]
+
+        return wish_value
 
     def _calculate_satisfaction_bound(self, satisfaction_threshold):
         '''
@@ -482,7 +504,7 @@ class LinearActivator(Activator):
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         satisfaction_bound = self._calculate_satisfaction_bound(satisfaction_threshold)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self._getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
+        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)

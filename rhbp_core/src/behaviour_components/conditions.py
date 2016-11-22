@@ -46,6 +46,13 @@ class Conditonal(object):
         Indicator value range should be between -1 and 1 where -1 means the value must decrease or become False, 0 means no change is necessary and should remain, 1 means the value should increase or become True.
         '''
         raise NotImplementedError()
+
+    def getDirections(self):
+        """
+        Provide information if an increase or decrease of sensor values is the intended direction for increasing the satisfaction
+        :return: Dict of sensor, direction pairs  +1 for increase and -1 for decrease
+        """
+        raise NotImplementedError()
     
     def getPreconditionPDDL(self, satisfaction_threshold):
         '''
@@ -75,7 +82,7 @@ class Conditonal(object):
     def __repr__(self):
         return str(self)
     
-# THINK ABOUT ME:
+# TODO THINK ABOUT ME:
 # The next two classes make it possible to build arbitrary complex preconditions using logical AND and OR.
 # This notion is visible for the preconditions only: IT IS TRANSPARENT FOR WISHES so the outside world will try to satisfy ALL given conditions even if they are actually ORed 
 # Another issue are constructions containing optional sensors: what should I do if only the optional part fails?! I think this construct shall be mandatory if it contains at least one mandatory component
@@ -117,12 +124,18 @@ class Disjunction(Conditonal):
         '''
         self._satisfaction = max((x.satisfaction for x in self._conditions))
 
-
-    
     @property
     def satisfaction(self):
         return self._satisfaction
-    
+
+    def getDirections(self):
+        d = {}
+
+        for c in self._conditions:
+            d.update(c.getDirections())
+
+        return d
+
     def getWishes(self):
         '''
         returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
@@ -203,10 +216,19 @@ class Conjunction(Conditonal):
         The conjuction of activations is the product of individual satisfactions.
         '''
         self._satisfaction = reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
+        # TODO getDirection and getWishes, getPreconditionPDDL could be cached too
     
     @property
     def satisfaction(self):
         return self._satisfaction
+
+    def getDirections(self):
+        d = {}
+
+        for c in self._conditions:
+            d.update(c.getDirections())
+
+        return d
     
     def getWishes(self):
         '''
@@ -262,6 +284,7 @@ class Negation(Conditonal):
 
     def updateComputation(self):
         self._condition.updateComputation()
+        #TODO getDirection and getWishes, getPreconditionPDDL could be cached too
         
     @property
     def satisfaction(self):
@@ -269,6 +292,14 @@ class Negation(Conditonal):
         The negated satisfaction
         '''
         return 1 - self._condition.satisfaction
+
+    def getDirections(self):
+        d = {}
+        # invert all directions
+        for sensor, direction in self._condition.getDirections().iteritems():
+            d[sensor] = direction * -1
+
+        return d
     
     def getWishes(self):
         '''
@@ -276,18 +307,21 @@ class Negation(Conditonal):
         Each component of the conjunction contributes its wish to the list.
         '''
         wishes = self._condition.getWishes()
+        directions = self.getDirections()
         
         l = []
         for w in wishes:
             wish_value = w[1]
             if wish_value > 0:
                 wish_value = (1 - wish_value) * -1
-            else:
+            elif wish_value < 0:
                 wish_value = (1 - abs(wish_value))
-
+            else: #wish value == 0
+                # determine if it has to be -1 or +1
+                wish_value = directions[w[0]]
             l.append((w[0], wish_value)) #negation
         return l
-    
+
     def getPreconditionPDDL(self, satisfaction_threshold):
         '''
         The negated precondition PDDL
