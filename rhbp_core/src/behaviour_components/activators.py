@@ -225,6 +225,11 @@ class MultiSensorCondition(Condition):
     def optional(self):
         return reduce(lambda x, y: x and y, self._sensors, False)
 
+    @optional.setter
+    def optional(self, value):
+        for s in self._sensors:
+            s.optional = value
+
     @property
     def sensors(self):
         return  self._sensors
