@@ -1,4 +1,7 @@
 #! /usr/bin/env python2
+
+# This script was made for automatically parsing ROS rhbp logfiles
+
 import re
 import datetime
 import sys
@@ -14,7 +17,7 @@ thresholdRegex = re.compile(r'(\d+-\d+-\d+\s+\d+:\d+:\d+,\d+):\s+current\s+activ
 startRegex = re.compile(r'(\d+-\d+-\d+\s+\d+:\d+:\d+,\d+):\s+START\s+BEHAVIOUR\s+([a-zA-Z]+)')
 
 behaviours = {
-    "threshold" : {} # well, this is no nehaviour but it is only a variable name anyway
+    "threshold" : {} # well, this is no behaviour but it is only a variable name anyway
 }
 
 startEvents = []

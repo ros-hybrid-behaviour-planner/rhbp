@@ -240,3 +240,17 @@ class DistanceActivator(LinearActivator):
         """
         return abs(p.position.x - self._desired.position.x) + abs(p.position.y - self._desired.position.y)
 ```  
+
+##Debugging
+
+### Logging
+* The planner/manager log level is defined in  “planner_node.py”. It might be handy to adjust it during development.
+
+### Creating an activation plot
+The parameter ```<param name="createLogFiles" type="bool" value="True"/>``` enables the generation of several special logfiles (domain and problem PDDL, activation values of single behaviours) 
+that can be found in „~/.ros“ or in the current directory of rhbp source if you launch the node directly
+
+These loggfiles can also be used to create an activation plot.
+
+1. Change in „~/.ros“ and execute “/PATHTOSRC/rhbp_core/src/logging_scripts/plot_activation.sh”
+2. The result can be found in your current directory in activation.pdf
