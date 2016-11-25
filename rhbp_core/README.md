@@ -241,7 +241,7 @@ class DistanceActivator(LinearActivator):
         return abs(p.position.x - self._desired.position.x) + abs(p.position.y - self._desired.position.y)
 ```  
 
-##Debugging
+## Debugging
 
 ### Logging
 * The planner/manager log level is defined in  “planner_node.py”. It might be handy to adjust it during development.
