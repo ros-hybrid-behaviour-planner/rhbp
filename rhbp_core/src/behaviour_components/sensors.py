@@ -14,6 +14,7 @@ class Sensor(object):
     Although it is not abstract it will be barely useful and should be used as base class for actual clever implementations that for planner_node subscribe to ROS topics.
     
     '''
+
     _instanceCounter = 0
 
     def __init__(self, name = None, optional = False, initial_value = None):
@@ -79,13 +80,14 @@ class Sensor(object):
         self._name = newName
 
 class SimpleTopicSensor(Sensor):
-    """
-    "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
-    :param topic: topic name to subscribe to
-    :param name: name of the sensor, if None a name is generated from the topic
-    :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
-    """
+
     def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+        """
+        "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+        :param topic: topic name to subscribe to
+        :param name: name of the sensor, if None a name is generated from the topic
+        :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
+        """
 
         if name is None:
             if topic is None:
