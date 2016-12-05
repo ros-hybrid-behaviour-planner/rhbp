@@ -16,14 +16,19 @@ class Condition(Conditonal):
     '''    
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
-    def __init__(self, sensor, activator, name = None):
-        '''
+    def __init__(self, sensor, activator, name = None, optional = False):
+        """
         Constructor
-        '''
+        :param sensor: The sensor :py:class:`sensors.Sensor` that is evaluated by this condition
+        :param activator: The :py:class:`Activator` that is used to calculate the activation from the sensor value
+        :param name: condition name, a name will be generated if None is passed
+        :param optional: If true the condition will not be considered for precondition satisfaction and only for activation calculation
+        """
         super(Condition, self).__init__()
         self._name = name if name else "Condition{0}".format(Condition._instanceCounter)
         self._sensor = sensor
         self._activator = activator
+        self._optional = optional
 
         self._normalizedSensorValue = 0
         self._satisfaction = 0
@@ -94,19 +99,31 @@ class Condition(Conditonal):
         '''
         return self._satisfaction
 
-    # TODO check if we really need the following property!!!!
     @property
     def sensor(self):
-        rospy.logwarn("called sensor optional")
+        '''
+        :return: The used sensor of this condition
+        '''
         return self._sensor
 
     @property
+    def activator(self):
+        """
+        :return: The used activator of this condition
+        """
+        return self._activator
+
+    @property
     def optional(self):
-        return self._sensor.optional
+        """
+        The condition is either optional if itself is defined is optional or if the used sensor is optional
+        :return: True if optional
+        """
+        return self._optional or self._sensor.optional
 
     @optional.setter
     def optional(self, value):
-        self._sensor.optional = value
+        self._optional = value
         
     def __str__(self):
         return "{0} {{{1} : v: {2}, s: {3}}}".format(self._name, self._sensor, self._normalizedSensorValue, self._satisfaction)
@@ -123,15 +140,20 @@ class MultiSensorCondition(Condition):
     '''
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
-    def __init__(self, sensors, activator, name = None):
+    def __init__(self, sensors, activator, name = None, optional = False):
         '''
         Constructor
+        :param sensors: list, tuple of :py:class:`sensors.Sensor` objects that this condition is using
+        :param activator: see :py:class:`Condition`
+        :param name: see :py:class:`Condition`
+        :param optional: see :py:class:`Condition`
         '''
         self._name = name if name else "MultiSensorCondition {0}".format(Condition._instanceCounter)
 
         assert hasattr(sensors, '__getitem__'), "sensors is not a tuple or list"
         self._sensors = sensors
         self._activator = activator
+        self._optional = optional
 
         self._normalizedSensorValues = dict.fromkeys(self._sensors, 0)
         self._sensorSatisfactions = dict.fromkeys(self._sensors, 0)
@@ -223,12 +245,11 @@ class MultiSensorCondition(Condition):
 
     @property
     def optional(self):
-        return reduce(lambda x, y: x and y, self._sensors, False)
+        return self._optional or reduce(lambda x, y: x and y, self._sensors, False)
 
     @optional.setter
     def optional(self, value):
-        for s in self._sensors:
-            s.optional = value
+        self._optional = value
 
     @property
     def sensors(self):
@@ -247,11 +268,11 @@ class PublisherCondition(Condition):
     '''
     _instanceCounter = 0  # static _instanceCounter to get distinguishable names
 
-    def __init__(self, sensor, activator, name=None):
+    def __init__(self, sensor, activator, name=None, optional=False):
         '''
         Constructor
         '''
-        super(PublisherCondition, self).__init__(sensor=sensor,activator=activator,name=name)
+        super(PublisherCondition, self).__init__(sensor=sensor, activator=activator, name=name, optional=optional)
 
         self._topic_name = activator.getPDDLFunctionName(sensorName=sensor.name)
 
