@@ -1,0 +1,33 @@
+actions: []
+authors: Stephan Wypler <s.wypler@campus.tu-berlin.de>, Christopher-Eyk Hrabia <christopher-eyk.hrabia@dai-labor.de>
+brief: ''
+bugtracker: ''
+depends:
+- catkin
+- message_runtime
+- std_msgs
+- ffp
+- python-catkin-pkg
+- rospy
+- message_generation
+description: The core modules of the rhbp planner
+license: LGPLv3
+maintainers: Christopher-Eyk Hrabia <christopher-eyk.hrabia@dai-labor.de>
+msgs:
+- Wish
+- Status
+- Correlation
+- PlannerStatus
+package_type: package
+repo_url: ''
+srvs:
+- ForceStart
+- Activate
+- RemoveBehaviour
+- GetPDDL
+- GetStatus
+- RemoveGoal
+- AddBehaviour
+- AddGoal
+- SetInteger
+url: ''
