@@ -5,7 +5,6 @@ Created on 13.04.2015
 '''
 
 import rospy
-import pddl
 from utils.ros_helpers import get_topic_type
 
 class Sensor(object):

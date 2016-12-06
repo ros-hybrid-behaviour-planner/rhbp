@@ -3,11 +3,11 @@
 #@author: wypler, hrabia
 
 from __future__ import division # force floating point division when using plain /
-from pddl import PDDL
+from behaviour_components.pddl import PDDL
 from std_msgs.msg import Float32
 import rospy
 
-from conditions import Conditonal
+from behaviour_components.conditions import Conditonal
   
 class Condition(Conditonal):
     '''
