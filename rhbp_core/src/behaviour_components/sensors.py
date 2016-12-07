@@ -37,9 +37,11 @@ class Sensor(object):
         return  self._value
 
     def update(self, newValue):
-        '''
-        This method is to refresh the _value.
-        '''
+        """
+        This method is to refresh the _latestValue.
+        :param newValue: the value to update
+        :return:
+        """
         self._latestValue = newValue
 
     @property
