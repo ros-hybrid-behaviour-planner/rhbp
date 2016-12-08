@@ -2,7 +2,7 @@
 <package>
   <name>knowledge_base</name>
   <version>0.0.1</version>
-  <description>The knowledge_base package; provides a tupple space as own ros node</description>
+  <description>The knowledge_base package; provides a tupple space as own ros node; Ros wrapper for lindypy</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <maintainer email="rieger@campus.tu-berlin.de">Phillip Rieger</maintainer>
