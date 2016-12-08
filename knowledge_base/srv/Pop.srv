@@ -1,4 +1,4 @@
-string[] request
+string[] pattern
 ---
 bool exists
 string[] removed
