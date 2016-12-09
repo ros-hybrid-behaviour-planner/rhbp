@@ -1,7 +1,4 @@
-import sys
-
-sys.path.insert(0, '..')
-from tuple_space import TupleSpace
+from knowledge_base.tuple_space import TupleSpace
 import unittest
 
 
