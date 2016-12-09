@@ -11,12 +11,11 @@ from knowledge_base.srv import Exists, ExistsResponse
 from knowledge_base.msg import Push
 
 if __name__ == '__main__':
-    if (len(sys.argv)<2):
-        nodeName='knowledgeBaseNode'
+    if (len(sys.argv) < 2):
+        nodeName = 'knowledgeBaseNode'
     else:
-        nodeName='knowledgeBase/' + sys.argv[1]
-    rospy.init_node(nodeName, log_level = rospy.WARN)
+        nodeName = 'knowledgeBase/' + sys.argv[1]
+    rospy.init_node(nodeName, log_level=rospy.WARN)
     KnowledgeBase(nodeName)
 
     rospy.spin()
-

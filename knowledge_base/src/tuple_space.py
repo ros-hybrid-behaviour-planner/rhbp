@@ -4,16 +4,14 @@ by a process that owns the data structure and only
 communicates via message pipes.
 """
 
-import os
-import sys
-import select
-import signal
-import traceback
-import multiprocessing
 import collections
 
+
 class MessageException(Exception): pass
+
+
 class MessageNotUnderstoodError(MessageException): pass
+
 
 class TupleSpace(object):
     """
@@ -23,6 +21,7 @@ class TupleSpace(object):
     put an identical tuple into the system multiple times, it will
     only be in there once and counted.
     """
+
     def __init__(self):
         self.count = 0
         self.tspace = {}
@@ -59,10 +58,10 @@ class TupleSpace(object):
             return []
 
         def matches(tup):
-            for i,t in typechecks:
+            for i, t in typechecks:
                 if not isinstance(tup[i], t):
                     return False
-            for i,f in funcchecks:
+            for i, f in funcchecks:
                 if not f(tup[i]):
                     return False
             return True
@@ -71,7 +70,7 @@ class TupleSpace(object):
         for p in possible:
             t = self.tspace[p]
             if matches(t):
-                res.append((p,t))
+                res.append((p, t))
                 if number > 1:
                     number -= 1
                 else:
@@ -91,7 +90,7 @@ class TupleSpace(object):
 
         resp, res = res[0]
         if remove:
-            for i,c in enumerate(res):
+            for i, c in enumerate(res):
                 self.colidx[i][c].remove(resp)
             self.lenidx[len(res)].remove(resp)
         return res
@@ -109,7 +108,7 @@ class TupleSpace(object):
         if len(tupl) not in self.lenidx:
             self.lenidx[len(tupl)] = set()
         self.lenidx[len(tupl)].add(self.count)
-       
+
         # add the tuple id to the column value index
         while len(self.colidx) < len(tupl):
             self.colidx.append({})
@@ -123,4 +122,3 @@ class TupleSpace(object):
         Returns a list of all tuples in the tuplespace.
         """
         return list(self.tspace.values())
-
