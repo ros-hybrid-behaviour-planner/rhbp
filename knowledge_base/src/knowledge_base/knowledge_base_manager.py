@@ -39,10 +39,9 @@ class KnowledgeBase(object):
         :param pattern:  tupple of non-None strings
         :return: tupple. At each position in the source, where the placeholder * was, is now the typ str
         """
-        #TODO: use * for placeholder detection
         lst = list(pattern)
         for i in range(0, len(lst)):
-            if (lst[i] == None):
+            if (lst[i] == '*'):
                 lst[i] = str
         return tuple(lst)
 
