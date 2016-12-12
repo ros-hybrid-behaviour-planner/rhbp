@@ -48,6 +48,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   Push.msg
+  Fact.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -56,6 +57,7 @@ add_service_files(
   Peek.srv
   Pop.srv
   Exists.srv
+  All.srv
 )
 
 ## Generate actions in the 'action' folder
