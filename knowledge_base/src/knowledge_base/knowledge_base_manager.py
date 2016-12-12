@@ -10,8 +10,7 @@ import sys
 import rospy
 from knowledge_base.msg import Push, Fact
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse
-
-from tuple_space import TupleSpace
+from lindypy.TupleSpace import TSpace
 
 """
 Wrapper class for accessing the real tupple space
@@ -20,7 +19,7 @@ Wrapper class for accessing the real tupple space
 
 class KnowledgeBase(object):
     def __init__(self, name):
-        self.__tuple_space = TupleSpace()
+        self.__tuple_space = TSpace()
         rospy.Subscriber(name + '/Push', Push, self.__push)
         self.__exists_service = rospy.Service(name + '/Exists', Exists, self.__exists)
         self.__peek_service = rospy.Service(name + '/Peek', Peek, self.__peek)
@@ -35,14 +34,15 @@ class KnowledgeBase(object):
         self.__peek_service.shutdown()
         self.__pop_service.shutdown()
 
-    def __converts_request_to_tuple_space_format(self, pattern):
+    @staticmethod
+    def __converts_request_to_tuple_space_format(pattern):
         """
         :param pattern:  tupple of non-None strings
         :return: tupple. At each position in the source, where the placeholder * was, is now the typ str
         """
         lst = list(pattern)
         for i in range(0, len(lst)):
-            if (lst[i] == '*'):
+            if lst[i] == '*':
                 lst[i] = str
         return tuple(lst)
 
@@ -90,7 +90,7 @@ class KnowledgeBase(object):
         except KeyError:
             return PeekResponse(exists=False)
 
-    def __pop(self, popRequest):
+    def __pop(self, pop_request):
         """
         If tupple exists in the tupple space, which matchs the pattern, it will be also removed from  the tupple space
         and returned
@@ -99,7 +99,7 @@ class KnowledgeBase(object):
                 if a tupple exists in tupple space, an example is returned and the exists flag is setted
         """
         try:
-            converted = self.__converts_request_to_tuple_space_format(popRequest.pattern)
+            converted = self.__converts_request_to_tuple_space_format(pop_request.pattern)
             result = self.__tuple_space.get(converted, remove=True)
             return PopResponse(removed=result, exists=True)
         except KeyError:
@@ -111,10 +111,10 @@ class KnowledgeBase(object):
         """
         converted = self.__converts_request_to_tuple_space_format(all_request.pattern)
         try:
-            foundTuples = self.__tuple_space.many(converted, sys.maxint)
-            resultAsList = []
-            for fact in foundTuples:
-                resultAsList.append(Fact(content=fact[1]))
-            return AllResponse(found=tuple(resultAsList))
+            found_tuples = self.__tuple_space.many(converted, sys.maxint)
+            result_as_list = []
+            for fact in found_tuples:
+                result_as_list.append(Fact(content=fact[1]))
+            return AllResponse(found=tuple(result_as_list))
         except KeyError:
             return ()

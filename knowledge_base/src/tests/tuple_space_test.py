@@ -1,23 +1,25 @@
-from knowledge_base.tuple_space import TupleSpace
+
+from lindypy.TupleSpace import TSpace
+
 import unittest
 
 
 class TupleSpaceTestSuite(unittest.TestCase):
     def test_add(self):
-        tspace = TupleSpace()
-        tuple = ('PositionFact', '0', '0')
-        tspace.add(tuple)
-        self.assertEqual(tuple, tspace.get(tuple), 'Wrong tuple was found')
+        tspace = TSpace()
+        test_tuple = ('PositionFact', '0', '0')
+        tspace.add(test_tuple)
+        self.assertEqual(test_tuple, tspace.get(tuple), 'Wrong tuple was found')
 
     def test_find_by_pattern(self):
-        tspace = TupleSpace()
-        tuple = ('PositionFact', '0', '0')
+        tspace = TSpace()
+        test_tuple = ('PositionFact', '0', '0')
         tspace.add(tuple)
         readed = tspace.get(('PositionFact', str, str))
-        self.assertEqual(tuple, readed, 'Wrong tuple was found')
+        self.assertEqual(test_tuple, readed, 'Wrong tuple was found')
 
     def test_dont_find_non_existing(self):
-        tspace = TupleSpace()
+        tspace = TSpace()
         try:
             tspace.get(('PositionFact', '0', '0'))
             self.fail('Found tupple')
@@ -26,11 +28,11 @@ class TupleSpaceTestSuite(unittest.TestCase):
             self.assertTrue(True)
 
     def test_delete_tupple(self):
-        tspace = TupleSpace()
-        tuple = ('PositionFact', '0', '0')
+        tspace = TSpace()
+        test_tuple = ('PositionFact', '0', '0')
         tspace.add(tuple)
-        readed = tspace.get(tuple, remove=True)
-        self.assertEqual(tuple, readed, 'Wrong tuple was found')
+        read = tspace.get(tuple, remove=True)
+        self.assertEqual(test_tuple, read, 'Wrong tuple was found')
         try:
             tspace.get(tuple)
             self.fail('Found tupple')
