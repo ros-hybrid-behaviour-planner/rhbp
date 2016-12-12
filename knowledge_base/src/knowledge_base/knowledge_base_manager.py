@@ -53,19 +53,28 @@ class KnowledgeBase(object):
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tupple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
-        self.__tuple_space.add(converted)
+        if not self.__exists_tupple_as_is(converted):
+            self.__tuple_space.add(converted)
+
+    def __exists_tupple_as_is(self, tuple):
+        """
+        Checks whether the tuple is returned in tuple space. Just a wrapper method.
+        Does no conversion of the requested tuple
+        :return: whether the requested tuple is contained in the tuple space.
+        """
+        try:
+            self.__tuple_space.get(tuple)
+            return True
+        except KeyError:
+            return False
 
     def __exists(self, request):
         """
         :param request: Exists, as defined as ROS service
         :return: bool, which indiciated, whether a tupple exists in knowledge base, which matchs the pattern
         """
-        try:
-            converted = self.__converts_request_to_tuple_space_format(request.pattern)
-            self.__tuple_space.get(converted)
-            return True
-        except KeyError:
-            return False
+        converted = self.__converts_request_to_tuple_space_format(request.pattern)
+        return self.__exists_tupple_as_is(converted)
 
     def __peek(self, request):
         """
