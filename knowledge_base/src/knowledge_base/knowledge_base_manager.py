@@ -6,16 +6,17 @@ Created on 07.12.2016
 '''
 
 import rospy
+import sys
 
 from tuple_space import TupleSpace
-from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse
-from knowledge_base.msg import Push
+from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All
+from knowledge_base.msg import Push, Fact
 
-
-class KnowledgeBase(object):
 """
 Wrapper class for accessing the real tupple space
 """
+class KnowledgeBase(object):
+
 
     def __init__(self, name):
         self.__tuple_space = TupleSpace()
@@ -23,6 +24,7 @@ Wrapper class for accessing the real tupple space
         self.__exists_service = rospy.Service(name + '/Exists', Exists, self.__exists)
         self.__peek_service = rospy.Service(name + '/Peek', Peek, self.__peek)
         self.__pop_service = rospy.Service(name + '/Pop', Pop, self.__pop)
+        self.__all_service = rospy.Service(name+'/All',All, self.__all)
 
     def __del__(self):
         """
@@ -63,7 +65,7 @@ Wrapper class for accessing the real tupple space
             converted = self.__converts_request_to_tuple_space_format(request.pattern)
             self.__tuple_space.get(converted)
             return True
-        except KeyError as e:
+        except KeyError:
             return False
 
     def __peek(self, request):
@@ -76,7 +78,7 @@ Wrapper class for accessing the real tupple space
             converted = self.__converts_request_to_tuple_space_format(request.pattern)
             result = self.__tuple_space.get(converted)
             return PeekResponse(example=result, exists=True)
-        except KeyError as e:
+        except KeyError:
             return PeekResponse(exists=False)
 
     def __pop(self, request):
@@ -91,5 +93,19 @@ Wrapper class for accessing the real tupple space
             converted = self.__converts_request_to_tuple_space_format(request.pattern)
             result = self.__tuple_space.get(converted, remove=True)
             return PopResponse(removed=result, exists=True)
-        except KeyError as e:
+        except KeyError:
             return PopResponse(exists=False)
+
+    def __all(self,allRequest):
+        """
+        :return: all contained tupples, matching the given pattern, but never more tuples than sys.max_int
+        """
+        converted = self.__converts_request_to_tuple_space_format(allRequest.pattern)
+        try:
+            foundTuples = self.__tuple_space.many(converted,sys.maxint)
+            resultAsList= []
+            for fact in foundTuples:
+                resultAsList.append(Fact(fact))
+            return tuple(resultAsList)
+        except KeyError:
+            return ()
