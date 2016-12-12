@@ -7,8 +7,6 @@ Created on 07.12.2016
 import sys
 import rospy
 from knowledge_base_manager import KnowledgeBase
-from knowledge_base.srv import Exists, ExistsResponse
-from knowledge_base.msg import Push
 
 if __name__ == '__main__':
     if (len(sys.argv) < 2):
