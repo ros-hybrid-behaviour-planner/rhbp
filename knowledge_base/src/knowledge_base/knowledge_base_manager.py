@@ -9,7 +9,7 @@ import rospy
 import sys
 
 from tuple_space import TupleSpace
-from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All
+from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse
 from knowledge_base.msg import Push, Fact
 
 """
@@ -113,7 +113,7 @@ class KnowledgeBase(object):
             foundTuples = self.__tuple_space.many(converted,sys.maxint)
             resultAsList= []
             for fact in foundTuples:
-                resultAsList.append(Fact(fact))
-            return tuple(resultAsList)
+                resultAsList.append(Fact(content=fact[1]))
+            return AllResponse(found=tuple(resultAsList))
         except KeyError:
             return ()
