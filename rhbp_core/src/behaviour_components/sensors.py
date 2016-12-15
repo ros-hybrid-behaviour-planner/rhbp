@@ -5,6 +5,7 @@ Created on 13.04.2015
 '''
 
 import rospy
+from knowledge_base.srv._Exists import Exists
 from utils.ros_helpers import get_topic_type
 
 import pddl
@@ -147,12 +148,12 @@ class KnowledgeSensor(Sensor):
     """
     """
 
-    def __init__(self, pattern, optional=False, exists_service_name='knowledgeBaseNode/Exists'):
-        super(KnowledgeSensor, self).__init__(name=None, optional=optional, initial_value=None)
+    def __init__(self, pattern, optional=False, exists_service_name='knowledgeBaseNode/Exists', sensor_name=None):
+        super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
         self.__exists_service_name=exists_service_name
         try:
             rospy.wait_for_service(exists_service_name,timeout=10)
-            self.__exists_service = rospy.ServiceProxy(exists_service_name)
+            self.__exists_service = rospy.ServiceProxy(exists_service_name,Exists)
         except rospy.ROSException:
             self.__exists_service = None
         self.__pattern = pattern
@@ -162,9 +163,9 @@ class KnowledgeSensor(Sensor):
         if not self.__exists_service ==None:
             return
         rospy.wait_for_service(self.__exists_service_name)
-        self.__exists_service = rospy.ServiceProxy(self.__exists_service_name)
+        self.__exists_service = rospy.ServiceProxy(self.__exists_service_name,Exists)
 
     def sync(self):
         self.__make_exists_service_available()
-        self.update(self.__exists_service(self.__pattern))
+        self.update(self.__exists_service(self.__pattern).exists)
         super(KnowledgeSensor, self).sync()
