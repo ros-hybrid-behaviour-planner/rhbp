@@ -9,11 +9,9 @@ import rospy
 from knowledge_base_manager import KnowledgeBase
 
 if __name__ == '__main__':
-    if (len(sys.argv) < 2):
-        nodeName = 'knowledgeBaseNode'
-    else:
-        nodeName = 'knowledgeBase/' + sys.argv[1]
-    rospy.init_node(nodeName, log_level=rospy.WARN)
+
+    nodeName = 'knowledgeBaseNode'
+    rospy.init_node(nodeName, log_level=rospy.DEBUG)
     KnowledgeBase(nodeName)
 
     rospy.spin()
