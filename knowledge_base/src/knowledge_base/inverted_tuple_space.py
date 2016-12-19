@@ -8,11 +8,10 @@ class InvertedTupleSpace(TSpace):
 
     def find_for_fact(self, fact):
         """
-
+        Code was inspired by TSpace::many
         :param fact: tupple
         :return: all matching patterns
         """
-
         if len(fact) not in self.lenidx:
             return []
         possible = self.lenidx[len(fact)]
