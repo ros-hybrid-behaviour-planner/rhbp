@@ -191,4 +191,6 @@ include_directories(
 # endif()
 
 ## Add folders to be run by python nosetests
-catkin_add_nosetests(src/tests)
+catkin_add_nosetests(src/tests/inverted_tuple_space_test.py)
+catkin_add_nosetests(src/tests/tuple_space_test.py)
+catkin_add_nosetests(src/tests/knowledge_base_manager_topic_name_generation_test.py)
