@@ -4,7 +4,7 @@ import unittest
 from knowledge_base.inverted_tuple_space import InvertedTupleSpace
 
 
-class TupleSpaceTestSuite(unittest.TestCase):
+class InvertedTupleSpaceTestSuite(unittest.TestCase):
 
     def test_simple(self):
         tuple_space = InvertedTupleSpace()
