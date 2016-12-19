@@ -31,7 +31,7 @@ class KnowledgeBase(object):
         self.__peek_service = rospy.Service(name + '/Peek', Peek, self.__peek)
         self.__pop_service = rospy.Service(name + '/Pop', Pop, self.__pop)
         self.__all_service = rospy.Service(name + '/All', All, self.__all)
-        self.__update_subscriber_service = rospy.Service(name + 'UpdateSubscriber', UpdateSubscribe,
+        self.__update_subscriber_service = rospy.Service(name + '/UpdateSubscriber', UpdateSubscribe,
                                                          self.__update_subscribe())
 
     def __del__(self):
@@ -134,7 +134,7 @@ class KnowledgeBase(object):
         for pattern in self.__subscribed_patterns_space:
             another_matching_fact_exists = self.__exists_tupple_as_is(pattern)
             removed_update_topic =  self.__fact_update_topics[pattern][0]
-            removed_update_topic.pulish(FactRemoved(fact=removed_fact,matching_fact_exists = another_matching_fact_exists))
+            removed_update_topic.pulish(FactRemoved(fact=removed_fact,another_matching_fact_exists = another_matching_fact_exists))
 
     def __all(self, all_request):
         """
