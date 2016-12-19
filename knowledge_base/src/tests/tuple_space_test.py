@@ -24,8 +24,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
             tspace.get(('PositionFact', '0', '0'))
             self.fail('Found tupple')
         except KeyError:
-            # TODO: Find better way
-            self.assertTrue(True)
+            pass
 
     def test_delete_tupple(self):
         tspace = TSpace()
@@ -37,8 +36,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
             tspace.get(tuple)
             self.fail('Found tupple')
         except KeyError:
-            # TODO: Find better way
-            self.assertTrue(True)
+            pass
 
 
 if __name__ == '__main__':
