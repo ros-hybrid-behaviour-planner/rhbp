@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   rqt_gui_py
   std_msgs
   message_generation
+  knowledge_base
   ffp
 )
 

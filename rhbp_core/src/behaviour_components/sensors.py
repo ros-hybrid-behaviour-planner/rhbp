@@ -5,7 +5,7 @@ Created on 13.04.2015
 '''
 
 import rospy
-from knowledge_base.srv._Exists import Exists
+from knowledge_base.update_handler import KnowledgeBaseFactCache
 from utils.ros_helpers import get_topic_type
 
 import pddl
@@ -146,26 +146,13 @@ class PassThroughTopicSensor(SimpleTopicSensor):
 
 class KnowledgeSensor(Sensor):
     """
+    Sensor, which provides information about existance of a fact, which matches the given pattern
     """
 
-    def __init__(self, pattern, optional=False, exists_service_name='knowledgeBaseNode/Exists', sensor_name=None):
+    def __init__(self, pattern, optional=False, knowledge_base_name=None, sensor_name=None):
         super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
-        self.__exists_service_name=exists_service_name
-        try:
-            rospy.wait_for_service(exists_service_name,timeout=10)
-            self.__exists_service = rospy.ServiceProxy(exists_service_name,Exists)
-        except rospy.ROSException:
-            self.__exists_service = None
-        self.__pattern = pattern
-        self.sync()
-
-    def __make_exists_service_available(self):
-        if not self.__exists_service ==None:
-            return
-        rospy.wait_for_service(self.__exists_service_name)
-        self.__exists_service = rospy.ServiceProxy(self.__exists_service_name,Exists)
+        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
 
     def sync(self):
-        self.__make_exists_service_available()
-        self.update(self.__exists_service(self.__pattern).exists)
+        self.update(self.__value_cache.does_fact_exists())
         super(KnowledgeSensor, self).sync()
