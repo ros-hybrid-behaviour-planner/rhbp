@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python2
 from lindypy.TupleSpace import TSpace
 
 import unittest
