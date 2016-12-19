@@ -71,7 +71,7 @@ class Condition(Conditonal):
         try:
             return [(self._sensor, self._activator.getSensorWish(self._normalizedSensorValue))]
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
+            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
     
     def getPreconditionPDDL(self, satisfaction_threshold):
