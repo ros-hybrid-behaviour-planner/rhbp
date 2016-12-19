@@ -5,16 +5,17 @@ import unittest
 
 
 class TupleSpaceTestSuite(unittest.TestCase):
+
     def test_add(self):
         tspace = TSpace()
         test_tuple = ('PositionFact', '0', '0')
         tspace.add(test_tuple)
-        self.assertEqual(test_tuple, tspace.get(tuple), 'Wrong tuple was found')
+        self.assertEqual(test_tuple, tspace.get(test_tuple), 'Wrong tuple was found')
 
     def test_find_by_pattern(self):
         tspace = TSpace()
         test_tuple = ('PositionFact', '0', '0')
-        tspace.add(tuple)
+        tspace.add(test_tuple)
         readed = tspace.get(('PositionFact', str, str))
         self.assertEqual(test_tuple, readed, 'Wrong tuple was found')
 
@@ -29,11 +30,11 @@ class TupleSpaceTestSuite(unittest.TestCase):
     def test_delete_tupple(self):
         tspace = TSpace()
         test_tuple = ('PositionFact', '0', '0')
-        tspace.add(tuple)
-        read = tspace.get(tuple, remove=True)
+        tspace.add(test_tuple)
+        read = tspace.get(test_tuple, remove=True)
         self.assertEqual(test_tuple, read, 'Wrong tuple was found')
         try:
-            tspace.get(tuple)
+            tspace.get(test_tuple)
             self.fail('Found tupple')
         except KeyError:
             pass
