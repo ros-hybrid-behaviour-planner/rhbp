@@ -32,7 +32,7 @@ class KnowledgeBase(object):
         self.__pop_service = rospy.Service(name + '/Pop', Pop, self.__pop)
         self.__all_service = rospy.Service(name + '/All', All, self.__all)
         self.__update_subscriber_service = rospy.Service(name + '/UpdateSubscriber', UpdateSubscribe,
-                                                         self.__update_subscribe())
+                                                         self.__update_subscribe)
 
     def __del__(self):
         """
@@ -66,16 +66,16 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(request.content)
         if not self.__exists_tupple_as_is(converted):
             self.__tuple_space.add(converted)
-            self.__fact_was_added()
+            self.__fact_was_added(converted)
 
-    def __fact_was_added(self,fact):
+    def __fact_was_added(self, fact):
         """
         informs all registered clients about change
         :param fact: tupple of strings
         """
-        for pattern in self.__subscribed_patterns_space:
-            add_update_topic =  self.__fact_update_topics[pattern][0]
-            add_update_topic.pulish(FactAdded(fact))
+        for pattern in self.__subscribed_patterns_space.find_for_fact(fact):
+            add_update_topic = self.__fact_update_topics[pattern][0]
+            add_update_topic.publish(FactAdded(fact))
 
     def __exists_tupple_as_is(self, to_check):
         """
@@ -131,10 +131,11 @@ class KnowledgeBase(object):
         informs all registered clients about remove of the fact
         :param removed_fact: tuple of strings
         """
-        for pattern in self.__subscribed_patterns_space:
+        for pattern in self.__subscribed_patterns_space.find_for_fact(removed_fact):
             another_matching_fact_exists = self.__exists_tupple_as_is(pattern)
-            removed_update_topic =  self.__fact_update_topics[pattern][0]
-            removed_update_topic.pulish(FactRemoved(fact=removed_fact,another_matching_fact_exists = another_matching_fact_exists))
+            removed_update_topic = self.__fact_update_topics[pattern][1]
+            removed_update_topic.publish(
+                FactRemoved(fact=removed_fact, another_matching_fact_exists=another_matching_fact_exists))
 
     def __all(self, all_request):
         """
@@ -180,14 +181,15 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(update_subscribe_request.interested_pattern)
         if converted in self.__fact_update_topics:
             # Another client has already subscribed this pattern
-            add_topic, remove_topic = self.__fact_update_topic[converted]
-            return UpdateSubscribeResponse(add_topic=add_topic.name, remove_topic=remove_topic.name)
+            add_topic, remove_topic = self.__fact_update_topics[converted]
+            return UpdateSubscribeResponse(add_topic_name=add_topic.name, remove_topic_name=remove_topic.name)
 
         basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__update_topic_prefix, converted)
         add_topic_name = basic_topic_name + '/Add'
-        addPublisher = rospy.Publisher(add_topic_name, FactAdded)
+        add_publisher = rospy.Publisher(add_topic_name, FactAdded, queue_size=10)
         remove_topic_name = basic_topic_name + '/Remove'
-        removedPublisher = rospy.Publisher(remove_topic_name, FactRemoved)
+        remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
         rospy.sleep(1)
-        self.__fact_update_topics[converted] = (addPublisher, removedPublisher)
+        self.__fact_update_topics[converted] = (add_publisher, remove_publisher)
         self.__subscribed_patterns_space.add(converted)
+        return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name)
