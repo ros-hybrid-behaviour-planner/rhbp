@@ -6,6 +6,7 @@ Created on 13.04.2015
 
 import rospy
 from utils.ros_helpers import get_topic_type
+from .pddl import create_valid_pddl_name
 
 class Sensor(object):
     '''
@@ -21,7 +22,7 @@ class Sensor(object):
         Constructor
         '''
         self._name = name if name else "Sensor_{0}".format(Sensor._instanceCounter)
-        self._name = pddl.create_valid_pddl_name(self._name)
+        self._name = create_valid_pddl_name(self._name)
         self._optional = optional
         self._value = initial_value # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
@@ -94,7 +95,7 @@ class SimpleTopicSensor(Sensor):
             if topic is None:
                 raise ValueError("Invalid name and topic")
             else :
-                name = pddl.create_valid_pddl_name(topic)
+                name = create_valid_pddl_name(topic)
 
         super(SimpleTopicSensor, self).__init__(name=name, initial_value=initial_value)
 
