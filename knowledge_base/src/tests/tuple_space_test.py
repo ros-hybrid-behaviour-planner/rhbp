@@ -2,6 +2,10 @@
 from lindypy.TupleSpace import TSpace
 
 import unittest
+import rostest
+
+
+PKG = 'knowledge_base'
 
 
 class TupleSpaceTestSuite(unittest.TestCase):
@@ -41,4 +45,4 @@ class TupleSpaceTestSuite(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    rostest.rosrun(PKG, 'tuple_space_test', TupleSpaceTestSuite)

@@ -1,7 +1,11 @@
 #! /usr/bin/env python2
 import unittest
 
+import rostest
 from knowledge_base.knowledge_base_manager import KnowledgeBase
+
+
+PKG = 'knowledge_base'
 
 
 class KnowledgeBaseManagerTopicNameGenerationTestSuite(unittest.TestCase):
@@ -26,5 +30,6 @@ class KnowledgeBaseManagerTopicNameGenerationTestSuite(unittest.TestCase):
         topic_name = KnowledgeBase.generate_topic_name_for_pattern('/knowledgebase/FactUpdate/',pattern)
         self.assertEqual('/knowledgebase/FactUpdate/abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789',topic_name)
 
+
 if __name__ == '__main__':
-    unittest.main()
+    rostest.rosrun(PKG, 'knowledge_base_manager_topic_name_generation_test', KnowledgeBaseManagerTopicNameGenerationTestSuite)
