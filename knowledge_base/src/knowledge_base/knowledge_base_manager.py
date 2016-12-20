@@ -6,6 +6,7 @@ Created on 07.12.2016
 '''
 
 import sys
+import re
 
 import rospy
 from knowledge_base.msg import Push, Fact, FactAdded, FactRemoved
@@ -168,9 +169,9 @@ class KnowledgeBase(object):
                 topic_name += '_'
 
             if isinstance(part, type):
-                topic_name += '~'
+                topic_name += 'x'
             else:
-                topic_name += part
+                topic_name += re.sub(r'[^a-zA-Z0-9]','',str(part))
         return topic_name
 
     def __update_subscribe(self, update_subscribe_request):
