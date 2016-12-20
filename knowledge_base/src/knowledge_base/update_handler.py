@@ -34,19 +34,34 @@ class KnowledgeBaseFactCache:
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
 
+    def __match_pattern(self,fact):
+        """
+
+        :param fact: tupple of strings
+        :return: whether given fact matches the pattern
+        """
+        if not (len(fact)== len(self.__pattern)):
+            return False
+        for index,pattern_part in enumerate(self.__pattern):
+            if not (pattern_part == '*' or pattern_part == fact[index]):
+                return False
+        return True
+
     def __handle_add_update(self, fact_added):
         """
         handles message, that a matching fact was added
         :param factAdded: FactAdded, as defined ROS message
         """
-        self.__value = True
+        if self.__match_pattern(fact_added.fact):
+            self.__value = True
 
     def __handle_remove_update(self, fact_removed):
         """
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        self.__value = fact_removed.another_matching_fact_exists
+        if self.__match_pattern(fact_removed.fact):
+            self.__value = fact_removed.another_matching_fact_exists
 
     def update_state_manually(self):
         """
