@@ -47,10 +47,10 @@ class TupleSpaceTestSuite(unittest.TestCase):
     def test_peek(self):
         test_tuple = (self.__message_prefix, 'test_peek', '0', '0')
         self.add_tuple(test_tuple)
-        peekService = rospy.ServiceProxy('/knowledgeBaseNode/Peek', Peek)
-        peekResponse = peekService(test_tuple)
-        self.assertTrue(True, peekResponse.exists)
-        self.assertEqual(test_tuple, tuple(peekResponse.example))
+        peek_service = rospy.ServiceProxy('/knowledgeBaseNode/Peek', Peek)
+        peek_response = peek_service(test_tuple)
+        self.assertTrue(True, peek_response.exists)
+        self.assertEqual(test_tuple, tuple(peek_response.example))
 
     def test_pop(self):
         test_tuple = (self.__message_prefix, 'test_pop', '0', '0')
@@ -77,7 +77,8 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.assertTrue(peek_response.exists)
         self.assertEqual(test_tuple, tuple(peek_response.example))
 
-    def __wait_for_tuple(self, wait_for_it):
+    @staticmethod
+    def __wait_for_tuple(wait_for_it):
         """
         waits, until the requested tuple is contained in knowledge_base
         :param wait_for_it: tuple
@@ -87,7 +88,8 @@ class TupleSpaceTestSuite(unittest.TestCase):
         while not exist_service(wait_for_it).exists:
             rospy.sleep(1)
 
-    def __is_tuple_in_facts(self, to_check, facts):
+    @staticmethod
+    def __is_tuple_in_facts(to_check, facts):
         """
         :param to_check: tuple
         :param facts: tuple of ROS message Fact
@@ -103,30 +105,30 @@ class TupleSpaceTestSuite(unittest.TestCase):
         test service for find all matching facts
         """
         t1 = (self.__message_prefix, 'test_all', 'pos', '0', '0')
-        self.add_tupple(t1)
+        self.add_tuple(t1)
         t2 = (self.__message_prefix, 'test_all', 'pos', '1', '0')
-        self.add_tupple(t2)
+        self.add_tuple(t2)
         t3 = (self.__message_prefix, 'test_all', 'pos', '1', '-4')
-        self.add_tupple(t3)
+        self.add_tuple(t3)
 
-        self.__wait_for_tuple(t3)
+        TupleSpaceTestSuite.__wait_for_tuple(t3)
 
         rospy.wait_for_service('/knowledgeBaseNode/All')
         all_service = rospy.ServiceProxy('/knowledgeBaseNode/All', All)
         all_response = all_service((self.__message_prefix, 'test_all', 'pos', '*', '*'))
 
         self.assertEqual(3, len(all_response.found))
-        self.assertTrue(self.__is_tuple_in_facts(t1, all_response.found))
-        self.assertTrue(self.__is_tuple_in_facts(t2, all_response.found))
-        self.assertTrue(self.__is_tuple_in_facts(t3, all_response.found))
+        self.assertTrue(TupleSpaceTestSuite.__is_tuple_in_facts(t1, all_response.found))
+        self.assertTrue(TupleSpaceTestSuite.__is_tuple_in_facts(t2, all_response.found))
+        self.assertTrue(TupleSpaceTestSuite.__is_tuple_in_facts(t3, all_response.found))
 
     def test_prevent_multiple_adding(self):
         """
         tests that no duplicates are contained in knowledge base
         """
         test_tuple = (self.__message_prefix, 'test_prevent_multiple_adding', '0', '0')
-        self.add_tupple(test_tuple)
-        self.add_tupple(test_tuple)
+        self.add_tuple(test_tuple)
+        self.add_tuple(test_tuple)
 
         rospy.wait_for_service('/knowledgeBaseNode/All')
         all_service = rospy.ServiceProxy('/knowledgeBaseNode/All', All)
