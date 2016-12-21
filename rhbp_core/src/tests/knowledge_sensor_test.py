@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+Tests the knowledge sensor.
+Requires a running roscore and a knowledge_base
+
+@author: Phillip
+"""
 import unittest
 
 import rospy
@@ -18,17 +24,24 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
 
     @staticmethod
-    def add_tupple(tuple):
+    def add_tuple(to_add):
+        """
+        Adds the given fact to knowledge base
+        :param to_add: array of strings
+        """
         pub = rospy.Publisher('/knowledgeBaseNode/Push', Push, queue_size=10)
         rospy.sleep(1)
-        pub.publish(tuple)
+        pub.publish(to_add)
 
     def test_basic(self):
+        """
+        Tests sensor output, if the fact is added at runtime (and did not exist before)
+        """
         sensor = KnowledgeSensor(pattern=((self.__message_prefix, 'test_basic', 'pos', '*', '*')))
         sensor.sync()
         self.assertFalse(sensor.value)
 
-        TestKnowledgeBaseSensor.add_tupple((self.__message_prefix, 'test_basic', 'pos', '42', '0'))
+        TestKnowledgeBaseSensor.add_tuple((self.__message_prefix, 'test_basic', 'pos', '42', '0'))
         rospy.sleep(1)
 
         sensor.sync()
@@ -36,8 +49,11 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
 
     def test_remove(self):
 
+        """
+        Tests sensor output , if the fact is removed
+        """
         test_tuple= (self.__message_prefix, 'test_remove', 'pos', '42', '0')
-        TestKnowledgeBaseSensor.add_tupple(test_tuple)
+        TestKnowledgeBaseSensor.add_tuple(test_tuple)
         rospy.sleep(1)
 
         sensor = KnowledgeSensor(pattern=((self.__message_prefix, 'test_remove', 'pos', '*', '*')))
