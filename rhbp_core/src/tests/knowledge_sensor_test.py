@@ -55,15 +55,19 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         TestKnowledgeBaseSensor.add_tuple(test_tuple)
         rospy.sleep(1)
 
-        sensor = KnowledgeSensor(pattern=((self.__message_prefix, 'test_remove', 'pos', '*', '*')))
+        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_remove', 'pos', '*', '*'))
         sensor.sync()
         self.assertTrue(sensor.value)
 
         rospy.wait_for_service('/knowledgeBaseNode/Pop')
         pop_service = rospy.ServiceProxy('/knowledgeBaseNode/Pop', Pop)
-        pop_response = pop_service(test_tuple)
+
+        pop_service(test_tuple)
+
+        rospy.sleep(1)
 
         sensor.sync()
+
         self.assertFalse(sensor.value)
 
 
