@@ -26,6 +26,7 @@ class KnowledgeBaseFactCache:
         self.__exists_service_name = knowledge_base_name + '/Exists'
         try:
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name, timeout=10)
+            self.__register_for_updates()
         except rospy.ROSException:
             pass
 
@@ -33,13 +34,13 @@ class KnowledgeBaseFactCache:
         """
         registers at knowledge base for updates of facts, which match the pattern of this instance
         """
-        self.__initialized = True
         register_for_updates_services = rospy.ServiceProxy(self.__knowledge_base_update_subscriber_service_name,
                                                            UpdateSubscribe)
         response = register_for_updates_services(self.__pattern)
         rospy.Subscriber(response.add_topic_name, FactAdded, self.__handle_add_update)
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
+        self.__initialized = True
 
     def __match_pattern(self, fact):
         """
