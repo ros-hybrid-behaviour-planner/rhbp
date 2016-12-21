@@ -1,3 +1,4 @@
+<!-- Runs all tests, contained by knowledge_base package -->
 <launch>
     <node pkg="knowledge_base" type="knowledge_base_node.py" name ="kb" />
     <test pkg="knowledge_base" type="knowledge_base_manager_test.py" test-name="knowledge_base_manager_test_node"/>
