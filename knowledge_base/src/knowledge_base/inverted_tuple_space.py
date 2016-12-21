@@ -1,11 +1,10 @@
 """
-Provides a tupple space, where patterns can stored and searched with a fact
+Provides a tuple space, where patterns can stored and searched with a fact
 """
 from lindypy.TupleSpace import TSpace
 
 
 class InvertedTupleSpace(TSpace):
-
     def find_for_fact(self, fact):
         """
         Code was inspired by TSpace::many
@@ -18,7 +17,7 @@ class InvertedTupleSpace(TSpace):
 
         for idx, val in enumerate(fact):
 
-            possible_for_current_column= []
+            possible_for_current_column = []
             try:
                 possible_for_current_column.extend(self.colidx[idx][type(val)])
             except KeyError:
@@ -33,4 +32,4 @@ class InvertedTupleSpace(TSpace):
             if not possible:
                 return []
 
-        return map(lambda id:self.tspace[id],possible)
+        return map(lambda id: self.tspace[id], possible)

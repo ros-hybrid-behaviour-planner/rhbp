@@ -5,8 +5,8 @@ Created on 07.12.2016
 @author: phillip
 '''
 
-import sys
 import re
+import sys
 
 import rospy
 from knowledge_base.msg import Push, Fact, FactAdded, FactRemoved
@@ -48,8 +48,9 @@ class KnowledgeBase(object):
     @staticmethod
     def __converts_request_to_tuple_space_format(pattern):
         """
+        replaces the placeholder string with string type
         :param pattern:  tupple of non-None strings
-        :return: tupple. At each position in the source, where the placeholder * was, is now the typ str
+        :return: tuple. At each position in the source, where the placeholder * was, is now the typ str
         """
         lst = list(pattern)
         for i in range(0, len(lst)):
@@ -65,7 +66,7 @@ class KnowledgeBase(object):
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tupple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
-        if not self.__exists_tupple_as_is(converted):
+        if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
             self.__fact_was_added(converted)
 
@@ -78,7 +79,7 @@ class KnowledgeBase(object):
             add_update_topic = self.__fact_update_topics[pattern][0]
             add_update_topic.publish(FactAdded(fact))
 
-    def __exists_tupple_as_is(self, to_check):
+    def __exists_tuple_as_is(self, to_check):
         """
         Checks whether the tuple is returned in tuple space. Just a wrapper method.
         Does no conversion of the requested tuple
@@ -96,7 +97,7 @@ class KnowledgeBase(object):
         :return: bool, which indiciated, whether a tupple exists in knowledge base, which matchs the pattern
         """
         converted = self.__converts_request_to_tuple_space_format(exists_request.pattern)
-        return self.__exists_tupple_as_is(converted)
+        return self.__exists_tuple_as_is(converted)
 
     def __peek(self, peek_request):
         """
@@ -133,7 +134,7 @@ class KnowledgeBase(object):
         :param removed_fact: tuple of strings
         """
         for pattern in self.__subscribed_patterns_space.find_for_fact(removed_fact):
-            another_matching_fact_exists = self.__exists_tupple_as_is(pattern)
+            another_matching_fact_exists = self.__exists_tuple_as_is(pattern)
             removed_update_topic = self.__fact_update_topics[pattern][1]
             removed_update_topic.publish(
                 FactRemoved(fact=removed_fact, another_matching_fact_exists=another_matching_fact_exists))
@@ -155,7 +156,8 @@ class KnowledgeBase(object):
     @staticmethod
     def generate_topic_name_for_pattern(prefix, pattern):
         """
-
+        generates topic name for given pattern.
+        Name collision is possible!
         :param prefix: prefix for topic names, class variable, is a parameter for allow unit tests
         :param pattern: converted pattern
         :return: topic name
@@ -171,7 +173,7 @@ class KnowledgeBase(object):
             if isinstance(part, type):
                 topic_name += 'x'
             else:
-                topic_name += re.sub(r'[^a-zA-Z0-9]','',str(part))
+                topic_name += re.sub(r'[^a-zA-Z0-9]', '', str(part))
         return topic_name
 
     def __update_subscribe(self, update_subscribe_request):

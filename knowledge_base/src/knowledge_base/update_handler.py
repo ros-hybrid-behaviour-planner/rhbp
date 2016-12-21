@@ -1,6 +1,10 @@
+'''
+
+@author: phillip
+'''
 import rospy
 from knowledge_base.msg import FactAdded, FactRemoved
-from  knowledge_base.srv import UpdateSubscribe, Exists
+from knowledge_base.srv import UpdateSubscribe, Exists
 
 
 class KnowledgeBaseFactCache:
@@ -26,6 +30,9 @@ class KnowledgeBaseFactCache:
             pass
 
     def __register_for_updates(self):
+        """
+        registers at knowledge base for updates of facts, which match the pattern of this instance
+        """
         self.__initialized = True
         register_for_updates_services = rospy.ServiceProxy(self.__knowledge_base_update_subscriber_service_name,
                                                            UpdateSubscribe)
@@ -34,15 +41,14 @@ class KnowledgeBaseFactCache:
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
 
-    def __match_pattern(self,fact):
+    def __match_pattern(self, fact):
         """
-
         :param fact: tupple of strings
-        :return: whether given fact matches the pattern
+        :return: whether given fact matches the pattern of this cache
         """
-        if not (len(fact)== len(self.__pattern)):
+        if not (len(fact) == len(self.__pattern)):
             return False
-        for index,pattern_part in enumerate(self.__pattern):
+        for index, pattern_part in enumerate(self.__pattern):
             if not (pattern_part == '*' or pattern_part == fact[index]):
                 return False
         return True
