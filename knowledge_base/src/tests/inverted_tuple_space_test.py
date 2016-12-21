@@ -4,18 +4,16 @@ import unittest
 import rostest
 from knowledge_base.inverted_tuple_space import InvertedTupleSpace
 
-
 PKG = 'knowledge_base'
 
 
 class InvertedTupleSpaceTestSuite(unittest.TestCase):
-
     @staticmethod
     def add_not_relevant_patterns(inverted_space):
-        inverted_space.add(('AnyPattern',"Which","Should","Not","Found",str))
-        inverted_space.add(('pos','1',str))
+        inverted_space.add(('AnyPattern', "Which", "Should", "Not", "Found", str))
+        inverted_space.add(('pos', '1', str))
 
-    def run_simple_test(self,inverted_space):
+    def run_simple_test(self, inverted_space):
         """
         Tests adding and finding a pattern
         """
@@ -61,12 +59,11 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         tuple_space = InvertedTupleSpace()
 
         InvertedTupleSpaceTestSuite.add_not_relevant_patterns(tuple_space)
-        
+
         pattern1 = ('pos', str, str)
         tuple_space.add(pattern1)
         pattern2 = ('pos', '0', str)
         tuple_space.add(pattern2)
-
 
         result = tuple_space.find_for_fact(('pos', '0', '0'))
         self.assertEqual(2, len(result))
