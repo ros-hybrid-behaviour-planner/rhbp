@@ -5,10 +5,10 @@ Requires a running roscore and a knowledge_base
 
 @author: Phillip
 """
+import time
 import unittest
 
 import rospy
-import time
 import rostest
 from behaviour_components.sensors import KnowledgeSensor
 from knowledge_base.msg import Push
@@ -48,18 +48,16 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         self.assertTrue(sensor.value)
 
     def test_remove(self):
-
         """
         Tests sensor output , if the fact is removed
         """
-        test_tuple= (self.__message_prefix, 'test_remove', 'pos', '42', '0')
+        test_tuple = (self.__message_prefix, 'test_remove', 'pos', '42', '0')
         TestKnowledgeBaseSensor.add_tuple(test_tuple)
         rospy.sleep(1)
 
         sensor = KnowledgeSensor(pattern=((self.__message_prefix, 'test_remove', 'pos', '*', '*')))
         sensor.sync()
         self.assertTrue(sensor.value)
-
 
         rospy.wait_for_service('/knowledgeBaseNode/Pop')
         pop_service = rospy.ServiceProxy('/knowledgeBaseNode/Pop', Pop)
