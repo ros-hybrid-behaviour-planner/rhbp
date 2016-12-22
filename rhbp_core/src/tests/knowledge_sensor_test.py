@@ -22,6 +22,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         super(TestKnowledgeBaseSensor, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
         self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
+        rospy.init_node('knowledge_sensor_test_node', log_level=rospy.DEBUG)
 
     @staticmethod
     def add_tuple(to_add):
@@ -59,6 +60,8 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         sensor.sync()
         self.assertTrue(sensor.value)
 
+        rospy.sleep(1)
+
         rospy.wait_for_service('/knowledgeBaseNode/Pop')
         pop_service = rospy.ServiceProxy('/knowledgeBaseNode/Pop', Pop)
 
@@ -72,5 +75,4 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rospy.init_node('knowledge_sensor_test_node', log_level=rospy.DEBUG)
     rostest.rosrun(PKG, 'knowledge_sensor_test_node', TestKnowledgeBaseSensor)
