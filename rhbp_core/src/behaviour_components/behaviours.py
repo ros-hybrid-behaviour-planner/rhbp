@@ -578,7 +578,7 @@ class BehaviourBase(object):
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
         pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name), functions = "costs")
-        preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions]
+        preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions if not x.optional] # do not use optional preconditions for planning
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, preconds)) # unites all functions in preconditions
         if len(preconds) > 1:
@@ -598,8 +598,9 @@ class BehaviourBase(object):
     def getStatePDDL(self):
         pddl = PDDL()
         for p in self._preconditions:
-            for s in p.getStatePDDL(): # it is a list because it may come from a composed condition
-                pddl = mergeStatePDDL(s, pddl)
+            if not p.optional: # do not use optional preconditions for planning
+                for s in p.getStatePDDL(): # it is a list because it may come from a composed condition
+                    pddl = mergeStatePDDL(s, pddl)
         return pddl                      
 
     def pddlCallback(self, dummy):
