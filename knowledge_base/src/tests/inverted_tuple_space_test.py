@@ -13,7 +13,7 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         inverted_space.add(('AnyPattern', "Which", "Should", "Not", "Found", str))
         inverted_space.add(('pos', '1', str))
 
-    def run_simple_test(self, inverted_space):
+    def __run_simple_test(self, inverted_space):
         """
         Tests adding and finding a pattern
         """
@@ -27,7 +27,7 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         """
         Tests adding and finding a pattern, without other patterns
         """
-        self.run_simple_test(InvertedTupleSpace())
+        self.__run_simple_test(InvertedTupleSpace())
 
     def test_simple_with_irrelevant_patterns(self):
         """
@@ -35,7 +35,7 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         """
         inverted_tuple_Space = InvertedTupleSpace()
         InvertedTupleSpaceTestSuite.add_not_relevant_patterns(inverted_tuple_Space)
-        self.run_simple_test(inverted_tuple_Space)
+        self.__run_simple_test(inverted_tuple_Space)
 
     def test_simple_pattern(self):
         """
