@@ -5,6 +5,7 @@
 import rospy
 from knowledge_base.msg import FactAdded, FactRemoved
 from knowledge_base.srv import UpdateSubscribe, Exists
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 
 
 class KnowledgeBaseFactCache:
@@ -17,7 +18,7 @@ class KnowledgeBaseFactCache:
 
         if knowledge_base_name is None:
             # allow directly forwarding a parameter at constructor call
-            knowledge_base_name = 'knowledgeBaseNode'
+            knowledge_base_name = KnowledgeBase.DEFAULT_NAME
 
         self.__pattern = pattern
         self.__value = False

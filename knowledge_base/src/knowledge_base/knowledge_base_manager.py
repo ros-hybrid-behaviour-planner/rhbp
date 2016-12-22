@@ -22,7 +22,10 @@ Wrapper class for accessing the real tupple space
 
 
 class KnowledgeBase(object):
-    def __init__(self, name):
+
+    DEFAULT_NAME = 'knowledgeBaseNode'
+
+    def __init__(self, name = DEFAULT_NAME):
         self.__update_topic_prefix = name + '/FactUpdate/'
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
