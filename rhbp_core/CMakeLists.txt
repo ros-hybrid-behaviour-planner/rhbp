@@ -199,3 +199,6 @@ install(PROGRAMS
 
 ## Add folders to be run by python nosetests
 catkin_add_nosetests(src/tests)
+
+find_package(rostest REQUIRED)
+add_rostest(launch/sensor_test.test)

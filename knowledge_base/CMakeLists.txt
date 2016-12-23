@@ -193,3 +193,7 @@ include_directories(
 catkin_add_nosetests(src/tests/inverted_tuple_space_test.py)
 catkin_add_nosetests(src/tests/tuple_space_test.py)
 catkin_add_nosetests(src/tests/knowledge_base_manager_topic_name_generation_test.py)
+
+find_package(rostest REQUIRED)
+add_rostest(launch/knowledge_base_manager_test.test)
+add_rostest(launch/update_handler_test.test)
