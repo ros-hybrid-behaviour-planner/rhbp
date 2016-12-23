@@ -49,7 +49,6 @@ add_message_files(
   FILES
   Push.msg
   Fact.msg
-  FactAdded.msg
   FactRemoved.msg
 )
 

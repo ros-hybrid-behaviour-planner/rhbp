@@ -9,24 +9,26 @@ import re
 import sys
 
 import rospy
-from knowledge_base.msg import Push, Fact, FactAdded, FactRemoved
+from knowledge_base.msg import Push, Fact, FactRemoved
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse
 from lindypy.TupleSpace import TSpace
+from std_msgs.msg import Empty
 
 from inverted_tuple_space import InvertedTupleSpace
 
 """
-Wrapper class for accessing the real tupple space
+Wrapper class for accessing the real tuple space
 """
 
 
 class KnowledgeBase(object):
-
     DEFAULT_NAME = 'knowledgeBaseNode'
 
-    def __init__(self, name = DEFAULT_NAME):
-        self.__update_topic_prefix = name + '/FactUpdate/'
+    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
+        self.__fact_update_topic_prefix = name + '/FactUpdate/'
+        self.__fact_update_topic_counter = 0
+        self.__inlcude_patterns_in_update_names = inlcude_patterns_in_update_names
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
@@ -52,7 +54,7 @@ class KnowledgeBase(object):
     def __converts_request_to_tuple_space_format(pattern):
         """
         replaces the placeholder string with string type
-        :param pattern:  tupple of non-None strings
+        :param pattern:  tuple of non-None strings
         :return: tuple. At each position in the source, where the placeholder * was, is now the typ str
         """
         lst = list(pattern)
@@ -63,11 +65,11 @@ class KnowledgeBase(object):
 
     def __push(self, request):
         """
-        Adds the fact to the tupple space
+        Adds the fact to the tuple space
         :param request: Push message, as defined as ROS message
         """
         # Since all read request converts nones to string type, it must be done also here.
-        # Otherwise the stored tupple can't readed or removed anymore
+        # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
         if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
@@ -76,11 +78,11 @@ class KnowledgeBase(object):
     def __fact_was_added(self, fact):
         """
         informs all registered clients about change
-        :param fact: tupple of strings
+        :param fact: tuple of strings
         """
         for pattern in self.__subscribed_patterns_space.find_for_fact(fact):
             add_update_topic = self.__fact_update_topics[pattern][0]
-            add_update_topic.publish(FactAdded(fact))
+            add_update_topic.publish(Empty())
 
     def __exists_tuple_as_is(self, to_check):
         """
@@ -97,7 +99,7 @@ class KnowledgeBase(object):
     def __exists(self, exists_request):
         """
         :param request: Exists, as defined as ROS service
-        :return: bool, which indiciated, whether a tupple exists in knowledge base, which matchs the pattern
+        :return: bool, which indiciated, whether a tuple exists in knowledge base, which matchs the pattern
         """
         converted = self.__converts_request_to_tuple_space_format(exists_request.pattern)
         return self.__exists_tuple_as_is(converted)
@@ -106,7 +108,7 @@ class KnowledgeBase(object):
         """
         :param request: Peek, as defined as ROS service
         :return: PeekResponse, as defined as ROS service respone
-                if a tupple exists in tupple space, an example is returned and the exists flag is setted
+                if a tuple exists in tuple space, an example is returned and the exists flag is setted
         """
         try:
             converted = self.__converts_request_to_tuple_space_format(peek_request.pattern)
@@ -117,11 +119,11 @@ class KnowledgeBase(object):
 
     def __pop(self, pop_request):
         """
-        If tupple exists in the tupple space, which matchs the pattern, it will be also removed from  the tupple space
+        If tuple exists in the tuple space, which matchs the pattern, it will be also removed from  the tuple space
         and returned
         :param request: Pop, as defined as ROS service
         :return: PopResponse, as defined as ROS service respone
-                if a tupple exists in tupple space, an example is returned and the exists flag is setted
+                if a tuple exists in tuple space, an example is returned and the exists flag is setted
         """
         converted = self.__converts_request_to_tuple_space_format(pop_request.pattern)
         try:
@@ -144,7 +146,7 @@ class KnowledgeBase(object):
 
     def __all(self, all_request):
         """
-        :return: all contained tupples, matching the given pattern, but never more tuples than sys.max_int
+        :return: all contained tuples, matching the given pattern, but never more tuples than sys.max_int
         """
         converted = self.__converts_request_to_tuple_space_format(all_request.pattern)
         try:
@@ -157,7 +159,24 @@ class KnowledgeBase(object):
             return ()
 
     @staticmethod
-    def generate_topic_name_for_pattern(prefix, pattern):
+    def generate_topic_name_part_from_pattern(pattern):
+
+        topic_name_part = ''
+        first_part = True
+        for part in pattern:
+            if first_part:
+                first_part = False
+            else:
+                topic_name_part += '_'
+
+            if isinstance(part, type):
+                topic_name_part += 'x'
+            else:
+                topic_name_part += re.sub(r'[^a-zA-Z0-9]', '', str(part))
+        return topic_name_part
+
+    @staticmethod
+    def generate_topic_name_for_pattern(prefix, pattern, include_pattern, counter):
         """
         generates topic name for given pattern.
         Name collision is possible!
@@ -165,18 +184,9 @@ class KnowledgeBase(object):
         :param pattern: converted pattern
         :return: topic name
         """
-        topic_name = prefix
-        first_part = True
-        for part in pattern:
-            if first_part:
-                first_part = False
-            else:
-                topic_name += '_'
-
-            if isinstance(part, type):
-                topic_name += 'x'
-            else:
-                topic_name += re.sub(r'[^a-zA-Z0-9]', '', str(part))
+        topic_name = prefix + 'Topic' + str(counter)
+        if include_pattern:
+            topic_name += '_' + KnowledgeBase.generate_topic_name_part_from_pattern(pattern)
         return topic_name
 
     def __update_subscribe(self, update_subscribe_request):
@@ -190,9 +200,12 @@ class KnowledgeBase(object):
             add_topic, remove_topic = self.__fact_update_topics[converted]
             return UpdateSubscribeResponse(add_topic_name=add_topic.name, remove_topic_name=remove_topic.name)
 
-        basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__update_topic_prefix, converted)
+        basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__fact_update_topic_prefix, converted,
+                                                                         self.__inlcude_patterns_in_update_names,
+                                                                         self.__fact_update_topic_counter)
+        self.__fact_update_topic_counter += 1
         add_topic_name = basic_topic_name + '/Add'
-        add_publisher = rospy.Publisher(add_topic_name, FactAdded, queue_size=10)
+        add_publisher = rospy.Publisher(add_topic_name, Empty, queue_size=10)
         remove_topic_name = basic_topic_name + '/Remove'
         remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
         rospy.sleep(1)
