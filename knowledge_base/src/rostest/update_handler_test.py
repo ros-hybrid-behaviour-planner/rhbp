@@ -12,6 +12,7 @@ import rostest
 from knowledge_base.msg import Push
 from knowledge_base.srv import Pop
 from knowledge_base.update_handler import KnowledgeBaseFactCache
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 
 
 PKG = 'knowledge_base'
@@ -26,12 +27,13 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
+        self.__pop_service_name =  KnowledgeBase.DEFAULT_NAME +KnowledgeBase.POP_SERVICE_NAME_POSTFIX
 
     @staticmethod
-    def add_tupple(tuple):
-        pub = rospy.Publisher('/knowledgeBaseNode/Push', Push, queue_size=10)
+    def __add_tuple(to_add):
+        pub = rospy.Publisher(KnowledgeBase.DEFAULT_NAME+KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, queue_size=10)
         rospy.sleep(1)
-        pub.publish(tuple)
+        pub.publish(to_add)
 
     def test_simple_adding(self):
         test_tuple = (self.__message_prefix, 'test_simple_adding', '0', '0')
@@ -39,7 +41,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         cache = KnowledgeBaseFactCache(pattern=test_tuple)
         self.assertFalse(cache.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
-        self.add_tupple(test_tuple)
+        UpdateHandlerTestSuite.__add_tuple(test_tuple)
         rospy.sleep(1)
 
         self.assertTrue(cache.does_fact_exists(), 'Tuple was added, but is not indicated as present')
@@ -51,13 +53,13 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertFalse(cache.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
         rospy.sleep(1)
-        self.add_tupple(test_tuple)
+        UpdateHandlerTestSuite.__add_tuple(test_tuple)
         rospy.sleep(1)
 
         self.assertTrue(cache.does_fact_exists(), 'Tuple was added, but is not indicated as present')
 
-        rospy.wait_for_service('/knowledgeBaseNode/Pop')
-        pop_service = rospy.ServiceProxy('/knowledgeBaseNode/Pop', Pop)
+        rospy.wait_for_service(self.__pop_service_name)
+        pop_service = rospy.ServiceProxy(self.__pop_service_name, Pop)
         pop_service(test_tuple)
 
         rospy.sleep(1)
@@ -73,7 +75,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertFalse(cache1.does_fact_exists(), 'Tuple is not added, but is indicated as present')
         self.assertFalse(cache2.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
-        self.add_tupple(test_tuple)
+        UpdateHandlerTestSuite.__add_tuple(test_tuple)
         rospy.sleep(1)
 
         self.assertTrue(cache1.does_fact_exists(), 'Tuple was added, but is not indicated as present')

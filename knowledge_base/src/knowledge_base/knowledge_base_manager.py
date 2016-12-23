@@ -24,6 +24,12 @@ Wrapper class for accessing the real tuple space
 
 class KnowledgeBase(object):
     DEFAULT_NAME = 'knowledgeBaseNode'
+    EXISTS_SERVICE_NAME_POSTFIX = '/Exists'
+    PEEK_SERVICE_NAME_POSTFIX = '/Peek'
+    POP_SERVICE_NAME_POSTFIX = '/Pop'
+    ALL_SERVICE_NAME_POSTFIX = '/All'
+    UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
+    PUSH_TOPIC_NAME_POSTFIX = '/UpdateSubscriber'
 
     def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
@@ -32,12 +38,12 @@ class KnowledgeBase(object):
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
-        rospy.Subscriber(name + '/Push', Push, self.__push)
-        self.__exists_service = rospy.Service(name + '/Exists', Exists, self.__exists)
-        self.__peek_service = rospy.Service(name + '/Peek', Peek, self.__peek)
-        self.__pop_service = rospy.Service(name + '/Pop', Pop, self.__pop)
-        self.__all_service = rospy.Service(name + '/All', All, self.__all)
-        self.__update_subscriber_service = rospy.Service(name + '/UpdateSubscriber', UpdateSubscribe,
+        rospy.Subscriber(name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, self.__push)
+        self.__exists_service = rospy.Service(name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists, self.__exists)
+        self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
+        self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
+        self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
+        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX, UpdateSubscribe,
                                                          self.__update_subscribe)
 
     def __del__(self):
@@ -161,6 +167,12 @@ class KnowledgeBase(object):
     @staticmethod
     def generate_topic_name_part_from_pattern(pattern):
 
+        """
+        Generate name for pattern which can be used in topic name for fact updates.
+        Usefully for debugging
+        :param pattern: array of strings or str types
+        :return:
+        """
         topic_name_part = ''
         first_part = True
         for part in pattern:

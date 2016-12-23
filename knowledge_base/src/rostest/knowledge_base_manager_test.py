@@ -11,6 +11,7 @@ import rospy
 import rostest
 from knowledge_base.msg import Push
 from knowledge_base.srv import Exists, Peek, Pop, All
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 
 PKG = 'knowledge_base'
 
@@ -20,34 +21,41 @@ System test for knowledge base. Assumes, that a rosmaster and the knowledge base
 
 
 class TupleSpaceTestSuite(unittest.TestCase):
+
+
     def __init__(self, *args, **kwargs):
         super(TupleSpaceTestSuite, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
         self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
+        self.__exists_service_name = KnowledgeBase.DEFAULT_NAME +KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX
+        self.__peek_service_name =  KnowledgeBase.DEFAULT_NAME +KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX
+        self.__all_service_name =  KnowledgeBase.DEFAULT_NAME +KnowledgeBase.ALL_SERVICE_NAME_POSTFIX
+        self.__pop_service_name =  KnowledgeBase.DEFAULT_NAME +KnowledgeBase.POP_SERVICE_NAME_POSTFIX
 
     @staticmethod
     def add_tuple(to_add):
-        pub = rospy.Publisher('/knowledgeBaseNode/Push', Push, queue_size=10)
+        pub = rospy.Publisher(KnowledgeBase.DEFAULT_NAME+KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, queue_size=10)
         rospy.sleep(1)
         pub.publish(to_add)
 
     def test_exists_for_non_existing(self):
         test_tuple = (self.__message_prefix, 'test_exists_for_non_existing', '0', '0')
-        rospy.wait_for_service('/knowledgeBaseNode/Exists')
-        exist_service = rospy.ServiceProxy('/knowledgeBaseNode/Exists', Exists)
+        rospy.wait_for_service(self.__exists_service_name)
+        exist_service = rospy.ServiceProxy(self.__exists_service_name, Exists)
         self.assertFalse(exist_service(test_tuple).exists)
 
     def test_simple_adding(self):
         test_tuple = (self.__message_prefix, 'test_simple_adding', '0', '0')
         self.add_tuple(test_tuple)
-        rospy.wait_for_service('/knowledgeBaseNode/Exists')
-        exist_service = rospy.ServiceProxy('/knowledgeBaseNode/Exists', Exists)
+        rospy.wait_for_service(self.__exists_service_name)
+        exist_service = rospy.ServiceProxy(self.__exists_service_name, Exists)
         self.assertTrue(exist_service(test_tuple))
 
     def test_peek(self):
         test_tuple = (self.__message_prefix, 'test_peek', '0', '0')
         self.add_tuple(test_tuple)
-        peek_service = rospy.ServiceProxy('/knowledgeBaseNode/Peek', Peek)
+        rospy.wait_for_service(self.__peek_service_name)
+        peek_service = rospy.ServiceProxy(self.__peek_service_name, Peek)
         peek_response = peek_service(test_tuple)
         self.assertTrue(True, peek_response.exists)
         self.assertEqual(test_tuple, tuple(peek_response.example))
@@ -55,12 +63,12 @@ class TupleSpaceTestSuite(unittest.TestCase):
     def test_pop(self):
         test_tuple = (self.__message_prefix, 'test_pop', '0', '0')
         self.add_tuple(test_tuple)
-        rospy.wait_for_service('/knowledgeBaseNode/Exists')
-        exist_service = rospy.ServiceProxy('/knowledgeBaseNode/Exists', Exists)
+        rospy.wait_for_service(self.__exists_service_name)
+        exist_service = rospy.ServiceProxy(self.__exists_service_name, Exists)
         self.assertTrue(exist_service(test_tuple).exists)
 
-        rospy.wait_for_service('/knowledgeBaseNode/Pop')
-        pop_service = rospy.ServiceProxy('/knowledgeBaseNode/Pop', Pop)
+        rospy.wait_for_service( self.__pop_service_name)
+        pop_service = rospy.ServiceProxy( self.__pop_service_name, Pop)
         pop_response = pop_service(test_tuple)
         self.assertTrue(pop_response.exists)
         self.assertEqual(test_tuple, tuple(pop_response.removed))
@@ -72,19 +80,19 @@ class TupleSpaceTestSuite(unittest.TestCase):
         pattern = (self.__message_prefix, 'test_placeholder', '*', '*')
 
         self.add_tuple(test_tuple)
-        peek_service = rospy.ServiceProxy('/knowledgeBaseNode/Peek', Peek)
+        rospy.wait_for_service(self.__peek_service_name)
+        peek_service = rospy.ServiceProxy(self.__peek_service_name, Peek)
         peek_response = peek_service(pattern)
         self.assertTrue(peek_response.exists)
         self.assertEqual(test_tuple, tuple(peek_response.example))
 
-    @staticmethod
-    def __wait_for_tuple(wait_for_it):
+    def __wait_for_tuple(self,wait_for_it):
         """
         waits, until the requested tuple is contained in knowledge_base
         :param wait_for_it: tuple
         """
-        rospy.wait_for_service('/knowledgeBaseNode/Exists')
-        exist_service = rospy.ServiceProxy('/knowledgeBaseNode/Exists', Exists)
+        rospy.wait_for_service(self.__exists_service_name)
+        exist_service = rospy.ServiceProxy(self.__exists_service_name, Exists)
         while not exist_service(wait_for_it).exists:
             rospy.sleep(1)
 
@@ -111,10 +119,10 @@ class TupleSpaceTestSuite(unittest.TestCase):
         t3 = (self.__message_prefix, 'test_all', 'pos', '1', '-4')
         self.add_tuple(t3)
 
-        TupleSpaceTestSuite.__wait_for_tuple(t3)
+        self.__wait_for_tuple(t3)
 
-        rospy.wait_for_service('/knowledgeBaseNode/All')
-        all_service = rospy.ServiceProxy('/knowledgeBaseNode/All', All)
+        rospy.wait_for_service(self.__all_service_name)
+        all_service = rospy.ServiceProxy(self.__all_service_name, All)
         all_response = all_service((self.__message_prefix, 'test_all', 'pos', '*', '*'))
 
         self.assertEqual(3, len(all_response.found))
@@ -130,8 +138,8 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.add_tuple(test_tuple)
         self.add_tuple(test_tuple)
 
-        rospy.wait_for_service('/knowledgeBaseNode/All')
-        all_service = rospy.ServiceProxy('/knowledgeBaseNode/All', All)
+        rospy.wait_for_service(self.__all_service_name)
+        all_service = rospy.ServiceProxy(self.__all_service_name, All)
         all_response = all_service(test_tuple)
         self.assertEqual(1, len(all_response.found))
 

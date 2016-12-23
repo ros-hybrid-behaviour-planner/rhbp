@@ -24,8 +24,8 @@ class KnowledgeBaseFactCache:
         self.__pattern = pattern
         self.__value = False
         self.__initialized = False
-        self.__knowledge_base_update_subscriber_service_name = knowledge_base_name + '/UpdateSubscriber'
-        self.__exists_service_name = knowledge_base_name + '/Exists'
+        self.__knowledge_base_update_subscriber_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX
+        self.__exists_service_name = knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX
         try:
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name, timeout=10)
             self.__register_for_updates()
