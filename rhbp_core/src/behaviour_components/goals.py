@@ -13,28 +13,219 @@ from std_msgs.msg import Bool
 from .activators import Condition,BooleanActivator
 from .sensors import SimpleTopicSensor
 from .pddl import PDDL, mergeStatePDDL
+from .conditions import Conditonal
 
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
 
 
-
-class Goal(object):
+class AbstractGoalRepresentation(object):
     '''
     This class represents a goal. Goals have conditions that need to be fulfilled.
     '''
-    
+    def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0,active=True,activated=True):
+        self._name = name
+        self._isPermanent = permanent
+        self._priority = priority
+        self._satisfaction_threshold = satisfaction_threshold
+        self.__wishes = []
+        self._fulfillment = 0.0
+        self._active = active  # This indicates (if True) that there have been no severe issues in the actual goal node
+                            # and the goal can be expected to be operational. If the actual goal reports ready == False
+                            # we will ignore it in activation computation.
+        self._activated = activated  # This member only exists as proxy for the corrsponding actual goal's property.
+                                # It is here because of the comprehensive status message,
+                                # published each step by the manager for rqt
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def isPermanent(self):
+        return self._isPermanent
+
+    @property
+    def priority(self):
+        return self._priority
+
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return self._name
+
+    @property
+    def wishes(self,wishes):
+        '''
+
+        :param wishes: list of (sensor name <string> : indicator <float> [-1 to 1])
+        '''
+        self.__wishes=wishes
+
+    @property
+    def wishes(self):
+        return self._wishes
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, value):
+        self._active = value
+
+    @property
+    def activated(self,value):
+        self._activated=value
+
+    @property
+    def activated(self):
+        return self._activated
+
+    @property
+    def fulfillment(self):
+        return self._fulfillment
+    @property
+    def fulfillment(self,value):
+        self._fulfillment=value
+
+    @property
+    def satisfaction_threshold(self,value):
+        self._satisfaction_threshold = value
+
+    @property
+    def satisfied(self):
+        return self._fulfillment >= self._satisfaction_threshold
+
+    def fetchPDDL(self):
+        raise NotImplementedError()
+
+    def fetchStatus(self):
+        #TODO: Naming
+        raise NotImplementedError()
+
+#TODO Naming
+class OfflineGoal(AbstractGoalRepresentation):
+    '''
+    This is the base class for goals in python
+    '''
+
+    def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
+        '''
+        Constructor
+        '''
+        super(OfflineGoal,self).__init__(name,permanent,priority=priority,satisfaction_threshold=satisfaction_threshold)
+        self._conditions = conditions
+        self._plannerPrefix = plannerPrefix  # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
+
+        self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
+        self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
+
+
+    def __del__(self):
+        '''
+        Destructor
+        '''
+        try:
+            self._activateService.shutdown()
+            self._priorityService.shutdown();
+        except Exception as e:
+            rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
+
+    def updateComputation(self):
+        """
+        Updates all subentities of the behaviour in order to do computations only once
+        """
+        for p in self._conditions:
+            p.sync()
+        for p in self._conditions:
+            p.updateComputation()
+
+    def computeSatisfaction(self):
+        """
+        This method should return the satisfaction of the conditions (the readiness) as float [0 to 1].
+        """
+        try:
+            return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
+        except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+            self._active = False
+            return 0.0
+
+    def computeWishes(self):
+        """
+        This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its conditions.
+        A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
+        """
+        try:
+            return [Wish(item[0].name, item[1]) for item in
+                    list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
+        except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+            self._active = False
+            return []
+
+    def getGoalStatements(self):
+        return " ".join([x.getPreconditionPDDL(self._satisfaction_threshold).statement for x in self._conditions])
+
+    def getStatePDDL(self):
+        pddl = PDDL()
+        for c in self._conditions:
+            for s in c.getStatePDDL():  # it is a list
+                pddl = mergeStatePDDL(s, pddl)
+        return pddl
+
+    def activateCallback(self, request):
+        '''
+        This method activates or deactivates the goal.
+        This method must not block.
+        '''
+        self.activated(request.active)
+        return ActivateResponse()
+
+    def setPriorityCallback(self, request):
+        self._priority = request.value
+        return SetIntegerResponse()
+
+    def addCondition(self, condition):
+        '''
+        This method adds a condition to the goal.
+        It is not mandatory to use this method at all but it may make development easier because the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work with the preconditions added here.
+        If you don't want to use this mechanism then you HAVE TO implement those yourself!
+        There is an AND relationship between all elements (all have to be fulfilled so that the behaviour is ready)
+        To enable OR semantics use the Disjunction object.
+        '''
+        if issubclass(type(condition), Conditonal):
+            self._conditions.append(condition)
+        else:
+            warnings.warn("That's no conditional object!")
+
+    def fetchStatus(self):
+        self.updateComputation()
+        self.active(self._activated)
+        self.fulfillment(self.computeSatisfaction())
+        wishes =  [(wish.sensorName, wish.indicator) for wish in self.computeWishes()]
+        self.wishes(wishes)
+
+    def fetchPDDL(self):
+        self.updateComputation()
+        goal_statements = self.getGoalStatements()
+        state_pddl = self.getStatePDDL()
+        return (PDDL(statement=goal_statements),
+                    PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
+                        state_pddl.functions)))
+
+class GoalProxy(AbstractGoalRepresentation):
+    '''
+    This connects a remote goal with the manager node
+    '''
+
     def __init__(self, name, permanent):
         '''
         Constructor
         '''
-        self._name = name
-        self._wishes = []       # Stores wishes s list of (sensor name <string> : indicator <float> [-1 to 1]) tuples. We get this via getStatus service of actual goal node
-        self._fulfillment = 0.0 # We get it via getStatus service of actual goal node
-        self._active = True     # This indicates (if True) that there have been no severe issues in the actual goal node and the goal can be expected to be operational. If the actual goal reports ready == False we will ignore it in activation computation.
-        self._activated = True  # This member only exists as proxy for the corrsponding actual goal's property. It is here because of the comprehensive status message published each step by the manager for rqt
-        self._isPermanent = permanent
-        self._priority = 0
+        super(GoalProxy,self).__init__(name,permanent)
+        self._fulfillment = 0.0  # We get it via getStatus service of actual goal node
         self._satisfaction_threshold = 1.0
 
     def fetchPDDL(self):
@@ -47,10 +238,11 @@ class Goal(object):
         try:
             getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            return (PDDL(statement = pddl.goalStatement), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
+            return (PDDL(statement=pddl.goalStatement),
+                    PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates, functions=pddl.stateFunctions))
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
-    
+
     def fetchStatus(self):
         '''
         This method fetches the status from the actual goal node via GetStatus service call
@@ -60,91 +252,54 @@ class Goal(object):
         try:
             getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
             status = getStatusRequest().status
-            self._fulfillment = status.satisfaction
-            self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
-            self._active = status.active
-            self._activated = status.activated
+            self.fulfillment(status.satisfaction)
+            self.wishes([(wish.sensorName, wish.indicator) for wish in status.wishes])
+            self.active(status.active)
+            self.activated(status.activated)
             self._priority = status.priority
-            self._satisfaction_threshold = status.threshold
+            self.satisfaction_threshold(status.threshold)
             if self._name != status.name:
-                rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name, status.name)
-            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self._name, self._fulfillment, self._wishes)
+                rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name,
+                             status.name)
+            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self._name, self._fulfillment,
+                           self._wishes)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
-    
-    @property
-    def name(self):
-        return self._name
-    
-    @property
-    def wishes(self):
-        return self._wishes
-    
-    @property
-    def fulfillment(self):
-        return self._fulfillment
-
-    @property
-    def satisfied(self):
-        return self._fulfillment >= self._satisfaction_threshold
-    
-    @property
-    def isPermanent(self):
-        return self._isPermanent
-    
-    @property
-    def active(self):
-        return self._active
-    
-    @active.setter
-    def active(self, value):
-        self._active = value
-    
-    @property
-    def activated(self):
-        return self._activated
-    
-    @property
-    def priority(self):
-        return self._priority
-    
-    def __str__(self):
-        return self._name
-    
-    def __repr__(self):
-        return self._name
-    
 
 class GoalBase(object):
     '''
     This is the base class for goals in python
     '''
-    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0, satisfaction_threshold = 1.0):
+
+    def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         '''
         Constructor
         '''
-        self._name = name # a unique name is mandatory
+        self._name = name  # a unique name is mandatory
         self._isPermanent = permanent
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
         self._conditions = conditions
-        self._plannerPrefix = plannerPrefix # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
-        self._active = True # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
-        self._activated = True # The activate Service sets the value of this property.
-        self._priority = priority # The higher the (unsigned) number the higher the importance
-        self._satisfaction_threshold = satisfaction_threshold #treshhold that defines when the goal is satisfied/fulfilled from the preconditions
+        self._plannerPrefix = plannerPrefix  # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
+        self._active = True  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
+        self._activated = True  # The activate Service sets the value of this property.
+        self._priority = priority  # The higher the (unsigned) number the higher the importance
+        self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
 
         try:
-            rospy.logdebug("GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+            rospy.logdebug(
+                "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
+                self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddGoal')
             registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddGoal', AddGoal)
             registerMe(self._name, self._isPermanent)
-            rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s", self._plannerPrefix, self._name)
+            rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
+                           self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
-    
+
     def __del__(self):
         '''
         Destructor
@@ -156,7 +311,7 @@ class GoalBase(object):
             self._priorityService.shutdown();
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
-            
+
     def updateComputation(self):
         """
         Updates all subentities of the behaviour in order to do computations only once
@@ -165,61 +320,62 @@ class GoalBase(object):
             p.sync()
         for p in self._conditions:
             p.updateComputation()
-    
+
     def computeSatisfaction(self):
         """
         This method should return the satisfaction of the conditions (the readiness) as float [0 to 1].
         """
         try:
             return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
-        except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+        except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False
             return 0.0
-    
+
     def computeWishes(self):
         """
         This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its conditions.
         A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
         """
         try:
-            return [Wish(item[0].name, item[1]) for item in list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
-        except AssertionError: # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
+            return [Wish(item[0].name, item[1]) for item in
+                    list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
+        except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False
             return []
 
     def getGoalStatements(self):
         return " ".join([x.getPreconditionPDDL(self._satisfaction_threshold).statement for x in self._conditions])
-    
+
     def getStatePDDL(self):
         pddl = PDDL()
-        for c in self._conditions :
-            for s in c.getStatePDDL(): # it is a list
+        for c in self._conditions:
+            for s in c.getStatePDDL():  # it is a list
                 pddl = mergeStatePDDL(s, pddl)
-        return pddl                      
+        return pddl
 
     def pddlCallback(self, dummy):
         self.updateComputation()
         goalStatements = self.getGoalStatements()
         statePDDL = self.getStatePDDL()
-        return GetPDDLResponse(**{"goalStatement" : goalStatements,
-                                  "stateStatement" : statePDDL.statement,
-                                  "statePredicates" : list(statePDDL.predicates),
-                                  "stateFunctions" : list(statePDDL.functions)})
-    
+        return GetPDDLResponse(**{"goalStatement": goalStatements,
+                                  "stateStatement": statePDDL.statement,
+                                  "statePredicates": list(statePDDL.predicates),
+                                  "stateFunctions": list(statePDDL.functions)})
+
     def getStatus(self, request):
         self.updateComputation()
         self._active = self._activated
         status = Status(**{
-                        "name"          : self._name,
-                        "satisfaction"  : self.computeSatisfaction(),
-                        "wishes"        : self.computeWishes(),
-                        "active"        : self._active,
-                        "activated"     : self._activated,
-                        "priority"      : self._priority,
-                        "threshold"     : self._satisfaction_threshold
-                       })
+            "name": self._name,
+            "satisfaction": self.computeSatisfaction(),
+            "wishes": self.computeWishes(),
+            "active": self._active,
+            "activated": self._activated,
+            "priority": self._priority,
+            "threshold": self._satisfaction_threshold
+        })
         return GetStatusResponse(status)
-    
+
     def activateCallback(self, request):
         '''
         This method activates or deactivates the goal.
@@ -227,11 +383,11 @@ class GoalBase(object):
         '''
         self._activated = request.active
         return ActivateResponse()
-    
+
     def setPriorityCallback(self, request):
         self._priority = request.value
         return SetIntegerResponse()
-    
+
     def addCondition(self, condition):
         '''
         This method adds a condition to the goal.
@@ -240,7 +396,7 @@ class GoalBase(object):
         There is an AND relationship between all elements (all have to be fulfilled so that the behaviour is ready)
         To enable OR semantics use the Disjunction object.
         '''
-        if issubclass(type(condition), conditions.Conditonal):
+        if issubclass(type(condition), Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no conditional object!")
@@ -251,15 +407,16 @@ class PublisherGoal(GoalBase):
     Goal class which publishes its activation state as ROS topic
     """
 
-    def __init__(self, name, permanent = False, conditions = [], plannerPrefix = "", priority = 0, satisfaction_threshold = 1.0):
+    def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         """
         Without manual goal activation/deaction only permanent=False does make sense
         """
-        super(PublisherGoal,self).__init__(name=name, permanent=permanent, conditions=conditions, plannerPrefix=plannerPrefix, priority=priority, satisfaction_threshold=satisfaction_threshold)
+        super(PublisherGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
+                                            plannerPrefix=plannerPrefix, priority=priority,
+                                            satisfaction_threshold=satisfaction_threshold)
 
         self.__topic_name = self._name + "_activated"
         self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=10)
-
 
     def updateComputation(self):
         super(PublisherGoal, self).updateComputation()
@@ -272,6 +429,7 @@ class PublisherGoal(GoalBase):
         """
         condition_name = self._name + "_condition"
         sensor_name = self._name + "_sensor"
-        sensor = SimpleTopicSensor(name=sensor_name,topic=self.__topic_name,message_type=Bool,initial_value=self._activated)
+        sensor = SimpleTopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
+                                   initial_value=self._activated)
         activator = BooleanActivator()
-        return Condition(name=condition_name, sensor=sensor, activator=activator )
+        return Condition(name=condition_name, sensor=sensor, activator=activator)

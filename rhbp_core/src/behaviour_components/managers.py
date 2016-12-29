@@ -10,7 +10,7 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
-from .goals import Goal
+from .goals import GoalPoxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions
 import ffp
 import os
@@ -413,13 +413,19 @@ class Manager(object):
         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
         return currentlyInfluencedSensors
 
-    #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
-    def __addGoal(self, request):
-        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with the same name. 
-        goal = Goal(request.name, request.permanent)
+    def addGoal(self,goal):
+        '''
+        :param goal: instanceof AbstractGoalRepresentation
+        '''
+        self._goals = filter(lambda x: x.name != goal.name(), self._goals) # kick out existing goals with the same name.
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
         self.__replanningNeeded = True;
+
+    #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
+    def __addGoal(self, request):
+        goal = GoalPoxy(request.name, request.permanent)
+        self.addGoal(goal)
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
