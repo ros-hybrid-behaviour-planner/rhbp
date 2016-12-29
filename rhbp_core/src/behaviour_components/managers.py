@@ -57,7 +57,7 @@ class Manager(object):
         self.__running = True # toggled by the pause and resume services
 
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
-        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
+        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
@@ -413,7 +413,8 @@ class Manager(object):
         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
         return currentlyInfluencedSensors
 
-    def addGoal(self,goal):
+    #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
+    def add_goal(self,goal):
         '''
         :param goal: instanceof AbstractGoalRepresentation
         '''
@@ -422,10 +423,9 @@ class Manager(object):
         rospy.loginfo("A goal with name %s registered", goal.name)
         self.__replanningNeeded = True;
 
-    #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
-    def __addGoal(self, request):
+    def __add_goal_callback(self, request):
         goal = GoalPoxy(request.name, request.permanent)
-        self.addGoal(goal)
+        self.add_goal(goal)
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
