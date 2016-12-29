@@ -52,8 +52,8 @@ class AbstractGoalRepresentation(object):
         return self._priority
 
     @priority.setter
-    def priority(self,value):
-        self._priority=value
+    def priority(self, value):
+        self._priority = value
 
     def __str__(self):
         return self._name
