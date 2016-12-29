@@ -5,11 +5,9 @@ Created on 13.04.2015
 '''
 
 import rospy
-from knowledge_base.update_handler import KnowledgeBaseFactCache
 from utils.ros_helpers import get_topic_type
-
-import pddl
-
+from .pddl import create_valid_pddl_name
+from knowledge_base.update_handler import KnowledgeBaseFactCache
 
 class Sensor(object):
     '''
@@ -20,14 +18,14 @@ class Sensor(object):
 
     _instanceCounter = 0
 
-    def __init__(self, name=None, optional=False, initial_value=None):
+    def __init__(self, name = None, optional = False, initial_value = None):
         '''
         Constructor
         '''
         self._name = name if name else "Sensor_{0}".format(Sensor._instanceCounter)
-        self._name = pddl.create_valid_pddl_name(self._name)
+        self._name = create_valid_pddl_name(self._name)
         self._optional = optional
-        self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._value = initial_value # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
 
         Sensor._instanceCounter += 1
@@ -41,9 +39,11 @@ class Sensor(object):
         return self._value
 
     def update(self, newValue):
-        '''
-        This method is to refresh the _value.
-        '''
+        """
+        This method is to refresh the _latestValue.
+        :param newValue: the value to update
+        :return:
+        """
         self._latestValue = newValue
 
     @property
@@ -85,7 +85,8 @@ class Sensor(object):
 
 
 class SimpleTopicSensor(Sensor):
-    def __init__(self, topic, name=None, message_type=None, initial_value=None, create_log=False):
+
+    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
@@ -96,8 +97,8 @@ class SimpleTopicSensor(Sensor):
         if name is None:
             if topic is None:
                 raise ValueError("Invalid name and topic")
-            else:
-                name = pddl.create_valid_pddl_name(topic)
+            else :
+                name = create_valid_pddl_name(topic)
 
         super(SimpleTopicSensor, self).__init__(name=name, initial_value=initial_value)
 

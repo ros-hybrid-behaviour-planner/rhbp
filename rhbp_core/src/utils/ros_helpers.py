@@ -1,13 +1,16 @@
+"""
+This module contains several ROS related helper functions
+The functions need an already initialized ros node if nothing else is mentioned
+
+moduleauthor:: hrabia
+"""
+
 import rosgraph
 import roslib.names
 import rospy
 from rospy.exceptions import ROSException
 from genpy.message import get_message_class
 
-"""
-This module contains several ROS related helper functions
-The functions need an already initialized ros node if nothing else is mentioned
-"""
 
 def get_topic_type_info(topic_name):
     """

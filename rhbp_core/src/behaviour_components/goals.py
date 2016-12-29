@@ -5,18 +5,18 @@ Created on 22.04.2015
 '''
 
 import operator
-import conditions
 import warnings
 import itertools
 import rospy
 from std_msgs.msg import Bool
 
-from activators import Condition,BooleanActivator
-from sensors import SimpleTopicSensor
+from .activators import Condition,BooleanActivator
+from .sensors import SimpleTopicSensor
+from .pddl import PDDL, mergeStatePDDL
 
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
-from pddl import PDDL, mergeStatePDDL
+
 
 
 class Goal(object):
