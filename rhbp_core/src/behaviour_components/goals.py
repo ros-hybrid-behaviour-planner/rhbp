@@ -4,26 +4,28 @@ Created on 22.04.2015
 @author: wypler, hrabia
 '''
 
+import itertools
 import operator
 import warnings
-import itertools
+
 import rospy
+from rhbp_core.msg import Wish, Status
+from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
+    SetInteger, SetIntegerResponse
 from std_msgs.msg import Bool
 
-from .activators import Condition,BooleanActivator
-from .sensors import SimpleTopicSensor
-from .pddl import PDDL, mergeStatePDDL
+from .activators import Condition, BooleanActivator
 from .conditions import Conditonal
-
-from rhbp_core.msg import Wish, Status
-from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, SetInteger, SetIntegerResponse
+from .pddl import PDDL, mergeStatePDDL
+from .sensors import SimpleTopicSensor
 
 
 class AbstractGoalRepresentation(object):
     '''
     This class represents a goal. Goals have conditions that need to be fulfilled.
     '''
-    def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0,active=True,activated=True):
+
+    def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0, active=True, activated=True):
         self._name = name
         self._isPermanent = permanent
         self._priority = priority
@@ -31,11 +33,11 @@ class AbstractGoalRepresentation(object):
         self.__wishes = []
         self._fulfillment = 0.0
         self._active = active  # This indicates (if True) that there have been no severe issues in the actual goal node
-                            # and the goal can be expected to be operational. If the actual goal reports ready == False
-                            # we will ignore it in activation computation.
+        # and the goal can be expected to be operational. If the actual goal reports ready == False
+        # we will ignore it in activation computation.
         self._activated = activated  # This member only exists as proxy for the corrsponding actual goal's property.
-                                # It is here because of the comprehensive status message,
-                                # published each step by the manager for rqt
+        # It is here because of the comprehensive status message,
+        # published each step by the manager for rqt
 
     @property
     def name(self):
@@ -49,6 +51,10 @@ class AbstractGoalRepresentation(object):
     def priority(self):
         return self._priority
 
+    @priority.setter
+    def priority(self,value):
+        self._priority=value
+
     def __str__(self):
         return self._name
 
@@ -56,16 +62,16 @@ class AbstractGoalRepresentation(object):
         return self._name
 
     @property
-    def wishes(self,wishes):
+    def wishes(self):
+        return self.__wishes
+
+    @wishes.setter
+    def wishes(self, wishes):
         '''
 
         :param wishes: list of (sensor name <string> : indicator <float> [-1 to 1])
         '''
-        self.__wishes=wishes
-
-    @property
-    def wishes(self):
-        return self._wishes
+        self.__wishes = wishes
 
     @property
     def active(self):
@@ -76,22 +82,27 @@ class AbstractGoalRepresentation(object):
         self._active = value
 
     @property
-    def activated(self,value):
-        self._activated=value
-
-    @property
     def activated(self):
         return self._activated
+
+    @activated.setter
+    def activated(self, value):
+        self._activated = value
 
     @property
     def fulfillment(self):
         return self._fulfillment
-    @property
-    def fulfillment(self,value):
-        self._fulfillment=value
+
+    @fulfillment.setter
+    def fulfillment(self, value):
+        self._fulfillment = value
 
     @property
-    def satisfaction_threshold(self,value):
+    def satisfaction_threshold(self):
+        return self._satisfaction_threshold
+
+    @satisfaction_threshold.setter
+    def satisfaction_threshold(self, value):
         self._satisfaction_threshold = value
 
     @property
@@ -102,10 +113,11 @@ class AbstractGoalRepresentation(object):
         raise NotImplementedError()
 
     def fetchStatus(self):
-        #TODO: Naming
+        # TODO: Naming
         raise NotImplementedError()
 
-#TODO Naming
+
+# TODO Naming
 class OfflineGoal(AbstractGoalRepresentation):
     '''
     This is the base class for goals in python
@@ -115,14 +127,14 @@ class OfflineGoal(AbstractGoalRepresentation):
         '''
         Constructor
         '''
-        super(OfflineGoal,self).__init__(name,permanent,priority=priority,satisfaction_threshold=satisfaction_threshold)
+        super(OfflineGoal, self).__init__(name, permanent, priority=priority,
+                                          satisfaction_threshold=satisfaction_threshold)
         self._conditions = conditions
         self._plannerPrefix = plannerPrefix  # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
 
         self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
-
 
     def __del__(self):
         '''
@@ -202,18 +214,18 @@ class OfflineGoal(AbstractGoalRepresentation):
 
     def fetchStatus(self):
         self.updateComputation()
-        self.active(self._activated)
-        self.fulfillment(self.computeSatisfaction())
-        wishes =  [(wish.sensorName, wish.indicator) for wish in self.computeWishes()]
-        self.wishes(wishes)
+        self.active = self._activated
+        self.fulfillment = self.computeSatisfaction()
+        self.wishes = [(wish.sensorName, wish.indicator) for wish in self.computeWishes()]
 
     def fetchPDDL(self):
         self.updateComputation()
         goal_statements = self.getGoalStatements()
         state_pddl = self.getStatePDDL()
         return (PDDL(statement=goal_statements),
-                    PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
-                        state_pddl.functions)))
+                PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
+                    state_pddl.functions)))
+
 
 class GoalProxy(AbstractGoalRepresentation):
     '''
@@ -224,9 +236,7 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         Constructor
         '''
-        super(GoalProxy,self).__init__(name,permanent)
-        self._fulfillment = 0.0  # We get it via getStatus service of actual goal node
-        self._satisfaction_threshold = 1.0
+        super(GoalProxy, self).__init__(name, permanent)
 
     def fetchPDDL(self):
         '''
@@ -250,21 +260,22 @@ class GoalProxy(AbstractGoalRepresentation):
         rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
         rospy.wait_for_service(self._name + 'GetStatus')
         try:
-            getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
-            status = getStatusRequest().status
-            self.fulfillment(status.satisfaction)
-            self.wishes([(wish.sensorName, wish.indicator) for wish in status.wishes])
-            self.active(status.active)
-            self.activated(status.activated)
-            self._priority = status.priority
-            self.satisfaction_threshold(status.threshold)
+            get_status_request = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
+            status = get_status_request().status
+            self.fulfillment = status.satisfaction
+            self.wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
+            self.active = status.active
+            self.activated = status.activated
+            self.priority = status.priority
+            self.satisfaction_threshold = status.threshold
             if self._name != status.name:
                 rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name,
                              status.name)
-            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self._name, self._fulfillment,
-                           self._wishes)
+            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name, self.fulfillment,
+                           self.wishes)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
+
 
 class GoalBase(object):
     '''

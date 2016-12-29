@@ -10,7 +10,7 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
-from .goals import GoalPoxy
+from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions
 import ffp
 import os
@@ -424,7 +424,7 @@ class Manager(object):
         self.__replanningNeeded = True;
 
     def __add_goal_callback(self, request):
-        goal = GoalPoxy(request.name, request.permanent)
+        goal = GoalProxy(request.name, request.permanent)
         self.add_goal(goal)
         return AddGoalResponse()
     
