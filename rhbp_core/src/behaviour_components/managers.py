@@ -43,8 +43,13 @@ class Manager(object):
             "~createLogFiles", False)  # not sure how to set this just yet.
         self._stepCounter = 0
 
+        self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
+
         if self._create_log_files:
-            self.__threshFile = open("threshold.log", 'w')
+            Manager.__make_log_dir_available(self.__log_file_path_prefix)
+            rospy.loginfo('Write Logfiles to: %s', os.path.realpath(self.__log_file_path_prefix))
+
+            self.__threshFile = open(self.__log_file_path_prefix + "threshold.log", 'w')
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
@@ -66,6 +71,13 @@ class Manager(object):
         self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
 
         self._filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
+
+    @staticmethod
+    def __make_log_dir_available(dir_path):
+        if not (dir_path):
+            return
+        if not (os.path.exists(dir_path)):
+            os.makedirs(dir_path)
 
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -93,7 +105,7 @@ class Manager(object):
 
         try:
             if self._create_log_files:  # debugging only
-                with open(filename, 'w') as outfile:
+                with open(self.__log_file_path_prefix + filename, 'w') as outfile:
                     outfile.write(data)
         except Exception as e:
             rospy.logerr("Logging failed: %s", e)
@@ -513,7 +525,7 @@ class Manager(object):
             return self._plan
         else:
             return None
-    
+
 class ManagerControl(object):
     '''
     Helper class for remotely controlling the manager
