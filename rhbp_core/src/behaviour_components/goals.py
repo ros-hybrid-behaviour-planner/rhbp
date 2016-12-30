@@ -22,7 +22,7 @@ from .sensors import SimpleTopicSensor
 
 class AbstractGoalRepresentation(object):
     '''
-    This class represents a goal. Goals have conditions that need to be fulfilled.
+    This class represents a goal in the manager.
     '''
 
     def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0, active=True, activated=True):
@@ -121,7 +121,8 @@ class AbstractGoalRepresentation(object):
 
 class GoalProxy(AbstractGoalRepresentation):
     '''
-    This connects a remote goal with the manager node
+    This connects a remote goal with the manager.
+    Is instanciated automatically. Don't instanciate manually
     '''
 
     def __init__(self, name, permanent):
@@ -169,8 +170,11 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
 
 
-
 class AbstractGoal(object):
+    '''
+    This class is the base class of goals. All calculation logic is placed here.
+    Therefore conditions can registered, which are used for satisfaction computation
+    '''
 
     def __init__(self, name, conditions=[], satisfaction_threshold=1.0):
         '''
@@ -266,9 +270,12 @@ class AbstractGoal(object):
     def set_priotity(self,value):
         raise NotImplementedError()
 
+
+#TODO Rename to RemoteGoal
 class GoalBase(AbstractGoal):
     '''
-    This is the base class for goals in python
+    Goal, which is automatically registered at the manager. Therefore the ros messages are used.
+    Allows to be on different node than the manager.
     '''
 
     def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
@@ -331,10 +338,12 @@ class GoalBase(AbstractGoal):
         })
         return GetStatusResponse(status)
 
+
 # TODO Naming
 class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
     '''
-    This is the base class for goals in python
+    This class represents a goal, which is registered directly at the manager.
+    As consequence no messages are used for communicating with the manager.
     '''
     def __init__(self, name, permanent=False, conditions=[], priority=0, satisfaction_threshold=1.0):
         '''
