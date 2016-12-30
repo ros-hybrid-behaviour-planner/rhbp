@@ -76,7 +76,7 @@ class Behaviour(object):
         if not (self.__execution_step_service):
             rospy.logerr('Step method is called, but behavior does not need a step')
             return
-        rospy.logdebug(self.name + '******************STEP************************')
+        # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         self.__execution_step_service()
 
     def matchingCorrelations(self, sensorName):
