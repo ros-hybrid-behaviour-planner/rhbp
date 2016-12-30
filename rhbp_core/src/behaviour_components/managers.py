@@ -361,6 +361,8 @@ class Manager(object):
                     currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
                 else:
                     behaviour.executionTime += 1
+                    if behaviour.requires_execution_steps:
+                        behaviour.do_step()
                 continue
             if not behaviour.executable and not behaviour.manualStart: # it must be executable
                 rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
@@ -418,7 +420,7 @@ class Manager(object):
         '''
         :param goal: instanceof AbstractGoalRepresentation
         '''
-        self._goals = filter(lambda x: x.name != goal.name(), self._goals) # kick out existing goals with the same name.
+        self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
         self.__replanningNeeded = True;
@@ -430,11 +432,13 @@ class Manager(object):
     
     def __addBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        behaviour = Behaviour(request.name, request.independentFromPlanner, self._create_log_files)
+        behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
+                              requires_execution_steps = request.requiresExecutionSteps,
+                              create_log_files = self._create_log_files)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
-        rospy.loginfo("A behaviour with name %s registered", behaviour.name)
+        rospy.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
         self.__replanningNeeded = True;
         return AddBehaviourResponse()
     

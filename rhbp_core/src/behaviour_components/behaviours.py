@@ -18,10 +18,12 @@ class Behaviour(object):
     '''
     This is the internal representation of a behaviour node
     '''
+
+    EXECUTION_STEP_SERVICE_POSTFIX = 'ExecutionStep'
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, independentFromPlanner = False, create_log_files = False):
+    def __init__(self, name, independentFromPlanner = False, create_log_files = False, requires_execution_steps = False):
         '''
         Constructor
         '''
@@ -48,17 +50,35 @@ class Behaviour(object):
         self._independentFromPlanner = independentFromPlanner
         self.__currentActivationStep = 0.0
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
+        self.__requires_execution_steps=requires_execution_steps
         Behaviour._instanceCounter += 1
         if self._create_log_files:
             self.__logFile = open("{0}.log".format(self._name), 'w')
             self.__logFile.write('Time\t{0}\n'.format(self._name))
+
+        if (self.__requires_execution_steps):
+            rospy.wait_for_service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
+            self.__execution_step_service = rospy.ServiceProxy(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX,
+                                                               Empty)
+        else:
+            self.__execution_step_service = None
+
     
     def __del__(self):
         '''
         Destructor
         '''
         self.__logFile.close()
-    
+        if (self.__execution_step_service):
+            self.__execution_step_service.shutdown()
+
+    def do_step(self):
+        if not (self.__execution_step_service):
+            rospy.logerr('Step method is called, but behavior does not need a step')
+            return
+        rospy.logdebug(self.name + '******************STEP************************')
+        self.__execution_step_service()
+
     def matchingCorrelations(self, sensorName):
         '''
         returns a list of correlations matching the sensorName.
@@ -310,6 +330,10 @@ class Behaviour(object):
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Stop', e)
         self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
+
+    @property
+    def requires_execution_steps(self):
+        return self.__requires_execution_steps
             
     @property
     def wishes(self):
@@ -427,7 +451,7 @@ class BehaviourBase(object):
     This is the base class for behaviour nodes in python
     '''
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, requires_execution_steps = False, **kwargs):
         '''
         Constructor
         '''
@@ -452,11 +476,17 @@ class BehaviourBase(object):
         self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
         self._activated = True # The activate Service sets the value of this property.
 
+        if requires_execution_steps:
+            self.__execution_step_service = rospy.Service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
+                                                          self.do_step_callback)
+        else:
+            self.__execution_step_service = None
+
         try:
             rospy.logdebug("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
             registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddBehaviour', AddBehaviour)
-            registerMe(self._name, self._independentFromPlanner)
+            registerMe(self._name, self._independentFromPlanner,requires_execution_steps)
             rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in BehaviourBase constructor (for behaviour node %s): %s", self._name, e)
@@ -741,4 +771,15 @@ class BehaviourBase(object):
         """
         This method should be overridden with one that actually does something.
         """
-        pass       
+        pass
+
+    def do_step_callback(self, dummy):
+        self.do_step()
+        return EmptyResponse()
+
+    def do_step(self):
+        '''
+        This method should be overriden, if the behavior needs steps.
+        This method is called in every iteration of the manager, when the behavior is running
+        '''
+        pass
