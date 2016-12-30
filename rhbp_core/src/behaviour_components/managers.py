@@ -270,7 +270,7 @@ class Manager(object):
         rospy.logdebug("############# GOAL STATI #############")
         ### collect information about goals ###
         for goal in self._goals:
-            goal.fetchStatus()
+            goal.sync()
             statusMessage = Status()
             statusMessage.name = goal.name
             statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in goal.wishes]

@@ -112,8 +112,10 @@ class AbstractGoalRepresentation(object):
     def fetchPDDL(self):
         raise NotImplementedError()
 
-    def fetchStatus(self):
-        # TODO: Naming
+    def sync(self):
+        '''
+        Update satisfaction, wishes and all other stuff
+        '''
         raise NotImplementedError()
 
 
@@ -146,7 +148,7 @@ class GoalProxy(AbstractGoalRepresentation):
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
 
-    def fetchStatus(self):
+    def sync(self):
         '''
         This method fetches the status from the actual goal node via GetStatus service call
         '''
@@ -365,7 +367,7 @@ class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
 
-    def fetchStatus(self):
+    def sync(self):
         self.updateComputation()
         self.active = self._activated
         self.fulfillment = self.computeSatisfaction()
