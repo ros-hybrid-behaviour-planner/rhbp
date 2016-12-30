@@ -1,7 +1,7 @@
 '''
 Created on 22.04.2015
 
-@author: wypler, hrabia
+@author: wypler, hrabia, rieger
 '''
 
 import itertools
@@ -110,6 +110,10 @@ class AbstractGoalRepresentation(object):
         return self._fulfillment >= self._satisfaction_threshold
 
     def fetchPDDL(self):
+        '''
+        This method generates pddl.
+        It returns a tuple of (goal_pddl, state_pddl).
+        '''
         raise NotImplementedError()
 
     def sync(self):
@@ -117,59 +121,6 @@ class AbstractGoalRepresentation(object):
         Update satisfaction, wishes and all other stuff
         '''
         raise NotImplementedError()
-
-
-
-
-class GoalProxy(AbstractGoalRepresentation):
-    '''
-    This connects a remote goal with the manager.
-    Is instanciated automatically. Don't instanciate manually
-    '''
-
-    def __init__(self, name, permanent):
-        '''
-        Constructor
-        '''
-        super(GoalProxy, self).__init__(name, permanent)
-
-    def fetchPDDL(self):
-        '''
-        This method fetches the PDDL from the actual behaviour node via GetPDDLservice call
-        It returns a tuple of (goal_pddl, state_pddl).
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
-        rospy.wait_for_service(self._name + 'PDDL')
-        try:
-            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
-            pddl = getPDDLRequest()
-            return (PDDL(statement=pddl.goalStatement),
-                    PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates, functions=pddl.stateFunctions))
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
-
-    def sync(self):
-        '''
-        This method fetches the status from the actual goal node via GetStatus service call
-        '''
-        rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
-        rospy.wait_for_service(self._name + 'GetStatus')
-        try:
-            get_status_request = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
-            status = get_status_request().status
-            self.fulfillment = status.satisfaction
-            self.wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
-            self.active = status.active
-            self.activated = status.activated
-            self.priority = status.priority
-            self.satisfaction_threshold = status.threshold
-            if self._name != status.name:
-                rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!", self._name,
-                             status.name)
-            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name, self.fulfillment,
-                           self.wishes)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
 
 
 class AbstractGoal(object):
@@ -272,6 +223,58 @@ class AbstractGoal(object):
     def set_priotity(self,value):
         raise NotImplementedError()
 
+class GoalProxy(AbstractGoalRepresentation):
+    '''
+    This connects a remote goal with the manager.
+    Is instanciated automatically. Don't instanciate manually
+    '''
+
+    def __init__(self, name, permanent):
+        '''
+        Constructor
+        '''
+        super(GoalProxy, self).__init__(name, permanent)
+
+    def fetchPDDL(self):
+        '''
+        This method fetches the PDDL from the actual goal node via GetPDDLservice call
+        '''
+        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
+        rospy.wait_for_service(self._name + 'PDDL')
+        try:
+            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
+            pddl = getPDDLRequest()
+            return (PDDL(statement=pddl.goalStatement),
+                    PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
+                         functions=pddl.stateFunctions))
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
+
+    def sync(self):
+        '''
+        This method fetches the status from the actual goal node via GetStatus service call
+        '''
+        rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
+        rospy.wait_for_service(self._name + 'GetStatus')
+        try:
+            get_status_request = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
+            status = get_status_request().status
+            self.fulfillment = status.satisfaction
+            self.wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
+            self.active = status.active
+            self.activated = status.activated
+            self.priority = status.priority
+            self.satisfaction_threshold = status.threshold
+            if self._name != status.name:
+                rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!",
+                             self._name,
+                             status.name)
+            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name,
+                           self.fulfillment,
+                           self.wishes)
+        except rospy.ServiceException as e:
+            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
+
 
 #TODO Rename to RemoteGoal
 class GoalBase(AbstractGoal):
@@ -340,6 +343,14 @@ class GoalBase(AbstractGoal):
         })
         return GetStatusResponse(status)
 
+    def set_not_active(self):
+        self._active = False
+
+    def set_activated(self, value):
+        self._activated = value
+
+    def set_priotity(self, value):
+        self._priority = value
 
 # TODO Naming
 class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
