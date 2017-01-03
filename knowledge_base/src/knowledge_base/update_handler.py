@@ -1,6 +1,6 @@
 '''
 
-@author: phillip
+@author: rieger
 '''
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase

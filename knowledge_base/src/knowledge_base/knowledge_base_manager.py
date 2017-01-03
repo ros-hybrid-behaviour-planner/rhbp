@@ -2,7 +2,7 @@
 '''
 Created on 07.12.2016
 
-@author: phillip
+@author: rieger
 '''
 
 import re
