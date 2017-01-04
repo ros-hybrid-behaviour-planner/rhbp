@@ -8,7 +8,7 @@ PKG = 'knowledge_base'
 
 
 class InvertedTupleSpaceTestSuite(unittest.TestCase):
-    
+
     @staticmethod
     def add_not_relevant_patterns(inverted_space):
         inverted_space.add(('AnyPattern', "Which", "Should", "Not", "Found", str))
@@ -24,13 +24,13 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         self.assertEqual(1, len(result))
         self.assertEqual(tup, result[0])
 
-    def test_simple(self):
+    def test_simple_pattern(self):
         """
         Tests adding and finding a pattern, without other patterns
         """
         self.__run_simple_test(InvertedTupleSpace())
 
-    def test_simple_with_irrelevant_patterns(self):
+    def test_simple_pattern_with_irrelevant_patterns(self):
         """
         Tests adding and finding a pattern, with other patterns
         """
@@ -55,7 +55,6 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
     def test_multiple_patterns(self):
         """
         Tests if multiple patterns should found
-        :return:
         """
         tuple_space = InvertedTupleSpace()
 
