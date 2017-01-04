@@ -1,10 +1,10 @@
-"""
-Provides a tuple space, where patterns can stored and searched with a fact
-"""
 from lindypy.TupleSpace import TSpace
 
 
 class InvertedTupleSpace(TSpace):
+    '''
+    Provides a tuple space, where patterns can stored and searched with a fact
+    '''
     def find_for_fact(self, fact):
         """
         Code was inspired by TSpace::many
