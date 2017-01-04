@@ -8,6 +8,7 @@ PKG = 'knowledge_base'
 
 
 class InvertedTupleSpaceTestSuite(unittest.TestCase):
+    
     @staticmethod
     def add_not_relevant_patterns(inverted_space):
         inverted_space.add(('AnyPattern', "Which", "Should", "Not", "Found", str))
@@ -37,7 +38,7 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         InvertedTupleSpaceTestSuite.add_not_relevant_patterns(inverted_tuple_Space)
         self.__run_simple_test(inverted_tuple_Space)
 
-    def test_simple_pattern(self):
+    def test_placeholder(self):
         """
         Tests the space for a pattern with placeholders
         """
