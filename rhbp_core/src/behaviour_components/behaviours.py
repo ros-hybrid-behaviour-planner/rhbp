@@ -319,7 +319,8 @@ class Behaviour(object):
         '''
         assert self._isExecuting
         self._executionTime = -1
-        self._reset_activation = reset_activation
+        if reset_activation:
+            self.reset_activation()
 
         try:
             rospy.logdebug("Waiting for service %s", self._name + 'Stop')
@@ -330,6 +331,9 @@ class Behaviour(object):
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Stop', e)
         self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
+
+    def reset_activation(self):
+        self._reset_activation = True
 
     @property
     def requires_execution_steps(self):

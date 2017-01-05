@@ -24,7 +24,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self,activated = True, **kwargs):
         '''
         Constructor
         '''
@@ -60,6 +60,7 @@ class Manager(object):
         self.__goalPDDLs = {}
 
         self.__running = True # toggled by the pause and resume services
+        self.__activated = activated
 
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
@@ -262,7 +263,7 @@ class Manager(object):
             rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
     def step(self):
-        if not self.__running:
+        if (not self.__running) or (not self.__activated):
             return
         plannerStatusMessage = PlannerStatus()
         if self._create_log_files:  # debugging only
@@ -525,6 +526,20 @@ class Manager(object):
             return self._plan
         else:
             return None
+
+    def deactivate(self):
+        self.__activated = False
+        #use while to avoid illegal state of non running behaviors in __executedBehaviors
+        while (len(self.__executedBehaviours)>0):
+            behaviour = self.__executedBehaviours[0]
+            self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
+            behaviour.stop(True)
+        for behaviour in self._behaviours:
+            behaviour.reset_activation()
+
+    def activate(self):
+        self.__activated = True
+
 
 class ManagerControl(object):
     '''
