@@ -352,6 +352,7 @@ class GoalBase(AbstractGoal):
     def set_priotity(self, value):
         self._priority = value
 
+
 # TODO Naming
 class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
     '''
@@ -364,8 +365,6 @@ class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
         '''
         AbstractGoalRepresentation.__init__(self,name=name,permanent=permanent,satisfaction_threshold=satisfaction_threshold,priority=priority)
         AbstractGoal.__init__(self,name=name,conditions=conditions,satisfaction_threshold=satisfaction_threshold)
-        super(OfflineGoal, self).__init__(name, permanent, priority=priority,
-                                          satisfaction_threshold=satisfaction_threshold)
         self._conditions = conditions
 
     def __del__(self):
