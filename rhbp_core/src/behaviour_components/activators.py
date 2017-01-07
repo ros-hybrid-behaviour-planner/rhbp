@@ -305,6 +305,10 @@ class Activator(object):
     def getPDDLFunctionName(self, sensorName):
         return self._name + '_' + sensorName
 
+    @staticmethod
+    def restore_condition_name_from_pddl_function_name(pddl_function_name, sensor_name):
+        return pddl_function_name[:(len(pddl_function_name) - len(sensor_name)-1)]
+
     @property
     def minActivation(self):
         return self._minActivation
@@ -478,6 +482,7 @@ class ThresholdActivator(Activator):
     
     def __repr__(self):
         return "Threshold Activator"
+
 
 class LinearActivator(Activator):
     '''
