@@ -90,7 +90,7 @@ class Manager(object):
         self.__threshFile.close()
 
     def _getDomainName(self):
-        return self._prefix if self._prefix else "UNNAMED"
+        return self._prefix.replace('/','_') if self._prefix else "UNNAMED"
 
     def _write_log_file(self, filename, extension ,data):
         '''
@@ -103,6 +103,7 @@ class Manager(object):
 
         #limit filename length to OS requirements
         filename = filename[:self._filename_max_length-len(extension)] + extension
+        filename = filename.replace('/','-').replace('\\','-')
 
         try:
             if self._create_log_files:  # debugging only
