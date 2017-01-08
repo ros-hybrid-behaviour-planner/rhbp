@@ -29,7 +29,7 @@ class KnowledgeBase(object):
     POP_SERVICE_NAME_POSTFIX = '/Pop'
     ALL_SERVICE_NAME_POSTFIX = '/All'
     UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
-    PUSH_TOPIC_NAME_POSTFIX = '/UpdateSubscriber'
+    PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
     def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
@@ -38,7 +38,7 @@ class KnowledgeBase(object):
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
-        rospy.Subscriber(name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, self.__push)
+        self.__pusher = rospy.Subscriber(name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, self.__push)
         self.__exists_service = rospy.Service(name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists, self.__exists)
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
