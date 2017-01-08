@@ -26,11 +26,13 @@ class KnowledgeBaseFactCache:
         self.__initialized = False
         self.__knowledge_base_update_subscriber_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX
         self.__exists_service_name = knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX
+        self.__knowledge_base_name = knowledge_base_name
         try:
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name, timeout=10)
             self.__register_for_updates()
         except rospy.ROSException:
-            pass
+            rospy.loginfo(
+                'The following knowledge base node is currently not present. Connection will be established later: ' + knowledge_base_name)
 
     def __register_for_updates(self):
         """
@@ -43,6 +45,7 @@ class KnowledgeBaseFactCache:
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
         self.__initialized = True
+        rospy.logdebug('Connected to knowledge base: '+self.__knowledge_base_name)
 
     def __handle_add_update(self, fact_added):
         """
@@ -73,6 +76,7 @@ class KnowledgeBaseFactCache:
         :return: current cached value
         """
         if not self.__initialized:
+            rospy.loginfo('Wait for knowledge base service: ' + self.__knowledge_base_update_subscriber_service_name)
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name)
             self.__register_for_updates()
         return self.__value
