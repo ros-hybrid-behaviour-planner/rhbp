@@ -1,3 +1,3 @@
 <launch>
-  <node pkg="knowledge_base" type="knowledge_base_node.py" name ="kb" />
+  <node pkg="knowledge_base" type="knowledge_base_node.py" name ="None" />
 </launch>
