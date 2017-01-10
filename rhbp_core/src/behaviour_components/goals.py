@@ -123,13 +123,13 @@ class AbstractGoalRepresentation(object):
         raise NotImplementedError()
 
 
-class AbstractGoal(object):
+class Goal(object):
     '''
     This class is the base class of goals. All calculation logic is placed here.
     Therefore conditions can registered, which are used for satisfaction computation
     '''
 
-    def __init__(self, name, conditions=[], satisfaction_threshold=1.0):
+    def __init__(self, name, conditions=[], satisfaction_threshold=1.0, priority=0, active=True, activated=True):
         '''
         Constructor
         '''
@@ -137,6 +137,9 @@ class AbstractGoal(object):
         self._priorityService = rospy.Service(name + 'Priority', SetInteger, self.setPriorityCallback)
         self._conditions = conditions
         self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
+        self._active = active  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
+        self._activated = activated  # The activate Service sets the value of this property.
+        self._priority = priority  # The higher the (unsigned) number the higher the importance
 
     def __del__(self):
         '''
@@ -164,7 +167,7 @@ class AbstractGoal(object):
         try:
             return reduce(operator.mul, (x.satisfaction for x in self._conditions), 1)
         except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-            self.set_not_active()
+            self._active = False
             return 0.0
 
     def computeWishes(self):
@@ -176,7 +179,7 @@ class AbstractGoal(object):
             return [Wish(item[0].name, item[1]) for item in
                     list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
         except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
-            self.set_not_active()
+            self._active = False
             return []
 
     def getGoalStatements(self):
@@ -194,11 +197,11 @@ class AbstractGoal(object):
         This method activates or deactivates the goal.
         This method must not block.
         '''
-        self.set_activated(request.active)
+        self._activated = request.active
         return ActivateResponse()
 
     def setPriorityCallback(self, request):
-        self.set_priotity(request.value)
+        self._priority = request.value
         return SetIntegerResponse()
 
     def addCondition(self, condition):
@@ -214,14 +217,22 @@ class AbstractGoal(object):
         else:
             warnings.warn("That's no conditional object!")
 
-    def set_not_active(self):
-        raise NotImplementedError()
+    @property
+    def activated(self):
+        return self._activated
 
-    def set_activated(self,value):
-        raise NotImplementedError()
+    @property
+    def priority(self):
+        return self._priority
 
-    def set_priotity(self,value):
-        raise NotImplementedError()
+    @property
+    def satisfaction_threshold(self):
+        return self._satisfaction_threshold
+
+    @property
+    def active(self):
+        return self._active
+
 
 class GoalProxy(AbstractGoalRepresentation):
     '''
@@ -276,8 +287,8 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
 
 
-#TODO Rename to RemoteGoal
-class GoalBase(AbstractGoal):
+# TODO Rename to RemoteGoal
+class GoalBase(Goal):
     '''
     Goal, which is automatically registered at the manager. Therefore the ros messages are used.
     Allows to be on different node than the manager.
@@ -287,15 +298,13 @@ class GoalBase(AbstractGoal):
         '''
         Constructor
         '''
-        super(GoalBase,self).__init__(name=name,conditions=conditions,satisfaction_threshold=satisfaction_threshold)
+        super(GoalBase, self).__init__(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold,
+                                       priority=priority)
         self._name = name  # a unique name is mandatory
         self._isPermanent = permanent
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._plannerPrefix = plannerPrefix  # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
-        self._active = True  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
-        self._activated = True  # The activate Service sets the value of this property.
-        self._priority = priority  # The higher the (unsigned) number the higher the importance
 
         try:
             rospy.logdebug(
@@ -315,7 +324,7 @@ class GoalBase(AbstractGoal):
         '''
         try:
             self._getStatusService.shutdown()
-            self._pddlService.shutdown();
+            self._pddlService.shutdown()
             super(GoalBase, self).__del__()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
@@ -343,45 +352,29 @@ class GoalBase(AbstractGoal):
         })
         return GetStatusResponse(status)
 
-    def set_not_active(self):
-        self._active = False
 
-    def set_activated(self, value):
-        self._activated = value
-
-    def set_priotity(self, value):
-        self._priority = value
-
-
-# TODO Naming
-class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
+class OfflineGoal(AbstractGoalRepresentation):
     '''
     This class represents a goal, which is registered directly at the manager.
     As consequence no messages are used for communicating with the manager.
     '''
+
     def __init__(self, name, permanent=False, conditions=[], priority=0, satisfaction_threshold=1.0):
         '''
         Constructor
         '''
-        AbstractGoalRepresentation.__init__(self,name=name,permanent=permanent,satisfaction_threshold=satisfaction_threshold,priority=priority)
-        AbstractGoal.__init__(self,name=name,conditions=conditions,satisfaction_threshold=satisfaction_threshold)
-        self._conditions = conditions
-
-    def __del__(self):
-        '''
-        Destructor
-        '''
-        try:
-            self._activateService.shutdown()
-            self._priorityService.shutdown();
-        except Exception as e:
-            rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
+        AbstractGoalRepresentation.__init__(self, name=name, permanent=permanent,
+                                            satisfaction_threshold=satisfaction_threshold, priority=priority)
+        self.__goal = Goal(self, name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
+        for condition in conditions:
+            self.__goal.addCondition(condition)
 
     def sync(self):
-        self.updateComputation()
-        self.active = self._activated
-        self.fulfillment = self.computeSatisfaction()
-        self.wishes = [(wish.sensorName, wish.indicator) for wish in self.computeWishes()]
+        self.__goal.updateComputation()
+        self.fulfillment = self.__goal.computeSatisfaction()
+        self.wishes = [(wish.sensorName, wish.indicator) for wish in self.__goal.computeWishes()]
+        self._priority = self.__goal.priority
+        self.active = self.__goal.actived
 
     def fetchPDDL(self):
         self.updateComputation()
@@ -390,15 +383,6 @@ class OfflineGoal(AbstractGoalRepresentation,AbstractGoal):
         return (PDDL(statement=goal_statements),
                 PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
                     state_pddl.functions)))
-
-    def set_not_active(self):
-        self.active = False
-
-    def set_activated(self,value):
-        self.activated=value
-
-    def set_priotity(self,value):
-        self.priority = value
 
 
 class PublisherGoal(GoalBase):
