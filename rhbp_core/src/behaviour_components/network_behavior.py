@@ -11,7 +11,6 @@ from .managers import Manager
 
 
 class NetworkBehavior(BehaviourBase):
-
     MANAGER_POSTFIX = "/Manager"
 
     '''
@@ -46,7 +45,7 @@ class NetworkBehavior(BehaviourBase):
             goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
                                      activator_name=activator_name)
             self.__manager.add_goal(goal)
-        self.correlations=correlations
+        self.correlations = correlations
 
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
