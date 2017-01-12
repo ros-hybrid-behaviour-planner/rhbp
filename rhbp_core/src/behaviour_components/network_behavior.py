@@ -62,12 +62,12 @@ class NetworkBehavior(BehaviourBase):
         return name
 
     def _create_goal(self, sensor, effect, goal_name, activator_name):
-        '''
+        """
         :param sensor: instance of type Sensor
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
         :return: a goal, which causes the manager to work on the ffect during the whole time
-        '''
+        """
         if (effect.sensorType == bool):
             desired_value = True if effect.indicator > 0 else False
             activator = BooleanActivator(name=activator_name, desiredValue=desired_value)
