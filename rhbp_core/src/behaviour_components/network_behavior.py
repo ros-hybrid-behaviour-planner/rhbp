@@ -4,27 +4,28 @@ Created on 13.04.2015
 @author: rieger
 '''
 
-from .activators import Activator, BooleanActivator, Condition
+from .activators import Activator, BooleanActivator, Condition, GreedyActivator
 from .behaviours import BehaviourBase
 from .goals import OfflineGoal
 from .managers import Manager
 
 
 class NetworkBehavior(BehaviourBase):
-    MANAGER_POSTFIX = "/Manager"
-
     '''
     Behavior, which contains other behaviors
     Must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
     '''
+
+    MANAGER_POSTFIX = "/Manager"
 
     def __init__(self, effects, name, requires_execution_steps=False, **kwargs):
         '''
 
         :param effects: tuple <sensor,Effect>
         :param name:
-        :param requires_execution_steps:
-        :param kwargs:
+        :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
+                If not, the step method must be called manually
+        :param kwargs: args for the manager, except the prefix arg
         '''
         super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps,
                                               kwargs=kwargs)
@@ -56,7 +57,7 @@ class NetworkBehavior(BehaviourBase):
         :param effect: instance of type  Effect
         :return: unique name for goal
         '''
-        # x as seperator between counter an sensor names, to prevent conflict not suitable names
+        # x as seperator between counter an sensor names, to prevent conflict, caused by unusual names
         name = self.__goal_name_prefix + str(self.__goal_counter) + 'X' + effect.sensorName
         self.__goal_counter += 1
         return name
@@ -66,13 +67,20 @@ class NetworkBehavior(BehaviourBase):
         :param sensor: instance of type Sensor
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
-        :return: a goal with a greedy condition
+        :return: a goal, which causes the manager to work on the ffect during the whole time
         '''
         if (effect.sensorType == bool):
             desired_value = True if effect.indicator > 0 else False
             activator = BooleanActivator(name=activator_name, desiredValue=desired_value)
             condition = Condition(activator=activator, sensor=sensor)
             return OfflineGoal(goal_name, permanent=True, conditions={condition})
+        if (effect.sensorType == int or effect.sensorType == float or effect.sensorType == long):
+            activator = GreedyActivator(maximize=effect.indicator > 0, step_size=effect.realWorldImpact,
+                                        name=activator_name)
+            condition = Condition(activator=activator, sensor=sensor)
+            return OfflineGoal(goal_name, permanent=True, conditions={condition})
+        raise RuntimeError(msg='Cant create goal for effect type \'' + str(
+            effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
 
     def do_step(self):
         self.__manager.step()
