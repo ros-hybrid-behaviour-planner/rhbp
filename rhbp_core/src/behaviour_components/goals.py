@@ -236,7 +236,7 @@ class Goal(object):
 
 class GoalProxy(AbstractGoalRepresentation):
     '''
-    This connects a remote goal with the manager.
+    This class connects a remote goal with the manager.
     Is instanciated automatically. Don't instanciate manually
     '''
 

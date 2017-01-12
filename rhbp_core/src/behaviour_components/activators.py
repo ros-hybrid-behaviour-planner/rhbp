@@ -501,14 +501,16 @@ class ThresholdActivator(Activator):
 
 
 class GreedyActivator(Activator):
-    '''
+    """
     This class is an activator that maximizes or minimizes a value
-    '''
+    """
 
     def __init__(self, maximize=True, step_size=1, name=None):
-        '''
-        Constructor
-        '''
+        """
+        :param maximize:
+        :param step_size: value, bigger than 0
+        :param name:
+        """
         super(GreedyActivator, self).__init__(0, 1, name)
         self.__maximize = maximize
         self.__step_size = step_size
@@ -526,16 +528,19 @@ class GreedyActivator(Activator):
     def getSensorWish(self, normalizedValue):
         return self.getDirection()
 
-    def get_sensor_precondition_pddl_using_current_value(self, sensorName, satisfaction_threshold, current_value):
-        functionName = self.getPDDLFunctionName(sensorName)
-        next_threshold = current_value + self.__step_size
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+        raise RuntimeError('use get_sensor_precondition_pddl_using_current_value')
+
+    def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_value):
+        function_name = self.getPDDLFunctionName(sensor_name)
+        next_threshold = current_value + self.__step_size * self.getDirection()
         operator = '>=' if self.getDirection() > 0 else '<='
-        statement = '( {0} ({1}) {2:f})'.format(operator,functionName,next_threshold)
-        return PDDL(statement=statement, functions=functionName)
+        statement = '( {0} ({1}) {2:f})'.format(operator,function_name,next_threshold)
+        return PDDL(statement=statement, functions=function_name)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
-        functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
+        function_name = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="( = (" + function_name + ") {0:f} )".format(normalizedValue), functions=function_name)
 
     def __str__(self):
         return "Greedy Activator{0}".format("+" if self.__maximize else "-")

@@ -11,29 +11,28 @@ from .managers import Manager
 
 
 class NetworkBehavior(BehaviourBase):
-    '''
+    """
     Behavior, which contains other behaviors
     Must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
-    '''
+    """
 
     MANAGER_POSTFIX = "/Manager"
 
     def __init__(self, effects, name, requires_execution_steps=False, **kwargs):
-        '''
-
+        """
         :param effects: tuple <sensor,Effect>
         :param name:
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
         :param kwargs: args for the manager, except the prefix arg
-        '''
+        """
         super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps,
                                               kwargs=kwargs)
         self.requires_execution_steps = requires_execution_steps
-        managerArgs = {}
-        managerArgs.update(kwargs)
-        managerArgs['prefix'] = name + NetworkBehavior.MANAGER_POSTFIX
-        self.__manager = Manager(activated=False, **managerArgs)
+        manager_args = {}
+        manager_args.update(kwargs)
+        manager_args['prefix'] = name + NetworkBehavior.MANAGER_POSTFIX
+        self.__manager = Manager(activated=False, **manager_args)
 
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
@@ -53,10 +52,10 @@ class NetworkBehavior(BehaviourBase):
                                                                         sensor_name=sensor_name)
 
     def __generate_goal_name(self, effect):
-        '''
+        """
         :param effect: instance of type  Effect
         :return: unique name for goal
-        '''
+        """
         # x as seperator between counter an sensor names, to prevent conflict, caused by unusual names
         name = self.__goal_name_prefix + str(self.__goal_counter) + 'X' + effect.sensorName
         self.__goal_counter += 1
