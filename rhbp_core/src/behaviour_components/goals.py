@@ -296,25 +296,30 @@ class GoalBase(Goal):
 
     def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         '''
-        Constructor
+
+        :param name:  a unique name is mandatory
+        :param permanent:
+        :param conditions:
+        :param plannerPrefix: if you have multiple planners in the same ROS environment use a prefix to identify the right one.
+        :param priority:
+        :param satisfaction_threshold:
         '''
         super(GoalBase, self).__init__(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold,
                                        priority=priority)
-        self._name = name  # a unique name is mandatory
-        self._isPermanent = permanent
+        self._name = name
+
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
-        self._plannerPrefix = plannerPrefix  # if you have multiple planners in the same ROS environment use a prefix to identify the right one.
 
         try:
             rospy.logdebug(
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
-                self._plannerPrefix, self._name)
-            rospy.wait_for_service(self._plannerPrefix + 'AddGoal')
-            registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddGoal', AddGoal)
-            registerMe(self._name, self._isPermanent)
+                plannerPrefix, self._name)
+            rospy.wait_for_service(plannerPrefix + 'AddGoal')
+            registerMe = rospy.ServiceProxy(plannerPrefix + 'AddGoal', AddGoal)
+            registerMe(self._name, permanent)
             rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
-                           self._plannerPrefix, self._name)
+                           plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
 
@@ -363,8 +368,8 @@ class OfflineGoal(AbstractGoalRepresentation):
         '''
         Constructor
         '''
-        super(OfflineGoal,self).__init__(name=name, permanent=permanent,
-                                            satisfaction_threshold=satisfaction_threshold, priority=priority)
+        super(OfflineGoal, self).__init__(name=name, permanent=permanent,
+                                          satisfaction_threshold=satisfaction_threshold, priority=priority)
         self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold)
         for condition in conditions:
             self.add_condition(condition)
@@ -383,7 +388,6 @@ class OfflineGoal(AbstractGoalRepresentation):
         return (PDDL(statement=goal_statements),
                 PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
                     state_pddl.functions)))
-
 
     def add_condition(self, condition):
         self.__goal.addCondition(condition)
