@@ -365,9 +365,9 @@ class OfflineGoal(AbstractGoalRepresentation):
         '''
         super(OfflineGoal,self).__init__(name=name, permanent=permanent,
                                             satisfaction_threshold=satisfaction_threshold, priority=priority)
-        self.__goal = Goal(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
+        self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold)
         for condition in conditions:
-            self.__goal.addCondition(condition)
+            self.add_condition(condition)
 
     def sync(self):
         self.__goal.updateComputation()
