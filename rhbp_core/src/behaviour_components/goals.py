@@ -327,7 +327,7 @@ class GoalBase(Goal):
             self._pddlService.shutdown()
             super(GoalBase, self).__del__()
         except Exception as e:
-            rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
+            rospy.logerr("Error in destructor of GoalBase: %s", e)
 
     def pddlCallback(self, dummy):
         self.updateComputation()
