@@ -52,7 +52,7 @@ class TestGoals(unittest.TestCase):
         self.__message_prefix = 'TestGoals' + str(time.time()).replace('.', '')
         rospy.init_node('goal_test_node', log_level=rospy.DEBUG)
 
-    def test_remote_goal(self):
+    def __test_remote_goal(self):
 
         method_prefix = self.__message_prefix + "TestRemoteGoal"
         planner_prefix = method_prefix + "Manager"
@@ -95,9 +95,8 @@ class TestGoals(unittest.TestCase):
         KnowledgeAdderBehaviour(knwoledge_sensor_name=pddl_function_name, fact=fact,
                                 name=method_prefix + "KnowledgeAdder", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
-        goal.addCondition(condition)
+        goal.add_condition(condition)
         m.add_goal(goal)
-
         for x in range(0, 3, 1):
             m.step()
             rospy.sleep(0.1)
@@ -108,4 +107,4 @@ class TestGoals(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun(PKG, 'goal_test_node', TestGoals)
+    rostest.rosrun(PKG, 'test_goals_node', TestGoals)

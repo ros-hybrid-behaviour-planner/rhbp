@@ -363,9 +363,9 @@ class OfflineGoal(AbstractGoalRepresentation):
         '''
         Constructor
         '''
-        AbstractGoalRepresentation.__init__(self, name=name, permanent=permanent,
+        super(OfflineGoal,self).__init__(name=name, permanent=permanent,
                                             satisfaction_threshold=satisfaction_threshold, priority=priority)
-        self.__goal = Goal(self, name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
+        self.__goal = Goal(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
         for condition in conditions:
             self.__goal.addCondition(condition)
 
@@ -374,15 +374,19 @@ class OfflineGoal(AbstractGoalRepresentation):
         self.fulfillment = self.__goal.computeSatisfaction()
         self.wishes = [(wish.sensorName, wish.indicator) for wish in self.__goal.computeWishes()]
         self._priority = self.__goal.priority
-        self.active = self.__goal.actived
+        self.active = self.__goal.activated
 
     def fetchPDDL(self):
-        self.updateComputation()
-        goal_statements = self.getGoalStatements()
-        state_pddl = self.getStatePDDL()
+        self.__goal.updateComputation()
+        goal_statements = self.__goal.getGoalStatements()
+        state_pddl = self.__goal.getStatePDDL()
         return (PDDL(statement=goal_statements),
                 PDDL(statement=state_pddl.statement, predicates=list(state_pddl.predicates), functions=list(
                     state_pddl.functions)))
+
+
+    def add_condition(self, condition):
+        self.__goal.addCondition(condition)
 
 
 class PublisherGoal(GoalBase):
