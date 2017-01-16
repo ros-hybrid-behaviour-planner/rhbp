@@ -1,17 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(rhbp_core)
+project(knowledge_base)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
   rospy
-  rqt_gui
-  rqt_gui_py
   std_msgs
   message_generation
-  knowledge_base
-  ffp
 )
 
 ## System dependencies are found with CMake's conventions
@@ -50,24 +47,19 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  Wish.msg
-  Correlation.msg
-  Status.msg
-  PlannerStatus.msg
+  Push.msg
+  Fact.msg
+  FactRemoved.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  AddBehaviour.srv
-  AddGoal.srv
-  GetStatus.srv
-  RemoveBehaviour.srv
-  RemoveGoal.srv
-  ForceStart.srv
-  Activate.srv
-  SetInteger.srv
-  GetPDDL.srv
+  Peek.srv
+  Pop.srv
+  Exists.srv
+  All.srv
+  UpdateSubscribe.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -79,8 +71,8 @@ add_service_files(
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
-  DEPENDENCIES
-  std_msgs
+   DEPENDENCIES
+   std_msgs
 )
 
 ################################################
@@ -114,7 +106,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES rhbp_core
+#  LIBRARIES knowledge_base
 #  CATKIN_DEPENDS rospy std_msgs
 #  DEPENDS system_lib
 )
@@ -131,24 +123,24 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(rhbp_core
-#   src/${PROJECT_NAME}/rhbp_core.cpp
+# add_library(knowledge_base
+#   src/${PROJECT_NAME}/knowledge_base.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(rhbp_core ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(knowledge_base ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(rhbp_core_node src/rhbp_core_node.cpp)
+# add_executable(knowledge_base_node src/knowledge_base_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(rhbp_core_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(knowledge_base_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(rhbp_core_node
+# target_link_libraries(knowledge_base_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -161,13 +153,13 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-install(PROGRAMS
-   scripts/rqt_planner_gui
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# install(PROGRAMS
+#   scripts/my_python_script
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS rhbp_core rhbp_core_node
+# install(TARGETS knowledge_base knowledge_base_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -192,13 +184,16 @@ install(PROGRAMS
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_rhbp_core.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_knowledge_base.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
-catkin_add_nosetests(src/tests)
+catkin_add_nosetests(src/tests/inverted_tuple_space_test.py)
+catkin_add_nosetests(src/tests/tuple_space_test.py)
+catkin_add_nosetests(src/tests/knowledge_base_manager_topic_name_generation_test.py)
 
 find_package(rostest REQUIRED)
-add_rostest(launch/sensor_test.test)
+add_rostest(launch/knowledge_base_manager_test.test)
+add_rostest(launch/update_handler_test.test)

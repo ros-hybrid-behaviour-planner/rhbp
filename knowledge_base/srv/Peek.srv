@@ -1,0 +1,4 @@
+string[] pattern
+---
+bool exists
+string[] example

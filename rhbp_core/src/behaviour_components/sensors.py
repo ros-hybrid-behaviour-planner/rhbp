@@ -1,10 +1,12 @@
 '''
 Created on 13.04.2015
 
-@author: wypler, hrabia
+@author: wypler, hrabia, rieger
 '''
 
 import rospy
+
+from knowledge_base.update_handler import KnowledgeBaseFactCache
 from utils.ros_helpers import get_topic_type
 from .pddl import create_valid_pddl_name
 
@@ -17,14 +19,14 @@ class Sensor(object):
 
     _instanceCounter = 0
 
-    def __init__(self, name = None, optional = False, initial_value = None):
+    def __init__(self, name=None, optional=False, initial_value=None):
         '''
         Constructor
         '''
         self._name = name if name else "Sensor_{0}".format(Sensor._instanceCounter)
         self._name = create_valid_pddl_name(self._name)
         self._optional = optional
-        self._value = initial_value # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
 
         Sensor._instanceCounter += 1
@@ -35,7 +37,7 @@ class Sensor(object):
         returns the just stored value
         '''
         self._value = self._latestValue
-        return  self._value
+        return self._value
 
     def update(self, newValue):
         """
@@ -59,31 +61,32 @@ class Sensor(object):
     @property
     def optional(self):
         return self._optional
-    
+
     @optional.setter
     def optional(self, newValue):
         if not isinstance(newValue, bool):
-            rospy.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name, newValue)
+            rospy.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name,
+                          newValue)
         else:
             self._optional = newValue
-        
+
     def __str__(self):
         return self._name
-    
+
     def __repr__(self):
         return str(self)
 
     @property
     def name(self):
         return self._name
-    
+
     @name.setter
     def name(self, newName):
         self._name = newName
 
-class SimpleTopicSensor(Sensor):
 
-    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+class SimpleTopicSensor(Sensor):
+    def __init__(self, topic, name=None, message_type=None, initial_value=None, create_log=False):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
@@ -112,7 +115,7 @@ class SimpleTopicSensor(Sensor):
                 self._logFile.write('{0}\n'.format(self._name))
         else:
             rospy.logerr("Could not determine message type of: " + topic)
-    
+
     def subscription_callback(self, msg):
         self.update(msg.data)
         rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
@@ -124,12 +127,15 @@ class SimpleTopicSensor(Sensor):
     def topic_name(self):
         return self._topic_name
 
+
 class PassThroughTopicSensor(SimpleTopicSensor):
     """
     "PassThrough" because the sensor just forwards the received msg
     """
-    def __init__(self, name, topic, message_type = None,  initial_value = None, create_log = False):
-        super(PassThroughTopicSensor, self).__init__(topic=topic, name = name, message_type = message_type, initial_value = initial_value, create_log=create_log)
+
+    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False):
+        super(PassThroughTopicSensor, self).__init__(topic=topic, name=name, message_type=message_type,
+                                                     initial_value=initial_value, create_log=create_log)
 
     def subscription_callback(self, msg):
         self.update(msg)
@@ -137,3 +143,17 @@ class PassThroughTopicSensor(SimpleTopicSensor):
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()
+
+
+class KnowledgeSensor(Sensor):
+    """
+    Sensor, which provides information about existance of a fact, which matches the given pattern
+    """
+
+    def __init__(self, pattern, optional=False, knowledge_base_name=None, sensor_name=None):
+        super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
+        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
+
+    def sync(self):
+        self.update(self.__value_cache.does_fact_exists())
+        super(KnowledgeSensor, self).sync()

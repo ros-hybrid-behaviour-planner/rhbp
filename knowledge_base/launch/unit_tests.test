@@ -1,0 +1,6 @@
+<!-- Runs all unit tests, which does not require any part of ros -->
+<launch>
+    <test pkg="knowledge_base" type="inverted_tuple_space_test.py" test-name="inverted_tuple_space_test"/>
+    <test pkg="knowledge_base" type="tuple_space_test.py" test-name="tuple_space_test"/>
+    <test pkg="knowledge_base" type="knowledge_base_manager_topic_name_generation_test.py" test-name="knowledge_base_manager_topic_name_generation_test"/>
+</launch>
