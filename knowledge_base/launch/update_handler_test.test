@@ -1,5 +1,5 @@
 <!-- Tests the fact cache -->
 <launch>
-    <node pkg="knowledge_base" type="knowledge_base_node.py" name ="kb" />
+    <node pkg="knowledge_base" type="knowledge_base_node.py" name ="knowledgeBaseNode" />
     <test pkg="knowledge_base" type="update_handler_test.py" test-name="update_handler_test_node"/>
 </launch>
