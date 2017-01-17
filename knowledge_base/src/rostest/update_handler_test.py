@@ -9,11 +9,10 @@ import unittest
 
 import rospy
 import rostest
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import Push
 from knowledge_base.srv import Pop
 from knowledge_base.update_handler import KnowledgeBaseFactCache
-from knowledge_base.knowledge_base_manager import KnowledgeBase
-
 
 PKG = 'knowledge_base'
 
@@ -27,11 +26,11 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
-        self.__pop_service_name =  KnowledgeBase.DEFAULT_NAME +KnowledgeBase.POP_SERVICE_NAME_POSTFIX
+        self.__pop_service_name = KnowledgeBase.DEFAULT_NAME + KnowledgeBase.POP_SERVICE_NAME_POSTFIX
 
     @staticmethod
     def __add_tuple(to_add):
-        pub = rospy.Publisher(KnowledgeBase.DEFAULT_NAME+KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, queue_size=10)
+        pub = rospy.Publisher(KnowledgeBase.DEFAULT_NAME + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, queue_size=10)
         rospy.sleep(1)
         pub.publish(to_add)
 
