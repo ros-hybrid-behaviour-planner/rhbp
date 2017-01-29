@@ -84,9 +84,12 @@ class Sensor(object):
         self._name = newName
 
 
-class SimpleTopicSensor(Sensor):
+class PassThroughTopicSensor(Sensor):
+    """
+    "PassThrough" because the sensor just forwards the received msg
+    """
 
-    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
@@ -117,8 +120,8 @@ class SimpleTopicSensor(Sensor):
             rospy.logerr("Could not determine message type of: " + topic)
 
     def subscription_callback(self, msg):
-        self.update(msg.data)
-        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self.value, type(self.value))
+        self.update(msg)
+        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
         if self._iShouldCreateLog:
             self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
             self._logFile.flush()
@@ -128,21 +131,16 @@ class SimpleTopicSensor(Sensor):
         return self._topic_name
 
 
-class PassThroughTopicSensor(SimpleTopicSensor):
-    """
-    "PassThrough" because the sensor just forwards the received msg
-    """
+class SimpleTopicSensor(Sensor):
 
-    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False):
-        super(PassThroughTopicSensor, self).__init__(topic=topic, name=name, message_type=message_type,
-                                                     initial_value=initial_value, create_log=create_log)
+    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+        """
+        "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+        """
+        super(SimpleTopicSensor,self).__init__(name=name,topic=topic,message_type=message_type,initial_value=initial_value,create_log=create_log)
 
     def subscription_callback(self, msg):
-        self.update(msg)
-        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
-        if self._iShouldCreateLog:
-            self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
-            self._logFile.flush()
+        super(SimpleTopicSensor,self).subscription_callback(msg.data)
 
 
 class KnowledgeSensor(Sensor):
