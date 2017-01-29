@@ -638,6 +638,9 @@ class BehaviourBase(object):
         return pddl                      
 
     def pddlCallback(self, dummy):
+        if (self._independentFromPlanner and len(self._correlations) == 0):
+            # Since the correlations arent setted in constructor once right place for warning is here
+            rospy.logerr('Behavior {0} has no effects but is not independent from planner'.format(self._name))
         actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
         state = self.getStatePDDL()
         return GetPDDLResponse(**{"actionStatement" : actions.statement, 
