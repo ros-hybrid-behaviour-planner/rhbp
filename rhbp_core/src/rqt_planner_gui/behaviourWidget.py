@@ -6,9 +6,9 @@ import os
 import rospy
 import rospkg
 from python_qt_binding import loadUi
-from python_qt_binding.QtGui import QWidget
+from python_qt_binding.QtWidgets import QWidget
 from rhbp_core.srv import Activate, ForceStart, SetInteger
-from PyQt4.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
 class BehaviourWidget(QWidget):
