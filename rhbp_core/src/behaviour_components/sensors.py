@@ -89,12 +89,13 @@ class PassThroughTopicSensor(Sensor):
     "PassThrough" because the sensor just forwards the received msg
     """
 
-    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False):
+    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False, print_updates = True):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
         :param name: name of the sensor, if None a name is generated from the topic
         :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
+        :param print_updates: Whether a message should be logged (debug), each time, a new value is received
         """
 
         if name is None:
@@ -103,8 +104,9 @@ class PassThroughTopicSensor(Sensor):
             else :
                 name = create_valid_pddl_name(topic)
 
-        super(SimpleTopicSensor, self).__init__(name=name, initial_value=initial_value)
+        super(PassThroughTopicSensor, self).__init__(name=name, initial_value=initial_value)
 
+        self.__print_updates = print_updates
         self._topic_name = topic
         # if the type is not specified, try to detect it automatically
         if message_type is None:
@@ -121,9 +123,10 @@ class PassThroughTopicSensor(Sensor):
 
     def subscription_callback(self, msg):
         self.update(msg)
-        rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._value, type(self._value))
+        if (self.__print_updates):
+            rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue, type(self._latestValue))
         if self._iShouldCreateLog:
-            self._logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._value))
+            self._logFile.write("{0:f}\t{1}\n".format(rospy.get_time(), self._latestValue))
             self._logFile.flush()
 
     @property
@@ -131,7 +134,7 @@ class PassThroughTopicSensor(Sensor):
         return self._topic_name
 
 
-class SimpleTopicSensor(Sensor):
+class SimpleTopicSensor(PassThroughTopicSensor):
 
     def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
         """
