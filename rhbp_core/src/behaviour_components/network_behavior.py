@@ -26,8 +26,7 @@ class NetworkBehavior(BehaviourBase):
                 If not, the step method must be called manually
         :param kwargs: args for the manager, except the prefix arg
         """
-        super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps,
-                                              kwargs=kwargs)
+        super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps,**kwargs)
         self.requires_execution_steps = requires_execution_steps
         manager_args = {}
         manager_args.update(kwargs)
@@ -80,6 +79,13 @@ class NetworkBehavior(BehaviourBase):
             return OfflineGoal(goal_name, permanent=True, conditions={condition})
         raise RuntimeError(msg='Cant create goal for effect type \'' + str(
             effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
+
+    def _add_additional_goal(self, goal):
+        """
+        Adds the given goal to nested manager
+        :param goal: AbstractGoalRepresentation
+        """
+        self.__manager.add_goal(goal)
 
     def do_step(self):
         self.__manager.step()
