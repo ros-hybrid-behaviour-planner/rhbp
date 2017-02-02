@@ -72,6 +72,7 @@ class Manager(object):
         self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
 
         self._filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
+        self.__executedBehaviours = []
 
     @staticmethod
     def __make_log_dir_available(dir_path):
