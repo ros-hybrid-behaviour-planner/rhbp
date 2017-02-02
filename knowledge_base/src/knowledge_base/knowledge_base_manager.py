@@ -13,7 +13,7 @@ from knowledge_base.msg import Push, Fact, FactRemoved
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse
 from lindypy.TupleSpace import TSpace
-from std_msgs.msg import Empty
+from threading import  Lock
 
 from inverted_tuple_space import InvertedTupleSpace
 
@@ -31,7 +31,7 @@ class KnowledgeBase(object):
     UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
-    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
+    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=True):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
         self.__fact_update_topic_counter = 0
         self.__inlcude_patterns_in_update_names = inlcude_patterns_in_update_names
@@ -45,6 +45,7 @@ class KnowledgeBase(object):
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
         self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX, UpdateSubscribe,
                                                          self.__update_subscribe)
+        self.__register_lock = Lock()
 
     def __del__(self):
         """
@@ -77,6 +78,7 @@ class KnowledgeBase(object):
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
+        rospy.logdebug('New tuple {0}'.format(str(request.content)))
         if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
             self.__fact_was_added( Fact(request.content),converted)
@@ -202,10 +204,12 @@ class KnowledgeBase(object):
             topic_name += '_' + KnowledgeBase.generate_topic_name_part_from_pattern(pattern)
         return topic_name
 
-    def __update_subscribe(self, update_subscribe_request):
+    def __update_subscribe_not_thread_safe(self, update_subscribe_request):
         """
-        register for updates of the given pattern
-        :param update_subscribe_request: UpdateSubscribe, as defined ROS message
+        see __update_subscribe.
+        Ensure, that NEVER several threads are at the same time in this method
+        :param update_subscribe_request:
+        :return:
         """
         converted = self.__converts_request_to_tuple_space_format(update_subscribe_request.interested_pattern)
         if converted in self.__fact_update_topics:
@@ -225,3 +229,14 @@ class KnowledgeBase(object):
         self.__fact_update_topics[converted] = (add_publisher, remove_publisher)
         self.__subscribed_patterns_space.add(converted)
         return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name)
+
+    def __update_subscribe(self, update_subscribe_request):
+        """
+        register for updates of the given pattern
+        :param update_subscribe_request: UpdateSubscribe, as defined ROS message
+        """
+        self.__register_lock.acquire()
+        try:
+           return self.__update_subscribe_not_thread_safe(update_subscribe_request)
+        finally:
+            self.__register_lock.release()
