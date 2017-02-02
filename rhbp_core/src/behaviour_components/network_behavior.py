@@ -95,3 +95,6 @@ class NetworkBehavior(BehaviourBase):
 
     def stop(self):
         self.__manager.deactivate()
+
+    def _is_interruptible(self):
+        return self.__manager.is_interruptible()

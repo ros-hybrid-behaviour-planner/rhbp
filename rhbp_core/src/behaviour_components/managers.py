@@ -542,6 +542,12 @@ class Manager(object):
     def activate(self):
         self.__activated = True
 
+    def is_interruptible(self):
+        for behavior in self.__executedBehaviours:
+            if (not behavior.interruptable):
+                return False
+        return True
+
 
 class ManagerControl(object):
     '''

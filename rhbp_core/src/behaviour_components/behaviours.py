@@ -672,10 +672,13 @@ class BehaviourBase(object):
                            "progress"     : self.getProgress(),
                            "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                            "priority"     : self._priority,
-                           "interruptable": self._interruptable,
+                           "interruptable": self._is_interruptible(),
                            "activated"    : self._activated
                           })
         return GetStatusResponse(status)
+
+    def _is_interruptible(self):
+        return self._interruptable
     
     def addPrecondition(self, precondition):
         '''
