@@ -183,7 +183,7 @@ class Disjunction(Conditonal):
 
 class Conjunction(Conditonal):
     '''
-    This class is a pseudo condition composed of two regular conditions. It performs an OR relation.
+    This class is a pseudo condition composed of two regular conditions. It performs an AND relation.
     '''
     
     def __init__(self, *args, **kwargs):
