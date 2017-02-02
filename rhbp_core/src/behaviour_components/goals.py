@@ -135,7 +135,8 @@ class Goal(object):
         '''
         self._activateService = rospy.Service(name + 'Activate', Activate, self.activateCallback)
         self._priorityService = rospy.Service(name + 'Priority', SetInteger, self.setPriorityCallback)
-        self._conditions = conditions
+        self._conditions = []
+        self._conditions.extend(conditions)
         self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
         self._active = active  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = activated  # The activate Service sets the value of this property.
