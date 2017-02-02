@@ -79,16 +79,17 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(request.content)
         if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
-            self.__fact_was_added(converted)
+            self.__fact_was_added( Fact(request.content),converted)
 
-    def __fact_was_added(self, fact):
+    def __fact_was_added(self, sendeable_fact,original_fact):
         """
         informs all registered clients about change
-        :param fact: tuple of strings
+        :param sendeable_fact: ros message fact
+        :param original_fact: tupple of strings
         """
-        for pattern in self.__subscribed_patterns_space.find_for_fact(fact):
+        for pattern in self.__subscribed_patterns_space.find_for_fact(original_fact):
             add_update_topic = self.__fact_update_topics[pattern][0]
-            add_update_topic.publish(Empty())
+            add_update_topic.publish(sendeable_fact)
 
     def __exists_tuple_as_is(self, to_check):
         """
@@ -217,7 +218,7 @@ class KnowledgeBase(object):
                                                                          self.__fact_update_topic_counter)
         self.__fact_update_topic_counter += 1
         add_topic_name = basic_topic_name + '/Add'
-        add_publisher = rospy.Publisher(add_topic_name, Empty, queue_size=10)
+        add_publisher = rospy.Publisher(add_topic_name, Fact, queue_size=10)
         remove_topic_name = basic_topic_name + '/Remove'
         remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
         rospy.sleep(1)

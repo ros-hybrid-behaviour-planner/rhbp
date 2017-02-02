@@ -4,9 +4,8 @@
 '''
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.msg import FactRemoved
+from knowledge_base.msg import FactRemoved, Fact
 from knowledge_base.srv import UpdateSubscribe, All
-from std_msgs.msg import Empty
 
 
 class KnowledgeBaseFactCache:
@@ -42,7 +41,7 @@ class KnowledgeBaseFactCache:
         register_for_updates_services = rospy.ServiceProxy(self.__knowledge_base_update_subscriber_service_name,
                                                            UpdateSubscribe)
         response = register_for_updates_services(self.__pattern)
-        rospy.Subscriber(response.add_topic_name, Empty, self.__handle_add_update)
+        rospy.Subscriber(response.add_topic_name, Fact, self.__handle_add_update)
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
         self.__initialized = True
@@ -53,7 +52,7 @@ class KnowledgeBaseFactCache:
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        self.__contained_facts.append(fact_added.fact)
+        self.__contained_facts.append(fact_added.content)
 
     def __handle_remove_update(self, fact_removed):
         """
@@ -70,8 +69,10 @@ class KnowledgeBaseFactCache:
         """
         rospy.wait_for_service(self.__all_service_name)
         all_service = rospy.ServiceProxy(self.__all_service_name, All)
-        self.__contained_facts = all_service(self.__pattern).facts
-        return self.does_fact_exists()
+        self.__contained_facts = []
+        for fact in all_service(self.__pattern).found:
+            self.__contained_facts.append(fact.content)
+        return not(len(self.__contained_facts)==0)
 
     def __ensure_initialization(self):
         if not self.__initialized:
