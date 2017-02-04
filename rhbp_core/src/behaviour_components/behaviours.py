@@ -139,12 +139,11 @@ class Behaviour(object):
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
             
-    def getActivationFromGoals(self, logging = False):
+    def getActivationFromGoals(self, goal_bias,logging = False):
         '''
         This method computes the activation from goals.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
         '''
-        goal_bias = rospy.get_param("~goalBias", 1.0)
         activatedByGoals = []
         for goal in self._manager.activeGoals:
             #check for each sensor in the goal wishes for behaviours that have sensor effect correlations
@@ -159,7 +158,7 @@ class Behaviour(object):
                         activatedByGoals.append((goal, totalActivation / len(behavioursActivatedBySameGoal)))        # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
     
-    def getInhibitionFromGoals(self, logging = False):
+    def getInhibitionFromGoals(self, conflictor_bias, logging = False):
         '''
         This method computes the inhibition (actually, activation but negative sign!) caused by goals it conflicts with.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
@@ -175,18 +174,18 @@ class Behaviour(object):
                     if correlation * indicator < 0.0: #This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * rospy.get_param("~conflictorBias", 1.0)
+                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * conflictor_bias
                         if logging:
                             rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name, behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
                     elif correlation != 0 and indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
-                        totalInhibition = -abs(correlation) * rospy.get_param("~conflictorBias", 1.0)
+                        totalInhibition = -abs(correlation) * conflictor_bias
                         if logging:
                             rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name, behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
     
-    def getActivationFromPredecessors(self, logging = False):
+    def getActivationFromPredecessors(self,predecessor_bias, logging = False):
         '''
         This method computes the activation based on the fact that other behaviours can fulfill a precondition (wish) of this behaviour.
         This is scaled by the "readyness" (precondition satisfaction) of the predecessor as it makes only sense to activate a successor if it is likely that it is executable soon.
@@ -200,13 +199,13 @@ class Behaviour(object):
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingWishes(effect_name)))]
                 for correlation in behaviour.matchingCorrelations(effect_name): # correlations that the behaviour (potential predecessor) has to the sensor of this wish
                     if correlation * behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
-                        totalActivation = correlation * indicator * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~predecessorBias", 1.0)
+                        totalActivation = correlation * indicator * (behaviour.activation / self._manager.totalActivation) * predecessor_bias
                         if logging:
                             rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",  self._name, len(behavioursThatShareThisWish), behaviour.name, effect_name, behavioursThatShareThisWish, totalActivation)
                         activatedByPredecessors.append((behaviour, effect_name, totalActivation / len(behavioursThatShareThisWish))) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. behavioursThatShareThisWish knows how many more behaviours will get activation from this predecessor so we distribute it equally
         return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
-    def getActivationFromSuccessors(self, logging = False):
+    def getActivationFromSuccessors(self,successor_bias, logging = False):
         '''
         This method computes the activation this behaviour receives because it fulfills a precondition (is a predecessor) of a successor which has unfulfilled wishes.
         '''
@@ -219,13 +218,13 @@ class Behaviour(object):
                 behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
                 for wish in behaviour.matchingWishes(effect_name): # if we affect other behaviour's wishes somehow
                     if wish * indicator > 0: # if we are a predecessor so we get activation from that successor
-                        totalActivation = wish * indicator * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~successorBias", 1.0)
+                        totalActivation = wish * indicator * (behaviour.activation / self._manager.totalActivation) * successor_bias
                         if logging:
                             rospy.logdebug("Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f", self._name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name, behavioursThatShareOurCorrelation, totalActivation)
                         activatedBySuccessors.append((behaviour, effect_name, totalActivation / len(behavioursThatShareOurCorrelation))) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatShareOurCorrelation) is used to distribute activation among all predecessors
         return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)), activatedBySuccessors)
 
-    def getInhibitionFromConflicted(self, logging = False):
+    def getInhibitionFromConflicted(self,conflictor_bias, logging = False):
         '''
         This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose preconditions get antagonized when this behaviour runs.
         '''
@@ -242,43 +241,45 @@ class Behaviour(object):
                     if wish * correlation < 0.0:       # if we make an existing conflict stronger
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorBias", 1.0)
+                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * conflictor_bias
                         if logging:
                             rospy.logdebug("Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f", self.name, behaviour.name, effect_name, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) #  Actually only the value is needed but it is a tuple for debug purposes. The length of behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation says how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
                     elif wish * correlation == 0.0 and wish == 0:    # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
-                        totalInhibition = -abs(correlation) * (behaviour.activation / self._manager.totalActivation) * rospy.get_param("~conflictorBias", 1.0)
+                        totalInhibition = -abs(correlation) * (behaviour.activation / self._manager.totalActivation) * conflictor_bias
                         if logging:
                             rospy.logdebug("Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f", self.name, behaviour.name, effect_name, wish, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) # The inhibition experienced is my bad influence (my correlation to this effect_name) times the wish of the other behaviour concerning this effect_nameme. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) knows how many more behaviours cause the same harm to this conflictor so its inhibition shall be distributed among them.
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
 
-    def getActivationFromPlan(self, logging = False):
+    def getActivationFromPlan(self, plan_bias, logging = False):
         '''
         This method computes the activation this behaviour receives because of its place on the plan.
         Behaviours at the top of the list will be activated most, other not so much.
         '''
         if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
             return (0.0, 0xFF)
+        own_pddl_name = create_valid_pddl_name(self.name)
         for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan["actions"].keys())): # walk along the plan starting at where we are
-            if self._manager.plan["actions"][index] == self._name: # if we are on the plan
-                return (1 / (index - self._manager.planExecutionIndex + 1) * rospy.get_param("~planBias", 1.0), index) # index in zero-based
+            if self._manager.plan["actions"][index] == own_pddl_name: # if we are on the plan
+                return (1 / (index - self._manager.planExecutionIndex + 1) * plan_bias, index) # index in zero-based
         return (0.0, -1)
        
-    def computeActivation(self):
+    def computeActivation(self,situation_bias,plan_bias, conflictor_bias, goal_bias, successor_bias, predecessor_bias):
         '''
         This method sums up all components of activation to compute the additional activation in this step.
+        @:param situation_bias: float
         '''
         #TODO this is also calculated several times, if the single functions are accessed from outside
         with_extensive_logging = False
         if self._active:
-            self.__currentActivationStep = self._activationFromPreconditions *  rospy.get_param("~situationBias", 1.0) \
-                                         + self.getActivationFromGoals(logging=with_extensive_logging)[0] \
-                                         + self.getInhibitionFromGoals(logging=with_extensive_logging)[0] \
-                                         + self.getActivationFromPredecessors(logging=with_extensive_logging)[0] \
-                                         + self.getActivationFromSuccessors(logging=with_extensive_logging)[0] \
-                                         + self.getInhibitionFromConflicted(logging=with_extensive_logging)[0] \
-                                         + self.getActivationFromPlan(logging=with_extensive_logging)[0]
+            self.__currentActivationStep = self._activationFromPreconditions *  situation_bias \
+                                         + self.getActivationFromGoals(logging=with_extensive_logging, goal_bias=goal_bias)[0] \
+                                         + self.getInhibitionFromGoals(logging=with_extensive_logging,conflictor_bias=conflictor_bias)[0] \
+                                         + self.getActivationFromPredecessors(logging=with_extensive_logging, predecessor_bias=predecessor_bias)[0] \
+                                         + self.getActivationFromSuccessors(logging=with_extensive_logging, successor_bias=successor_bias)[0] \
+                                         + self.getInhibitionFromConflicted(logging=with_extensive_logging,conflictor_bias=conflictor_bias)[0] \
+                                         + self.getActivationFromPlan(logging=with_extensive_logging, plan_bias=plan_bias)[0]
         else:
             return 0.0
     

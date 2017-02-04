@@ -41,6 +41,14 @@ class Manager(object):
             "~activationDecay", .9) # not sure how to set this just yet.
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
+
+        self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
+        self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
+        self.__predecessor_bias = kwargs['predecessorBias'] if 'predecessorBias' in kwargs else None
+        self.__successor_bias = kwargs['successorBias'] if 'successorBias' in kwargs else None
+        self.__plan_bias = kwargs['planBias'] if 'planBias' in kwargs else None
+        self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
+
         self._stepCounter = 0
 
         self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
@@ -308,11 +316,20 @@ class Manager(object):
         ### use the symbolic planner if necessary ###
         self.planIfNecessary()
 
+
+        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param(
+            "~conflictorBias", 1.0)
+        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
+        predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias", 1.0)
+        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
+        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
+        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
+
         ### log behaviour stuff ###
         rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             ### do the activation computation ###
-            behaviour.computeActivation()
+            behaviour.computeActivation(situation_bias = situation_bias, plan_bias = plan_bias, conflictor_bias = conflictor_bias,goal_bias = goal_bias,successor_bias = successor_bias, predecessor_bias = predecessor_bias)
 
             #TODO This could be made dependent on the log state in order to save calculation
             with_extensive_logging = False
@@ -320,12 +337,12 @@ class Manager(object):
             rospy.logdebug("\tactive %s", behaviour.active)
             rospy.logdebug("\twishes %s", behaviour.wishes)
             rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
-            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging))
-            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging))
-            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = with_extensive_logging))
+            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging,goal_bias=goal_bias))
+            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging, conflictor_bias=conflictor_bias))
+            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging, predecessor_bias= predecessor_bias))
+            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging, successor_bias=successor_bias))
+            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging,conflictor_bias=conflictor_bias))
+            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(plan_bias= plan_bias, logging = with_extensive_logging))
             rospy.logdebug("\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
         ### commit the activation computed in this step ###
