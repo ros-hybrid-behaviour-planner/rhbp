@@ -174,10 +174,10 @@ class Goal(object):
     def computeWishes(self):
         """
         This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its conditions.
-        A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
+        A Wish message is constructed from a string (effect name) and a desire indicator (float, [-1 to 1]).
         """
         try:
-            return [Wish(item[0].name, item[1]) for item in
+            return [Wish(item[0], item[1]) for item in
                     list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
         except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False

@@ -66,15 +66,19 @@ class Condition(Conditonal):
             raise Exception("Sensor not available")
 
     def getDirections(self):
-        return {self._sensor: self._activator.getDirection()}
+        return {self.__get_pddl_effect_name(self._sensor): self._activator.getDirection()}
+
+    def __get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
 
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
         Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
         '''
+        effect_name = self._activator.getPDDLFunctionName(self._sensor.name)
         try:
-            return [(self._sensor, self._activator.getSensorWish(self._normalizedSensorValue))]
+            return [(self.__get_pddl_effect_name(self._sensor), self._activator.getSensorWish(self._normalizedSensorValue))]
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
@@ -94,7 +98,7 @@ class Condition(Conditonal):
         Provides a list of virtual sensor activator function names
         :return list of function namestrings
         """
-        return [self._activator.getPDDLFunctionName(self._sensor.name)]
+        return [self.__get_pddl_effect_name(self._sensor)]
 
     @property
     def satisfaction(self):
@@ -210,15 +214,18 @@ class MultiSensorCondition(Condition):
 
     def getDirections(self):
 
-        return {sensor: self._activator.getDirection() for sensor in self._sensors}
+        return {self.__get_pddl_effect_name(sensor): self._activator.getDirection() for sensor in self._sensors}
 
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
-        Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
         '''
         try:
-            return [(s, self._activator.getSensorWish(self._normalizedSensorValues[s])) for s in self._sensors]
+            result = []
+            for sensor in self._sensors:
+                effect_name = self.__get_pddl_effect_name(sensor)
+                result.append((effect_name,self._activator.getSensorWish(self._normalizedSensorValues[sensor])))
+            return result
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
@@ -245,12 +252,15 @@ class MultiSensorCondition(Condition):
         #Calling getSensorStatePDDL for all sensors
         return [self._activator.getSensorStatePDDL(s.name, self._normalizedSensorValues[s]) for s in self._sensors]
 
+    def __get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
+
     def getFunctionNames(self):
         """
         Provides a list of virtual sensor activator function names
         :return list of function namestrings
         """
-        return [self._activator.getPDDLFunctionName(s.name) for s in self._sensors]
+        return [self.__get_pddl_effect_name(s) for s in self._sensors]
 
     @property
     def optional(self):
