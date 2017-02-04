@@ -12,7 +12,7 @@ import conditions
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
-from .pddl import PDDL, mergeStatePDDL
+from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 
 class Behaviour(object):
     '''
@@ -611,7 +611,8 @@ class BehaviourBase(object):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
-        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(self._name.replace('/','_')), functions = "costs")
+        action_name = create_valid_pddl_name(self._name)
+        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(action_name), functions = "costs")
         preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions if not x.optional] # do not use optional preconditions for planning
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, preconds)) # unites all functions in preconditions

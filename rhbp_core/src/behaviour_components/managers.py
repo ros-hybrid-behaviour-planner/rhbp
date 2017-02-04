@@ -11,7 +11,7 @@ from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
 from .goals import GoalProxy
-from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions
+from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
 import ffp
 import os
 
@@ -91,7 +91,7 @@ class Manager(object):
         self.__threshFile.close()
 
     def _getDomainName(self):
-        return self._prefix.replace('/','_') if self._prefix else "UNNAMED"
+        return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
     def _write_log_file(self, filename, extension ,data):
         '''
