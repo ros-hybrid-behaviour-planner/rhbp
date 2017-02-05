@@ -136,11 +136,11 @@ class PassThroughTopicSensor(Sensor):
 
 class SimpleTopicSensor(PassThroughTopicSensor):
 
-    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False):
+    def __init__(self, topic, name=None, message_type = None, initial_value = None, create_log = False, print_updates = True):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         """
-        super(SimpleTopicSensor,self).__init__(name=name,topic=topic,message_type=message_type,initial_value=initial_value,create_log=create_log)
+        super(SimpleTopicSensor,self).__init__(name=name,topic=topic,message_type=message_type,initial_value=initial_value,create_log=create_log, print_updates=print_updates)
 
     def subscription_callback(self, msg):
         super(SimpleTopicSensor,self).subscription_callback(msg.data)
