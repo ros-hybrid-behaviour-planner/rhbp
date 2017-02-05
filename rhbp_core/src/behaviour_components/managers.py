@@ -16,6 +16,8 @@ import ffp
 import os
 
 class Manager(object):
+    ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE = False
+
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
     Behaviours need this to know what sensors exist in the world and how they are correlated their measurement.
@@ -24,7 +26,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self,activated = True, **kwargs):
+    def __init__(self,activated = True, use_only_running_behaviors_for_interRuptible = ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         '''
         Constructor
         '''
@@ -41,6 +43,7 @@ class Manager(object):
             "~activationDecay", .9) # not sure how to set this just yet.
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
+        self.__use_only_running_behaviors_for_interuptible = use_only_running_behaviors_for_interRuptible
 
         self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
         self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
@@ -560,7 +563,11 @@ class Manager(object):
         self.__activated = True
 
     def is_interruptible(self):
-        for behavior in self.__executedBehaviours:
+        if (self.__use_only_running_behaviors_for_interuptible):
+            relevant_behaviors = self.__executedBehaviours
+        else:
+            relevant_behaviors = self._behaviours
+        for behavior in relevant_behaviors:
             if (not behavior.interruptable):
                 return False
         return True

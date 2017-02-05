@@ -18,7 +18,9 @@ class NetworkBehavior(BehaviourBase):
 
     MANAGER_POSTFIX = "/Manager"
 
-    def __init__(self, effects, name, requires_execution_steps=False, **kwargs):
+    def __init__(self, effects, name, requires_execution_steps=False,
+                 only_running_for_deciding_interruptible=Manager.ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE,
+                 **kwargs):
         """
         :param effects: tuple <sensor,Effect>
         :param name:
@@ -26,7 +28,7 @@ class NetworkBehavior(BehaviourBase):
                 If not, the step method must be called manually
         :param kwargs: args for the manager, except the prefix arg
         """
-        super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps,**kwargs)
+        super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps, **kwargs)
         self.requires_execution_steps = requires_execution_steps
         manager_args = {}
         manager_args.update(kwargs)
