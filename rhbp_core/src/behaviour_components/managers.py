@@ -338,6 +338,7 @@ class Manager(object):
         rospy.loginfo("current activation threshold: %f", self._activationThreshold)
         rospy.loginfo("############## ACTIONS ###############")
         self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
+        amount_started_behaviours = 0
         currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
         rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
         rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
@@ -388,19 +389,29 @@ class Manager(object):
             if behaviour.manualStart:
                 rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
             behaviour.start()
-            rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            self._activationThreshold *= (1 / rospy.get_param("~activationThresholdDecay", .8))
+
             currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
             self.__executedBehaviours.append(behaviour)
+            amount_started_behaviours += 1
             rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
             rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
+
+        activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
+
+        # Reduce or increase the activation threshold based on executed and started behaviours
         if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-            self._activationThreshold *= rospy.get_param("~activationThresholdDecay", .8)
+            self._activationThreshold *= activation_threshold_decay
             rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        plannerStatusMessage.activationThresholdDecay = rospy.get_param("~activationThresholdDecay", .8) # TODO retrieve rosparam only once
+        elif amount_started_behaviours > 0:
+            rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+            self._activationThreshold *= (1 / activation_threshold_decay)
+
+        plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
+
         self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
 
