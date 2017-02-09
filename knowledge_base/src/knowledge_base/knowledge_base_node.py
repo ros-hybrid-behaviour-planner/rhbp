@@ -1,13 +1,14 @@
 #! /usr/bin/env python2
-'''
+"""
 Created on 07.12.2016
 
 @author: rieger
-'''
+"""
+import sys
+
 import rospy
 
 from knowledge_base_manager import KnowledgeBase
-import sys
 
 if __name__ == '__main__':
     rospy.init_node(KnowledgeBase.DEFAULT_NAME, log_level=rospy.DEBUG)

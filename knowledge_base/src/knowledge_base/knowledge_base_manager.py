@@ -1,19 +1,19 @@
 #! /usr/bin/env python2
-'''
+"""
 Created on 07.12.2016
 
 @author: rieger
-'''
+"""
 
 import re
 import sys
+from threading import Lock
 
 import rospy
 from knowledge_base.msg import Push, Fact, FactRemoved
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse
 from lindypy.TupleSpace import TSpace
-from threading import Lock
 
 from inverted_tuple_space import InvertedTupleSpace
 
@@ -43,7 +43,8 @@ class KnowledgeBase(object):
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
-        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX, UpdateSubscribe,
+        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX,
+                                                         UpdateSubscribe,
                                                          self.__update_subscribe)
         self.__register_lock = Lock()
 
@@ -81,9 +82,9 @@ class KnowledgeBase(object):
         rospy.logdebug('New tuple {0}'.format(str(request.content)))
         if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
-            self.__fact_was_added( Fact(request.content),converted)
+            self.__fact_was_added(Fact(request.content), converted)
 
-    def __fact_was_added(self, sendeable_fact,original_fact):
+    def __fact_was_added(self, sendeable_fact, original_fact):
         """
         informs all registered clients about change
         :param sendeable_fact: ros message fact
@@ -237,6 +238,6 @@ class KnowledgeBase(object):
         """
         self.__register_lock.acquire()
         try:
-           return self.__update_subscribe_not_thread_safe(update_subscribe_request)
+            return self.__update_subscribe_not_thread_safe(update_subscribe_request)
         finally:
             self.__register_lock.release()

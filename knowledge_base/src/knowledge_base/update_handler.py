@@ -45,7 +45,7 @@ class KnowledgeBaseFactCache:
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
         self.__initialized = True
-        rospy.logdebug('Connected to knowledge base: '+self.__knowledge_base_name)
+        rospy.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 
     def __handle_add_update(self, fact_added):
         """
@@ -72,7 +72,7 @@ class KnowledgeBaseFactCache:
         self.__contained_facts = []
         for fact in all_service(self.__pattern).found:
             self.__contained_facts.append(fact.content)
-        return not(len(self.__contained_facts)==0)
+        return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
         if not self.__initialized:
@@ -80,13 +80,12 @@ class KnowledgeBaseFactCache:
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name)
             self.__register_for_updates()
 
-
     def does_fact_exists(self):
         """
         :return: current cached value
         """
         self.__ensure_initialization()
-        return not(len(self.__contained_facts)==0)
+        return not (len(self.__contained_facts) == 0)
 
     def get_all_matching_facts(self):
         self.__ensure_initialization()
