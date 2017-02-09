@@ -1,10 +1,11 @@
 '''
 Created on 13.04.2015
 
-@author: wypler, hrabia
+@author: wypler, hrabia, rieger
 '''
 
 import rospy
+
 from utils.ros_helpers import get_topic_type
 from .pddl import create_valid_pddl_name
 from knowledge_base.update_handler import KnowledgeBaseFactCache

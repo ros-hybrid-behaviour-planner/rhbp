@@ -3,7 +3,7 @@
 Tests the knowledge sensor.
 Requires a running roscore and a knowledge_base
 
-@author: Phillip
+@author: rieger
 """
 import time
 import unittest

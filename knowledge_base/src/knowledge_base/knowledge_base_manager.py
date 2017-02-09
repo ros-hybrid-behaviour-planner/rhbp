@@ -31,7 +31,7 @@ class KnowledgeBase(object):
     UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
-    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=True):
+    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
         self.__fact_update_topic_counter = 0
         self.__inlcude_patterns_in_update_names = inlcude_patterns_in_update_names
@@ -79,20 +79,18 @@ class KnowledgeBase(object):
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
-        rospy.logdebug('New tuple {0}'.format(str(request.content)))
         if not self.__exists_tuple_as_is(converted):
             self.__tuple_space.add(converted)
-            self.__fact_was_added(Fact(request.content), converted)
+            self.__fact_was_added(converted)
 
-    def __fact_was_added(self, sendeable_fact, original_fact):
+    def __fact_was_added(self, fact):
         """
         informs all registered clients about change
-        :param sendeable_fact: ros message fact
-        :param original_fact: tupple of strings
+        :param fact: tuple of strings
         """
-        for pattern in self.__subscribed_patterns_space.find_for_fact(original_fact):
+        for pattern in self.__subscribed_patterns_space.find_for_fact(fact):
             add_update_topic = self.__fact_update_topics[pattern][0]
-            add_update_topic.publish(sendeable_fact)
+            add_update_topic.publish(Empty())
 
     def __exists_tuple_as_is(self, to_check):
         """
