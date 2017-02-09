@@ -13,7 +13,7 @@ from knowledge_base.msg import Push, Fact, FactRemoved
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse
 from lindypy.TupleSpace import TSpace
-from threading import  Lock
+from threading import Lock
 
 from inverted_tuple_space import InvertedTupleSpace
 
