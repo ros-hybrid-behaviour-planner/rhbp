@@ -1,0 +1,3 @@
+<launch>
+    <test pkg="rhbp_core" type="greedy_activator_test.py" test-name="greedy_activator_test_node"/>
+</launch>

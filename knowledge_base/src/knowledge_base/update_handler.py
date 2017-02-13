@@ -4,9 +4,8 @@
 '''
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.msg import FactRemoved
-from knowledge_base.srv import UpdateSubscribe, Exists
-from std_msgs.msg import Empty
+from knowledge_base.msg import FactRemoved, Fact
+from knowledge_base.srv import UpdateSubscribe, All
 
 
 class KnowledgeBaseFactCache:
@@ -22,11 +21,12 @@ class KnowledgeBaseFactCache:
             knowledge_base_name = KnowledgeBase.DEFAULT_NAME
 
         self.__pattern = pattern
-        self.__value = False
         self.__initialized = False
         self.__knowledge_base_update_subscriber_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX
-        self.__exists_service_name = knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX
+        self.__all_service_name = knowledge_base_name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX
         self.__knowledge_base_name = knowledge_base_name
+        self.__contained_facts = []
+
         try:
             rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name, timeout=10)
             self.__register_for_updates()
@@ -41,42 +41,52 @@ class KnowledgeBaseFactCache:
         register_for_updates_services = rospy.ServiceProxy(self.__knowledge_base_update_subscriber_service_name,
                                                            UpdateSubscribe)
         response = register_for_updates_services(self.__pattern)
-        rospy.Subscriber(response.add_topic_name, Empty, self.__handle_add_update)
+        rospy.Subscriber(response.add_topic_name, Fact, self.__handle_add_update)
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
         self.update_state_manually()
         self.__initialized = True
-        rospy.logdebug('Connected to knowledge base: '+self.__knowledge_base_name)
+        rospy.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 
     def __handle_add_update(self, fact_added):
         """
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        self.__value = True
+        self.__contained_facts.append(fact_added.content)
 
     def __handle_remove_update(self, fact_removed):
         """
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        self.__value = fact_removed.another_matching_fact_exists
+        self.__contained_facts.remove(fact_removed.fact)
+        assert self.does_fact_exists() == fact_removed.another_matching_fact_exists
 
     def update_state_manually(self):
         """
         requests in knowledge base, whether a matching state exists
         :return: whether matching fact exists
         """
-        rospy.wait_for_service(self.__exists_service_name)
-        exists_service = rospy.ServiceProxy(self.__exists_service_name, Exists)
-        self.__value = exists_service(self.__pattern).exists
-        return self.__value
+        rospy.wait_for_service(self.__all_service_name)
+        all_service = rospy.ServiceProxy(self.__all_service_name, All)
+        self.__contained_facts = []
+        for fact in all_service(self.__pattern).found:
+            self.__contained_facts.append(fact.content)
+        return not (len(self.__contained_facts) == 0)
+
+    def __ensure_initialization(self):
+        if not self.__initialized:
+            rospy.loginfo('Wait for knowledge base service: ' + self.__knowledge_base_update_subscriber_service_name)
+            rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name)
+            self.__register_for_updates()
 
     def does_fact_exists(self):
         """
         :return: current cached value
         """
-        if not self.__initialized:
-            rospy.loginfo('Wait for knowledge base service: ' + self.__knowledge_base_update_subscriber_service_name)
-            rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name)
-            self.__register_for_updates()
-        return self.__value
+        self.__ensure_initialization()
+        return not (len(self.__contained_facts) == 0)
+
+    def get_all_matching_facts(self):
+        self.__ensure_initialization()
+        return self.__contained_facts
