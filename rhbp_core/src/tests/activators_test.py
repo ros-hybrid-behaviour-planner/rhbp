@@ -1,3 +1,4 @@
+#! /usr/bin/env python2
 '''
 @author: hrabia
 '''
@@ -5,6 +6,7 @@
 import unittest
 
 import behaviour_components.activators as activators
+from behaviour_components.activators import LinearActivator, Activator
 
 class LinearActivatorTestSuite(unittest.TestCase):
     """Testing activation and wish calculation of LinearActivator"""
@@ -139,6 +141,13 @@ class LinearActivatorTestSuite(unittest.TestCase):
         wish = activator.getSensorWish(sensor_value)
         self.assertEqual(wish, 0)
 
+    def test_pddl_function_name_restoring(self):
+        activator_name = 'MyFamousActivator'
+        activator_example = activators.LinearActivator(name=activator_name,zeroActivationValue=0,fullActivationValue=1)
+        sensor_name = 'my_sensor'
+        function_name = activator_example.getPDDLFunctionName(sensor_name)
+        restored_name = Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=function_name,sensor_name=sensor_name)
+        self.assertEqual(activator_name,restored_name,msg='Activator name and restored name are not equal')
 
 if __name__ == '__main__':
     unittest.main()

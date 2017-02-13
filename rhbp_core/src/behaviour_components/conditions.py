@@ -42,7 +42,7 @@ class Conditonal(object):
     
     def getWishes(self):
         '''
-        This method should return a list of (sensor, indicator) tuples where the indicator should return the strength normalized strength and direction of sensor changes to make the condition True.
+        This method should return a list of (effect name, indicator) tuples where the indicator should return the strength normalized strength and direction of sensor changes to make the condition True.
         Indicator value range should be between -1 and 1 where -1 means the value must decrease or become False, 0 means no change is necessary and should remain, 1 means the value should increase or become True.
         '''
         raise NotImplementedError()
@@ -138,7 +138,7 @@ class Disjunction(Conditonal):
 
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (effect name <string>, indicator <float> [-1, 1]).
         Each component of the disjunction contributes its wish to the list.
         '''
         l = []
@@ -183,7 +183,7 @@ class Disjunction(Conditonal):
 
 class Conjunction(Conditonal):
     '''
-    This class is a pseudo condition composed of two regular conditions. It performs an OR relation.
+    This class is a pseudo condition composed of two regular conditions. It performs an AND relation.
     '''
     
     def __init__(self, *args, **kwargs):
@@ -232,7 +232,7 @@ class Conjunction(Conditonal):
     
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (effect name <string>, indicator <float> [-1, 1]).
         Each component of the conjunction contributes its wish to the list.
         '''
         l = []
@@ -303,7 +303,7 @@ class Negation(Conditonal):
     
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor name <string>, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (effect name <string>, indicator <float> [-1, 1]).
         Each component of the conjunction contributes its wish to the list.
         '''
         wishes = self._condition.getWishes()

@@ -1,6 +1,6 @@
 ## The Activators module
 #Created on 22.04.2015
-#@author: wypler, hrabia
+#@author: wypler, hrabia, rieger
 
 from __future__ import division # force floating point division when using plain /
 from behaviour_components.pddl import PDDL
@@ -8,12 +8,12 @@ from std_msgs.msg import Float32
 import rospy
 
 from behaviour_components.conditions import Conditonal
-  
+
 class Condition(Conditonal):
     '''
     This is the basic Condition class it brings together the sensor and the activation function and takes care
     of the processing and caching of calculated data
-    '''    
+    '''
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
     def __init__(self, sensor, activator, name = None, optional = False):
@@ -63,25 +63,33 @@ class Condition(Conditonal):
         if self._sensor:
             return self._sensor.value
         else:
-           raise Exception("Sensor not available")
+            raise Exception("Sensor not available")
 
     def getDirections(self):
-        return {self._sensor: self._activator.getDirection()}
+        return {self.__get_pddl_effect_name(self._sensor): self._activator.getDirection()}
+
+    def __get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
 
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
         Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
         '''
+        effect_name = self._activator.getPDDLFunctionName(self._sensor.name)
         try:
-            return [(self._sensor, self._activator.getSensorWish(self._normalizedSensorValue))]
+            return [(self.__get_pddl_effect_name(self._sensor), self._activator.getSensorWish(self._normalizedSensorValue))]
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
-    
+
+    def _get_current_sensor_value_for_pddl_creation(self):
+        return self._normalizedSensorValue
+
     def getPreconditionPDDL(self, satisfaction_threshold):
-        return self._activator.getSensorPreconditionPDDL(self._sensor.name, satisfaction_threshold)
-    
+        return self._activator.get_sensor_precondition_pddl_using_current_value(self._sensor.name, satisfaction_threshold,
+                                                         self._get_current_sensor_value_for_pddl_creation())
+
     def getStatePDDL(self):
         return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue)]
 
@@ -90,7 +98,7 @@ class Condition(Conditonal):
         Provides a list of virtual sensor activator function names
         :return list of function namestrings
         """
-        return [self._activator.getPDDLFunctionName(self._sensor.name)]
+        return [self.__get_pddl_effect_name(self._sensor)]
 
     @property
     def satisfaction(self):
@@ -124,10 +132,10 @@ class Condition(Conditonal):
     @optional.setter
     def optional(self, value):
         self._optional = value
-        
+
     def __str__(self):
         return "{0} {{{1} : v: {2}, s: {3}}}".format(self._name, self._sensor, self._normalizedSensorValue, self._satisfaction)
-    
+
     def __repr__(self):
         return str(self)
 
@@ -206,22 +214,30 @@ class MultiSensorCondition(Condition):
 
     def getDirections(self):
 
-        return {sensor: self._activator.getDirection() for sensor in self._sensors}
+        return {self.__get_pddl_effect_name(sensor): self._activator.getDirection() for sensor in self._sensors}
 
     def getWishes(self):
         '''
-        returns a list of wishes (a wish is a tuple (sensor, indicator <float> [-1, 1]).
-        Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
         '''
         try:
-            return [(s, self._activator.getSensorWish(self._normalizedSensorValues[s])) for s in self._sensors]
+            result = []
+            for sensor in self._sensors:
+                effect_name = self.__get_pddl_effect_name(sensor)
+                result.append((effect_name,self._activator.getSensorWish(self._normalizedSensorValues[sensor])))
+            return result
         except AssertionError:
             rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
 
+    def _get_value_of_sensor_for_pddl_creation(self, sensor):
+        return self._normalizedSensorValues[sensor]
+
     def getPreconditionPDDL(self, satisfaction_threshold):
         # Calling getSensorPreconditionPDDL for all sensors
-        conditions = [self._activator.getSensorPreconditionPDDL(s.name, satisfaction_threshold) for s in self._sensors]
+        conditions = [self._activator.get_sensor_precondition_pddl_using_current_value(s.name, satisfaction_threshold,
+                                                                self._get_value_of_sensor_for_pddl_creation(s)) for s in
+                      self._sensors]
 
         # TODO this code is copy pasted from conjuction condition
         pddl = PDDL(statement = "(and")
@@ -236,12 +252,15 @@ class MultiSensorCondition(Condition):
         #Calling getSensorStatePDDL for all sensors
         return [self._activator.getSensorStatePDDL(s.name, self._normalizedSensorValues[s]) for s in self._sensors]
 
+    def __get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
+
     def getFunctionNames(self):
         """
         Provides a list of virtual sensor activator function names
         :return list of function namestrings
         """
-        return [self._activator.getPDDLFunctionName(s.name) for s in self._sensors]
+        return [self.__get_pddl_effect_name(s) for s in self._sensors]
 
     @property
     def optional(self):
@@ -305,6 +324,10 @@ class Activator(object):
     def getPDDLFunctionName(self, sensorName):
         return self._name + '_' + sensorName
 
+    @staticmethod
+    def restore_condition_name_from_pddl_function_name(pddl_function_name, sensor_name):
+        return pddl_function_name[:(len(pddl_function_name) - len(sensor_name) - 1)]
+
     @property
     def minActivation(self):
         return self._minActivation
@@ -342,6 +365,14 @@ class Activator(object):
         '''
         raise NotImplementedError()
 
+    def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_sensor_value):
+        '''
+        see getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold)
+        :param current_sensor_value: current value of the sensor
+               (in default condition implementations the normalized value)
+        '''
+        return self.getSensorPreconditionPDDL(sensorName=sensor_name, satisfaction_threshold=satisfaction_threshold)
+
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         '''
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
@@ -355,7 +386,6 @@ class Activator(object):
         This method should produce a valid PDDL statement describing the current state (the (normalized) value) of sensor sensorName in a form suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         '''
         raise NotImplementedError()
-
 
     def __str__(self):
         return "{0}".format(self._name)
@@ -478,6 +508,56 @@ class ThresholdActivator(Activator):
     
     def __repr__(self):
         return "Threshold Activator"
+
+
+class GreedyActivator(Activator):
+    """
+    This class is an activator that maximizes or minimizes a value
+    """
+
+    def __init__(self, maximize=True, step_size=1, name=None):
+        """
+        :param maximize:
+        :param step_size: value, bigger than 0
+        :param name:
+        """
+        super(GreedyActivator, self).__init__(0, 1, name)
+        self.__maximize = maximize
+        self.__step_size = step_size
+
+    @property
+    def maximize(self):
+        return self.__maximize
+
+    def computeActivation(self, normalizedValue):
+        return 0
+
+    def getDirection(self):
+        return 1 if self.__maximize else -1
+
+    def getSensorWish(self, normalizedValue):
+        return self.getDirection()
+
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+        raise RuntimeError('use get_sensor_precondition_pddl_using_current_value')
+
+    def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_value):
+        function_name = self.getPDDLFunctionName(sensor_name)
+        next_threshold = current_value + self.__step_size * self.getDirection()
+        operator = '>=' if self.getDirection() > 0 else '<='
+        statement = '( {0} ({1}) {2:f})'.format(operator,function_name,next_threshold)
+        return PDDL(statement=statement, functions=function_name)
+
+    def getSensorStatePDDL(self, sensorName, normalizedValue):
+        function_name = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="( = (" + function_name + ") {0:f} )".format(normalizedValue), functions=function_name)
+
+    def __str__(self):
+        return "Greedy Activator{0}".format("+" if self.__maximize else "-")
+
+    def __repr__(self):
+        return "Greedy Activator"
+
 
 class LinearActivator(Activator):
     '''

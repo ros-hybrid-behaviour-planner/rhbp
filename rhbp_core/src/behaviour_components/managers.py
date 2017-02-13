@@ -10,12 +10,14 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
-from .goals import Goal
-from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions
+from .goals import GoalProxy
+from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
 import ffp
 import os
 
 class Manager(object):
+    ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE = False
+
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
     Behaviours need this to know what sensors exist in the world and how they are correlated their measurement.
@@ -24,7 +26,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self,activated = True, use_only_running_behaviors_for_interRuptible = ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         '''
         Constructor
         '''
@@ -41,10 +43,24 @@ class Manager(object):
             "~activationDecay", .9) # not sure how to set this just yet.
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
+        self.__use_only_running_behaviors_for_interuptible = use_only_running_behaviors_for_interRuptible
+
+        self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
+        self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
+        self.__predecessor_bias = kwargs['predecessorBias'] if 'predecessorBias' in kwargs else None
+        self.__successor_bias = kwargs['successorBias'] if 'successorBias' in kwargs else None
+        self.__plan_bias = kwargs['planBias'] if 'planBias' in kwargs else None
+        self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
+
         self._stepCounter = 0
 
+        self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
+
         if self._create_log_files:
-            self.__threshFile = open("threshold.log", 'w')
+            Manager.__make_log_dir_available(self.__log_file_path_prefix)
+            rospy.loginfo('Write Logfiles to: %s', os.path.realpath(self.__log_file_path_prefix))
+
+            self.__threshFile = open(self.__log_file_path_prefix + "threshold.log", 'w')
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
@@ -55,9 +71,10 @@ class Manager(object):
         self.__goalPDDLs = {}
 
         self.__running = True # toggled by the pause and resume services
+        self.__activated = activated
 
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
-        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__addGoal)
+        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
         self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
@@ -66,6 +83,14 @@ class Manager(object):
         self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
 
         self._filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
+        self.__executedBehaviours = []
+
+    @staticmethod
+    def __make_log_dir_available(dir_path):
+        if not (dir_path):
+            return
+        if not (os.path.exists(dir_path)):
+            os.makedirs(dir_path)
 
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -77,7 +102,7 @@ class Manager(object):
         self.__threshFile.close()
 
     def _getDomainName(self):
-        return self._prefix if self._prefix else "UNNAMED"
+        return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
     def _write_log_file(self, filename, extension ,data):
         '''
@@ -90,10 +115,11 @@ class Manager(object):
 
         #limit filename length to OS requirements
         filename = filename[:self._filename_max_length-len(extension)] + extension
+        filename = filename.replace('/','-').replace('\\','-')
 
         try:
             if self._create_log_files:  # debugging only
-                with open(filename, 'w') as outfile:
+                with open(self.__log_file_path_prefix + filename, 'w') as outfile:
                     outfile.write(data)
         except Exception as e:
             rospy.logerr("Logging failed: %s", e)
@@ -250,7 +276,7 @@ class Manager(object):
             rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
     def step(self):
-        if not self.__running:
+        if (not self.__running) or (not self.__activated):
             return
         plannerStatusMessage = PlannerStatus()
         if self._create_log_files:  # debugging only
@@ -270,7 +296,7 @@ class Manager(object):
         rospy.logdebug("############# GOAL STATI #############")
         ### collect information about goals ###
         for goal in self._goals:
-            goal.fetchStatus()
+            goal.sync()
             statusMessage = Status()
             statusMessage.name = goal.name
             statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in goal.wishes]
@@ -293,11 +319,20 @@ class Manager(object):
         ### use the symbolic planner if necessary ###
         self.planIfNecessary()
 
+
+        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param(
+            "~conflictorBias", 1.0)
+        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
+        predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias", 1.0)
+        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
+        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
+        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
+
         ### log behaviour stuff ###
         rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
         for behaviour in self._behaviours:
             ### do the activation computation ###
-            behaviour.computeActivation()
+            behaviour.computeActivation(situation_bias = situation_bias, plan_bias = plan_bias, conflictor_bias = conflictor_bias,goal_bias = goal_bias,successor_bias = successor_bias, predecessor_bias = predecessor_bias)
 
             #TODO This could be made dependent on the log state in order to save calculation
             with_extensive_logging = False
@@ -305,12 +340,12 @@ class Manager(object):
             rospy.logdebug("\tactive %s", behaviour.active)
             rospy.logdebug("\twishes %s", behaviour.wishes)
             rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
-            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging))
-            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging))
-            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging))
-            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(logging = with_extensive_logging))
+            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging,goal_bias=goal_bias))
+            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging, conflictor_bias=conflictor_bias))
+            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging, predecessor_bias= predecessor_bias))
+            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging, successor_bias=successor_bias))
+            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging,conflictor_bias=conflictor_bias))
+            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(plan_bias= plan_bias, logging = with_extensive_logging))
             rospy.logdebug("\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
         ### commit the activation computed in this step ###
@@ -361,6 +396,8 @@ class Manager(object):
                     currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
                 else:
                     behaviour.executionTime += 1
+                    if behaviour.requires_execution_steps:
+                        behaviour.do_step()
                 continue
             if not behaviour.executable and not behaviour.manualStart: # it must be executable
                 rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
@@ -414,21 +451,29 @@ class Manager(object):
         return currentlyInfluencedSensors
 
     #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
-    def __addGoal(self, request):
-        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with the same name. 
-        goal = Goal(request.name, request.permanent)
+    def add_goal(self,goal):
+        '''
+        :param goal: instanceof AbstractGoalRepresentation
+        '''
+        self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
         self._goals.append(goal)
         rospy.loginfo("A goal with name %s registered", goal.name)
         self.__replanningNeeded = True;
+
+    def __add_goal_callback(self, request):
+        goal = GoalProxy(request.name, request.permanent)
+        self.add_goal(goal)
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
         self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        behaviour = Behaviour(request.name, request.independentFromPlanner, self._create_log_files)
+        behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
+                              requires_execution_steps = request.requiresExecutionSteps,
+                              create_log_files = self._create_log_files)
         behaviour.manager = self
         behaviour.activationDecay = self._activationDecay
         self._behaviours.append(behaviour)
-        rospy.loginfo("A behaviour with name %s registered", behaviour.name)
+        rospy.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
         self.__replanningNeeded = True;
         return AddBehaviourResponse()
     
@@ -503,7 +548,31 @@ class Manager(object):
             return self._plan
         else:
             return None
-    
+
+    def deactivate(self):
+        self.__activated = False
+        #use while to avoid illegal state of non running behaviors in __executedBehaviors
+        while (len(self.__executedBehaviours)>0):
+            behaviour = self.__executedBehaviours[0]
+            self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
+            behaviour.stop(True)
+        for behaviour in self._behaviours:
+            behaviour.reset_activation()
+
+    def activate(self):
+        self.__activated = True
+
+    def is_interruptible(self):
+        if (self.__use_only_running_behaviors_for_interuptible):
+            relevant_behaviors = self.__executedBehaviours
+        else:
+            relevant_behaviors = self._behaviours
+        for behavior in relevant_behaviors:
+            if (not behavior.interruptable):
+                return False
+        return True
+
+
 class ManagerControl(object):
     '''
     Helper class for remotely controlling the manager

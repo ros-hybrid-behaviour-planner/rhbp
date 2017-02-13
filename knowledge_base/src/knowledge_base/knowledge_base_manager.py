@@ -1,19 +1,19 @@
 #! /usr/bin/env python2
-'''
+"""
 Created on 07.12.2016
 
 @author: rieger
-'''
+"""
 
 import re
 import sys
+from threading import Lock
 
 import rospy
 from knowledge_base.msg import Push, Fact, FactRemoved
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse
 from lindypy.TupleSpace import TSpace
-from std_msgs.msg import Empty
 
 from inverted_tuple_space import InvertedTupleSpace
 
@@ -43,8 +43,10 @@ class KnowledgeBase(object):
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
-        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX, UpdateSubscribe,
+        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX,
+                                                         UpdateSubscribe,
                                                          self.__update_subscribe)
+        self.__register_lock = Lock()
 
     def __del__(self):
         """
@@ -201,10 +203,12 @@ class KnowledgeBase(object):
             topic_name += '_' + KnowledgeBase.generate_topic_name_part_from_pattern(pattern)
         return topic_name
 
-    def __update_subscribe(self, update_subscribe_request):
+    def __update_subscribe_not_thread_safe(self, update_subscribe_request):
         """
-        register for updates of the given pattern
-        :param update_subscribe_request: UpdateSubscribe, as defined ROS message
+        see __update_subscribe.
+        Ensure, that NEVER several threads are at the same time in this method
+        :param update_subscribe_request:
+        :return:
         """
         converted = self.__converts_request_to_tuple_space_format(update_subscribe_request.interested_pattern)
         if converted in self.__fact_update_topics:
@@ -217,10 +221,21 @@ class KnowledgeBase(object):
                                                                          self.__fact_update_topic_counter)
         self.__fact_update_topic_counter += 1
         add_topic_name = basic_topic_name + '/Add'
-        add_publisher = rospy.Publisher(add_topic_name, Empty, queue_size=10)
+        add_publisher = rospy.Publisher(add_topic_name, Fact, queue_size=10)
         remove_topic_name = basic_topic_name + '/Remove'
         remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
         rospy.sleep(1)
         self.__fact_update_topics[converted] = (add_publisher, remove_publisher)
         self.__subscribed_patterns_space.add(converted)
         return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name)
+
+    def __update_subscribe(self, update_subscribe_request):
+        """
+        register for updates of the given pattern
+        :param update_subscribe_request: UpdateSubscribe, as defined ROS message
+        """
+        self.__register_lock.acquire()
+        try:
+            return self.__update_subscribe_not_thread_safe(update_subscribe_request)
+        finally:
+            self.__register_lock.release()
