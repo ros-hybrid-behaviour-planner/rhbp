@@ -12,7 +12,7 @@ from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalRe
 from .behaviours import Behaviour
 from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
-import ffp
+from .planner import MetricFF
 import os
 
 class Manager(object):
@@ -69,6 +69,8 @@ class Manager(object):
         self._plan = {}
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
+
+        self.planner = MetricFF()
 
         self.__running = True # toggled by the pause and resume services
         self.__activated = activated
@@ -260,7 +262,7 @@ class Manager(object):
                 try:
                     rospy.logdebug("trying to reach goals %s", goalSequence)
                     problemPDDL = self.createProblemPDDL(goalSequence)
-                    tmpPlan = ffp.plan(domainPDDL, problemPDDL)
+                    tmpPlan = self.planner.plan(domainPDDL, problemPDDL)
                     if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
                         rospy.loginfo("FOUND PLAN: %s", tmpPlan)
                         self._plan = tmpPlan
