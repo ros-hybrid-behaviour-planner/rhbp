@@ -87,8 +87,8 @@ int gevaluated_states = 0;
  */
 int gmax_search_depth = 0;
 
-
-
+/* limit for depth search in hill climbing*/
+int glimit_search_depth = -1;
 
 
 /***********
@@ -1372,7 +1372,7 @@ void ff_usage( void )
 
     printf("-C          Do NOT use cost-minimizing relaxed plans for options 3,4,5\n\n");
 
-    printf("-b <float>  Fixed upper bound on solution cost (prune based on g+hmax); active only with cost minimization\n\n");
+    printf("-b <float>  Fixed upper bound on solution cost (prune based on g+hmax) or depth (hill-climbing); active only with cost minimization\n\n");
 
     if ( 0 ) {
         printf("-i <num>    run-time information level( preset: 1 )\n");
@@ -1497,6 +1497,8 @@ Bool process_command_line( int argc, char *argv[] )
         printf("\n\nff: invalid cost bound %f; must be >= 0.\n\n",
                 gcmd_line.cost_bound);
         return FALSE;
+    }else if (gcmd_line.cost_bound > 0){
+        glimit_search_depth = gcmd_line.cost_bound;
     }
 
     return TRUE;
@@ -1736,7 +1738,11 @@ PyObject* ff_plan(PyObject* self, PyObject* args, PyObject* kw){
     if ( gcmd_line.cost_bound != -1 && gcmd_line.cost_bound < 0 ) {
         PyErr_SetString(PyExc_ValueError, "invalid cost bound. Must be >= 0");
         return NULL;
+    }else if (gcmd_line.cost_bound > 0){
+        glimit_search_depth = gcmd_line.cost_bound;
     }
+
+
     /* start parse & instantiation timing */
     times( &start );
 

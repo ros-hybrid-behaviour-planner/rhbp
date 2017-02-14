@@ -291,6 +291,11 @@ Bool search_for_better_state( State *S, int h, State *S_, int *h_ ){
     if ( lehc_current_start->depth > depth ) {
       depth = lehc_current_start->depth;
       if ( depth > gmax_search_depth ) {
+        if(depth > glimit_search_depth && glimit_search_depth > 0 ){
+          reset_ehc_hash_entrys();
+          free( tmp );
+          return FALSE;
+        }
 	gmax_search_depth = depth;
       }
       if ( gcmd_line.display_info ) {
@@ -299,6 +304,7 @@ Bool search_for_better_state( State *S, int h, State *S_, int *h_ ){
       }
     }
     h__ = expand_first_node( h );
+
     if ( LESS( h__, h ) ) {
       break;
     }
@@ -384,14 +390,24 @@ int expand_first_node( int h ){
       }
     }
   } else {
-    for ( i = 0; i < gnum_A; i++ ) {
+    for ( i = 0; i < gnum_A; i++ ) { //trying all available actions
       if ( result_to_dest( &S_, &(lehc_current_start->S), gA[i] ) ) {
+
+        if ( gcmd_line.debug ) {
+          Action* action = gop_conn[gA[i]].action;
+          print_Action_name(action);
+        }
 	add_to_ehc_space( &S_, gA[i], lehc_current_start );
       }
     }
   }
     
   lehc_current_start = lehc_current_start->next;
+
+
+  if ( gcmd_line.debug ) {
+    print_State((lehc_current_start->S));
+  }
 
   return h_;
 

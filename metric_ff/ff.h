@@ -1568,8 +1568,8 @@ extern int gevaluated_states;
  */
 extern int gmax_search_depth;
 
-
-
+/* limit for depth search in hill climbing*/
+extern int glimit_search_depth;
 
 
 
