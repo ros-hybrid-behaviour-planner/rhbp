@@ -49,9 +49,6 @@ class Sensor(object):
 
     @property
     def value(self):
-        if self._value is None:
-            raise Exception("Sensor value is not initialised")
-
         return self._value
 
     @property
