@@ -11,9 +11,11 @@ import rospy
 from rhbp_core.srv import TopicUpdateSubscribe,TopicUpdateSubscribeResponse
 from rosgraph.masterapi import Master
 from std_msgs.msg import String
-
+import sys
 
 class TopicListener(object):
+
+    DEFAULT_NODE_NAME= 'TopicListenerNode'
 
     SUBSCRIBE_SERVICE_NAME_POSTFIX = '/Subscribe'
 
@@ -25,9 +27,9 @@ class TopicListener(object):
         self.__topic_counter = 0
         self.__subscribed_regular_expressions = []
         if (prefix is None):
-            self.__prefix = node_name + '/'
+            self.__prefix = node_name
         else:
-            self.__prefix = prefix + '/'
+            self.__prefix = prefix
         self.__subscribe_service = rospy.Service(self.__prefix + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe,
                                                   self.__subscribe_callback_thread_safe)
         self.__existing_topics = []
@@ -67,7 +69,7 @@ class TopicListener(object):
             return TopicUpdateSubscribeResponse(topicNameNewTopic=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
 
         self.__subscribed_regular_expressions.append(regex)
-        base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix, pattern,
+        base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix + '/', pattern,
                                                                         self.__include_regex_into_topic_names,
                                                                         self.__topic_counter)
         self.__topic_counter += 1
@@ -117,3 +119,20 @@ class TopicListener(object):
 
         finally:
             self.__lock.release()
+
+if __name__ == '__main__':
+
+    node_name = None
+    for arg in sys.argv:
+        if (arg.startswith('__name:=')):
+            node_name = arg[len('__name:='):]
+    # Design decision for to allow using default name from launch files
+    if (node_name is None) or (node_name == 'None'):
+        node_name = TopicListener.DEFAULT_NODE_NAME
+    rospy.init_node(node_name, log_level=rospy.DEBUG)
+
+    rate = rospy.Rate(rospy.get_param("~checkFrequency", 1))
+    listener = TopicListener(node_name=node_name)
+    while (not rospy.is_shutdown()):
+        listener.check()
+        rate.sleep()
