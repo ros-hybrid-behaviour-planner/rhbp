@@ -66,7 +66,7 @@ class TopicListener(object):
         regex = re.compile(pattern)
         if (regex in self.__update_topics):
             topic_names = self.__update_topics[regex]
-            return TopicUpdateSubscribeResponse(topicNameNewTopic=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
+            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
 
         self.__subscribed_regular_expressions.append(regex)
         base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix + '/', pattern,
@@ -79,7 +79,7 @@ class TopicListener(object):
         removed_topic =rospy.Publisher(removed_topic_name,String, queue_size=10)
         rospy.sleep(1)
         self.__update_topics[regex] = (added_topic, removed_topic)
-        return TopicUpdateSubscribeResponse(topicNameNewTopic=added_topic_name,
+        return TopicUpdateSubscribeResponse(topicNameTopicAdded=added_topic_name,
                                             topicNameTopicRemoved=removed_topic_name, existingTopics = self.__find_matching_topcis(regex))
 
     def __subscribe_callback_thread_safe(self, request):

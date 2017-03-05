@@ -1,5 +1,5 @@
 string regex
 ---
-string topicNameNewTopic
+string topicNameTopicAdded
 string topicNameTopicRemoved
 string[] existingTopics
