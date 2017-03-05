@@ -181,12 +181,15 @@ class DynamicSensor(Sensor):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
         self.__topic_type = topic_type
-        self.__default_value = default_value
+        self.__list_with_default_value = []
+        self.__list_with_default_value.append(default_value)
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
         self.__expiration_value = expiration_percentage / 100.0
-        subscribe_service = rospy.ServiceProxy(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,
+        service_name = topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
+        rospy.wait_for_service(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
+        subscribe_service = rospy.ServiceProxy(service_name,
                                                TopicUpdateSubscribe)
         subscribe_result = subscribe_service(pattern)
         rospy.Subscriber(subscribe_result.topicNameTopicAdded, String, self.__topic_added_callback)
@@ -231,12 +234,13 @@ class DynamicSensor(Sensor):
 
         num_of_elements = len(values_of_still_existing_topics)
         if (num_of_elements == 0):
-            return self.__default_value
+            return self.__list_with_default_value
 
         if (self.__expiration_value >= 0):
             index_of_expiration_threeshold = max(math.ceil(num_of_elements * self.__expiration_value) - 1, 0)
-            time_stamps_of_valid_values = sorted(map(lambda p: p[1]))
-            threeshold = time_stamps_of_valid_values[index_of_expiration_threeshold]
+            time_stamps_of_valid_values = map(lambda p: p[1], values_of_still_existing_topics)
+            time_stamps_of_valid_values = sorted(time_stamps_of_valid_values)
+            threeshold = time_stamps_of_valid_values[int(index_of_expiration_threeshold)]
             self.__remove_outdated_values(threeshold)
 
         self.__value_lock.acquire()
@@ -247,10 +251,13 @@ class DynamicSensor(Sensor):
         result = []
         result.extend(values_of_removed_topics)
         result.extend(values_of_still_existing_topics)
-        return result
+        return map(lambda p:p[0],result)
 
     def __topic_added_callback(self, name_message):
         self.__subscribe_to_topic(name_message.data)
+
+    def _aggregate_values(self, values):
+        raise NotImplementedError()
 
     def __topic_removed(self, name_message):
         topic_name = name_message.data
@@ -261,3 +268,9 @@ class DynamicSensor(Sensor):
                 self.__valid_values.pop(topic_name)
         finally:
             self.__value_lock.release()
+
+    def sync(self):
+        values = self.__calculate_valid_values()
+        aggregated_value =self._aggregate_values(values)
+        self.update(aggregated_value)
+        super(DynamicSensor, self).sync()
