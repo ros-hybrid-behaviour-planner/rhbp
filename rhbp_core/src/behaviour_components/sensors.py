@@ -5,10 +5,15 @@ Created on 13.04.2015
 '''
 
 import rospy
+from threading import Lock
 
 from utils.ros_helpers import get_topic_type
 from .pddl import create_valid_pddl_name
 from knowledge_base.update_handler import KnowledgeBaseFactCache
+from .topic_listener import TopicListener
+from rhbp_core.srv import TopicUpdateSubscribe
+from std_msgs.msg import String
+import time
 
 class Sensor(object):
     '''
@@ -159,3 +164,55 @@ class KnowledgeSensor(Sensor):
     def sync(self):
         self.update(self.__value_cache.does_fact_exists())
         super(KnowledgeSensor, self).sync()
+
+class AggregationSensor(Sensor):
+    """
+    Sensor, which collects values from all topics, matching a pattern
+    """
+
+
+    def __init__(self, pattern, default_value, topic_type, optional=False, topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None):
+        super(AggregationSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
+
+        self.__topic_type = topic_type
+        self.__default_value = default_value
+        self.__valid_values = {}
+        self.__values_of_removed_topics = {}
+        self.__value_lock = Lock()
+        subscribe_service = rospy.ServiceProxy(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,TopicUpdateSubscribe)
+        subscribe_result = subscribe_service(pattern)
+        rospy.Subscriber(subscribe_result.topicNameTopicAdded,String,self.__topic_added_callback)
+        rospy.Subscriber(subscribe_result.topicNameTopicRemoved,String,self.__topic_removed)
+        for topic_name in subscribe_result.existingTopics:
+            self.__subscribe_to_topic(topic_name)
+
+
+    def __subscribe_to_topic(self, topic_name):
+        self.__value_lock.acquire()
+        try:
+            if (topic_name in self.__values_of_removed_topics):
+                self.__values_of_removed_topics.pop(topic_name)
+        finally:
+            self.__value_lock.release()
+        rospy.Subscriber(topic_name, self.__topic_type, lambda value: self.__value_updated(topic_name,value))
+
+    def __value_updated(self, topic_name, value):
+        self.__value_lock.acquire()
+        try:
+            self.__valid_values[topic_name] = (value, time.time())
+        finally:
+            self.__value_lock.release()
+
+
+    def __topic_added_callback(self, name_message):
+        self.__subscribe_to_topic(name_message.data)
+
+    def __topic_removed(self, name_message):
+        topic_name =name_message.data
+        self.__value_lock.acquire()
+        try:
+            if (topic_name in self.__valid_values):
+                self.__values_of_removed_topics[topic_name]=self.__valid_values[topic_name]
+                self.__valid_values.pop(topic_name)
+        finally:
+            self.__value_lock.release()
