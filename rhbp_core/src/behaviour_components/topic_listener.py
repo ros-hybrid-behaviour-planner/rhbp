@@ -69,7 +69,7 @@ class TopicListener(object):
             return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
 
         self.__subscribed_regular_expressions.append(regex)
-        base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix + '/', pattern,
+        base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix + '/Topics/', pattern,
                                                                         self.__include_regex_into_topic_names,
                                                                         self.__topic_counter)
         self.__topic_counter += 1
@@ -93,7 +93,7 @@ class TopicListener(object):
         for regex in self.__subscribed_regular_expressions:
             for topic in changed_topics:
                 if (regex.match(topic)):
-                    self.__update_topics[index_of_topic_in_pair].publish(topic)
+                    self.__update_topics[regex][index_of_topic_in_pair].publish(topic)
 
     def __inform_about_added_topics(self, added_topics):
         self.__inform_about_topic_change(added_topics,0)
