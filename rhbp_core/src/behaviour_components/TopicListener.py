@@ -10,6 +10,7 @@ from threading import Lock
 import rospy
 from rhbp_core.srv import TopicUpdateSubscribe,TopicUpdateSubscribeResponse
 from rosgraph.masterapi import Master
+from std_msgs.msg import String
 
 
 class TopicListener(object):
@@ -18,15 +19,15 @@ class TopicListener(object):
 
     def __init__(self, node_name, include_regex_into_topic_names=True, prefix=None):
         self.__handler = Master(node_name)
-        self.__register_lock = Lock()
+        self.__lock = Lock()
         self.__update_topics = {}
         self.__include_regex_into_topic_names = include_regex_into_topic_names
         self.__topic_counter = 0
+        self.__subscribed_regular_expressions = []
         if (prefix is None):
             self.__prefix = node_name + '/'
         else:
             self.__prefix = prefix + '/'
-
         self.__subscribe_service = rospy.Service(self.__prefix + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe,
                                                   self.__subscribe_callback_thread_safe)
         self.__existing_topics = []
@@ -61,23 +62,58 @@ class TopicListener(object):
     def __subscribe_callback(self, request):
         pattern = request.regex
         regex = re.compile(pattern)
-        if (pattern in self.__update_topics):
-            topic_names = self.__update_topics[pattern]
+        if (regex in self.__update_topics):
+            topic_names = self.__update_topics[regex]
             return TopicUpdateSubscribeResponse(topicNameNewTopic=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
 
+        self.__subscribed_regular_expressions.append(regex)
         base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix, pattern,
                                                                         self.__include_regex_into_topic_names,
                                                                         self.__topic_counter)
         self.__topic_counter += 1
         added_topic_name = base_topic_name + '/TopicAdded'
+        added_topic =rospy.Publisher(added_topic_name,String, queue_size=10)
         removed_topic_name = base_topic_name + '/TopicRemoved'
-        self.__update_topics[pattern] = (added_topic_name, removed_topic_name)
+        removed_topic =rospy.Publisher(removed_topic_name,String, queue_size=10)
+        rospy.sleep(1)
+        self.__update_topics[regex] = (added_topic, removed_topic)
         return TopicUpdateSubscribeResponse(topicNameNewTopic=added_topic_name,
                                             topicNameTopicRemoved=removed_topic_name, existingTopics = self.__find_matching_topcis(regex))
 
     def __subscribe_callback_thread_safe(self, request):
-        self.__register_lock.acquire()
+        self.__lock.acquire()
         try:
             return self.__subscribe_callback(request)
         finally:
-            self.__register_lock.release()
+            self.__lock.release()
+
+    def __inform_about_topic_change(self, changed_topics, index_of_topic_in_pair):
+        for regex in self.__subscribed_regular_expressions:
+            for topic in changed_topics:
+                if (regex.match(topic)):
+                    self.__update_topics[index_of_topic_in_pair].publish(topic)
+
+    def __inform_about_added_topics(self, added_topics):
+        self.__inform_about_topic_change(added_topics,0)
+
+    def __inform_about_removed_topics(self, removed_topics):
+        self.__inform_about_topic_change(removed_topics,1)
+
+    def check(self):
+        self.__lock.acquire()
+        try:
+            expected_topics = list(self.__existing_topics)
+            self.__existing_topics= []
+            added_topics = []
+            topics = self.__handler.getPublishedTopics('')
+            for topic in topics:
+                self.__existing_topics.append(topic)
+                if (topic in expected_topics):
+                    expected_topics.remove(topic)
+                else:
+                    added_topics.append(topic)
+            self.__inform_about_added_topics(added_topics)
+            self.__inform_about_removed_topics(expected_topics)
+
+        finally:
+            self.__lock.release()
