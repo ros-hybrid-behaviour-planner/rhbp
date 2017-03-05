@@ -4,6 +4,7 @@ Created on 13.04.2015
 @author: wypler, hrabia, rieger
 '''
 
+import math
 import time
 from threading import Lock
 
@@ -176,7 +177,7 @@ class DynamicSensor(Sensor):
     """
 
     def __init__(self, pattern, default_value, topic_type, optional=False,
-                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None):
+                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
         self.__topic_type = topic_type
@@ -184,6 +185,7 @@ class DynamicSensor(Sensor):
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
+        self.__expiration_value = expiration_percentage / 100.0
         subscribe_service = rospy.ServiceProxy(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,
                                                TopicUpdateSubscribe)
         subscribe_result = subscribe_service(pattern)
@@ -196,6 +198,8 @@ class DynamicSensor(Sensor):
         self.__value_lock.acquire()
         try:
             if (topic_name in self.__values_of_removed_topics):
+                if (self.__expiration_value < 0):
+                    self.__valid_values[topic_name] = self.__values_of_removed_topics[topic_name]
                 self.__values_of_removed_topics.pop(topic_name)
         finally:
             self.__value_lock.release()
@@ -207,6 +211,43 @@ class DynamicSensor(Sensor):
             self.__valid_values[topic_name] = (value, time.time())
         finally:
             self.__value_lock.release()
+
+    def __remove_outdated_values(self, expiration_time):
+        self.__value_lock.acquire()
+        try:
+            for removed_topic_name in self.__values_of_removed_topics.keys():
+                time_stamp = self.__values_of_removed_topics[removed_topic_name][1]
+                if (time_stamp < expiration_time):
+                    self.__values_of_removed_topics.pop(removed_topic_name)
+        finally:
+            self.__value_lock.release()
+
+    def __calculate_valid_values(self):
+        self.__value_lock.acquire()
+        try:
+            values_of_still_existing_topics = self.__valid_values.values()
+        finally:
+            self.__value_lock.release()
+
+        num_of_elements = len(values_of_still_existing_topics)
+        if (num_of_elements == 0):
+            return self.__default_value
+
+        if (self.__expiration_value >= 0):
+            index_of_expiration_threeshold = max(math.ceil(num_of_elements * self.__expiration_value) - 1, 0)
+            time_stamps_of_valid_values = sorted(map(lambda p: p[1]))
+            threeshold = time_stamps_of_valid_values[index_of_expiration_threeshold]
+            self.__remove_outdated_values(threeshold)
+
+        self.__value_lock.acquire()
+        try:
+            values_of_removed_topics = self.__values_of_removed_topics.values()
+        finally:
+            self.__value_lock.release()
+        result = []
+        result.extend(values_of_removed_topics)
+        result.extend(values_of_still_existing_topics)
+        return result
 
     def __topic_added_callback(self, name_message):
         self.__subscribe_to_topic(name_message.data)
