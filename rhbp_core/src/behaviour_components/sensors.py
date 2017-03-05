@@ -10,10 +10,10 @@ from threading import Lock
 
 import rospy
 from knowledge_base.update_handler import KnowledgeBaseFactCache
-from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 
+from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 from .topic_listener import TopicListener
 
@@ -198,6 +198,7 @@ class DynamicSensor(Sensor):
             self.__subscribe_to_topic(topic_name)
 
     def __subscribe_to_topic(self, topic_name):
+        rospy.logdebug('Subscribed to: ' + topic_name)
         self.__value_lock.acquire()
         try:
             if (topic_name in self.__values_of_removed_topics):
@@ -251,7 +252,7 @@ class DynamicSensor(Sensor):
         result = []
         result.extend(values_of_removed_topics)
         result.extend(values_of_still_existing_topics)
-        return map(lambda p:p[0],result)
+        return map(lambda p: p[0], result)
 
     def __topic_added_callback(self, name_message):
         self.__subscribe_to_topic(name_message.data)
@@ -271,6 +272,6 @@ class DynamicSensor(Sensor):
 
     def sync(self):
         values = self.__calculate_valid_values()
-        aggregated_value =self._aggregate_values(values)
+        aggregated_value = self._aggregate_values(values)
         self.update(aggregated_value)
         super(DynamicSensor, self).sync()

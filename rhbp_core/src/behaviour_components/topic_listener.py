@@ -79,6 +79,8 @@ class TopicListener(object):
         removed_topic =rospy.Publisher(removed_topic_name,String, queue_size=10)
         rospy.sleep(1)
         self.__update_topics[regex] = (added_topic, removed_topic)
+
+        rospy.logdebug('subscribed for pattern: ' + pattern)
         return TopicUpdateSubscribeResponse(topicNameTopicAdded=added_topic_name,
                                             topicNameTopicRemoved=removed_topic_name, existingTopics = self.__find_matching_topcis(regex))
 
@@ -109,11 +111,12 @@ class TopicListener(object):
             added_topics = []
             topics = self.__handler.getPublishedTopics('')
             for topic in topics:
-                self.__existing_topics.append(topic)
-                if (topic in expected_topics):
-                    expected_topics.remove(topic)
+                topic_name = topic[0]
+                self.__existing_topics.append(topic_name)
+                if (topic_name in expected_topics):
+                    expected_topics.remove(topic_name)
                 else:
-                    added_topics.append(topic)
+                    added_topics.append(topic_name)
             self.__inform_about_added_topics(added_topics)
             self.__inform_about_removed_topics(expected_topics)
 
