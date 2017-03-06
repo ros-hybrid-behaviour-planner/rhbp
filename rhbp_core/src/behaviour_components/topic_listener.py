@@ -118,6 +118,11 @@ class TopicListener(object):
                 else:
                     added_topics.append(topic_name)
             self.__inform_about_added_topics(added_topics)
+            if (added_topics):
+                rospy.logdebug('New Topics: '+str(added_topics))
+
+            if (expected_topics):
+                rospy.logdebug('Removed Topics: '+str(expected_topics))
             self.__inform_about_removed_topics(expected_topics)
 
         finally:

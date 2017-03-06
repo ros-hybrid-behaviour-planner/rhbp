@@ -3,5 +3,5 @@
   <node pkg="rhbp_core" type="topic_listener.py" name ="TopicListenerNode">
         <param name="checkFrequency" type="double" value="1" />
   </node>
-    <test pkg="rhbp_core" type="topic_listener_test.py" test-name="TopicListenerTestNode"/>
+    <test pkg="rhbp_core" type="topic_listener_test.py" test-name="TopicListenerTestNode" output="screen"/>
 </launch>
