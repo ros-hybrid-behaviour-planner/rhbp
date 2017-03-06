@@ -95,7 +95,7 @@ class DynamicSensorTest(unittest.TestCase):
         super(DynamicSensorTest, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
         self.__message_prefix = 'TopicListenerTestSuite' + str(int(time.time()))
-        rospy.init_node('topic_listener_test_node', log_level=rospy.DEBUG)
+        rospy.init_node('DynamicSensorTestNode', log_level=rospy.DEBUG)
         self.__subscribe_service = rospy.ServiceProxy(TopicListener.DEFAULT_NODE_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,TopicUpdateSubscribe )
 
 
