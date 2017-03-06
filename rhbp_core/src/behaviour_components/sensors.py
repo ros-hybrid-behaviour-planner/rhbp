@@ -178,6 +178,13 @@ class DynamicSensor(Sensor):
 
     def __init__(self, pattern, default_value, topic_type, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0):
+        """
+        :param pattern: pattern, which will be used for detect relevant topics
+        :param default_value: value, which will be used if not topic exists
+        :param topic_type: type of topic
+        :param topic_listener_name: prefix of topic listener
+        :param expiration_percentage: percentage, how many values must updated before  a value from a  removed topic is outdated
+        """
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
         self.__topic_type = topic_type
@@ -227,6 +234,9 @@ class DynamicSensor(Sensor):
             self.__value_lock.release()
 
     def __calculate_valid_values(self):
+        """
+        :return: all values, which can be used for calculation of singular value
+        """
         self.__value_lock.acquire()
         try:
             values_of_still_existing_topics = self.__valid_values.values()
@@ -258,9 +268,17 @@ class DynamicSensor(Sensor):
         self.__subscribe_to_topic(name_message.data)
 
     def _aggregate_values(self, values):
+        """
+        :param values: values, as received from the topics (e.g. ROS messages)
+        :return: singular value, which will be given to user of this sensor
+        """
         raise NotImplementedError()
 
     def __topic_removed(self, name_message):
+        """
+        Mark last value of this topic as may outdated
+        :param name_message: name of removed topic
+        """
         topic_name = name_message.data
         self.__value_lock.acquire()
         try:

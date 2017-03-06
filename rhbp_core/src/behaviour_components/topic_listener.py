@@ -8,14 +8,19 @@ import re
 from threading import Lock
 
 import rospy
-from rhbp_core.srv import TopicUpdateSubscribe,TopicUpdateSubscribeResponse
+from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 from rosgraph.masterapi import Master
 from std_msgs.msg import String
 import sys
 
-class TopicListener(object):
 
-    DEFAULT_NODE_NAME= 'TopicListenerNode'
+class TopicListener(object):
+    """
+    Service which allows subscribing for updates about added or removed topics
+    Provide a method, which checks for new or removed topics and inform subscribers about.
+    """
+
+    DEFAULT_NODE_NAME = 'TopicListenerNode'
 
     SUBSCRIBE_SERVICE_NAME_POSTFIX = '/Subscribe'
 
@@ -30,8 +35,9 @@ class TopicListener(object):
             self.__prefix = node_name
         else:
             self.__prefix = prefix
-        self.__subscribe_service = rospy.Service(self.__prefix + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe,
-                                                  self.__subscribe_callback_thread_safe)
+        self.__subscribe_service = rospy.Service(self.__prefix + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,
+                                                 TopicUpdateSubscribe,
+                                                 self.__subscribe_callback_thread_safe)
         self.__existing_topics = []
 
     def __del__(self):
@@ -46,6 +52,8 @@ class TopicListener(object):
         generates topic name for given regex
         :param prefix: prefix for topic names
         :param pattern: regex (type string)
+        :param include_pattern: whether the regex should occur in the topic name
+        :param counter: unique number for this topic name
         :return: topic name
         """
         topic_name = pattern + 'Topic' + str(counter)
@@ -54,19 +62,30 @@ class TopicListener(object):
         return topic_name
 
     def __find_matching_topcis(self, regex):
+        """
+        :param regex: regular expression
+        :return: all existing topics, whose name matches the regex
+        """
         matching_topics = []
         for topic_name in self.__existing_topics:
             if (regex.match(topic_name)):
                 matching_topics.append(topic_name)
         return tuple(matching_topics)
 
-
     def __subscribe_callback(self, request):
+        """
+        Not thread safe
+        creates two topics, which will be used to inform the subscriber about new topics, whose names matche the regular expression fromt he request. Return also all existing topics, whose names matche the regex
+        :param request: ROS message TopicUpdateSubscribe
+        :return:
+        """
         pattern = request.regex
         regex = re.compile(pattern)
         if (regex in self.__update_topics):
             topic_names = self.__update_topics[regex]
-            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0], topicNameTopicRemoved=topic_names[1], existingTopics = self.__find_matching_topcis(regex))
+            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0],
+                                                topicNameTopicRemoved=topic_names[1],
+                                                existingTopics=self.__find_matching_topcis(regex))
 
         self.__subscribed_regular_expressions.append(regex)
         base_topic_name = TopicListener.generate_topic_name_for_pattern(self.__prefix + '/Topics/', pattern,
@@ -74,17 +93,21 @@ class TopicListener(object):
                                                                         self.__topic_counter)
         self.__topic_counter += 1
         added_topic_name = base_topic_name + '/TopicAdded'
-        added_topic =rospy.Publisher(added_topic_name,String, queue_size=10)
+        added_topic = rospy.Publisher(added_topic_name, String, queue_size=10)
         removed_topic_name = base_topic_name + '/TopicRemoved'
-        removed_topic =rospy.Publisher(removed_topic_name,String, queue_size=10)
+        removed_topic = rospy.Publisher(removed_topic_name, String, queue_size=10)
         rospy.sleep(1)
         self.__update_topics[regex] = (added_topic, removed_topic)
 
         rospy.logdebug('subscribed for pattern: ' + pattern)
         return TopicUpdateSubscribeResponse(topicNameTopicAdded=added_topic_name,
-                                            topicNameTopicRemoved=removed_topic_name, existingTopics = self.__find_matching_topcis(regex))
+                                            topicNameTopicRemoved=removed_topic_name,
+                                            existingTopics=self.__find_matching_topcis(regex))
 
     def __subscribe_callback_thread_safe(self, request):
+        """
+        thread safe verion of __subscribe_callback
+        """
         self.__lock.acquire()
         try:
             return self.__subscribe_callback(request)
@@ -92,22 +115,31 @@ class TopicListener(object):
             self.__lock.release()
 
     def __inform_about_topic_change(self, changed_topics, index_of_topic_in_pair):
+        """
+        Inform all clients about changes of matching topics.
+        :param changed_topics:
+        :param index_of_topic_in_pair: decide, whether the added or removed topic will be used
+        """
         for regex in self.__subscribed_regular_expressions:
             for topic in changed_topics:
                 if (regex.match(topic)):
                     self.__update_topics[regex][index_of_topic_in_pair].publish(topic)
 
     def __inform_about_added_topics(self, added_topics):
-        self.__inform_about_topic_change(added_topics,0)
+        self.__inform_about_topic_change(added_topics, 0)
 
     def __inform_about_removed_topics(self, removed_topics):
-        self.__inform_about_topic_change(removed_topics,1)
+        self.__inform_about_topic_change(removed_topics, 1)
 
     def check(self):
+        """
+        Checks for new or removed topics and inform subscribed clients about
+        :return:
+        """
         self.__lock.acquire()
         try:
             expected_topics = list(self.__existing_topics)
-            self.__existing_topics= []
+            self.__existing_topics = []
             added_topics = []
             topics = self.__handler.getPublishedTopics('')
             for topic in topics:
@@ -119,14 +151,15 @@ class TopicListener(object):
                     added_topics.append(topic_name)
             self.__inform_about_added_topics(added_topics)
             if (added_topics):
-                rospy.logdebug('New Topics: '+str(added_topics))
+                rospy.logdebug('New Topics: ' + str(added_topics))
 
             if (expected_topics):
-                rospy.logdebug('Removed Topics: '+str(expected_topics))
+                rospy.logdebug('Removed Topics: ' + str(expected_topics))
             self.__inform_about_removed_topics(expected_topics)
 
         finally:
             self.__lock.release()
+
 
 if __name__ == '__main__':
 
@@ -134,7 +167,7 @@ if __name__ == '__main__':
     for arg in sys.argv:
         if (arg.startswith('__name:=')):
             node_name = arg[len('__name:='):]
-    # Design decision for to allow using default name from launch files
+    # Design decision to allow using default name from launch files
     if (node_name is None) or (node_name == 'None'):
         node_name = TopicListener.DEFAULT_NODE_NAME
     rospy.init_node(node_name, log_level=rospy.DEBUG)

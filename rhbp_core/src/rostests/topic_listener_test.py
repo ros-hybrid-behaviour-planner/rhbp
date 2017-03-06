@@ -78,6 +78,10 @@ class TopicListenerTest(unittest.TestCase):
         self.assertEqual(2, sensor.value, 'Seccond value was not passed')
 
     def test_existing(self):
+        """
+        Tests sensor output, if the topic already exists at subscribing
+        :return:
+        """
         prefix = self.__message_prefix + 'testExisting'
         topic1 = TopicListenerTest.create_topic(prefix + 'IntTest1')
 

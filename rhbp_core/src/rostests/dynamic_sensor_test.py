@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """
-Tests the topic listener.
-Requires a running topic listener node
+Tests the dynamic sensor
 
 @author: rieger
 """
@@ -112,7 +111,7 @@ class DynamicSensorTest(unittest.TestCase):
 
     def test_basic(self):
         """
-        Tests sensor output, if topic is added
+        Tests sensor output, if topic is added and removed
         """
         prefix = self.__message_prefix+'testBasic'
         service_prefix = prefix + 'Service'
@@ -152,6 +151,10 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1,sensor.value, 'remove of topic was not passed')
 
     def test_existing(self):
+        """
+        Tests the subscribing to topics, which already exists at subscribing
+        :return:
+        """
 
         prefix = self.__message_prefix+'testExisting'
         service_prefix = prefix + 'Service'
@@ -180,6 +183,9 @@ class DynamicSensorTest(unittest.TestCase):
         return topic
 
     def test_treeshold(self):
+        """
+        Tests the calculation of expired values
+        """
         prefix = self.__message_prefix+'testTreeshold'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
