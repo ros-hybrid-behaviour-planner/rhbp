@@ -3,9 +3,9 @@
 @author: rieger
 '''
 import rospy
+from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
-from knowledge_base.srv import UpdateSubscribe, All
 
 
 class KnowledgeBaseFactCache:
@@ -14,21 +14,17 @@ class KnowledgeBaseFactCache:
     If the value does not exists at initialization, than the subscribe is done at first using
     """
 
-    def __init__(self, pattern, knowledge_base_name=None):
+    def __init__(self, pattern, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
 
-        if knowledge_base_name is None:
-            # allow directly forwarding a parameter at constructor call
-            knowledge_base_name = KnowledgeBase.DEFAULT_NAME
-
+        self.__knowledge_base_name = knowledge_base_name
         self.__pattern = pattern
         self.__initialized = False
-        self.__knowledge_base_update_subscriber_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX
-        self.__all_service_name = knowledge_base_name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX
-        self.__knowledge_base_name = knowledge_base_name
+        self.__client = KnowledgeBaseClient(knowledge_base_name)
         self.__contained_facts = []
+        self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
 
         try:
-            rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name, timeout=10)
+            rospy.wait_for_service(self.__example_service_name, timeout=10)
             self.__register_for_updates()
         except rospy.ROSException:
             rospy.loginfo(
@@ -38,12 +34,10 @@ class KnowledgeBaseFactCache:
         """
         registers at knowledge base for updates of facts, which match the pattern of this instance
         """
-        register_for_updates_services = rospy.ServiceProxy(self.__knowledge_base_update_subscriber_service_name,
-                                                           UpdateSubscribe)
-        response = register_for_updates_services(self.__pattern)
-        rospy.Subscriber(response.add_topic_name, Fact, self.__handle_add_update)
-        rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
-        rospy.Subscriber(response.updated_topic_name, FactUpdated, self.__handle_fact_update)
+        added_topic_name, update_topic_name, removed_topic_name = self.__client.subscribe_for_updates(self.__pattern)
+        rospy.Subscriber(added_topic_name, Fact, self.__handle_add_update)
+        rospy.Subscriber(removed_topic_name, FactRemoved, self.__handle_remove_update)
+        rospy.Subscriber(update_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
         self.__initialized = True
         rospy.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
@@ -53,36 +47,32 @@ class KnowledgeBaseFactCache:
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        self.__contained_facts.append(fact_added.content)
+        self.__contained_facts.append(tuple(fact_added.content))
 
     def __handle_remove_update(self, fact_removed):
         """
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        self.__contained_facts.remove(fact_removed.fact)
+        self.__contained_facts.remove(tuple(fact_removed.fact))
         assert self.does_fact_exists() == fact_removed.another_matching_fact_exists
 
     def __handle_fact_update(self, fact_updated):
-        self.__contained_facts.append(fact_updated.new)
-        self.__contained_facts.remove(fact_updated.old)
+        self.__contained_facts.append(tuple(fact_updated.new))
+        self.__contained_facts.remove(tuple(fact_updated.old))
 
     def update_state_manually(self):
         """
         requests in knowledge base, whether a matching state exists
         :return: whether matching fact exists
         """
-        rospy.wait_for_service(self.__all_service_name)
-        all_service = rospy.ServiceProxy(self.__all_service_name, All)
-        self.__contained_facts = []
-        for fact in all_service(self.__pattern).found:
-            self.__contained_facts.append(fact.content)
+        self.__contained_facts = self.__client.all(self.__pattern)
         return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
         if not self.__initialized:
-            rospy.loginfo('Wait for knowledge base service: ' + self.__knowledge_base_update_subscriber_service_name)
-            rospy.wait_for_service(self.__knowledge_base_update_subscriber_service_name)
+            rospy.loginfo('Wait for knowledge base service: ' + self.__example_service_name)
+            rospy.wait_for_service(self.__example_service_name)
             self.__register_for_updates()
 
     def does_fact_exists(self):

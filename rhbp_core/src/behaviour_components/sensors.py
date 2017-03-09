@@ -9,6 +9,7 @@ from threading import Lock
 
 import rospy
 from knowledge_base.update_handler import KnowledgeBaseFactCache
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 
@@ -161,7 +162,7 @@ class KnowledgeSensor(Sensor):
     Sensor, which provides information about existance of a fact, which matches the given pattern
     """
 
-    def __init__(self, pattern, optional=False, knowledge_base_name=None, sensor_name=None):
+    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, sensor_name=None):
         super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
         self.__value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
 

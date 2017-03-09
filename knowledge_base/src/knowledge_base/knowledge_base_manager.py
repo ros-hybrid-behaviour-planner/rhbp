@@ -29,7 +29,7 @@ class KnowledgeBase(object):
     POP_SERVICE_NAME_POSTFIX = '/Pop'
     ALL_SERVICE_NAME_POSTFIX = '/All'
     UPDATE_SERVICE_NAME_POSTFIX = '/Update'
-    UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
+    UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
     def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
@@ -45,7 +45,7 @@ class KnowledgeBase(object):
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
         self.__update_service = rospy.Service(name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX, Update, self.__update)
-        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX,
+        self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX,
                                                          UpdateSubscribe,
                                                          self.__update_subscribe)
         self.__register_lock = Lock()
@@ -245,24 +245,24 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(update_subscribe_request.interested_pattern)
         if converted in self.__fact_update_topics:
             # Another client has already subscribed this pattern
-            add_topic, remove_topic, update_topic = self.__fact_update_topics[converted]
-            return UpdateSubscribeResponse(add_topic_name=add_topic.name, remove_topic_name=remove_topic.name,
+            added_topic, removed_topic, update_topic = self.__fact_update_topics[converted]
+            return UpdateSubscribeResponse(added_topic_name=added_topic.name, removed_topic_name=removed_topic.name,
                                            updated_topic_name=update_topic.name)
 
         basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__fact_update_topic_prefix, converted,
                                                                          self.__inlcude_patterns_in_update_names,
                                                                          self.__fact_update_topic_counter)
         self.__fact_update_topic_counter += 1
-        add_topic_name = basic_topic_name + '/Add'
-        add_publisher = rospy.Publisher(add_topic_name, Fact, queue_size=10)
-        remove_topic_name = basic_topic_name + '/Remove'
-        remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
+        added_topic_name = basic_topic_name + '/Add'
+        add_publisher = rospy.Publisher(added_topic_name, Fact, queue_size=10, latch=True)
+        removed_topic_name = basic_topic_name + '/Remove'
+        remove_publisher = rospy.Publisher(removed_topic_name, FactRemoved, queue_size=10, latch=True)
         update_topic_name = basic_topic_name + '/Update'
-        update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=10)
+        update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=10, latch=True)
         rospy.sleep(1)
         self.__fact_update_topics[converted] = (add_publisher, remove_publisher, update_publisher)
         self.__subscribed_patterns_space.add(converted)
-        return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name,
+        return UpdateSubscribeResponse(removed_topic_name=removed_topic_name, added_topic_name=added_topic_name,
                                        updated_topic_name=update_topic_name)
 
     def __update_subscribe(self, update_subscribe_request):
