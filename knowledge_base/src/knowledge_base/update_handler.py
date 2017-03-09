@@ -4,7 +4,7 @@
 '''
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.msg import FactRemoved, Fact
+from knowledge_base.msg import FactRemoved, Fact, FactUpdated
 from knowledge_base.srv import UpdateSubscribe, All
 
 
@@ -43,6 +43,7 @@ class KnowledgeBaseFactCache:
         response = register_for_updates_services(self.__pattern)
         rospy.Subscriber(response.add_topic_name, Fact, self.__handle_add_update)
         rospy.Subscriber(response.remove_topic_name, FactRemoved, self.__handle_remove_update)
+        rospy.Subscriber(response.updated_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
         self.__initialized = True
         rospy.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
@@ -61,6 +62,10 @@ class KnowledgeBaseFactCache:
         """
         self.__contained_facts.remove(fact_removed.fact)
         assert self.does_fact_exists() == fact_removed.another_matching_fact_exists
+
+    def __handle_fact_update(self, fact_updated):
+        self.__contained_facts.append(fact_updated.new)
+        self.__contained_facts.remove(fact_updated.old)
 
     def update_state_manually(self):
         """

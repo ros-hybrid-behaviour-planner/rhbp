@@ -10,9 +10,9 @@ import sys
 from threading import Lock
 
 import rospy
-from knowledge_base.msg import Push, Fact, FactRemoved
+from knowledge_base.msg import Push, Fact, FactRemoved, FactUpdated
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
-    UpdateSubscribeResponse
+    UpdateSubscribeResponse, Update, UpdateResponse
 from lindypy.TupleSpace import TSpace
 
 from inverted_tuple_space import InvertedTupleSpace
@@ -28,6 +28,7 @@ class KnowledgeBase(object):
     PEEK_SERVICE_NAME_POSTFIX = '/Peek'
     POP_SERVICE_NAME_POSTFIX = '/Pop'
     ALL_SERVICE_NAME_POSTFIX = '/All'
+    UPDATE_SERVICE_NAME_POSTFIX = '/Update'
     UPDATE_SUBSCRIBER_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
@@ -43,6 +44,7 @@ class KnowledgeBase(object):
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
+        self.__update_service = rospy.Service(name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX, Update, self.__update)
         self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBER_NAME_POSTFIX,
                                                          UpdateSubscribe,
                                                          self.__update_subscribe)
@@ -56,6 +58,7 @@ class KnowledgeBase(object):
         self.__peek_service.shutdown()
         self.__pop_service.shutdown()
         self.__all_service.shutdown()
+        self.__update_service.shutdown()
         self.__update_subscriber_service.shutdown()
 
     @staticmethod
@@ -80,19 +83,31 @@ class KnowledgeBase(object):
         # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
         rospy.logdebug('New tuple {0}'.format(str(request.content)))
-        if not self.__exists_tuple_as_is(converted):
-             self.__tuple_space.add(converted)
-             self.__fact_was_added(Fact(request.content), converted)
+        self.__push_internal(request.content, converted, None)
 
+    def __push_internal(self, unconverted_fact, fact, dont_inform):
+        """
+        difference to __push: fact and dont_inform are already converted
+        all patterns, which matches the dont_inform fact, will not informed about push
+        """
+        if not self.__exists_tuple_as_is(fact):
+            self.__tuple_space.add(fact)
+            self.__fact_was_added(Fact(unconverted_fact), fact, dont_inform)
 
-    def __fact_was_added(self, sendeable_fact, original_fact):
+    def __fact_was_added(self, sendeable_fact, original_fact, dont_inform):
         """
         informs all registered clients about change
         :param sendeable_fact: ros message fact
         :param original_fact: tupple of strings
         :param fact: tuple of strings
         """
+        if (dont_inform is None):
+            exluded = []
+        else:
+            exluded = self.__subscribed_patterns_space.find_for_fact(dont_inform)
         for pattern in self.__subscribed_patterns_space.find_for_fact(original_fact):
+            if (pattern in exluded):
+                continue
             add_update_topic = self.__fact_update_topics[pattern][0]
             add_update_topic.publish(sendeable_fact)
 
@@ -129,6 +144,18 @@ class KnowledgeBase(object):
         except KeyError:
             return PeekResponse(exists=False)
 
+    def __pop_internal(self, pattern, dont_inform=None):
+        """
+        :param pattern: fact, which should be removed
+        :param dont_inform: all subscribers, which mathchs this fact are not informed
+        """
+        try:
+            result = self.__tuple_space.get(pattern, remove=True)
+            self.__fact_removed(result, dont_inform)
+            return PopResponse(removed=result, exists=True)
+        except KeyError:
+            return PopResponse(exists=False)
+
     def __pop(self, pop_request):
         """
         If tuple exists in the tuple space, which matchs the pattern, it will be also removed from  the tuple space
@@ -138,19 +165,20 @@ class KnowledgeBase(object):
                 if a tuple exists in tuple space, an example is returned and the exists flag is setted
         """
         converted = self.__converts_request_to_tuple_space_format(pop_request.pattern)
-        try:
-            result = self.__tuple_space.get(converted, remove=True)
-            self.__fact_removed(result)
-            return PopResponse(removed=result, exists=True)
-        except KeyError:
-            return PopResponse(exists=False)
+        return self.__pop_internal(converted)
 
-    def __fact_removed(self, removed_fact):
+    def __fact_removed(self, removed_fact, dont_inform):
         """
         informs all registered clients about remove of the fact
         :param removed_fact: tuple of strings
         """
+        if (dont_inform is None):
+            exluded = []
+        else:
+            exluded = self.__subscribed_patterns_space.find_for_fact(dont_inform)
         for pattern in self.__subscribed_patterns_space.find_for_fact(removed_fact):
+            if (pattern in exluded):
+                continue
             another_matching_fact_exists = self.__exists_tuple_as_is(pattern)
             removed_update_topic = self.__fact_update_topics[pattern][1]
             removed_update_topic.publish(
@@ -217,8 +245,9 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(update_subscribe_request.interested_pattern)
         if converted in self.__fact_update_topics:
             # Another client has already subscribed this pattern
-            add_topic, remove_topic = self.__fact_update_topics[converted]
-            return UpdateSubscribeResponse(add_topic_name=add_topic.name, remove_topic_name=remove_topic.name)
+            add_topic, remove_topic, update_topic = self.__fact_update_topics[converted]
+            return UpdateSubscribeResponse(add_topic_name=add_topic.name, remove_topic_name=remove_topic.name,
+                                           updated_topic_name=update_topic.name)
 
         basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__fact_update_topic_prefix, converted,
                                                                          self.__inlcude_patterns_in_update_names,
@@ -228,10 +257,13 @@ class KnowledgeBase(object):
         add_publisher = rospy.Publisher(add_topic_name, Fact, queue_size=10)
         remove_topic_name = basic_topic_name + '/Remove'
         remove_publisher = rospy.Publisher(remove_topic_name, FactRemoved, queue_size=10)
+        update_topic_name = basic_topic_name + '/Update'
+        update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=10)
         rospy.sleep(1)
-        self.__fact_update_topics[converted] = (add_publisher, remove_publisher)
+        self.__fact_update_topics[converted] = (add_publisher, remove_publisher, update_publisher)
         self.__subscribed_patterns_space.add(converted)
-        return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name)
+        return UpdateSubscribeResponse(remove_topic_name=remove_topic_name, add_topic_name=add_topic_name,
+                                       updated_topic_name=update_topic_name)
 
     def __update_subscribe(self, update_subscribe_request):
         """
@@ -243,3 +275,37 @@ class KnowledgeBase(object):
             return self.__update_subscribe_not_thread_safe(update_subscribe_request)
         finally:
             self.__register_lock.release()
+
+    def __fact_updated(self, old_fact, converted_old_fact, new_fact, converted_new_fact):
+        """
+        informs all clients, which are interested in both facts about update
+        :param old_fact: network compatible version of fact
+        :param new_fact: network compatible version of fact
+        """
+        interested_in_old = self.__subscribed_patterns_space.find_for_fact(converted_old_fact)
+        interested_in_new = self.__subscribed_patterns_space.find_for_fact(converted_new_fact)
+        to_inform = set(interested_in_old).intersection(interested_in_new)
+        for pattern in to_inform:
+            update_topic = self.__fact_update_topics[pattern][2]
+            update_topic.publish(
+                FactUpdated(old=old_fact, new=new_fact))
+
+    def __update(self, update_request):
+        """
+        :param update_request: ROS service request Update
+        :return: true if replacing was sucessfull, false if not because old fact does not exists
+        """
+        fact = self.__converts_request_to_tuple_space_format(update_request.fact)
+        for part in fact:
+            # placeholders are not allowed in update requests
+            assert not part is None
+        if (not self.__exists_tuple_as_is(fact)):
+            return UpdateResponse(False)
+        newFact = self.__converts_request_to_tuple_space_format(update_request.newFact)
+        if (self.__exists_tuple_as_is(newFact)):
+            self.__pop_internal(fact)
+        else:
+            self.__pop_internal(fact, dont_inform=newFact)
+            self.__push_internal(update_request.newFact, newFact, fact)
+            self.__fact_updated(update_request.fact, fact, update_request.newFact, newFact)
+        return UpdateResponse(True)

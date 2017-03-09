@@ -4,3 +4,5 @@ string[] interested_pattern
 string add_topic_name
 #name of topic, where updates are published, if a matching fact was removed
 string remove_topic_name
+#name of topic, where updates are published, if a matching fact was changed
+string updated_topic_name
