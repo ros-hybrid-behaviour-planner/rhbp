@@ -177,7 +177,7 @@ class DynamicSensor(Sensor):
     """
 
     def __init__(self, pattern, default_value, optional=False,
-                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None,
+                 topic_listener_name=TopicListener.DEFAULT_NAME, sensor_name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)

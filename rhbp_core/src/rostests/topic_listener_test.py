@@ -38,7 +38,7 @@ class TopicListenerTest(unittest.TestCase):
         self.__message_prefix = 'TopicListenerTestSuite' + str(int(time.time()))
         rospy.init_node('TopicListenerTestNode', log_level=rospy.DEBUG)
         self.__subscribe_service = rospy.ServiceProxy(
-            TopicListener.DEFAULT_NODE_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe)
+            TopicListener.DEFAULT_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe)
 
     @staticmethod
     def create_topic(topic_name):
