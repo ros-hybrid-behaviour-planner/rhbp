@@ -21,8 +21,7 @@ PKG = 'rhbp_core'
 
 class MaxValueSensor(DynamicSensor):
     def __init__(self, pattern_prefix):
-        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, optional=False, default_value=Int32(0),
-                                             topic_type=Int32)
+        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, optional=False, default_value=Int32(0))
 
     def _aggregate_values(self, values):
         max_value = 0
@@ -48,15 +47,15 @@ class TopicListenerTest(unittest.TestCase):
         :param to_add: array of strings
         """
         pub = rospy.Publisher(topic_name, Int32, queue_size=10)
-        rospy.sleep(1)
+        rospy.sleep(1.0)
         return pub
 
     def test_basic(self):
         """
         Tests sensor output, if topic is added
         """
-        prefix = self.__message_prefix + 'testBasic'
-        sensor = MaxValueSensor(pattern_prefix='/' + prefix)
+        prefix = '/' + self.__message_prefix + 'testBasic'
+        sensor = MaxValueSensor(pattern_prefix=prefix)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
 
@@ -66,22 +65,22 @@ class TopicListenerTest(unittest.TestCase):
         self.assertEqual(0, sensor.value, 'Value has changed unexpected')
 
         topic1.publish(1)
-        rospy.sleep(1)
+        rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value has not changed')
 
-        topic2 = TopicListenerTest.create_topic(prefix + 'anyTopic2')
-        rospy.sleep(1)
+        topic2 = TopicListenerTest.create_topic(prefix + 'AnyTopic2')
+        rospy.sleep(0.1)
         topic2.publish(2)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'Seccond value was not passed')
 
     def test_existing(self):
-        prefix = self.__message_prefix + 'testExisting'
+        prefix = '/' + self.__message_prefix + 'testExisting'
         topic1 = TopicListenerTest.create_topic(prefix + 'IntTest1')
 
-        sensor = MaxValueSensor(pattern_prefix='/' + prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')

@@ -117,15 +117,15 @@ class DynamicSensorTest(unittest.TestCase):
         """
         Tests sensor output, if topic is added
         """
-        prefix = self.__message_prefix + 'testBasic'
+        prefix = '/' + self.__message_prefix + 'testBasic'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix='/' + prefix, service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
 
         topic1 = DynamicSensorTest.create_topic(prefix + 'IntTest1')
-        topic_listener.add_topic('/' + prefix + 'IntTest1')
+        topic_listener.add_topic(prefix + 'IntTest1')
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Value has changed unexpected')
@@ -136,14 +136,14 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value, 'Value has not changed')
 
         topic2 = DynamicSensorTest.create_topic(prefix + 'anyTopic2')
-        topic_listener.add_topic('/' + prefix + 'anyTopic2')
+        topic_listener.add_topic(prefix + 'anyTopic2')
         rospy.sleep(0.1)
         topic2.publish(2)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'Seccond value was not passed')
 
-        topic_listener.remove_topic('/' + prefix + 'anyTopic2')
+        topic_listener.remove_topic(prefix + 'anyTopic2')
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'value of seccond topic was removed, but first value was not updated')
@@ -154,14 +154,14 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value, 'remove of topic was not passed')
 
     def test_existing(self):
-        prefix = self.__message_prefix + 'testExisting'
+        prefix = '/' + self.__message_prefix + 'testExisting'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
         topic1 = DynamicSensorTest.create_topic(prefix + 'IntTest1')
-        topic_listener.add_topic('/' + prefix + 'IntTest1')
+        topic_listener.add_topic(prefix + 'IntTest1')
 
         rospy.sleep(0.1)
-        sensor = MaxValueSensor(pattern_prefix='/' + prefix, service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
@@ -174,17 +174,43 @@ class DynamicSensorTest(unittest.TestCase):
     @staticmethod
     def create_topic_and_publish(topic_listener, name, first_value):
         topic = DynamicSensorTest.create_topic(name)
-        topic_listener.add_topic('/' + name)
+        topic_listener.add_topic(name)
         rospy.sleep(0.1)
         topic.publish(first_value)
         rospy.sleep(0.1)
         return topic
 
-    def test_treeshold(self):
-        prefix = self.__message_prefix + 'testTreeshold'
+    def test_default_aggregation(self):
+        prefix = '/' + self.__message_prefix + 'testDefaultAggreagtion'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix='/' + prefix, service_prefix=service_prefix)
+        sensor = DynamicSensor(pattern=prefix, optional=False, default_value=Int32(0),
+                                             topic_listener_name=service_prefix)
+        topic1  = DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic1', 1)
+        topic2  = DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic2', 2)
+
+        rospy.sleep(0.1)
+        sensor.sync()
+        self.assertEqual(2, sensor.value.data)
+
+        topic_listener.remove_topic(topic2.name)
+
+        rospy.sleep(0.1)
+        sensor.sync()
+        self.assertEqual(2, sensor.value.data)
+
+        topic1.publish(3)
+
+        rospy.sleep(0.1)
+        sensor.sync()
+        self.assertEqual(3, sensor.value.data)
+
+
+    def test_treeshold(self):
+        prefix = '/' + self.__message_prefix + 'testTreeshold'
+        service_prefix = prefix + 'Service'
+        topic_listener = TopicListenerMock(service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix)
 
         topic1 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest1', 10)
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest2', 20)
@@ -193,7 +219,7 @@ class DynamicSensorTest(unittest.TestCase):
         sensor.sync()
         self.assertEqual(30, sensor.value, 'Value has not changed')
 
-        topic_listener.remove_topic('/' + prefix + 'IntTest3')
+        topic_listener.remove_topic(prefix + 'IntTest3')
 
         rospy.sleep(0.1)
         sensor.sync()

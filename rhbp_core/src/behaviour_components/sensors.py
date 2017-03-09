@@ -252,13 +252,14 @@ class DynamicSensor(Sensor):
         result = []
         result.extend(values_of_removed_topics)
         result.extend(values_of_still_existing_topics)
+        result = sorted(result, key = lambda t:t[1], reverse=True)
         return map(lambda p: p[0], result)
 
     def __topic_added_callback(self, name_message):
         self.__subscribe_to_topic(name_message.data)
 
     def _aggregate_values(self, values):
-        raise NotImplementedError()
+        return values[0]
 
     def __topic_removed(self, name_message):
         topic_name = name_message.data
