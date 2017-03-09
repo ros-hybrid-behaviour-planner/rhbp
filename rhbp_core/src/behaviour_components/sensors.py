@@ -176,11 +176,10 @@ class DynamicSensor(Sensor):
     Sensor, which collects values from all topics, matching a pattern
     """
 
-    def __init__(self, pattern, default_value, topic_type, optional=False,
+    def __init__(self, pattern, default_value, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
-        self.__topic_type = topic_type
         self.__list_with_default_value = []
         self.__list_with_default_value.append(default_value)
         self.__valid_values = {}
@@ -207,7 +206,8 @@ class DynamicSensor(Sensor):
                 self.__values_of_removed_topics.pop(topic_name)
         finally:
             self.__value_lock.release()
-        rospy.Subscriber(topic_name, self.__topic_type, lambda value: self.__value_updated(topic_name, value))
+        topic_type = get_topic_type(topic_name)
+        rospy.Subscriber(topic_name, topic_type, lambda value: self.__value_updated(topic_name, value))
 
     def __value_updated(self, topic_name, value):
         self.__value_lock.acquire()
