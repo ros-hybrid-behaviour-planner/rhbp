@@ -205,6 +205,19 @@ class DynamicSensorTest(unittest.TestCase):
         sensor.sync()
         self.assertEqual(3, sensor.value.data)
 
+    def test_subscribing_limit(self):
+        prefix = '/' + self.__message_prefix + 'testSubscribingLimit'
+        service_prefix = prefix + 'Service'
+        topic_listener = TopicListenerMock(service_prefix=service_prefix)
+        sensor = DynamicSensor(pattern=prefix, optional=False, default_value=Int32(0),
+                                             topic_listener_name=service_prefix, subscribe_only_first = True)
+        DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic1', 1)
+        DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic2', 2)
+
+        rospy.sleep(0.1)
+        sensor.sync()
+        self.assertEqual(1, sensor.value.data)
+
 
     def test_treeshold(self):
         prefix = '/' + self.__message_prefix + 'testTreeshold'

@@ -177,7 +177,7 @@ class DynamicSensor(Sensor):
     """
 
     def __init__(self, pattern, default_value, optional=False,
-                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0):
+                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0, subscribe_only_first = False):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
         self.__list_with_default_value = []
@@ -186,6 +186,7 @@ class DynamicSensor(Sensor):
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
         self.__expiration_value = expiration_percentage / 100.0
+        self.__remaining_allowed_topic_subscribing = 1 if subscribe_only_first else -1
         service_name = topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
         rospy.wait_for_service(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
         subscribe_service = rospy.ServiceProxy(service_name,
@@ -197,6 +198,11 @@ class DynamicSensor(Sensor):
             self.__subscribe_to_topic(topic_name)
 
     def __subscribe_to_topic(self, topic_name):
+        if (self.__remaining_allowed_topic_subscribing >= 0):
+            if (self.__remaining_allowed_topic_subscribing == 0):
+                rospy.logdebug('Dont subscribe to topics because already subscribed to another: '+topic_name)
+                return
+            self.__remaining_allowed_topic_subscribing -= 1
         rospy.logdebug('Subscribed to: ' + topic_name)
         self.__value_lock.acquire()
         try:
