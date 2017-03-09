@@ -55,7 +55,6 @@ class KnowledgeBaseFactCache:
         :param fact_removed: FactRemoved, as defined ROS message
         """
         self.__contained_facts.remove(tuple(fact_removed.fact))
-        assert self.does_fact_exists() == fact_removed.another_matching_fact_exists
 
     def __handle_fact_update(self, fact_updated):
         self.__contained_facts.append(tuple(fact_updated.new))
