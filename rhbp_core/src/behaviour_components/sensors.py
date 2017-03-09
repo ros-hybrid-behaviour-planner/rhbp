@@ -4,7 +4,6 @@ Created on 13.04.2015
 @author: wypler, hrabia, rieger
 '''
 
-import math
 import time
 from threading import Lock
 
@@ -177,7 +176,9 @@ class DynamicSensor(Sensor):
     """
 
     def __init__(self, pattern, default_value, optional=False,
-                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None, expiration_percentage=50.0, subscribe_only_first = False):
+                 topic_listener_name=TopicListener.DEFAULT_NODE_NAME, sensor_name=None,
+                 expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
+                 subscribe_only_first=False):
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
         self.__list_with_default_value = []
@@ -185,7 +186,8 @@ class DynamicSensor(Sensor):
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
-        self.__expiration_value = expiration_percentage / 100.0
+        self.__expiration_time_values_of_active_topics = expiration_time_values_of_active_topics
+        self.__expiration_time_values_of_removed_topics = expiration_time_values_of_removed_topics
         self.__remaining_allowed_topic_subscribing = 1 if subscribe_only_first else -1
         service_name = topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
         rospy.wait_for_service(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
@@ -200,7 +202,7 @@ class DynamicSensor(Sensor):
     def __subscribe_to_topic(self, topic_name):
         if (self.__remaining_allowed_topic_subscribing >= 0):
             if (self.__remaining_allowed_topic_subscribing == 0):
-                rospy.logdebug('Dont subscribe to topics because already subscribed to another: '+topic_name)
+                rospy.logdebug('Dont subscribe to topics because already subscribed to another: ' + topic_name)
                 return
             self.__remaining_allowed_topic_subscribing -= 1
         rospy.logdebug('Subscribed to: ' + topic_name)
@@ -222,43 +224,35 @@ class DynamicSensor(Sensor):
         finally:
             self.__value_lock.release()
 
-    def __remove_outdated_values(self, expiration_time):
-        self.__value_lock.acquire()
-        try:
-            for removed_topic_name in self.__values_of_removed_topics.keys():
-                time_stamp = self.__values_of_removed_topics[removed_topic_name][1]
-                if (time_stamp < expiration_time):
-                    self.__values_of_removed_topics.pop(removed_topic_name)
-        finally:
-            self.__value_lock.release()
+    @staticmethod
+    def __filter_values(time_out, values, current_time):
+        if (time_out < 0):
+            return values
+        bound = current_time - time_out
+        result = {}
+        for topic_name in values.keys():
+            value = values[topic_name]
+            if (value[1] >= bound):
+                result[topic_name] = value
+        return result
 
     def __calculate_valid_values(self):
+        current_time = time.time()
         self.__value_lock.acquire()
         try:
-            values_of_still_existing_topics = self.__valid_values.values()
-        finally:
-            self.__value_lock.release()
-
-        num_of_elements = len(values_of_still_existing_topics)
-        if (num_of_elements == 0):
-            return self.__list_with_default_value
-
-        if (self.__expiration_value >= 0):
-            index_of_expiration_threeshold = max(math.ceil(num_of_elements * self.__expiration_value) - 1, 0)
-            time_stamps_of_valid_values = map(lambda p: p[1], values_of_still_existing_topics)
-            time_stamps_of_valid_values = sorted(time_stamps_of_valid_values)
-            threeshold = time_stamps_of_valid_values[int(index_of_expiration_threeshold)]
-            self.__remove_outdated_values(threeshold)
-
-        self.__value_lock.acquire()
-        try:
+            self.__valid_values = DynamicSensor.__filter_values(self.__expiration_time_values_of_active_topics,
+                                                                self.__valid_values, current_time)
+            valied_values = self.__valid_values.values()
+            self.__values_of_removed_topics = DynamicSensor.__filter_values(
+                self.__expiration_time_values_of_removed_topics, self.__values_of_removed_topics, current_time)
             values_of_removed_topics = self.__values_of_removed_topics.values()
         finally:
             self.__value_lock.release()
+
         result = []
+        result.extend(valied_values)
         result.extend(values_of_removed_topics)
-        result.extend(values_of_still_existing_topics)
-        result = sorted(result, key = lambda t:t[1], reverse=True)
+        result = sorted(result, key=lambda t: t[1], reverse=True)
         return map(lambda p: p[0], result)
 
     def __topic_added_callback(self, name_message):

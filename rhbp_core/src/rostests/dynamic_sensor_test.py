@@ -20,9 +20,9 @@ PKG = 'rhbp_core'
 
 
 class MaxValueSensor(DynamicSensor):
-    def __init__(self, pattern_prefix, service_prefix):
-        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, optional=False, default_value=Int32(0),
-                                             topic_listener_name=service_prefix)
+    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics = 1000):
+        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, default_value=Int32(0),
+                                             topic_listener_name=service_prefix, expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics)
 
     def _aggregate_values(self, values):
         max_value = 0
@@ -120,7 +120,7 @@ class DynamicSensorTest(unittest.TestCase):
         prefix = '/' + self.__message_prefix + 'testBasic'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,expiration_time_values_of_removed_topics = 0 )
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
 
@@ -146,12 +146,7 @@ class DynamicSensorTest(unittest.TestCase):
         topic_listener.remove_topic(prefix + 'anyTopic2')
         rospy.sleep(0.1)
         sensor.sync()
-        self.assertEqual(2, sensor.value, 'value of seccond topic was removed, but first value was not updated')
-
-        topic1.publish(1)
-        rospy.sleep(0.1)
-        sensor.sync()
-        self.assertEqual(1, sensor.value, 'remove of topic was not passed')
+        self.assertEqual(1, sensor.value, 'value of seccond topic was removed, but sensor value has not changed')
 
     def test_existing(self):
         prefix = '/' + self.__message_prefix + 'testExisting'
@@ -199,12 +194,6 @@ class DynamicSensorTest(unittest.TestCase):
         sensor.sync()
         self.assertEqual(2, sensor.value.data)
 
-        topic1.publish(3)
-
-        rospy.sleep(0.1)
-        sensor.sync()
-        self.assertEqual(3, sensor.value.data)
-
     def test_subscribing_limit(self):
         prefix = '/' + self.__message_prefix + 'testSubscribingLimit'
         service_prefix = prefix + 'Service'
@@ -219,34 +208,27 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value.data)
 
 
-    def test_treeshold(self):
+    def test_value_removing(self):
         prefix = '/' + self.__message_prefix + 'testTreeshold'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix, expiration_time_values_of_removed_topics=1)
 
-        topic1 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest1', 10)
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest1', 10)
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest2', 20)
-        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest3', 30)
 
         sensor.sync()
-        self.assertEqual(30, sensor.value, 'Value has not changed')
+        self.assertEqual(20, sensor.value, 'Value has not changed')
 
-        topic_listener.remove_topic(prefix + 'IntTest3')
+        topic_listener.remove_topic(topic2.name)
 
         rospy.sleep(0.1)
         sensor.sync()
-        self.assertEqual(30, sensor.value, 'Value of removed topic is removed, but should not')
+        self.assertEqual(20, sensor.value, 'Value of removed topic is removed, but should not')
 
-        topic2.publish(15)
-        rospy.sleep(0.1)
+        rospy.sleep(1)
         sensor.sync()
-        self.assertEqual(30, sensor.value, 'Value of removed topic is removed, but should not2')
-
-        topic1.publish(10)
-        rospy.sleep(0.1)
-        sensor.sync()
-        self.assertEqual(15, sensor.value, 'value of removed topic was not kicked out')
+        self.assertEqual(10, sensor.value, 'Value of removed topic should expired, but is not')
 
 
 if __name__ == '__main__':

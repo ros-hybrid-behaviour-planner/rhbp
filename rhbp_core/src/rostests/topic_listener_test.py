@@ -21,7 +21,7 @@ PKG = 'rhbp_core'
 
 class MaxValueSensor(DynamicSensor):
     def __init__(self, pattern_prefix):
-        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, optional=False, default_value=Int32(0))
+        super(MaxValueSensor, self).__init__(pattern=pattern_prefix, default_value=Int32(0))
 
     def _aggregate_values(self, values):
         max_value = 0
