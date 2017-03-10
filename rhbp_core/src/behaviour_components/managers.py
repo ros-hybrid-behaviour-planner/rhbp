@@ -14,6 +14,7 @@ from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
 from .planner import MetricFF
 import os
+import threading
 
 class Manager(object):
     ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE = False
@@ -53,6 +54,8 @@ class Manager(object):
         self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
 
         self._stepCounter = 0
+
+        self._step_lock = threading.Lock()
 
         self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
 
@@ -287,171 +290,173 @@ class Manager(object):
 
         plannerStatusMessage.activationThreshold = self._activationThreshold
         self._totalActivation = 0.0
-        rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
-        ### collect information about behaviours ###
-        for behaviour in self._behaviours:
-            behaviour.fetchStatus()
-            if behaviour.active:
-                self._totalActivation += behaviour.activation
-        if self._totalActivation == 0.0:
-            self._totalActivation = 1.0 # the behaviours are going to divide by this so make sure it is non-zero
-        rospy.logdebug("############# GOAL STATI #############")
-        ### collect information about goals ###
-        for goal in self._goals:
-            goal.sync()
-            statusMessage = Status()
-            statusMessage.name = goal.name
-            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in goal.wishes]
-            statusMessage.active = goal.active
-            statusMessage.activated = goal.activated
-            statusMessage.satisfaction = goal.fulfillment
-            statusMessage.priority = goal.priority
-            plannerStatusMessage.goals.append(statusMessage)
-            rospy.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
-            if goal.active and not goal.isPermanent and goal.satisfied:
-                rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
-                rospy.wait_for_service(goal.name + 'Activate')
-                activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
-                activateRequest(False)
-                rospy.logdebug("Set Activated of %s goal to False", goal.name)
-                goal.active = False # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
-        ### do housekeeping ###
-        self._activeGoals = filter(lambda x: x.active, self._goals)
-        self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
-        ### use the symbolic planner if necessary ###
-        self.planIfNecessary()
+
+        with self._step_lock:
+            rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
+            ### collect information about behaviours ###
+            for behaviour in self._behaviours:
+                behaviour.fetchStatus()
+                if behaviour.active:
+                    self._totalActivation += behaviour.activation
+            if self._totalActivation == 0.0:
+                self._totalActivation = 1.0 # the behaviours are going to divide by this so make sure it is non-zero
+            rospy.logdebug("############# GOAL STATI #############")
+            ### collect information about goals ###
+            for goal in self._goals:
+                goal.sync()
+                statusMessage = Status()
+                statusMessage.name = goal.name
+                statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in goal.wishes]
+                statusMessage.active = goal.active
+                statusMessage.activated = goal.activated
+                statusMessage.satisfaction = goal.fulfillment
+                statusMessage.priority = goal.priority
+                plannerStatusMessage.goals.append(statusMessage)
+                rospy.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
+                if goal.active and not goal.isPermanent and goal.satisfied:
+                    rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
+                    rospy.wait_for_service(goal.name + 'Activate')
+                    activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
+                    activateRequest(False)
+                    rospy.logdebug("Set Activated of %s goal to False", goal.name)
+                    goal.active = False # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
+            ### do housekeeping ###
+            self._activeGoals = filter(lambda x: x.active, self._goals)
+            self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
+            ### use the symbolic planner if necessary ###
+            self.planIfNecessary()
 
 
-        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param(
-            "~conflictorBias", 1.0)
-        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
-        predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias", 1.0)
-        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
-        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
-        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
+            conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param(
+                "~conflictorBias", 1.0)
+            goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
+            predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias", 1.0)
+            successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
+            plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
+            situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
 
-        ### log behaviour stuff ###
-        rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
-        for behaviour in self._behaviours:
-            ### do the activation computation ###
-            behaviour.computeActivation(situation_bias = situation_bias, plan_bias = plan_bias, conflictor_bias = conflictor_bias,goal_bias = goal_bias,successor_bias = successor_bias, predecessor_bias = predecessor_bias)
+            ### log behaviour stuff ###
+            rospy.logdebug("########## BEHAVIOUR  STUFF ##########")
+            for behaviour in self._behaviours:
+                ### do the activation computation ###
+                behaviour.computeActivation(situation_bias = situation_bias, plan_bias = plan_bias, conflictor_bias = conflictor_bias,goal_bias = goal_bias,successor_bias = successor_bias, predecessor_bias = predecessor_bias)
 
-            #TODO This could be made dependent on the log state in order to save calculation
-            with_extensive_logging = False
-            rospy.logdebug("%s", behaviour.name)
-            rospy.logdebug("\tactive %s", behaviour.active)
-            rospy.logdebug("\twishes %s", behaviour.wishes)
-            rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
-            rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging,goal_bias=goal_bias))
-            rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging, conflictor_bias=conflictor_bias))
-            rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging, predecessor_bias= predecessor_bias))
-            rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging, successor_bias=successor_bias))
-            rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging,conflictor_bias=conflictor_bias))
-            rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(plan_bias= plan_bias, logging = with_extensive_logging))
-            rospy.logdebug("\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
+                #TODO This could be made dependent on the log state in order to save calculation
+                with_extensive_logging = False
+                rospy.logdebug("%s", behaviour.name)
+                rospy.logdebug("\tactive %s", behaviour.active)
+                rospy.logdebug("\twishes %s", behaviour.wishes)
+                rospy.logdebug("\tactivation from preconditions: %s", behaviour.activationFromPreconditions)
+                rospy.logdebug("\tactivation from goals: %s", behaviour.getActivationFromGoals(logging = with_extensive_logging,goal_bias=goal_bias))
+                rospy.logdebug("\tinhibition from goals: %s", behaviour.getInhibitionFromGoals(logging = with_extensive_logging, conflictor_bias=conflictor_bias))
+                rospy.logdebug("\tactivation from predecessors: %s", behaviour.getActivationFromPredecessors(logging = with_extensive_logging, predecessor_bias= predecessor_bias))
+                rospy.logdebug("\tactivation from successors: %s", behaviour.getActivationFromSuccessors(logging = with_extensive_logging, successor_bias=successor_bias))
+                rospy.logdebug("\tinhibition from conflicted: %s", behaviour.getInhibitionFromConflicted(logging = with_extensive_logging,conflictor_bias=conflictor_bias))
+                rospy.logdebug("\tactivation from plan: %s", behaviour.getActivationFromPlan(plan_bias= plan_bias, logging = with_extensive_logging))
+                rospy.logdebug("\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
-        ### commit the activation computed in this step ###
-        for behaviour in self._behaviours:
-            behaviour.commitActivation()
-            rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
-            # collect all that stuff for the rqt gui
-            statusMessage = Status()
-            statusMessage.name = behaviour.name
-            statusMessage.activation = behaviour.activation
-            statusMessage.satisfaction = behaviour.preconditionSatisfaction
-            statusMessage.isExecuting = behaviour.isExecuting
-            statusMessage.executionTimeout = behaviour.executionTimeout
-            statusMessage.executionTime = behaviour.executionTime
-            statusMessage.progress = behaviour.progress
-            statusMessage.executable = behaviour.executable
-            statusMessage.threshold = behaviour.readyThreshold
-            statusMessage.priority = behaviour.priority
-            statusMessage.interruptable = behaviour.interruptable
-            statusMessage.activated = behaviour.activated
-            statusMessage.active = behaviour.active
-            statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
-            statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
-            plannerStatusMessage.behaviours.append(statusMessage)
-        rospy.loginfo("current activation threshold: %f", self._activationThreshold)
-        rospy.loginfo("############## ACTIONS ###############")
-        self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
-        amount_started_behaviours = 0
-        currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
-        rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
-        rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
-        for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
-            ### now comes a series of tests that a behaviour must pass in order to get started ###
-            if not behaviour.active and not behaviour.manualStart: # it must be active
-                rospy.loginfo("%s will not be started because it is not active", behaviour.name)
-                continue
-            if behaviour.isExecuting: # it must not already run
-                rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
-                if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
-                        and behaviour.interruptable:
-                    rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
-                    self.__replanningNeeded = True # this is unusual so replan
-                elif not behaviour.executable:
-                    rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
-                elif behaviour.activation < self._activationThreshold:
-                    rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
-                    currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
-                else:
-                    behaviour.executionTime += 1
-                    if behaviour.requires_execution_steps:
-                        behaviour.do_step()
-                continue
-            if not behaviour.executable and not behaviour.manualStart: # it must be executable
-                rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
-                continue
-            if behaviour.activation < self._activationThreshold and not behaviour.manualStart: # it must have high-enough activation
-                rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
-                continue
-            interferingCorrelations = currentlyInfluencedSensors.intersection(set([item[0] for item in behaviour.correlations]))
-            if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
-                alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
-                assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
-                # This implementation deals with a list although it it clear that there is at most one element.
-                stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
-                if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
-                    rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
-                    for conflictor in stoppableBehaviours:
-                        rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
-                        currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors, True)
-                    ### we have now made room for the higher-priority behaviour ###
-                else:
-                    rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+            ### commit the activation computed in this step ###
+            for behaviour in self._behaviours:
+                behaviour.commitActivation()
+                rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
+                # collect all that stuff for the rqt gui
+                statusMessage = Status()
+                statusMessage.name = behaviour.name
+                statusMessage.activation = behaviour.activation
+                statusMessage.satisfaction = behaviour.preconditionSatisfaction
+                statusMessage.isExecuting = behaviour.isExecuting
+                statusMessage.executionTimeout = behaviour.executionTimeout
+                statusMessage.executionTime = behaviour.executionTime
+                statusMessage.progress = behaviour.progress
+                statusMessage.executable = behaviour.executable
+                statusMessage.threshold = behaviour.readyThreshold
+                statusMessage.priority = behaviour.priority
+                statusMessage.interruptable = behaviour.interruptable
+                statusMessage.activated = behaviour.activated
+                statusMessage.active = behaviour.active
+                statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
+                statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
+                plannerStatusMessage.behaviours.append(statusMessage)
+            rospy.loginfo("current activation threshold: %f", self._activationThreshold)
+            rospy.loginfo("############## ACTIONS ###############")
+            self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
+            amount_started_behaviours = 0
+            currentlyInfluencedSensors = set(list(itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
+            rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
+            rospy.loginfo("currently influenced sensors: %s", currentlyInfluencedSensors)
+            for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
+                ### now comes a series of tests that a behaviour must pass in order to get started ###
+                if not behaviour.active and not behaviour.manualStart: # it must be active
+                    rospy.loginfo("%s will not be started because it is not active", behaviour.name)
                     continue
-            ### if the behaviour got here it really is ready to be started ###
-            rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
-            if behaviour.manualStart:
-                rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
-            behaviour.start()
+                if behaviour.isExecuting: # it must not already run
+                    rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
+                    if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
+                            and behaviour.interruptable:
+                        rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
+                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
+                        self.__replanningNeeded = True # this is unusual so replan
+                    elif not behaviour.executable:
+                        rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
+                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
+                    elif behaviour.activation < self._activationThreshold:
+                        rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
+                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
+                    else:
+                        behaviour.executionTime += 1
+                        if behaviour.requires_execution_steps:
+                            behaviour.do_step()
+                    continue
+                if not behaviour.executable and not behaviour.manualStart: # it must be executable
+                    rospy.loginfo("%s will not be started because it is not executable", behaviour.name)
+                    continue
+                if behaviour.activation < self._activationThreshold and not behaviour.manualStart: # it must have high-enough activation
+                    rospy.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
+                    continue
+                interferingCorrelations = currentlyInfluencedSensors.intersection(set([item[0] for item in behaviour.correlations]))
+                if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
+                    alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
+                    assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
+                    # This implementation deals with a list although it it clear that there is at most one element.
+                    stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
+                    if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
+                        rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                        for conflictor in stoppableBehaviours:
+                            rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
+                            currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors, True)
+                        ### we have now made room for the higher-priority behaviour ###
+                    else:
+                        rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                        continue
+                ### if the behaviour got here it really is ready to be started ###
+                rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
+                if behaviour.manualStart:
+                    rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
+                behaviour.start()
 
-            currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
-            self.__executedBehaviours.append(behaviour)
-            amount_started_behaviours += 1
-            rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
-            rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
+                currentlyInfluencedSensors = currentlyInfluencedSensors.union(set([item[0] for item in behaviour.correlations]))
+                self.__executedBehaviours.append(behaviour)
+                amount_started_behaviours += 1
+                rospy.loginfo("now running behaviours: %s", self.__executedBehaviours)
+                rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
 
-        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
-        plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
+            plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
+            plannerStatusMessage.influencedSensors = currentlyInfluencedSensors
 
-        activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
+            activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
 
-        # Reduce or increase the activation threshold based on executed and started behaviours
-        if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-            self._activationThreshold *= activation_threshold_decay
-            rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-        elif amount_started_behaviours > 0:
-            rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            self._activationThreshold *= (1 / activation_threshold_decay)
+            # Reduce or increase the activation threshold based on executed and started behaviours
+            if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
+                self._activationThreshold *= activation_threshold_decay
+                rospy.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+            elif amount_started_behaviours > 0:
+                rospy.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+                self._activationThreshold *= (1 / activation_threshold_decay)
 
-        plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
-        plannerStatusMessage.stepCounter = self._stepCounter
+            plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
+            plannerStatusMessage.stepCounter = self._stepCounter
 
-        self.__statusPublisher.publish(plannerStatusMessage)
+            self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
 
     def stop_behaviour(self, behaviour, currentlyInfluencedSensors, reset_activation = True):
@@ -463,15 +468,15 @@ class Manager(object):
         rospy.loginfo("updated influenced sensors: %s", currentlyInfluencedSensors)
         return currentlyInfluencedSensors
 
-    #TODO all those operations are potentially dangerous while the above step() method is running (especially the remove stuff)
     def add_goal(self,goal):
         '''
         :param goal: instanceof AbstractGoalRepresentation
         '''
-        self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
-        self._goals.append(goal)
-        rospy.loginfo("A goal with name %s registered", goal.name)
-        self.__replanningNeeded = True;
+        with self._step_lock:
+            self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
+            self._goals.append(goal)
+            rospy.loginfo("A goal with name %s registered", goal.name)
+            self.__replanningNeeded = True;
 
     def __add_goal_callback(self, request):
         goal = GoalProxy(request.name, request.permanent)
@@ -479,36 +484,42 @@ class Manager(object):
         return AddGoalResponse()
     
     def __addBehaviour(self, request):
-        self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
-                              requires_execution_steps = request.requiresExecutionSteps,
-                              create_log_files = self._create_log_files)
-        behaviour.manager = self
-        behaviour.activationDecay = self._activationDecay
-        self._behaviours.append(behaviour)
-        rospy.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
-        self.__replanningNeeded = True;
-        return AddBehaviourResponse()
+        with self._step_lock:
+            self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
+            behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
+                                  requires_execution_steps = request.requiresExecutionSteps,
+                                  create_log_files = self._create_log_files)
+            behaviour.manager = self
+            behaviour.activationDecay = self._activationDecay
+            self._behaviours.append(behaviour)
+            rospy.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
+            self.__replanningNeeded = True;
+            return AddBehaviourResponse()
     
     def __pauseCallback(self, dummy):
-        self.pause_counter += 1
-        rospy.logdebug('Manager Paused')
-        return EmptyResponse()
+        with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
+            self.pause_counter += 1
+            rospy.logdebug('Manager Paused')
+            return EmptyResponse()
     
     def __resumeCallback(self, dummy):
-        self.pause_counter -= 1
-        rospy.logdebug('Manager Resumed')
-        return EmptyResponse()
+        with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
+            if self.pause_counter > 0:
+                self.pause_counter -= 1
+                rospy.logdebug('Manager Resumed')
+            return EmptyResponse()
     
     def __removeGoal(self, request):
-        self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name.
-        self.__replanningNeeded = True;
-        return RemoveGoalResponse()
+        with self._step_lock:
+            self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name.
+            self.__replanningNeeded = True;
+            return RemoveGoalResponse()
     
     def __removeBehaviour(self, request):
-        self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-        self.__replanningNeeded = True;
-        return RemoveBehaviourResponse()
+        with self._step_lock:
+            self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
+            self.__replanningNeeded = True;
+            return RemoveBehaviourResponse()
     
     def __manualStart(self, request):
         for behaviour in self._behaviours:
