@@ -18,11 +18,16 @@ from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 
 PKG = 'rhbp_core'
 
+"""
+Tests the integration of the DynamicSensor into ROS
+"""
+
 
 class MaxValueSensor(DynamicSensor):
-    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics = 1000):
+    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics=1000):
         super(MaxValueSensor, self).__init__(pattern=pattern_prefix, default_value=Int32(0),
-                                             topic_listener_name=service_prefix, expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics)
+                                             topic_listener_name=service_prefix,
+                                             expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics)
 
     def _aggregate_values(self, values):
         max_value = 0
@@ -120,7 +125,8 @@ class DynamicSensorTest(unittest.TestCase):
         prefix = '/' + self.__message_prefix + 'testBasic'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,expiration_time_values_of_removed_topics = 0 )
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,
+                                expiration_time_values_of_removed_topics=0)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
 
@@ -149,6 +155,9 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value, 'value of seccond topic was removed, but sensor value has not changed')
 
     def test_existing(self):
+        """
+        Tests the detection of values, which published in a topic, which does already exist at subscribing
+        """
         prefix = '/' + self.__message_prefix + 'testExisting'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
@@ -176,13 +185,16 @@ class DynamicSensorTest(unittest.TestCase):
         return topic
 
     def test_default_aggregation(self):
+        """
+        Tests default implementation of aggregation (just use last received value)
+        """
         prefix = '/' + self.__message_prefix + 'testDefaultAggreagtion'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
         sensor = DynamicSensor(pattern=prefix, optional=False, default_value=Int32(0),
-                                             topic_listener_name=service_prefix)
-        topic1  = DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic1', 1)
-        topic2  = DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic2', 2)
+                               topic_listener_name=service_prefix)
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
+        topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
 
         rospy.sleep(0.1)
         sensor.sync()
@@ -195,24 +207,30 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(2, sensor.value.data)
 
     def test_subscribing_limit(self):
+        """
+        Checks, that only the first matching pattern is used, if the subcribe_only_first flag was set
+        """
         prefix = '/' + self.__message_prefix + 'testSubscribingLimit'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
         sensor = DynamicSensor(pattern=prefix, optional=False, default_value=Int32(0),
-                                             topic_listener_name=service_prefix, subscribe_only_first = True)
-        DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic1', 1)
-        DynamicSensorTest.create_topic_and_publish(topic_listener,prefix + 'Topic2', 2)
+                               topic_listener_name=service_prefix, subscribe_only_first=True)
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
 
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value.data)
 
-
     def test_value_removing(self):
+        """
+        Checks, that outdated values are not used for value calculation
+        """
         prefix = '/' + self.__message_prefix + 'testTreeshold'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix, expiration_time_values_of_removed_topics=1)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,
+                                expiration_time_values_of_removed_topics=1)
 
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest1', 10)
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'IntTest2', 20)

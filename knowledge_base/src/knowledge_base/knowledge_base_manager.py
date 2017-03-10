@@ -17,12 +17,12 @@ from lindypy.TupleSpace import TSpace
 
 from inverted_tuple_space import InvertedTupleSpace
 
-"""
-Wrapper class for accessing the real tuple space
-"""
-
 
 class KnowledgeBase(object):
+    """
+    Wrapper class for accessing the real tuple space
+    """
+
     DEFAULT_NAME = 'knowledgeBaseNode'
     EXISTS_SERVICE_NAME_POSTFIX = '/Exists'
     PEEK_SERVICE_NAME_POSTFIX = '/Peek'

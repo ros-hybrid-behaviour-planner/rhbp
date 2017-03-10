@@ -28,6 +28,9 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.__client = KnowledgeBaseClient()
 
     def test_simple_adding(self):
+        """
+        Tests basic case of adding a tuple
+        """
         test_tuple = (self.__message_prefix, 'test_simple_adding', '0', '0')
 
         cache = KnowledgeBaseFactCache(pattern=test_tuple)

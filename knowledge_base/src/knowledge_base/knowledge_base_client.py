@@ -13,7 +13,19 @@ from knowledge_base.srv import Exists, Peek, Pop, All, Update, UpdateSubscribe
 
 
 class KnowledgeBaseClient(object):
+    """
+    Simple wrapper for the services (and the push topic) of the knowledge base.
+    Some methods do some value conversion, for better usability.
+    IMPORTANT: The service proxies are created once, but the initialization is lazy:
+    The init method waits 10 secconds for the knowledge base.
+    After the timeout the constructor returns and the initialisation is done during first usage of this client
+    (without timeout).
+    """
+
     def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
+        """
+        :param knowledge_base_name: Name of the knowledge base (without any postfix)
+        """
         self.__initialized = False
         self.__knowledge_base_name = knowledge_base_name
         self.__init_lock = Lock
@@ -37,6 +49,10 @@ class KnowledgeBaseClient(object):
             self.__init_lock.release()
 
     def __initialize(self):
+        """
+        initialize the client. Assumes, that the knowledge base already exists.
+        Not thread safe
+        """
         self.__initialized = True
         self.__exists_service = rospy.ServiceProxy(
             self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists)

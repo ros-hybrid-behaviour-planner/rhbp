@@ -18,6 +18,11 @@ from rhbp_core.srv import TopicUpdateSubscribe
 
 PKG = 'rhbp_core'
 
+"""
+System test for the topic listener (including the DynamicSensor)
+Requires a running TopicListener
+"""
+
 
 class MaxValueSensor(DynamicSensor):
     def __init__(self, pattern_prefix):

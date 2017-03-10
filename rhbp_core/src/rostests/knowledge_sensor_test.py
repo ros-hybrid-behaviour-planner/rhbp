@@ -17,6 +17,11 @@ from knowledge_base.srv import Pop
 
 PKG = 'rhbp_core'
 
+"""
+Integration test for KnowledgeSensor.
+Requires a running KnowledgeBase
+"""
+
 
 class TestKnowledgeBaseSensor(unittest.TestCase):
     def __init__(self, *args, **kwargs):

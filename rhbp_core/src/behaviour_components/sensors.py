@@ -8,8 +8,8 @@ import time
 from threading import Lock
 
 import rospy
-from knowledge_base.update_handler import KnowledgeBaseFactCache
 from knowledge_base.knowledge_base_manager import KnowledgeBase
+from knowledge_base.update_handler import KnowledgeBaseFactCache
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 
@@ -243,10 +243,10 @@ class DynamicSensor(Sensor):
                 result[topic_name] = value
         return result
 
-    def __calculate_valid_values(self):        
-	"""
-        :return: all values, which can be used for calculation of singular value
+    def __calculate_valid_values(self):
         """
+            :return: all values, which can be used for calculation of singular value
+            """
         current_time = time.time()
         self.__value_lock.acquire()
         try:

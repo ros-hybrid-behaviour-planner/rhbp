@@ -22,6 +22,10 @@ System test for knowledge base. Assumes, that a rosmaster and the knowledge base
 
 
 class UpdateSubscriberMock(object):
+    """
+    Subscribes to the knowledge base and record received message
+    """
+
     def __init__(self, mock_name, pattern, client):
         self.name = mock_name
         added_topic_name, update_topic_name, removed_topic_name = client.subscribe_for_updates(pattern)
@@ -127,7 +131,11 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.__check_content((self.__message_prefix, 'test_all', 'pos', '*', '*'), t1, t2, t3)
 
     def __check_content(self, pattern, *expected):
-
+        """
+        ensures, that exact the expected content is contained in the knowledge base
+        :param pattern: filter for deciding, which contained facts of the kb should used
+        :param expected: expected content of the kb
+        """
         knowledge_base_content = self.__client.all(pattern)
         self.assertEqual(len(expected), len(knowledge_base_content),
                          ' Expected: ' + str(expected) + ' but is ' + str(knowledge_base_content))
@@ -150,6 +158,10 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.assertEqual(1, len(all_response.found))
 
     def __check_mocks_empty(self, update_mocks):
+        """
+        Asserts, that all given mocks has no remaining messages. All expected messages must be removed before method call
+        :param update_mocks (list of UpdateSubscriberMock)
+        """
         for update_mock in update_mocks:
             self.assertIsNone(update_mock.add_msg,
                               'Following mock has an unexpected add message received: ' + update_mock.name)
@@ -159,6 +171,9 @@ class TupleSpaceTestSuite(unittest.TestCase):
                               'Following mock has an unexpected update message received: ' + update_mock.name)
 
     def test_update_non_existing(self):
+        """
+        Tries to update a fact, which is not in the kb
+        """
         prefix = self.__message_prefix + '_test_update_non_existing'
         new_fact = (prefix, 'new', '1')
         not_influenced = (prefix, 'not_influenced', '1')
@@ -182,6 +197,9 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.__check_content((prefix, '*', '*'), not_influenced)
 
     def test_update_basic(self):
+        """
+        Tests simple update of an existing fact
+        """
         prefix = self.__message_prefix + '_test_update_basic'
         old_fact = (prefix, 'old', '2')
         new_fact = (prefix, 'new', '1')
@@ -224,6 +242,9 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.__check_content((prefix, '*', '*'), new_fact, not_influenced)
 
     def test_update_existing_target(self):
+        """
+        Tests update of an existing fact to a fact, which is already contained in the kb
+        """
         prefix = self.__message_prefix + '_test_update_existing_target'
         old_fact = (prefix, 'old', '2')
         new_fact = (prefix, 'new', '1')
