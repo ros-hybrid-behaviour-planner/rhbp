@@ -17,7 +17,8 @@ import os
 import threading
 
 class Manager(object):
-    ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE = False
+
+    USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE = False
 
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
@@ -27,7 +28,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self,activated = True, use_only_running_behaviors_for_interRuptible = ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, activated = True, use_only_running_behaviors_for_interRuptible = USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         '''
         Constructor
         '''
@@ -44,7 +45,8 @@ class Manager(object):
             "~activationDecay", .9) # not sure how to set this just yet.
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
-        self.__use_only_running_behaviors_for_interuptible = use_only_running_behaviors_for_interRuptible
+        #configures if all contained behaviour or only the executed behaviours are used to determine if the manager is interruptable
+        self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
 
         self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
         self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
@@ -589,7 +591,7 @@ class Manager(object):
         self.__activated = True
 
     def is_interruptible(self):
-        if (self.__use_only_running_behaviors_for_interuptible):
+        if (self.__use_only_running_behaviors_for_interruptible):
             relevant_behaviors = self.__executedBehaviours
         else:
             relevant_behaviors = self._behaviours
