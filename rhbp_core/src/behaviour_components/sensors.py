@@ -179,7 +179,8 @@ class DynamicSensor(Sensor):
     def __init__(self, pattern, default_value, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NAME, sensor_name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
-                 subscribe_only_first=False):        """
+                 subscribe_only_first=False):
+        """
         :param pattern: pattern, which will be used for detect relevant topics
         :param default_value: value, which will be used if not topic exists
         :param topic_listener_name: prefix of topic listener

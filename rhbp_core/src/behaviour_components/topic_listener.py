@@ -143,7 +143,7 @@ if __name__ == '__main__':
     rospy.init_node(node_name, log_level=rospy.DEBUG)
 
     rate = rospy.Rate(rospy.get_param("~checkFrequency", 1))
-    listener = TopicListener(node_name=node_name)
+    listener = TopicListener()
     while (not rospy.is_shutdown()):
         listener.check()
         rate.sleep()
