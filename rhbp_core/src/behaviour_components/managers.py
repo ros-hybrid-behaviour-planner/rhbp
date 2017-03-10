@@ -72,7 +72,7 @@ class Manager(object):
 
         self.planner = MetricFF()
 
-        self.__running = True # toggled by the pause and resume services
+        self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
 
         self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
@@ -278,7 +278,7 @@ class Manager(object):
             rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
     def step(self):
-        if (not self.__running) or (not self.__activated):
+        if (self.pause_counter > 0) or (not self.__activated):
             return
         plannerStatusMessage = PlannerStatus()
         if self._create_log_files:  # debugging only
@@ -491,11 +491,13 @@ class Manager(object):
         return AddBehaviourResponse()
     
     def __pauseCallback(self, dummy):
-        self.__running = False
+        self.pause_counter += 1
+        rospy.logdebug('Manager Paused')
         return EmptyResponse()
     
     def __resumeCallback(self, dummy):
-        self.__running = True
+        self.pause_counter -= 1
+        rospy.logdebug('Manager Resumed')
         return EmptyResponse()
     
     def __removeGoal(self, request):
