@@ -68,6 +68,7 @@ add_service_files(
   Activate.srv
   SetInteger.srv
   GetPDDL.srv
+  SetStepping.srv
 )
 
 ## Generate actions in the 'action' folder
