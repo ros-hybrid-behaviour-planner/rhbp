@@ -14,6 +14,10 @@ from std_msgs.msg import String
 import sys
 
 class TopicListener(object):
+    """
+    Service which allows subscribing for updates about added or removed topics
+    Provide a method, which checks for new or removed topics and inform subscribers about.
+    """
 
     DEFAULT_NAME= 'TopicListenerNode'
 
@@ -43,6 +47,8 @@ class TopicListener(object):
         generates topic name for given regex
         :param prefix: prefix for topic names
         :param pattern: regex (type string)
+        :param include_pattern: whether the regex should occur in the topic name
+        :param counter: unique number for this topic name
         :return: topic name
         """
         topic_name = pattern + 'Topic' + str(counter)
@@ -133,11 +139,11 @@ if __name__ == '__main__':
             node_name = arg[len('__name:='):]
     # Design decision for to allow using default name from launch files
     if (node_name is None) or (node_name == 'None'):
-        node_name = TopicListener.DEFAULT_NAME
+        node_name = TopicListener.DEFAULT_NODE_NAME
     rospy.init_node(node_name, log_level=rospy.DEBUG)
 
     rate = rospy.Rate(rospy.get_param("~checkFrequency", 1))
-    listener = TopicListener(prefix=node_name)
+    listener = TopicListener(node_name=node_name)
     while (not rospy.is_shutdown()):
         listener.check()
         rate.sleep()
