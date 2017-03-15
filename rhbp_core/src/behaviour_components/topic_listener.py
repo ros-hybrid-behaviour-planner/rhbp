@@ -71,8 +71,8 @@ class TopicListener(object):
         regex = re.compile(pattern)
         if (regex in self.__update_topics):
             topic_names = self.__update_topics[regex]
-            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0],
-                                                topicNameTopicRemoved=topic_names[1],
+            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0].name,
+                                                topicNameTopicRemoved=topic_names[1].name,
                                                 existingTopics=self.__find_matching_topcis(regex))
 
         self.__subscribed_regular_expressions.append(regex)

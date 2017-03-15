@@ -95,6 +95,26 @@ class TopicListenerTest(unittest.TestCase):
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value has not changed')
 
+    def test_several_sensors(self):
+        """
+        Tests subscribing of several sensors
+        """
+        prefix = '/' + self.__message_prefix + 'testSeveralSensors'
+        sensor1 = MaxValueSensor(pattern_prefix=prefix)
+        sensor2 = MaxValueSensor(pattern_prefix=prefix)
+        sensor1.sync()
+        sensor2.sync()
+        self.assertEqual(0, sensor1.value, 'Initial value of sensor1 is not correct')
+        self.assertEqual(0, sensor2.value, 'Initial value of sensor2 is not correct')
+
+        TopicListenerTest.create_topic(prefix + 'IntTest1')
+        rospy.sleep(0.1)
+        sensor1.sync()
+        sensor2.sync()
+        self.assertEqual(0, sensor1.value, 'Value has changed unexpected')
+        self.assertEqual(0, sensor2.value, 'Value has changed unexpected')
+
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'topic_listener_test_node', TopicListenerTest)
