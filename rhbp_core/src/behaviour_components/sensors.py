@@ -176,7 +176,7 @@ class DynamicSensor(Sensor):
     Sensor, which collects values from all topics, matching a pattern
     """
 
-    def __init__(self, pattern, default_value, optional=False,
+    def __init__(self, pattern, default_value=None, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NAME, sensor_name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
@@ -188,8 +188,7 @@ class DynamicSensor(Sensor):
         """
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
-        self.__list_with_default_value = []
-        self.__list_with_default_value.append(default_value)
+        self._default_value = default_value
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
@@ -273,6 +272,9 @@ class DynamicSensor(Sensor):
         :param values: values, as received from the topics (e.g. ROS messages)
         :return: singular value, which will be given to user of this sensor
         """
+        if (len(values) == 0):
+            return self._default_value
+        
         return values[0]
 
     def __topic_removed(self, name_message):
