@@ -202,6 +202,6 @@ install(PROGRAMS
 catkin_add_nosetests(src/tests)
 
 find_package(rostest REQUIRED)
-add_rostest(launch/sensor_test.test)
-add_rostest(launch/dynamic_sensor.test)
-add_rostest(launch/topic_listener.test)
+add_rostest(launch/knowledge_sensor_test.test)
+add_rostest(launch/dynamic_sensor_test.test)
+add_rostest(launch/topic_listener_test.test)
