@@ -156,3 +156,20 @@ class KnowledgeSensor(Sensor):
     def sync(self):
         self.update(self.__value_cache.does_fact_exists())
         super(KnowledgeSensor, self).sync()
+
+
+class KnowledgeFactSensor(Sensor):
+    """
+    Sensor, which provides information about a searched fact; returns list of
+    all matching facts
+    """
+    def __init__(self, pattern, optional=False, knowledge_base_name=None,
+                 name=None, initial_value=None):
+        super(KnowledgeFactSensor, self).__init__(name=name, optional=optional,
+                                                  initial_value=initial_value)
+        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern,
+                                                    knowledge_base_name=
+                                                    knowledge_base_name)
+    def sync(self):
+        self.update(self.__value_cache.get_all_matching_facts())
+        super(KnowledgeFactSensor, self).sync()
