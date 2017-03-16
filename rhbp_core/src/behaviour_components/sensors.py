@@ -10,10 +10,10 @@ from threading import Lock
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
+from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 
-from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 from .topic_listener import TopicListener
 
@@ -178,10 +178,15 @@ class DynamicSensor(Sensor):
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
         """
-        :param pattern: pattern, which will be used for detect relevant topics
-        :param default_value: value, which will be used if not topic exists
-        :param topic_listener_name: prefix of topic listener
-        :param expiration_percentage: percentage, how many values must updated before  a value from a  removed topic is outdated
+        :param pattern: pattern, which will be used for detect relevant topics.
+        :param default_value: value, which will be used if no topic exists
+        :param optional: see optional parameter of constructor from class Sensor
+        :param topic_listener_name: name of topic listener
+        :param sensor_name: see name parameter of constructor from class Sensor
+        :param expiration_time_values_of_active_topics: time in secconds,
+                                                        after a value of a still existing topic is outdated
+        :param expiration_time_values_of_removed_topics: time in secconds, after a value of a removed topic is outdated
+        :param subscribe_only_first: whether this sensor only subscribe to the first matching topic (and no other)
         """
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
@@ -271,12 +276,12 @@ class DynamicSensor(Sensor):
         """
         if (len(values) == 0):
             return self._default_value
-        
+
         return values[0]
 
     def __topic_removed(self, name_message):
         """
-        Mark last value of this topic as may outdated
+        Mark last value of this topic as possibly outdated
         :param name_message: name of removed topic
         """
         topic_name = name_message.data
