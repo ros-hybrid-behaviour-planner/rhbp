@@ -304,7 +304,7 @@ class KnowledgeFactSensor(Sensor):
     Sensor, which provides information about a searched fact; returns list of
     all matching facts
     """
-    def __init__(self, pattern, optional=False, knowledge_base_name=None,
+    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
                  name=None, initial_value=None):
         super(KnowledgeFactSensor, self).__init__(name=name, optional=optional,
                                                   initial_value=initial_value)
