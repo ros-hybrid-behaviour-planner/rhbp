@@ -40,6 +40,11 @@ class KnowledgeBaseClient(object):
         if self.__initialized:
             return
         self.__init_lock.acquire()
+
+        if (self.__initialized):
+            # Another check, protected by the lock
+            return
+
         try:
             rospy.logerr(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
@@ -53,7 +58,6 @@ class KnowledgeBaseClient(object):
         initialize the client. Assumes, that the knowledge base already exists.
         Not thread safe
         """
-        self.__initialized = True
         self.__exists_service = rospy.ServiceProxy(
             self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists)
         self.__pop_service = rospy.ServiceProxy(self.__knowledge_base_name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX,
@@ -69,6 +73,7 @@ class KnowledgeBaseClient(object):
         self.__push_topic = rospy.Publisher(self.__knowledge_base_name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push,
                                             queue_size=10, latch=True)
         rospy.sleep(1)
+        self.__initialized = True
 
     def exists(self, pattern):
         """
