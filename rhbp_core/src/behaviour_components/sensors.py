@@ -170,7 +170,8 @@ class KnowledgeSensor(Sensor):
 
 class DynamicSensor(Sensor):
     """
-    Sensor, which collects values from all topics, matching a pattern
+    Sensor, which collects values from all topics, matching a pattern.
+    If no valid value exists, the default value is returned.
     """
 
     def __init__(self, pattern, default_value=None, optional=False,
@@ -190,6 +191,8 @@ class DynamicSensor(Sensor):
         """
         super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
 
+        self._last_value = None
+        self.__time_of_latest_value = None
         self._default_value = default_value
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
@@ -225,12 +228,25 @@ class DynamicSensor(Sensor):
         topic_type = get_topic_type(topic_name)
         rospy.Subscriber(topic_name, topic_type, lambda value: self.__value_updated(topic_name, value))
 
+    def _value_updated(self, topic, value, time_stamp):
+        """
+        Stores the latest value. Can also be used as hook method for scenario dependent calculations (e.g. min, max)
+        :param topic: name of the topic, where the value was received
+        :param value: value as received
+        :param time_stamp: time of receiving. see time.time()
+        """
+        if (self._last_value is None):
+            self._last_value = value
+            self.__time_of_latest_value = time_stamp
+        elif (time_stamp > self.__time_of_latest_value):
+            self._last_value = value
+            self.__time_of_latest_value = time_stamp
+
     def __value_updated(self, topic_name, value):
-        self.__value_lock.acquire()
-        try:
-            self.__valid_values[topic_name] = (value, time.time())
-        finally:
-            self.__value_lock.release()
+        with self.__value_lock:
+            time_stamp = time.time()
+            self.__valid_values[topic_name] = (value, time_stamp)
+            self._value_updated(topic_name,value,time_stamp)
 
     @staticmethod
     def __filter_values(time_out, values, current_time):

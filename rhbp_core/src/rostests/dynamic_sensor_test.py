@@ -29,6 +29,7 @@ class MaxValueSensor(DynamicSensor):
                                              topic_listener_name=service_prefix,
                                              expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics,
                                              default_value=default_value)
+        self.last_received_topic = None
 
     def _aggregate_values(self, values):
         if (not values):
@@ -40,6 +41,13 @@ class MaxValueSensor(DynamicSensor):
 
         return max_value
 
+    def _value_updated(self, topic, value, time_stamp):
+        self.last_received_topic = topic
+        super(MaxValueSensor, self)._value_updated(topic, value, time_stamp)
+
+    @property
+    def last_value(self):
+        return self._last_value
 
 class TopicListenerMock(object):
     def __init__(self, service_prefix):
@@ -133,17 +141,20 @@ class DynamicSensorTest(unittest.TestCase):
                                 expiration_time_values_of_removed_topics=0)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Initial value is not correct')
+        self.assertIsNone(sensor.last_received_topic)
 
         topic1 = DynamicSensorTest.create_topic(prefix + 'IntTest1')
         topic_listener.add_topic(prefix + 'IntTest1')
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(0, sensor.value, 'Value has changed unexpected')
+        self.assertIsNone(sensor.last_received_topic)
 
         topic1.publish(1)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value has not changed')
+        self.assertEqual(topic1.name, sensor.last_received_topic)
 
         topic2 = DynamicSensorTest.create_topic(prefix + 'anyTopic2')
         topic_listener.add_topic(prefix + 'anyTopic2')
@@ -152,11 +163,13 @@ class DynamicSensorTest(unittest.TestCase):
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'Seccond value was not passed')
+        self.assertEqual(topic2.name, sensor.last_received_topic)
 
         topic_listener.remove_topic(prefix + 'anyTopic2')
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'value of seccond topic was removed, but sensor value has not changed')
+        self.assertEqual(topic2.name, sensor.last_received_topic)
 
     def test_existing(self):
         """
@@ -200,7 +213,6 @@ class DynamicSensorTest(unittest.TestCase):
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
 
-        rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(2, sensor.value.data)
 
@@ -222,7 +234,6 @@ class DynamicSensorTest(unittest.TestCase):
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
 
-        rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value.data)
 
@@ -264,7 +275,6 @@ class DynamicSensorTest(unittest.TestCase):
 
         topic = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
 
-        rospy.sleep(1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value was not received, it is instead: ' + str(sensor.value))
 
@@ -273,6 +283,38 @@ class DynamicSensorTest(unittest.TestCase):
         sensor.sync()
         self.assertEqual(default_value, sensor.value,
                          'the default value is not used after removing last topic, it is instead: ' + str(sensor.value))
+
+    def test_last_value(self):
+        """
+        Tests updating of last value
+        """
+        prefix = '/' + self.__message_prefix + 'testLatestValue'
+        service_prefix = prefix + 'Service'
+        topic_listener = TopicListenerMock(service_prefix=service_prefix)
+        sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,
+                                expiration_time_values_of_removed_topics=0)
+        sensor.sync()
+        self.assertEqual(None, sensor.last_value)
+        self.assertIsNone(sensor.last_received_topic)
+
+        topic1 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
+        sensor.sync()
+        self.assertEqual(1, sensor.value, 'Value was not received, it is instead: ' + str(sensor.value))
+        self.assertEqual(Int32(1),sensor.last_value,'Latest value was not updated')
+        self.assertEqual(topic1.name,sensor.last_received_topic)
+
+        topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
+        sensor.sync()
+        self.assertEqual(2, sensor.value, 'Second value was not received, it is instead: ' + str(sensor.value))
+        self.assertEqual(Int32(2),sensor.last_value,'Second value is not latest value')
+        self.assertEqual(topic2.name,sensor.last_received_topic)
+
+        topic_listener.remove_topic(topic2.name)
+        rospy.sleep(0.1)
+        sensor.sync()
+        self.assertEqual(1, sensor.value, 'Second topic was removed, but value is still present')
+        self.assertEqual(Int32(2),sensor.last_value,'Latest value shouldnt change after removing topic')
+        self.assertEqual(topic2.name,sensor.last_received_topic)
 
 
 if __name__ == '__main__':
