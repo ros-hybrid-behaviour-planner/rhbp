@@ -17,12 +17,17 @@ from knowledge_base.srv import Pop
 
 PKG = 'rhbp_core'
 
+"""
+Integration test for KnowledgeSensor.
+Requires a running KnowledgeBase
+"""
+
 
 class TestKnowledgeBaseSensor(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestKnowledgeBaseSensor, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
-        self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
+        self.__message_prefix = 'TestKnowledgeBaseSensor' + str(time.time())
         rospy.init_node('knowledge_sensor_test_node', log_level=rospy.DEBUG)
         self.__pop_service_name = KnowledgeBase.DEFAULT_NAME + KnowledgeBase.POP_SERVICE_NAME_POSTFIX
 

@@ -1,0 +1,5 @@
+string regex
+---
+string topicNameTopicAdded
+string topicNameTopicRemoved
+string[] existingTopics

@@ -50,6 +50,7 @@ add_message_files(
   Push.msg
   Fact.msg
   FactRemoved.msg
+  FactUpdated.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -59,6 +60,7 @@ add_service_files(
   Pop.srv
   Exists.srv
   All.srv
+  Update.srv
   UpdateSubscribe.srv
 )
 
