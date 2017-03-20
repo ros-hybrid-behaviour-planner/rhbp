@@ -1,0 +1,3 @@
+<launch>
+    <test pkg="rhbp_core" type="dynamic_sensor_test.py" test-name="DynamicSensorTestNode"/>
+</launch>

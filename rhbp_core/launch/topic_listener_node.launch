@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="rhbp_core" type="topic_listener.py" name ="TopicListenerNode"  output="screen"/>
+</launch>

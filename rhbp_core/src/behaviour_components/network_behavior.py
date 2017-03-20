@@ -33,7 +33,9 @@ class NetworkBehavior(BehaviourBase):
         manager_args = {}
         manager_args.update(kwargs)
         manager_args['prefix'] = name + NetworkBehavior.MANAGER_POSTFIX
-        self.__manager = Manager(activated=False, **manager_args)
+        self.__manager = Manager(activated=False,
+                                 use_only_running_behaviors_for_interRuptible=only_running_for_deciding_interruptible,
+                                 **manager_args)
 
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0

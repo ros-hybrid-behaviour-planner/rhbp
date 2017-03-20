@@ -23,7 +23,7 @@ from std_msgs.msg import Int32
 PKG = 'rhbp_core'
 
 """
-System test for goals. Assumes, that a rosmaster and the knowledge base is running
+System test for the GreedyActivator
 """
 
 
@@ -78,6 +78,7 @@ class TestGreedyActivator(unittest.TestCase):
             rospy.sleep(0.1)
 
         self.assertEquals(7, sensor.latestValue)
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'greedy_activator_test_node', TestGreedyActivator)

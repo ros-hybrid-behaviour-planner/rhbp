@@ -9,11 +9,11 @@ import operator
 import warnings
 
 import rospy
+from std_msgs.msg import Bool
+
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse
-from std_msgs.msg import Bool
-
 from .activators import Condition, BooleanActivator
 from .conditions import Conditonal
 from .pddl import PDDL, mergeStatePDDL

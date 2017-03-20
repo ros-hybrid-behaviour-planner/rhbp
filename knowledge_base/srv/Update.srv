@@ -1,0 +1,6 @@
+# No patterns are allowed.
+string[] fact
+string[] newFact
+---
+# whether replacing was done. fact is not replaced, if old fact does not exist
+bool successful
