@@ -49,6 +49,14 @@ class MaxValueSensor(DynamicSensor):
     def last_value(self):
         return self._last_value
 
+    @property
+    def min_value(self):
+        return self._min_value
+
+    @property
+    def max_value(self):
+        return self._max_value
+
 class TopicListenerMock(object):
     def __init__(self, service_prefix):
         self.__subscribe_service = rospy.Service(service_prefix + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX,
@@ -284,11 +292,11 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(default_value, sensor.value,
                          'the default value is not used after removing last topic, it is instead: ' + str(sensor.value))
 
-    def test_last_value(self):
+    def test_aggregation_help_values(self):
         """
         Tests updating of last value
         """
-        prefix = '/' + self.__message_prefix + 'testLatestValue'
+        prefix = '/' + self.__message_prefix + 'testAggregationHelpValues'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
         sensor = MaxValueSensor(pattern_prefix=prefix, service_prefix=service_prefix,
@@ -315,6 +323,12 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value, 'Second topic was removed, but value is still present')
         self.assertEqual(Int32(2),sensor.last_value,'Latest value shouldnt change after removing topic')
         self.assertEqual(topic2.name,sensor.last_received_topic)
+
+        topic1.publish(0)
+        rospy.sleep(0.1)
+
+        self.assertEqual(0, sensor.min_value.data)
+        self.assertEqual(2, sensor.max_value.data)
 
 
 if __name__ == '__main__':

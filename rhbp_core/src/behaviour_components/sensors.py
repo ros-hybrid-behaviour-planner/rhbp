@@ -197,6 +197,8 @@ class DynamicSensor(Sensor):
         self._last_value = None
         self.__time_of_latest_value = None
         self._default_value = default_value
+        self._min_value = None
+        self._max_value = None
         self.__valid_values = {}
         self.__values_of_removed_topics = {}
         self.__value_lock = Lock()
@@ -244,6 +246,10 @@ class DynamicSensor(Sensor):
         elif (time_stamp > self.__time_of_latest_value):
             self._last_value = value
             self.__time_of_latest_value = time_stamp
+        if (self._min_value is None or self._smaller_than(value, self._min_value)):
+            self._min_value = value
+        if (self._max_value is None or self._smaller_than(self._max_value,value)):
+            self._max_value =value
 
     def __value_updated(self, topic_name, value):
         with self.__value_lock:
@@ -262,6 +268,18 @@ class DynamicSensor(Sensor):
             if (value[1] >= bound):
                 result[topic_name] = value
         return result
+
+    def _smaller_than(self, a, b):
+        """
+        :param a: a received message
+        :param b: another received message
+        :return: wether a is smaller than b
+        """
+        if (hasattr(a,'data') and hasattr(b, 'data')):
+            return a.data < b.data
+        # This case is probably false
+        rospy.logwarn(str(type(a)) + ' and '+str(type(b)) + ' have not the attribute data. Unsafety default implementation is used')
+        return a < b
 
     def __calculate_valid_values(self):
         """
