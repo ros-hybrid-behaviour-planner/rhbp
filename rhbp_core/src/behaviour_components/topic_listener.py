@@ -18,6 +18,10 @@ class TopicListener(object):
     """
     Service that allows subscribing for updates about added or removed topics
     Provides a method, which checks for new or removed topics and informs subscribers about.
+    The topic listener is usually started as own node, see main below. The clients of this service
+    register through a service interface and are updated by a topic of new topcis that match their pattern.
+
+    TODO: Move to utils package
     """
 
     DEFAULT_NAME = 'TopicListenerNode'
@@ -29,7 +33,7 @@ class TopicListener(object):
         :param include_regex_into_topic_names: Whether names of update topic should contain the pattern. Just for better debugging. Has no influence on functionality
         :param prefix: address of the topic listener. The address is used for the subscribe service and all update topics.
         """
-        self.__handler = Master(rospy.get_name())
+        self.__handler = Master(rospy.get_name()) #get access to the ROS master to use the topic directoy
         self.__lock = Lock()
         self.__update_topics = {}
         self.__include_regex_into_topic_names = include_regex_into_topic_names
@@ -106,7 +110,15 @@ class TopicListener(object):
                                                 topicNameTopicRemoved=removed_topic_name,
                                                 existingTopics=self.__find_matching_topcis(regex))
 
+
     def __inform_about_topic_change(self, changed_topics, index_of_topic_in_pair):
+        """
+        TODO rieger --> Especially the second parameter needs explanation, it might also be worth to discuss the detailled
+        design regarding this point here
+        :param changed_topics:
+        :param index_of_topic_in_pair:
+        :return:
+        """
         for regex in self.__subscribed_regular_expressions:
             for topic in changed_topics:
                 if (regex.match(topic)):
@@ -119,6 +131,11 @@ class TopicListener(object):
         self.__inform_about_topic_change(removed_topics, 1)
 
     def check(self):
+        """
+        Update method that tracks known and new topics
+        It triggers the pattern comparission in case of new
+        available topics
+        """
         with self.__lock:
             expected_topics = list(self.__existing_topics)
             self.__existing_topics = []
@@ -126,6 +143,7 @@ class TopicListener(object):
             topics = self.__handler.getPublishedTopics('')
             for topic in topics:
                 topic_name = topic[0]
+                #cache and update existing and new topics
                 self.__existing_topics.append(topic_name)
                 if (topic_name in expected_topics):
                     expected_topics.remove(topic_name)
@@ -146,7 +164,7 @@ if __name__ == '__main__':
     for arg in sys.argv:
         if (arg.startswith('__name:=')):
             node_name = arg[len('__name:='):]
-    # Design decision for to allow using default name from launch files
+    # Design decision to allow using default name from launch files
     if (node_name is None) or (node_name == 'None'):
         node_name = TopicListener.DEFAULT_NODE_NAME
     rospy.init_node(node_name, log_level=rospy.DEBUG)
