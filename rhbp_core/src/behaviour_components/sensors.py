@@ -156,7 +156,8 @@ class SimpleTopicSensor(PassThroughTopicSensor):
 
 class KnowledgeSensor(Sensor):
     """
-    Sensor, which provides information about existance of a fact, which matches the given pattern
+    Sensor, which provides information about existence of a fact, which matches the given pattern
+    TODO: Move KnowledgeBase related implementations into an own package
     """
 
     def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, sensor_name=None):
@@ -167,6 +168,22 @@ class KnowledgeSensor(Sensor):
         self.update(self.__value_cache.does_fact_exists())
         super(KnowledgeSensor, self).sync()
 
+class KnowledgeFactSensor(Sensor):
+    """
+    Sensor, which provides information about a searched fact; returns list of
+    all matching facts
+    TODO: Move KnowledgeBase related implementations into an own package
+    """
+    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
+                 name=None, initial_value=None):
+        super(KnowledgeFactSensor, self).__init__(name=name, optional=optional,
+                                                  initial_value=initial_value)
+        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern,
+                                                    knowledge_base_name=
+                                                    knowledge_base_name)
+    def sync(self):
+        self.update(self.__value_cache.get_all_matching_facts())
+        super(KnowledgeFactSensor, self).sync()
 
 class DynamicSensor(Sensor):
     """
@@ -179,7 +196,7 @@ class DynamicSensor(Sensor):
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
         """
-        :param pattern: pattern, which will be used for detect relevant topics.
+        :param pattern: pattern, which will be used for detect relevant topics. TODO more details here, is this just a regex pattern? Some examples would be useful
         :param default_value: value, which will be used if no topic exists
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
@@ -280,14 +297,14 @@ class DynamicSensor(Sensor):
 
     def __calculate_valid_values(self):
         """
-            :return: all values, which can be used for calculation of singular value
+            :return: all values, which can be used for calculation of singular value in the later aggregation step
             """
         current_time = time.time()
         self.__value_lock.acquire()
         try:
             self.__valid_values = DynamicSensor.__filter_values(self.__expiration_time_values_of_active_topics,
                                                                 self.__valid_values, current_time)
-            valied_values = self.__valid_values.values()
+            valid_values = self.__valid_values.values()
             self.__values_of_removed_topics = DynamicSensor.__filter_values(
                 self.__expiration_time_values_of_removed_topics, self.__values_of_removed_topics, current_time)
             values_of_removed_topics = self.__values_of_removed_topics.values()
@@ -295,7 +312,7 @@ class DynamicSensor(Sensor):
             self.__value_lock.release()
 
         result = []
-        result.extend(valied_values)
+        result.extend(valid_values)
         result.extend(values_of_removed_topics)
         result = sorted(result, key=lambda t: t[1], reverse=True)
         return map(lambda p: p[0], result)
@@ -305,8 +322,10 @@ class DynamicSensor(Sensor):
 
     def _aggregate_values(self, values):
         """
+        This default implementation either returns the default value if no values are
+        available or it returns the latest value <-- Correct TODO Phillip
         :param values: values, as received from the topics (e.g. ROS messages)
-        :return: singular value, which will be given to user of this sensor
+        :return: aggregated singular value, which will be given to user of this sensor
         """
         if (len(values) == 0):
             return self._default_value
@@ -332,20 +351,3 @@ class DynamicSensor(Sensor):
         aggregated_value = self._aggregate_values(values)
         self.update(aggregated_value)
         super(DynamicSensor, self).sync()
-
-class KnowledgeFactSensor(Sensor):
-    """
-    Sensor, which provides information about a searched fact; returns list of
-    all matching facts
-    """
-    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
-                 name=None, initial_value=None):
-        super(KnowledgeFactSensor, self).__init__(name=name, optional=optional,
-                                                  initial_value=initial_value)
-        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern,
-                                                    knowledge_base_name=
-                                                    knowledge_base_name)
-    def sync(self):
-        self.update(self.__value_cache.get_all_matching_facts())
-        super(KnowledgeFactSensor, self).sync()
-
