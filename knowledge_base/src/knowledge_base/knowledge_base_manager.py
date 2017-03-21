@@ -21,6 +21,7 @@ from inverted_tuple_space import InvertedTupleSpace
 class KnowledgeBase(object):
     """
     Wrapper class for accessing the real tuple space
+    TODO more documentation/ more detailled description about this class
     """
 
     DEFAULT_NAME = 'knowledgeBaseNode'
