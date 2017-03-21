@@ -40,6 +40,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
+        #TODO comment and maybe also extract this into an own function
         correlations = []
         for effect in effects:
             correlations.append(effect[1])
@@ -66,6 +67,7 @@ class NetworkBehavior(BehaviourBase):
 
     def _create_goal(self, sensor, effect, goal_name, activator_name):
         """
+        TODO description about what is done inside this function
         :param sensor: instance of type Sensor
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
