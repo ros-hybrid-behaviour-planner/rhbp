@@ -12,8 +12,8 @@ from .managers import Manager
 
 class NetworkBehavior(BehaviourBase):
     """
-    Behavior, which contains other behaviors
-    Must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
+    Behavior, which encapsulates an additional manager and behaviors. This allows to build hierarchies of hybrid behaviour planners.
+    It must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
     """
 
     MANAGER_POSTFIX = "/Manager"
@@ -23,7 +23,7 @@ class NetworkBehavior(BehaviourBase):
                  **kwargs):
         """
         :param effects: tuple <sensor,Effect>
-        :param name:
+        :param name: name of the behaviour that is also used to create the sub manager name together with the NetworkBehavior.MANAGER_POSTFIX
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
         :param kwargs: args for the manager, except the prefix arg
