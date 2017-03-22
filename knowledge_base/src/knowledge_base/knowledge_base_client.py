@@ -88,13 +88,14 @@ class KnowledgeBaseClient(object):
         """
         Removes a fact, which matches the pattern from the knowledge base. If not suitable fact exists, nothing happens
         :param pattern:  (array or tuple  of strings) pattern, use * as placeholder
-        :return: None, if no matching fact existed, otherwise the removed fact (string tuple)
+        :return: All removed facts as list of list of strings
         """
         self.__ensure_initialization()
         request_result = self.__pop_service(pattern)
-        if (request_result.exists):
-            return tuple(request_result.removed)
-        return None
+        removed = []
+        for fact in request_result.removed:
+            removed.append(tuple(fact.content))
+        return removed
 
     def peek(self, pattern):
         """

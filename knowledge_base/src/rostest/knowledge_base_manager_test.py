@@ -84,9 +84,51 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.assertTrue(self.__client.exists(test_tuple))
 
         removed = self.__client.pop(test_tuple)
-        self.assertEqual(test_tuple, removed)
+        self.assertEqual(1,len(removed))
+        self.assertEqual(test_tuple, removed[0])
 
         self.assertFalse(self.__client.exists(test_tuple))
+
+    def __add_multiple_facts(self, facts):
+        for t in facts:
+            self.__client.push(t)
+        self.__wait_for_tuple(facts[len(facts)-1])
+
+    def __test_list_equality(self,l1,l2):
+        error_message = 'Excepted "{0}", but is {1}'.format(str(l1),str(l2))
+        self.assertEqual(len(l1),len(l2))
+        for i1 in l1:
+            self.assertTrue(i1 in l2,error_message)
+        for i2 in l2:
+            self.assertTrue(i2 in l1,error_message)
+
+    def test_remove_of_non_existing(self):
+        tuples = []
+        tuples.append((self.__message_prefix,'test_remove_of_non_existing','0','1'))
+        tuples.append((self.__message_prefix,'test_remove_of_non_existing','2','5'))
+        self.__add_multiple_facts(tuples)
+
+        self.__check_content((self.__message_prefix,'test_remove_of_non_existing','*','*'),tuples[0],tuples[1])
+        removed = self.__client.pop((self.__message_prefix,'test_remove_of_non_existing','4','*'))
+        self.assertEqual(0,len(removed))
+        self.__check_content((self.__message_prefix,'test_remove_of_non_existing','*','*'),tuples[0],tuples[1])
+
+    def test_multiple_pop(self):
+        uninteresting_content = []
+        uninteresting_content.append((self.__message_prefix,'test_multiple_pop','boring','1'))
+        uninteresting_content.append((self.__message_prefix,'test_multiple_pop','boring','5'))
+        to_remove = []
+        to_remove.append((self.__message_prefix,'test_multiple_pop','interesting','1'))
+        to_remove.append((self.__message_prefix,'test_multiple_pop','interesting','5'))
+        all = []
+        all.extend(uninteresting_content)
+        all.extend(to_remove)
+        self.__add_multiple_facts(all)
+        self.__check_content((self.__message_prefix,'test_multiple_pop','*','*'),*tuple(all))
+        removed = self.__client.pop((self.__message_prefix,'test_multiple_pop','interesting','*'))
+        self.__test_list_equality(removed,to_remove)
+        self.__check_content((self.__message_prefix,'test_multiple_pop','*','*'),*tuple(uninteresting_content))
+
 
     def test_placeholder(self):
         test_tuple = (self.__message_prefix, 'test_placeholder', '0', '0')
@@ -101,7 +143,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
         :param wait_for_it: tuple
         """
         while not self.__client.exists(wait_for_it):
-            rospy.sleep(1)
+            rospy.sleep(0.1)
 
     @staticmethod
     def __is_tuple_in_facts(to_check, facts):
@@ -119,16 +161,13 @@ class TupleSpaceTestSuite(unittest.TestCase):
         """
         test service for find all matching facts
         """
-        t1 = (self.__message_prefix, 'test_all', 'pos', '0', '0')
-        self.__client.push(t1)
-        t2 = (self.__message_prefix, 'test_all', 'pos', '1', '0')
-        self.__client.push(t2)
-        t3 = (self.__message_prefix, 'test_all', 'pos', '1', '-4')
-        self.__client.push(t3)
+        tuples = []
+        tuples.append((self.__message_prefix, 'test_all', 'pos', '0', '0'))
+        tuples.append((self.__message_prefix, 'test_all', 'pos', '1', '0'))
+        tuples.append((self.__message_prefix, 'test_all', 'pos', '1', '-4'))
+        self.__add_multiple_facts(tuples)
 
-        self.__wait_for_tuple(t3)
-
-        self.__check_content((self.__message_prefix, 'test_all', 'pos', '*', '*'), t1, t2, t3)
+        self.__check_content((self.__message_prefix, 'test_all', 'pos', '*', '*'),*tuple(tuples))
 
     def __check_content(self, pattern, *expected):
         """
