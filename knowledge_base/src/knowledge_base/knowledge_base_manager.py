@@ -149,20 +149,23 @@ class KnowledgeBase(object):
         :param pattern: fact, which should be removed
         :param dont_inform: all subscribers, which mathchs this fact are not informed
         """
-        try:
-            result = self.__tuple_space.get(pattern, remove=True)
-            self.__fact_removed(result, dont_inform)
-            return PopResponse(removed=result, exists=True)
-        except KeyError:
-            return PopResponse(exists=False)
+        to_remove = self.__tuple_space.many(pattern,sys.maxint)
+        removed_facts = []
+        for fact in to_remove:
+            real_fact = fact[1]
+            try:
+                self.__tuple_space.get(real_fact,remove=True)
+                removed_facts.append(Fact(content=real_fact))
+                self.__fact_removed(real_fact,dont_inform)
+            except KeyError:
+                pass
+        return PopResponse(removed = tuple(removed_facts))
 
     def __pop(self, pop_request):
         """
-        If tuple exists in the tuple space, which matchs the pattern, it will be also removed from  the tuple space
-        and returned
+        All matching tuples in the tuple space will be removed.
         :param request: Pop, as defined as ROS service
-        :return: PopResponse, as defined as ROS service respone
-                if a tuple exists in tuple space, an example is returned and the exists flag is setted
+        :return: PopResponse, all removed tuples
         """
         converted = self.__converts_request_to_tuple_space_format(pop_request.pattern)
         return self.__pop_internal(converted)
