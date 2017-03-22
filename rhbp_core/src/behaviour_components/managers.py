@@ -80,7 +80,7 @@ class Manager(object):
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
 
-        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__addBehaviour)
+        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__add_behaviour_callback)
         self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
         self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
         self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
@@ -131,7 +131,7 @@ class Manager(object):
         except Exception as e:
             rospy.logerr("Logging failed: %s", e)
     
-    def fetchPDDL(self):
+    def _fetchPDDL(self):
         '''
         This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns a tuple of
         (domainPDDL, problemPDDL) strings ready for ff.
@@ -183,7 +183,7 @@ class Manager(object):
         self.__previousStatePDDL = statePDDL
         return domainPDDLString
     
-    def createProblemPDDL(self, goals):
+    def _create_problem_pddl(self, goals):
         '''
         This method creates the problem PDDL for a given set of goals.
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
@@ -198,7 +198,7 @@ class Manager(object):
 
         return problemPDDLString
     
-    def priorityGoalSequences(self):
+    def _generate_priority_goal_sequences(self):
         '''
         This is a generator that generates goal sequences with descending priorities.
         It yields sorted lists with the most important goal at the front and strips away one element from the back at each iteration.
@@ -210,7 +210,7 @@ class Manager(object):
             for j in xrange(numElements, i, -1):
                 yield sortedGoals[i : j]
     
-    def planIfNecessary(self):
+    def _plan_if_necessary(self):
         '''
         this method plans using the symbolic planner it it is required to do so.
         Replanning is required whenever any or many of the following conditions is/are met:
@@ -224,7 +224,7 @@ class Manager(object):
         if rospy.get_param("~planBias", 1.0) == 0.0:
             return # return if planner is disabled
 
-        domainPDDL = self.fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
+        domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensorName, indicator in self.__sensorChanges.iteritems():
@@ -263,10 +263,10 @@ class Manager(object):
             # In cases where the full set of goals can't be reached because the planner does not find a solution a reduced set should be used.
             # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
             # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in descending order until a reachable goal is found.
-            for goalSequence in self.priorityGoalSequences():
+            for goalSequence in self._generate_priority_goal_sequences():
                 try:
                     rospy.logdebug("trying to reach goals %s", goalSequence)
-                    problemPDDL = self.createProblemPDDL(goalSequence)
+                    problemPDDL = self._create_problem_pddl(goalSequence)
                     tmpPlan = self.planner.plan(domainPDDL, problemPDDL)
                     if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
                         rospy.loginfo("FOUND PLAN: %s", tmpPlan)
@@ -326,7 +326,7 @@ class Manager(object):
             self._activeGoals = filter(lambda x: x.active, self._goals)
             self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
             ### use the symbolic planner if necessary ###
-            self.planIfNecessary()
+            self._plan_if_necessary()
 
 
             conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param(
@@ -396,14 +396,14 @@ class Manager(object):
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                             and behaviour.interruptable:
                         rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
-                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
+                        currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, True)
                         self.__replanningNeeded = True # this is unusual so replan
                     elif not behaviour.executable:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
-                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, True)
+                        currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, True)
                     elif behaviour.activation < self._activationThreshold:
                         rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
-                        currentlyInfluencedSensors = self.stop_behaviour(behaviour, currentlyInfluencedSensors, False)
+                        currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, False)
                     else:
                         behaviour.executionTime += 1
                         if behaviour.requires_execution_steps:
@@ -425,7 +425,7 @@ class Manager(object):
                         rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                         for conflictor in stoppableBehaviours:
                             rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
-                            currentlyInfluencedSensors = self.stop_behaviour(conflictor, currentlyInfluencedSensors, True)
+                            currentlyInfluencedSensors = self._stop_behaviour(conflictor, currentlyInfluencedSensors, True)
                         ### we have now made room for the higher-priority behaviour ###
                     else:
                         rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
@@ -461,7 +461,7 @@ class Manager(object):
             self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
 
-    def stop_behaviour(self, behaviour, currentlyInfluencedSensors, reset_activation = True):
+    def _stop_behaviour(self, behaviour, currentlyInfluencedSensors, reset_activation = True):
         behaviour.stop(reset_activation)
         self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
         currentlyInfluencedSensors = currentlyInfluencedSensors.difference(set([item[0] for item in
@@ -472,7 +472,8 @@ class Manager(object):
 
     def add_goal(self,goal):
         '''
-        :param goal: instanceof AbstractGoalRepresentation
+        :param goal: The new goal
+        :type goal: AbstractGoalRepresentation
         '''
         with self._step_lock:
             self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
@@ -481,22 +482,43 @@ class Manager(object):
             self.__replanningNeeded = True;
 
     def __add_goal_callback(self, request):
+        """
+        Callback handler of the AddGoal service
+        :param request: ervice request
+        :type request: AddGoal
+        :return: AddGoalResponse
+        """
         goal = GoalProxy(request.name, request.permanent)
         self.add_goal(goal)
         return AddGoalResponse()
-    
-    def __addBehaviour(self, request):
+
+
+    def add_behaviour(self, behaviour):
+        """
+        Adds a behaviour to the manager
+        :param behaviour: the new behaviour object
+        :type behaviour: Behaviour
+        """
         with self._step_lock:
-            self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
-            behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
-                                  requires_execution_steps = request.requiresExecutionSteps,
-                                  create_log_files = self._create_log_files)
+            self._behaviours = filter(lambda x: x.name != behaviour.name, self._behaviours) # kick out existing behaviours with the same name.
+
             behaviour.manager = self
             behaviour.activationDecay = self._activationDecay
             self._behaviours.append(behaviour)
             rospy.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
             self.__replanningNeeded = True;
-            return AddBehaviourResponse()
+
+    def __add_behaviour_callback(self, request):
+        """
+        Callback handler of the AddBehaviour service
+        :param request: service request
+        :type request: AddBehaviour
+        """
+        behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
+                                  requires_execution_steps = request.requiresExecutionSteps,
+                                  create_log_files = self._create_log_files)
+        self.add_behaviour(behaviour=behaviour)
+        return AddBehaviourResponse()
     
     def __pauseCallback(self, dummy):
         with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
