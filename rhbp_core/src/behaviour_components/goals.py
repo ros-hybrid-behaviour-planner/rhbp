@@ -18,6 +18,7 @@ from .activators import Condition, BooleanActivator
 from .conditions import Conditonal
 from .pddl import PDDL, mergeStatePDDL
 from .sensors import SimpleTopicSensor
+from utils.misc import FinalInitCaller
 
 
 class AbstractGoalRepresentation(object):
@@ -295,6 +296,8 @@ class GoalBase(Goal):
     Allows to be on different node than the manager.
     '''
 
+    __metaclass__ = FinalInitCaller
+
     def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         '''
 
@@ -311,16 +314,25 @@ class GoalBase(Goal):
 
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
+        self._permanent = permanent
+        self._planner_prefix = plannerPrefix
 
+    def final_init(self):
+        """
+        Ensure registration after the entire initialisation (including sub classes) is done
+        """
+        self._register_goal()
+
+    def _register_goal(self):
         try:
             rospy.logdebug(
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
-                plannerPrefix, self._name)
-            rospy.wait_for_service(plannerPrefix + 'AddGoal')
-            registerMe = rospy.ServiceProxy(plannerPrefix + 'AddGoal', AddGoal)
-            registerMe(self._name, permanent)
+                self._planner_prefix, self._name)
+            rospy.wait_for_service(self._planner_prefix + 'AddGoal')
+            registerMe = rospy.ServiceProxy(self._planner_prefix + 'AddGoal', AddGoal)
+            registerMe(self._name, self._permanent)
             rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
-                           plannerPrefix, self._name)
+                           self._planner_prefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
 

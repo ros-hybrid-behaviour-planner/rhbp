@@ -19,7 +19,7 @@ class NetworkBehavior(BehaviourBase):
     MANAGER_POSTFIX = "/Manager"
 
     def __init__(self, effects, name, requires_execution_steps=False,
-                 only_running_for_deciding_interruptible=Manager.ONLY_RUNNING_FOR_DECIDING_INTERRUPTIBLE_DEFAULT_VALUE,
+                 only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
                  **kwargs):
         """
         :param effects: tuple <sensor,Effect>

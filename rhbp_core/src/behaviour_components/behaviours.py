@@ -13,6 +13,7 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
+from utils.misc import FinalInitCaller
 
 class Behaviour(object):
     '''
@@ -449,12 +450,14 @@ class Behaviour(object):
     
     def __repr__(self):
         return self._name
-    
+
 
 class BehaviourBase(object):
     '''
     This is the base class for behaviour nodes in python
     '''
+
+    __metaclass__ = FinalInitCaller
 
     def __init__(self, name, requires_execution_steps = False, **kwargs):
         '''
@@ -480,22 +483,34 @@ class BehaviourBase(object):
         self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1 # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again) 
         self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
         self._activated = True # The activate Service sets the value of this property.
+        self._requires_execution_steps = requires_execution_steps
 
-        if requires_execution_steps:
+        if self._requires_execution_steps:
             self.__execution_step_service = rospy.Service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
 
+
+    def final_init(self):
+        """
+        Ensure registration after the entire initialisation (including sub classes) is done
+        """
+        self._register_behaviour()
+
+    def _register_behaviour(self):
+        """
+        Register behaviour in the manager
+        """
         try:
             rospy.logdebug("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
             rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
             registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddBehaviour', AddBehaviour)
-            registerMe(self._name, self._independentFromPlanner,requires_execution_steps)
+            registerMe(self._name, self._independentFromPlanner,self._requires_execution_steps)
             rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in BehaviourBase constructor (for behaviour node %s): %s", self._name, e)
-    
+
     def __del__(self):
         '''
         Destructor
@@ -640,10 +655,10 @@ class BehaviourBase(object):
         return pddl                      
 
     def pddlCallback(self, dummy):
-        if (not self._independentFromPlanner and len(self._correlations) == 0):
+        if not self._independentFromPlanner and len(self._correlations) == 0:
             # Since the correlations arent setted in constructor once right place for warning is here
             rospy.logerr('Behavior {0} has no effects but is not independent from planner'.format(self._name))
-        if (self._independentFromPlanner and len(self._correlations>0)):
+        if self._independentFromPlanner and len(self._correlations) > 0:
             # Since the correlations arent setted in constructor once right place for warning is here
             rospy.logerr('Behavior {0} has effects but is independent from planner'.format(self._name))
         actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
