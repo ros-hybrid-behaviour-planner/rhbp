@@ -47,18 +47,28 @@ class KnowledgeBaseFactCache:
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        self.__contained_facts.append(tuple(fact_added.content))
+        if (not fact_added.content in self.__contained_facts):
+            self.__contained_facts.append(tuple(fact_added.content))
 
     def __handle_remove_update(self, fact_removed):
         """
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        self.__contained_facts.remove(tuple(fact_removed.fact))
+        try:
+            self.__contained_facts.remove(tuple(fact_removed.fact))
+        except KeyError:
+            pass
 
     def __handle_fact_update(self, fact_updated):
-        self.__contained_facts.append(tuple(fact_updated.new))
-        self.__contained_facts.remove(tuple(fact_updated.old))
+        if (not fact_updated.new in self.__contained_facts):
+            self.__contained_facts.append(tuple(fact_updated.new))
+
+        for removed_fact in fact_updated.removed:
+            try:
+                self.__contained_facts.remove(tuple(removed_fact.content))
+            except KeyError:
+                pass
 
     def update_state_manually(self):
         """

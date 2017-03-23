@@ -67,7 +67,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertFalse(cache2.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
         self.__client.push(test_tuple)
-        rospy.sleep(1.0)
+        rospy.sleep(0.1)
 
         self.assertTrue(cache1.does_fact_exists(), 'Tuple was added, but is not indicated as present')
         self.assertTrue(cache2.does_fact_exists(), 'Tuple was added, but is not indicated as present')
@@ -90,6 +90,40 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertEqual(2, len(current))
         self.assertTrue(updated_new in current, 'Update not noticed')
         self.assertTrue(not_influenced in current, 'NotInfluenced was influenced')
+
+    def __check_content(self,fact_cache, *expected_facts):
+
+        content = fact_cache.get_all_matching_facts()
+        error_message = 'Excepted "{0}", but is {1}'.format(str(expected_facts), str(content))
+        self.assertEqual(len(content), len(expected_facts),error_message)
+        for expected_fact in expected_facts:
+            self.assertTrue(expected_fact in content, error_message)
+        for existing_fact in content:
+            self.assertTrue(existing_fact in expected_facts, error_message)
+
+    def test_update_replacing_several_facts(self):
+
+        prefix = self.__message_prefix + 'test_update_replacing_several_facts'
+        updated_old_1 = (prefix, 'toUpdate', '1')
+        updated_old_2 = (prefix, 'toUpdate', '2')
+        not_influenced = (prefix, 'not_influenced', '1')
+
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+
+        rospy.sleep(0.1)
+
+        self.__client.push(updated_old_1)
+        self.__client.push(updated_old_2)
+        self.__client.push(not_influenced)
+
+        rospy.sleep(0.1)
+
+        self.__check_content(cache,updated_old_1,updated_old_2, not_influenced)
+
+        new_fact = (prefix, 'updated', '3')
+
+        self.__client.update((prefix,'toUpdate','*'),new_fact)
+        self.__check_content(cache,new_fact, not_influenced)
 
 
 if __name__ == '__main__':
