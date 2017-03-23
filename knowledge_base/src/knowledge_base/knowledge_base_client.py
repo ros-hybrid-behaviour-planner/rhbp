@@ -120,14 +120,14 @@ class KnowledgeBaseClient(object):
             result.append(tuple(fact.content))
         return result
 
-    def update(self, old, new):
+    def update(self, pattern, new, push_without_existing = True):
         """
-        :param old:  fact, which should replaced. No placeholders are allowed
+        :param old:  fact, which should replaced.
         :param new: new fact
-        :return: whether old fact existed. Otherwise nothing is done
+        :return: whether new fact exists now in the knowledge base
         """
         self.__ensure_initialization()
-        return self.__update_service(old, new).successful
+        return self.__update_service(pattern, new, push_without_existing).successful
 
     def push(self, fact):
         """

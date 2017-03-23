@@ -32,10 +32,10 @@ class KnowledgeBase(object):
     UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_TOPIC_NAME_POSTFIX = '/Push'
 
-    def __init__(self, name=DEFAULT_NAME, inlcude_patterns_in_update_names=False):
+    def __init__(self, name=DEFAULT_NAME, include_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
         self.__fact_update_topic_counter = 0
-        self.__inlcude_patterns_in_update_names = inlcude_patterns_in_update_names
+        self.__include_patterns_in_update_names = include_patterns_in_update_names
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
@@ -90,6 +90,9 @@ class KnowledgeBase(object):
         difference to __push: fact and dont_inform are already converted
         all patterns, which matches the dont_inform fact, will not informed about push
         """
+        for part in unconverted_fact:
+            # Placeholders are not allowed in facts
+            assert not part == str
         if not self.__exists_tuple_as_is(fact):
             self.__tuple_space.add(fact)
             self.__fact_was_added(Fact(unconverted_fact), fact, dont_inform)
@@ -149,17 +152,17 @@ class KnowledgeBase(object):
         :param pattern: fact, which should be removed
         :param dont_inform: all subscribers, which mathchs this fact are not informed
         """
-        to_remove = self.__tuple_space.many(pattern,sys.maxint)
+        to_remove = self.__tuple_space.many(pattern, sys.maxint)
         removed_facts = []
         for fact in to_remove:
             real_fact = fact[1]
             try:
-                self.__tuple_space.get(real_fact,remove=True)
+                self.__tuple_space.get(real_fact, remove=True)
                 removed_facts.append(Fact(content=real_fact))
-                self.__fact_removed(real_fact,dont_inform)
+                self.__fact_removed(real_fact, dont_inform)
             except KeyError:
                 pass
-        return PopResponse(removed = tuple(removed_facts))
+        return PopResponse(removed=tuple(removed_facts))
 
     def __pop(self, pop_request):
         """
@@ -253,7 +256,7 @@ class KnowledgeBase(object):
                                            updated_topic_name=update_topic.name)
 
         basic_topic_name = KnowledgeBase.generate_topic_name_for_pattern(self.__fact_update_topic_prefix, converted,
-                                                                         self.__inlcude_patterns_in_update_names,
+                                                                         self.__include_patterns_in_update_names,
                                                                          self.__fact_update_topic_counter)
         self.__fact_update_topic_counter += 1
         added_topic_name = basic_topic_name + '/Add'
@@ -279,36 +282,51 @@ class KnowledgeBase(object):
         finally:
             self.__register_lock.release()
 
-    def __fact_updated(self, old_fact, converted_old_fact, new_fact, converted_new_fact):
+    def __fact_updated(self, removed_facts, new_fact, converted_new_fact):
         """
-        informs all clients, which are interested in both facts about update
-        :param old_fact: network compatible version of fact
+        informs all clients, which are interested about added and at least one removed about update
+        :param old_facts: network compatible version of all removed facts, encapsulated in ROS message class Fact
         :param new_fact: network compatible version of fact
         """
-        interested_in_old = self.__subscribed_patterns_space.find_for_fact(converted_old_fact)
+
         interested_in_new = self.__subscribed_patterns_space.find_for_fact(converted_new_fact)
-        to_inform = set(interested_in_old).intersection(interested_in_new)
-        for pattern in to_inform:
+        removed_facts_by_interested_pattern = {}
+
+        #Collect all removed facts for each pattern to send just one update message per client
+        for removed_fact in removed_facts:
+            interested_in_old = self.__subscribed_patterns_space.find_for_fact(removed_fact.content)
+            to_inform = set(interested_in_old).intersection(interested_in_new)
+            for pattern in to_inform:
+                if not pattern in removed_facts_by_interested_pattern:
+                    removed_facts_by_interested_pattern[pattern] = []
+                removed_facts_by_interested_pattern[pattern].append(removed_fact.content)
+
+        for pattern in removed_facts_by_interested_pattern.keys():
+            facts = []
+            for fact in removed_facts_by_interested_pattern[pattern]:
+                facts.append(Fact(fact))
             update_topic = self.__fact_update_topics[pattern][2]
-            update_topic.publish(
-                FactUpdated(old=old_fact, new=new_fact))
+            update_topic.publish(FactUpdated(removed=tuple(facts), new=new_fact))
 
     def __update(self, update_request):
         """
         :param update_request: ROS service request Update
         :return: true if replacing was sucessfull, false if not because old fact does not exists
         """
-        fact = self.__converts_request_to_tuple_space_format(update_request.fact)
-        for part in fact:
-            # placeholders are not allowed in update requests
-            assert not part is None
-        if (not self.__exists_tuple_as_is(fact)):
-            return UpdateResponse(False)
+        pattern = self.__converts_request_to_tuple_space_format(update_request.pattern)
         newFact = self.__converts_request_to_tuple_space_format(update_request.newFact)
         if (self.__exists_tuple_as_is(newFact)):
-            self.__pop_internal(fact)
+            self.__pop_internal(pattern)
+            return UpdateResponse(True)
+
+        removed_facts = self.__pop_internal(pattern, dont_inform=newFact).removed
+        facts_removed = len(removed_facts) > 0
+        if (not update_request.pushWithoutExisting and not facts_removed):
+            # If no facts was removed, no clients was informed
+            return UpdateResponse(False)
+        if (facts_removed):
+            self.__push_internal(update_request.newFact, newFact, pattern)
+            self.__fact_updated(removed_facts, update_request.newFact, newFact)
         else:
-            self.__pop_internal(fact, dont_inform=newFact)
-            self.__push_internal(update_request.newFact, newFact, fact)
-            self.__fact_updated(update_request.fact, fact, update_request.newFact, newFact)
+            self.__push_internal(update_request.newFact, newFact, None)
         return UpdateResponse(True)
