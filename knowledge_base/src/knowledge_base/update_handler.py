@@ -11,7 +11,7 @@ from knowledge_base.msg import FactRemoved, Fact, FactUpdated
 class KnowledgeBaseFactCache:
     """
     Adapter for using update mechanism of knowledge base for caching the value.
-    If the value does not exists at initialization, than the subscribe is done at first using
+    If the value does not exists at initialization, than the subscribe is done at first using TODO incomplete sentence?!
     """
 
     def __init__(self, pattern, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):

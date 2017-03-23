@@ -12,8 +12,8 @@ from .managers import Manager
 
 class NetworkBehavior(BehaviourBase):
     """
-    Behavior, which contains other behaviors
-    Must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
+    Behavior, which encapsulates an additional manager and behaviors. This allows to build hierarchies of hybrid behaviour planners.
+    It must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
     """
 
     MANAGER_POSTFIX = "/Manager"
@@ -23,7 +23,7 @@ class NetworkBehavior(BehaviourBase):
                  **kwargs):
         """
         :param effects: tuple <sensor,Effect>
-        :param name:
+        :param name: name of the behaviour that is also used to create the sub manager name together with the NetworkBehavior.MANAGER_POSTFIX
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
         :param kwargs: args for the manager, except the prefix arg
@@ -40,6 +40,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
+        #TODO comment and maybe also extract this into an own function
         correlations = []
         for effect in effects:
             correlations.append(effect[1])
@@ -66,6 +67,7 @@ class NetworkBehavior(BehaviourBase):
 
     def _create_goal(self, sensor, effect, goal_name, activator_name):
         """
+        TODO description about what is done inside this function
         :param sensor: instance of type Sensor
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
