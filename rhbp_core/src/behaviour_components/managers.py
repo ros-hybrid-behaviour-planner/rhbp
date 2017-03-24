@@ -42,8 +42,7 @@ class Manager(object):
         self._totalActivation = 0.0 # pre-computed (in step()) sum all activations of active behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
             else rospy.get_param("~activationThreshold", 7.0) # not sure how to set this just yet.
-        self.__activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else rospy.get_param(
-            "~activationDecay", .9) # not sure how to set this just yet.
+        self.__activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else None
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
         #configures if all contained behaviour or only the executed behaviours are used to determine if the manager is interruptable
@@ -82,6 +81,8 @@ class Manager(object):
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
         rospy.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
+        #trigger update once in order to initialize algorithm properly
+        self._update_bias_parameters()
 
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
