@@ -30,20 +30,22 @@ class AbstractActivationAlgorithm(object):
         self._extensive_logging=extensive_logging
 
     @abstractmethod
-    def compute_behaviour_activation_step(self, behaviour):
+    def compute_behaviour_activation_step(self, ref_behaviour):
         """
         This method sums up all components of activation to compute the additional activation in this step.
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         :return: the current step activation float
         """
         pass
 
     @abstractmethod
-    def commit_behaviour_activation(self, behaviour):
+    def commit_behaviour_activation(self, ref_behaviour):
         """
         Calculate the actual overall activation from the current activation step
         This method applies the activation of this iteration to the overall activation.
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         :return: activation float
         """
         pass
@@ -64,7 +66,7 @@ class ActivationAlgorithmFactory(object):
     algorithms = {}
 
     @classmethod
-    def register_algorithms(cls,id_algo, algo):
+    def register_algorithm(cls, id_algo, algo):
         """
         Register an algorithm in the factory under the given ID
         Algorithm has to be a subclass of AbstractActivationAlgorithm
@@ -123,15 +125,15 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         self.predecessor_bias=kwargs['predecessor_bias']
         self._activation_decay=kwargs['activation_decay']
 
-    def compute_behaviour_activation_step(self, behaviour):
+    def compute_behaviour_activation_step(self, ref_behaviour):
 
-        activation_precondition = self.get_activation_from_preconditions(behaviour)
-        activation_goals = self.get_activation_from_goals(behaviour)[0]
-        inhibition_goals = self.get_inhibition_from_goals(behaviour)[0]
-        activation_predecessors = self.get_activation_from_predecessors(behaviour)[0]
-        activation_successors = self.get_activation_from_successors(behaviour)[0]
-        inhibition_conflictors = self.get_inhibition_from_conflictors(behaviour)[0]
-        activation_plan = self.get_activation_from_plan(behaviour)[0]
+        activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
+        activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
+        inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
+        activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
+        activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
+        inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
+        activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
 
         rospy.logdebug("\tactivation from preconditions: %s", activation_precondition)
         rospy.logdebug("\tactivation from goals: %s", activation_goals)
@@ -149,35 +151,35 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                                         + inhibition_conflictors \
                                         + activation_plan
 
-        behaviour.current_activation_step = current_activation_step
+        ref_behaviour.current_activation_step = current_activation_step
 
         return current_activation_step
 
 
-    def commit_behaviour_activation(self, behaviour):
+    def commit_behaviour_activation(self, ref_behaviour):
 
-        activation = behaviour.activation * self._activation_decay + behaviour.current_activation_step
+        activation = ref_behaviour.activation * self._activation_decay + ref_behaviour.current_activation_step
         if activation < 0.0:
             activation = 0.0
-        behaviour.activation = activation
-        behaviour.current_activation_step= 0.0
+        ref_behaviour.activation = activation
+        ref_behaviour.current_activation_step= 0.0
 
         return activation
 
-    def get_activation_from_preconditions(self, behaviour):
+    def get_activation_from_preconditions(self, ref_behaviour):
         """
         This methods computes the activation from the behaviour preconditions
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
-        return behaviour.activationFromPreconditions
+        return ref_behaviour.activationFromPreconditions
 
-    def get_activation_from_goals(self, behaviour):
+    def get_activation_from_goals(self, ref_behaviour):
         """
         This method computes the activation from goals.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         activatedByGoals = []
         for goal in self._manager.activeGoals:
@@ -186,25 +188,25 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                 # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours will get activation from the goal).
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(
                     map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
-                for correlation in behaviour.matchingCorrelations(effect_name):
+                for correlation in ref_behaviour.matchingCorrelations(effect_name):
                     if correlation * indicator > 0.0:  # This means we affect the sensor in a way that is desirable by the goal
                         totalActivation = correlation * indicator * self.goal_bias
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",
-                                behaviour.name, len(behavioursActivatedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursActivatedBySameGoal), goal.name, effect_name,
                                 behavioursActivatedBySameGoal, totalActivation, self.goal_bias)
                         activatedByGoals.append((goal, totalActivation / len(
                             behavioursActivatedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
         return (0.0,) if len(activatedByGoals) == 0 else (
         reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
 
-    def get_inhibition_from_goals(self, behaviour):
+    def get_inhibition_from_goals(self, ref_behaviour):
         """
         This method computes the inhibition (actually, activation but negative sign!) caused by goals it conflicts with.
         Precondition is that correlations are known so that the effect of this behaviour can be evaluated
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         inhibitedByGoals = []
         for goal in self._manager.activeGoals:
@@ -215,7 +217,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                 behavioursInhibitedBySameGoal = [b for b in self._manager.activeBehaviours if any(
                     map(lambda x: x * indicator < 0.0 or (x * indicator == 0.0 and x != 0.0),
                         b.matchingCorrelations(effect_name)))]
-                for correlation in behaviour.matchingCorrelations(effect_name):
+                for correlation in ref_behaviour.matchingCorrelations(effect_name):
                     if correlation * indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
@@ -223,7 +225,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",
-                                behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(
                             behavioursInhibitedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -232,7 +234,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",
-                                behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(
                             behavioursInhibitedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -244,8 +246,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         This method computes the activation based on the fact that other behaviours can fulfill a precondition (wish) of this behaviour.
         This is scaled by the "readyness" (precondition satisfaction) of the predecessor as it makes only sense to activate
         a successor if it is likely that it is executable soon.
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         activatedByPredecessors = []
         for behaviour in self._manager.activeBehaviours:
@@ -274,8 +276,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         """
         This method computes the activation this behaviour receives because it fulfills a precondition (is a predecessor)
          of a successor which has unfulfilled wishes.
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         activatedBySuccessors = []
         for behaviour in self._manager.activeBehaviours:
@@ -303,8 +305,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         """
         This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose
         preconditions get antagonized when this behaviour runs.
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         inhibitionFromConflictors = []
         for behaviour in self._manager.activeBehaviours:
@@ -347,16 +349,16 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         return (0.0,) if len(inhibitionFromConflictors) == 0 else (
         reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
 
-    def get_activation_from_plan(self, behaviour):
+    def get_activation_from_plan(self, ref_behaviour):
         """
         This method computes the activation this behaviour receives because of its place on the plan.
         Behaviours at the top of the list will be activated most, other not so much.
-        :param behaviour: the behaviour for which the activation is determined
-        :type behaviour: Behaviour
+        :param ref_behaviour: the behaviour for which the activation is determined
+        :type ref_behaviour: Behaviour
         """
         if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
             return (0.0, 0xFF)
-        own_pddl_name = create_valid_pddl_name(behaviour.name)
+        own_pddl_name = create_valid_pddl_name(ref_behaviour.name)
         for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(
                 self._manager.plan["actions"].keys())):  # walk along the plan starting at where we are
             if self._manager.plan["actions"][index] == own_pddl_name:  # if we are on the plan
@@ -364,4 +366,4 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         return (0.0, -1)
 
 
-ActivationAlgorithmFactory.register_algorithms("default",BaseActivationAlgorithm)
+ActivationAlgorithmFactory.register_algorithm("default", BaseActivationAlgorithm)

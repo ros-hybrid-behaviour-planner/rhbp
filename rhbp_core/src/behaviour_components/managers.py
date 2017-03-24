@@ -340,7 +340,7 @@ class Manager(object):
             rospy.logdebug("########## BEHAVIOUR  STATES ##########")
             for behaviour in self._behaviours:
                 ### do the activation computation ###
-                self.activation_algorithm.compute_behaviour_activation_step(behaviour=behaviour)
+                self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
                 rospy.logdebug("%s", behaviour.name)
                 rospy.logdebug("\tactive %s", behaviour.active)
                 rospy.logdebug("\twishes %s", behaviour.wishes)
@@ -349,7 +349,7 @@ class Manager(object):
 
             ### commit the activation computed in this step ###
             for behaviour in self._behaviours:
-                self.activation_algorithm.commit_behaviour_activation(behaviour)
+                self.activation_algorithm.commit_behaviour_activation(ref_behaviour=behaviour)
                 rospy.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
                 # collect all that stuff for the rqt gui
                 statusMessage = Status()
