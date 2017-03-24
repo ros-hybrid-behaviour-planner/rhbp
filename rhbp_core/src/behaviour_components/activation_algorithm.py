@@ -239,7 +239,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         return (0.0,) if len(inhibitedByGoals) == 0 else (
         reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
 
-    def get_activation_from_predecessors(self, behaviour):
+    def get_activation_from_predecessors(self, ref_behaviour):
         """
         This method computes the activation based on the fact that other behaviours can fulfill a precondition (wish) of this behaviour.
         This is scaled by the "readyness" (precondition satisfaction) of the predecessor as it makes only sense to activate
@@ -249,9 +249,9 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         """
         activatedByPredecessors = []
         for behaviour in self._manager.activeBehaviours:
-            if behaviour == self or not behaviour.executable:  # ignore ourselves and non-executable predecessors
+            if behaviour == ref_behaviour or not behaviour.executable:  # ignore ourselves and non-executable predecessors
                 continue
-            for (effect_name, indicator) in behaviour.wishes:  # this is what we wish from a predecessor
+            for (effect_name, indicator) in ref_behaviour.wishes:  # this is what we wish from a predecessor
                 # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if
                                                any(map(lambda x: x * indicator > 0.0, b.matchingWishes(effect_name)))]
@@ -263,14 +263,14 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",
-                                behaviour.name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
+                                ref_behaviour.name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
                                 behavioursThatShareThisWish, totalActivation)
                         activatedByPredecessors.append((behaviour, effect_name, totalActivation / len(
                             behavioursThatShareThisWish)))  # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. behavioursThatShareThisWish knows how many more behaviours will get activation from this predecessor so we distribute it equally
         return (0.0,) if len(activatedByPredecessors) == 0 else (
         reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
-    def get_activation_from_successors(self, behaviour):
+    def get_activation_from_successors(self, ref_behaviour):
         """
         This method computes the activation this behaviour receives because it fulfills a precondition (is a predecessor)
          of a successor which has unfulfilled wishes.
@@ -279,9 +279,9 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         """
         activatedBySuccessors = []
         for behaviour in self._manager.activeBehaviours:
-            if behaviour == self or behaviour.executable:  # ignore ourselves and successors that are already executable
+            if behaviour == ref_behaviour or behaviour.executable:  # ignore ourselves and successors that are already executable
                 continue
-            for (effect_name, indicator) in behaviour.correlations:  # this is what can give to a successor
+            for (effect_name, indicator) in ref_behaviour.correlations:  # this is what can give to a successor
                 # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
                 behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(
                     map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
@@ -292,14 +292,14 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f",
-                                behaviour.name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name,
+                                ref_behaviour.name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name,
                                 behavioursThatShareOurCorrelation, totalActivation)
                         activatedBySuccessors.append((behaviour, effect_name, totalActivation / len(
                             behavioursThatShareOurCorrelation)))  # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatShareOurCorrelation) is used to distribute activation among all predecessors
         return (0.0,) if len(activatedBySuccessors) == 0 else (
         reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)), activatedBySuccessors)
 
-    def get_inhibition_from_conflictors(self, behaviour):
+    def get_inhibition_from_conflictors(self, ref_behaviour):
         """
         This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose
         preconditions get antagonized when this behaviour runs.
@@ -308,9 +308,9 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         """
         inhibitionFromConflictors = []
         for behaviour in self._manager.activeBehaviours:
-            if behaviour == self:  # ignore ourselves
+            if behaviour == ref_behaviour:  # ignore ourselves
                 continue
-            for (effect_name, correlation) in behaviour.correlations:  # this is what we do to sensors
+            for (effect_name, correlation) in ref_behaviour.correlations:  # this is what we do to sensors
                 for wish in behaviour.matchingWishes(effect_name):
                     # Make a list of all behaviours that have the same bad influence on other behaviours as we have.
                     # Such behaviours are either also negatively correlated another behaviour's wish as we are
@@ -328,7 +328,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f",
-                                behaviour.name, behaviour.name, effect_name,
+                                ref_behaviour.name, behaviour.name, effect_name,
                                 len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation),
                                 behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(
@@ -339,7 +339,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f",
-                                behaviour.name, behaviour.name, effect_name, wish,
+                                ref_behaviour.name, behaviour.name, effect_name, wish,
                                 len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation),
                                 behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(
