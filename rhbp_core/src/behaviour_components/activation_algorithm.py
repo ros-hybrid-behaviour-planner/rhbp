@@ -263,7 +263,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",
-                                behaviour._name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
+                                behaviour.name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
                                 behavioursThatShareThisWish, totalActivation)
                         activatedByPredecessors.append((behaviour, effect_name, totalActivation / len(
                             behavioursThatShareThisWish)))  # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. behavioursThatShareThisWish knows how many more behaviours will get activation from this predecessor so we distribute it equally
@@ -281,7 +281,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for behaviour in self._manager.activeBehaviours:
             if behaviour == self or behaviour.executable:  # ignore ourselves and successors that are already executable
                 continue
-            for (effect_name, indicator) in behaviour._correlations:  # this is what can give to a successor
+            for (effect_name, indicator) in behaviour.correlations:  # this is what can give to a successor
                 # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
                 behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(
                     map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
@@ -292,7 +292,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         if self._extensive_logging:
                             rospy.logdebug(
                                 "Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f",
-                                behaviour._name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name,
+                                behaviour.name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name,
                                 behavioursThatShareOurCorrelation, totalActivation)
                         activatedBySuccessors.append((behaviour, effect_name, totalActivation / len(
                             behavioursThatShareOurCorrelation)))  # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatShareOurCorrelation) is used to distribute activation among all predecessors
@@ -310,7 +310,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for behaviour in self._manager.activeBehaviours:
             if behaviour == self:  # ignore ourselves
                 continue
-            for (effect_name, correlation) in behaviour._correlations:  # this is what we do to sensors
+            for (effect_name, correlation) in behaviour.correlations:  # this is what we do to sensors
                 for wish in behaviour.matchingWishes(effect_name):
                     # Make a list of all behaviours that have the same bad influence on other behaviours as we have.
                     # Such behaviours are either also negatively correlated another behaviour's wish as we are
