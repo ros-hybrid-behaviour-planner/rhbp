@@ -464,8 +464,7 @@ class Manager(object):
         successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
         plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
         situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
-        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay",
-                                                                                                 0.9)
+        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay", 0.9)
         self.activation_algorithm.update_config(situation_bias=situation_bias, plan_bias=plan_bias,
                                                 conflictor_bias=conflictor_bias, goal_bias=goal_bias,
                                                 successor_bias=successor_bias, predecessor_bias=predecessor_bias,
