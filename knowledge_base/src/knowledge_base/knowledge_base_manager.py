@@ -153,7 +153,7 @@ class KnowledgeBase(object):
     def __pop_internal(self, pattern, dont_inform=None):
         """
         :param pattern: fact, which should be removed
-        :param dont_inform: all subscribers, which mathchs this fact are not informed
+        :param dont_inform: all subscribers, which matches this fact are not informed
         """
         to_remove = self.__tuple_space.many(pattern, sys.maxint)
         removed_facts = []
