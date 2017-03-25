@@ -22,13 +22,13 @@ from behaviour_components.sensors import SimpleTopicSensor
 PKG = 'rhbp_core'
 
 """
-System test for goals. Assumes, that a rosmaster and the knowledge base is running
+System test for goals. Assumes, that a rosmaster is running
 """
 
 
 class TopicIncreaserBehavior(BehaviourBase):
     """
-    Behavior, which adds a fact at execution to knowledge base
+    Behavior, which publishs True in the given topic
     """
 
     def __init__(self, effect_name, topic_name, name, **kwargs):
