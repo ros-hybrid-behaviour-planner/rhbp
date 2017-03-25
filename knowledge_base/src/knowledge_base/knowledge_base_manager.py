@@ -20,8 +20,10 @@ from inverted_tuple_space import InvertedTupleSpace
 
 class KnowledgeBase(object):
     """
-    Wrapper class for accessing the real tuple space
-    TODO more documentation/ more detailled description about this class
+    Provides a tuple space for ROS. The tuple space is accessible through several ROS services (Peek, Pop, Exists, All),
+    and the Push topic.
+    It allows subscribing for updates (see UpdateSubscribe service).
+    Although this class is just a wrapper for accessing the real tuple space
     """
 
     DEFAULT_NAME = 'knowledgeBaseNode'
@@ -293,7 +295,7 @@ class KnowledgeBase(object):
         interested_in_new = self.__subscribed_patterns_space.find_for_fact(converted_new_fact)
         removed_facts_by_interested_pattern = {}
 
-        #Collect all removed facts for each pattern to send just one update message per client
+        # Collect all removed facts for each pattern to send just one update message per client
         for removed_fact in removed_facts:
             interested_in_old = self.__subscribed_patterns_space.find_for_fact(removed_fact.content)
             to_inform = set(interested_in_old).intersection(interested_in_new)

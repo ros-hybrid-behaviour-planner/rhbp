@@ -12,7 +12,8 @@ from .managers import Manager
 
 class NetworkBehavior(BehaviourBase):
     """
-    Behavior, which encapsulates an additional manager and behaviors. This allows to build hierarchies of hybrid behaviour planners.
+    Behavior, which encapsulates an additional manager and behaviors.
+    This allows to build hierarchies of hybrid behaviour planners.
     It must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
     """
 
@@ -40,7 +41,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
-        #TODO comment and maybe also extract this into an own function
+        #Generate goals for effect
         correlations = []
         for effect in effects:
             correlations.append(effect[1])
@@ -67,11 +68,12 @@ class NetworkBehavior(BehaviourBase):
 
     def _create_goal(self, sensor, effect, goal_name, activator_name):
         """
-        TODO description about what is done inside this function
+        Generate goals, which made the manager trying to work infinitely on the given effect,
+         until the network is stopped. Therefore the goal shouldn't reachable (except the goal for boolean effects)
         :param sensor: instance of type Sensor
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
-        :return: a goal, which causes the manager to work on the ffect during the whole time
+        :return: a goal, which causes the manager to work on the effect during the whole time
         """
         if (effect.sensorType == bool):
             desired_value = True if effect.indicator > 0 else False

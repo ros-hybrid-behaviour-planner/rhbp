@@ -196,7 +196,10 @@ class DynamicSensor(Sensor):
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
         """
-        :param pattern: pattern, which will be used for detect relevant topics. TODO more details here, is this just a regex pattern? Some examples would be useful
+        :param pattern: pattern, which will be used for detect relevant topics. The pattern must be of type str.
+                        Additionally the pattern must be a valid regular expression,
+                        which is full compatible to the python regex.
+                        Example: "/myFamousPrefix/[0-9]*"
         :param default_value: value, which will be used if no topic exists
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
@@ -273,6 +276,12 @@ class DynamicSensor(Sensor):
 
     @staticmethod
     def __filter_values(time_out, values, current_time):
+        """
+        :param time_out: time out in seconds
+        :param values: (Dictonary) topic names (key), associated with their latest values. The values are a tuple and have the form of (value, receive time)
+        :param current_time: time stamp, which is used for comparison
+        :return: all values, which was received after current_time-timeout
+        """
         if (time_out < 0):
             return values
         bound = current_time - time_out
@@ -291,7 +300,7 @@ class DynamicSensor(Sensor):
         """
         if (hasattr(a,'data') and hasattr(b, 'data')):
             return a.data < b.data
-        # This case is probably false
+        # In this case, the result of comparison is probably wrong
         rospy.logwarn(str(type(a)) + ' and '+str(type(b)) + ' have not the attribute data. Unsafety default implementation is used')
         return a < b
 
@@ -320,14 +329,26 @@ class DynamicSensor(Sensor):
     def __topic_added_callback(self, name_message):
         self.__subscribe_to_topic(name_message.data)
 
+    def _convert_ros_message_to_output_format(self, to_convert):
+        """
+        Since the result of aggregation may has a different type than the received message,
+        this method converts a ros message to output format.
+        Is used, e.g. to convert the last received message to the target tye.
+        :param to_convert:
+        :return: a value, which is an instance of the output type
+        """
+        return to_convert
+
     def _aggregate_values(self, values):
         """
         This default implementation either returns the default value if no values are
-        available or it returns the latest value <-- Correct TODO Phillip
+        available or it returns the latest value
         :param values: values, as received from the topics (e.g. ROS messages)
         :return: aggregated singular value, which will be given to user of this sensor
         """
         if (len(values) == 0):
+            if (not self._last_value is None):
+                return self._convert_ros_message_to_output_format(self._last_value)
             return self._default_value
 
         return values[0]

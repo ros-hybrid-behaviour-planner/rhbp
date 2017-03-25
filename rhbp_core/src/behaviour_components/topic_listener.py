@@ -111,29 +111,33 @@ class TopicListener(object):
                                                 existingTopics=self.__find_matching_topcis(regex))
 
 
-    def __inform_about_topic_change(self, changed_topics, index_of_topic_in_pair):
+    def __inform_about_topic_change(self, changed_topics, inform_about_added_topics):
         """
-        TODO rieger --> Especially the second parameter needs explanation, it might also be worth to discuss the detailled
-        design regarding this point here
-        :param changed_topics:
-        :param index_of_topic_in_pair:
-        :return:
+        Informs all subscribed topics about the topic changes.
+        Each client is only informed about changes of matching topics
+        :param changed_topics: names of all changed topics
+        :param inform_about_added_topics: whether the changed topics are added (or removed).
+                                          Is used for decision about used topic
         """
+        if (inform_about_added_topics):
+            index_of_topic_in_pair = 0
+        else:
+            index_of_topic_in_pair = 1
         for regex in self.__subscribed_regular_expressions:
             for topic in changed_topics:
                 if (regex.match(topic)):
                     self.__update_topics[regex][index_of_topic_in_pair].publish(topic)
 
     def __inform_about_added_topics(self, added_topics):
-        self.__inform_about_topic_change(added_topics, 0)
+        self.__inform_about_topic_change(added_topics, True)
 
     def __inform_about_removed_topics(self, removed_topics):
-        self.__inform_about_topic_change(removed_topics, 1)
+        self.__inform_about_topic_change(removed_topics, False)
 
     def check(self):
         """
         Update method that tracks known and new topics
-        It triggers the pattern comparission in case of new
+        It triggers the pattern comparision in case of new
         available topics
         """
         with self.__lock:
