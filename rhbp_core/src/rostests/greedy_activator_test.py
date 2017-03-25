@@ -29,7 +29,7 @@ System test for the GreedyActivator
 
 class IncreaserBehavior(BehaviourBase):
     """
-    Behavior, which adds a fact at execution to knowledge base
+    Behavior, which increases an int value
     """
 
     def __init__(self, topic_name, effect_name, name='increaserAdderBehaviour',

@@ -1,16 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(rhbp_core)
+project(rhbp_utils)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  knowledge_base
+  rhbp_core
   rospy
-  rqt_gui
-  rqt_gui_py
-  std_msgs
-  message_generation
-  ffp
 )
 
 ## System dependencies are found with CMake's conventions
@@ -20,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-catkin_python_setup()
+# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -47,29 +44,18 @@ catkin_python_setup()
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Wish.msg
-  Correlation.msg
-  Status.msg
-  PlannerStatus.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  AddBehaviour.srv
-  AddGoal.srv
-  GetStatus.srv
-  RemoveBehaviour.srv
-  RemoveGoal.srv
-  ForceStart.srv
-  Activate.srv
-  SetInteger.srv
-  GetPDDL.srv
-  TopicUpdateSubscribe.srv
-  SetStepping.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -79,10 +65,9 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -115,8 +100,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES rhbp_core
-#  CATKIN_DEPENDS rospy std_msgs
+#  LIBRARIES rhbp_utils
+#  CATKIN_DEPENDS knowledge_base rhbp_core rospy
 #  DEPENDS system_lib
 )
 
@@ -132,24 +117,24 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(rhbp_core
-#   src/${PROJECT_NAME}/rhbp_core.cpp
+# add_library(rhbp_utils
+#   src/${PROJECT_NAME}/rhbp_utils.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(rhbp_core ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(rhbp_utils ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(rhbp_core_node src/rhbp_core_node.cpp)
+# add_executable(rhbp_utils_node src/rhbp_utils_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(rhbp_core_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(rhbp_utils_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(rhbp_core_node
+# target_link_libraries(rhbp_utils_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -162,13 +147,13 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-install(PROGRAMS
-   scripts/rqt_planner_gui
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# install(PROGRAMS
+#   scripts/my_python_script
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS rhbp_core rhbp_core_node
+# install(TARGETS rhbp_utils rhbp_utils_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -193,14 +178,12 @@ install(PROGRAMS
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_rhbp_core.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_rhbp_utils.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
-catkin_add_nosetests(src/tests)
+# catkin_add_nosetests(test)
 
-find_package(rostest REQUIRED)
-add_rostest(launch/dynamic_sensor_test.test)
-add_rostest(launch/topic_listener_test.test)
+add_rostest(launch/knowledge_sensor_test.test)

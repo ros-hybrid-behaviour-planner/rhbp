@@ -11,14 +11,13 @@ import unittest
 
 import rospy
 import rostest
+from std_msgs.msg import Bool
 from behaviour_components.activators import Condition, BooleanActivator
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.pddl import Effect
-from behaviour_components.sensors import KnowledgeSensor
-from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.msg import Push
+from behaviour_components.sensors import SimpleTopicSensor
 
 PKG = 'rhbp_core'
 
@@ -27,21 +26,19 @@ System test for goals. Assumes, that a rosmaster and the knowledge base is runni
 """
 
 
-class KnowledgeAdderBehaviour(BehaviourBase):
+class TopicIncreaserBehavior(BehaviourBase):
     """
     Behavior, which adds a fact at execution to knowledge base
     """
 
-    def __init__(self, knwoledge_sensor_name, fact, name='knowledgeAdderBehaviour', **kwargs):
-        super(KnowledgeAdderBehaviour, self).__init__(name, **kwargs)
-        self._correlations = [Effect(knwoledge_sensor_name, 1, sensorType=bool)]
-        self.__publisher = rospy.Publisher(KnowledgeBase.DEFAULT_NAME + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push,
-                                           queue_size=10)
-        self.__fact = fact
+    def __init__(self, effect_name, topic_name, name, **kwargs):
+        super(TopicIncreaserBehavior, self).__init__(name, **kwargs)
+        self._correlations = [Effect(effect_name, 1, sensorType=bool)]
+        self.__publisher = rospy.Publisher(topic_name,Bool,queue_size=10)
         rospy.sleep(1)
 
     def start(self):
-        self.__publisher.publish(Push(content=self.__fact))
+        self.__publisher.publish(True)
         self._isExecuting = False
 
 
@@ -52,21 +49,20 @@ class TestGoals(unittest.TestCase):
         self.__message_prefix = 'TestGoals' + str(time.time()).replace('.', '')
         rospy.init_node('goal_test_node', log_level=rospy.DEBUG)
 
-    def __test_remote_goal(self):
+    def test_remote_goal(self):
 
         method_prefix = self.__message_prefix + "TestRemoteGoal"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, prefix=planner_prefix)
+        m = Manager(activationThreshold=7,planBias=0.0, prefix=planner_prefix)
 
-        fact = (self.__message_prefix, 'test_offline_goal', 'Fact')
+        topic_name = method_prefix+ '/Topic'
 
-        sensor_name = 'SimpleKnowledgeSensor'
-        sensor = KnowledgeSensor(fact, sensor_name=sensor_name)
+        sensor = SimpleTopicSensor(topic=topic_name, message_type = Bool, initial_value = False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
-        KnowledgeAdderBehaviour(knwoledge_sensor_name=pddl_function_name, fact=fact,
-                                name=method_prefix + "KnowledgeAdder", plannerPrefix=planner_prefix)
+        TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+                                name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.addCondition(condition)
 
@@ -82,18 +78,17 @@ class TestGoals(unittest.TestCase):
     def test_offline_goal(self):
 
         method_prefix = self.__message_prefix + "TestOfflineGoal"
-        planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, prefix=planner_prefix)
+        planner_prefix = method_prefix + "/Manager"
+        m = Manager(activationThreshold=7,planBias=0.0, prefix=planner_prefix)
 
-        fact = (self.__message_prefix, 'test_offline_goal', 'Fact')
+        topic_name = method_prefix+ '/Topic'
 
-        sensor_name = 'SimpleKnowledgeSensor'
-        sensor = KnowledgeSensor(fact, sensor_name=sensor_name)
+        sensor = SimpleTopicSensor(topic=topic_name, message_type = Bool, initial_value = False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
-        KnowledgeAdderBehaviour(knwoledge_sensor_name=pddl_function_name, fact=fact,
-                                name=method_prefix + "KnowledgeAdder", plannerPrefix=planner_prefix)
+        TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+                                name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
         goal.add_condition(condition)
         m.add_goal(goal)

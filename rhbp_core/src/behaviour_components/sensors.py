@@ -8,8 +8,6 @@ import time
 from threading import Lock
 
 import rospy
-from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.update_handler import KnowledgeBaseFactCache
 from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
@@ -154,37 +152,6 @@ class SimpleTopicSensor(PassThroughTopicSensor):
         super(SimpleTopicSensor, self).subscription_callback(msg.data)
 
 
-class KnowledgeSensor(Sensor):
-    """
-    Sensor, which provides information about existence of a fact, which matches the given pattern
-    TODO: Move KnowledgeBase related implementations into an own package
-    """
-
-    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, sensor_name=None):
-        super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
-        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
-
-    def sync(self):
-        self.update(self.__value_cache.does_fact_exists())
-        super(KnowledgeSensor, self).sync()
-
-class KnowledgeFactSensor(Sensor):
-    """
-    Sensor, which provides information about a searched fact; returns list of
-    all matching facts
-    TODO: Move KnowledgeBase related implementations into an own package
-    """
-    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
-                 name=None, initial_value=None):
-        super(KnowledgeFactSensor, self).__init__(name=name, optional=optional,
-                                                  initial_value=initial_value)
-        self.__value_cache = KnowledgeBaseFactCache(pattern=pattern,
-                                                    knowledge_base_name=
-                                                    knowledge_base_name)
-    def sync(self):
-        self.update(self.__value_cache.get_all_matching_facts())
-        super(KnowledgeFactSensor, self).sync()
-
 class DynamicSensor(Sensor):
     """
     Sensor, which collects values from all topics, matching a pattern.
@@ -265,14 +232,14 @@ class DynamicSensor(Sensor):
             self.__time_of_latest_value = time_stamp
         if (self._min_value is None or self._smaller_than(value, self._min_value)):
             self._min_value = value
-        if (self._max_value is None or self._smaller_than(self._max_value,value)):
-            self._max_value =value
+        if (self._max_value is None or self._smaller_than(self._max_value, value)):
+            self._max_value = value
 
     def __value_updated(self, topic_name, value):
         with self.__value_lock:
             time_stamp = time.time()
             self.__valid_values[topic_name] = (value, time_stamp)
-            self._value_updated(topic_name,value,time_stamp)
+            self._value_updated(topic_name, value, time_stamp)
 
     @staticmethod
     def __filter_values(time_out, values, current_time):
@@ -298,10 +265,11 @@ class DynamicSensor(Sensor):
         :param b: another received message
         :return: wether a is smaller than b
         """
-        if (hasattr(a,'data') and hasattr(b, 'data')):
+        if (hasattr(a, 'data') and hasattr(b, 'data')):
             return a.data < b.data
         # In this case, the result of comparison is probably wrong
-        rospy.logwarn(str(type(a)) + ' and '+str(type(b)) + ' have not the attribute data. Unsafety default implementation is used')
+        rospy.logwarn(str(type(a)) + ' and ' + str(
+            type(b)) + ' have not the attribute data. Unsafety default implementation is used')
         return a < b
 
     def __calculate_valid_values(self):

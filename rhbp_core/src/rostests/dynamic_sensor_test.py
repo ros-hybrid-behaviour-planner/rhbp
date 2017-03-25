@@ -130,10 +130,6 @@ class DynamicSensorTest(unittest.TestCase):
 
     @staticmethod
     def create_topic(topic_name):
-        """
-        Adds the given fact to knowledge base
-        :param to_add: array of strings
-        """
         pub = rospy.Publisher(topic_name, Int32, queue_size=10)
         rospy.sleep(0.1)
         return pub
