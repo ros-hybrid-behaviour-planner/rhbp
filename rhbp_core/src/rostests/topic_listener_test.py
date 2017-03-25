@@ -11,8 +11,8 @@ import unittest
 import rospy
 import rostest
 from behaviour_components.sensors import DynamicSensor
-from utils.topic_listener import TopicListener
 from std_msgs.msg import Int32
+from utils.topic_listener import TopicListener
 
 from rhbp_core.srv import TopicUpdateSubscribe
 
@@ -47,7 +47,6 @@ class TopicListenerTest(unittest.TestCase):
 
     @staticmethod
     def create_topic(topic_name):
-
         pub = rospy.Publisher(topic_name, Int32, queue_size=10)
         rospy.sleep(1.0)
         return pub
@@ -110,7 +109,6 @@ class TopicListenerTest(unittest.TestCase):
         sensor2.sync()
         self.assertEqual(0, sensor1.value, 'Value has changed unexpected')
         self.assertEqual(0, sensor2.value, 'Value has changed unexpected')
-
 
 
 if __name__ == '__main__':

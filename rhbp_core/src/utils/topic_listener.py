@@ -9,9 +9,10 @@ import sys
 from threading import Lock
 
 import rospy
-from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 from rosgraph.masterapi import Master
 from std_msgs.msg import String
+
+from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 
 
 class TopicListener(object):
@@ -31,7 +32,7 @@ class TopicListener(object):
         :param include_regex_into_topic_names: Whether names of update topic should contain the pattern. Just for better debugging. Has no influence on functionality
         :param prefix: address of the topic listener. The address is used for the subscribe service and all update topics.
         """
-        self.__handler = Master(rospy.get_name()) #get access to the ROS master to use the topic directoy
+        self.__handler = Master(rospy.get_name())  # get access to the ROS master to use the topic directoy
         self.__lock = Lock()
         self.__update_topics = {}
         self.__include_regex_into_topic_names = include_regex_into_topic_names
@@ -108,7 +109,6 @@ class TopicListener(object):
                                                 topicNameTopicRemoved=removed_topic_name,
                                                 existingTopics=self.__find_matching_topcis(regex))
 
-
     def __inform_about_topic_change(self, changed_topics, inform_about_added_topics):
         """
         Informs all subscribed topics about the topic changes.
@@ -145,7 +145,7 @@ class TopicListener(object):
             topics = self.__handler.getPublishedTopics('')
             for topic in topics:
                 topic_name = topic[0]
-                #cache and update existing and new topics
+                # cache and update existing and new topics
                 self.__existing_topics.append(topic_name)
                 if (topic_name in expected_topics):
                     expected_topics.remove(topic_name)

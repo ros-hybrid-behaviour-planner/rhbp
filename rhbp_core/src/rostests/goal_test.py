@@ -11,13 +11,13 @@ import unittest
 
 import rospy
 import rostest
-from std_msgs.msg import Bool
 from behaviour_components.activators import Condition, BooleanActivator
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.pddl import Effect
 from behaviour_components.sensors import SimpleTopicSensor
+from std_msgs.msg import Bool
 
 PKG = 'rhbp_core'
 
@@ -34,7 +34,7 @@ class TopicIncreaserBehavior(BehaviourBase):
     def __init__(self, effect_name, topic_name, name, **kwargs):
         super(TopicIncreaserBehavior, self).__init__(name, **kwargs)
         self._correlations = [Effect(effect_name, 1, sensorType=bool)]
-        self.__publisher = rospy.Publisher(topic_name,Bool,queue_size=10)
+        self.__publisher = rospy.Publisher(topic_name, Bool, queue_size=10)
         rospy.sleep(1)
 
     def start(self):
@@ -53,16 +53,16 @@ class TestGoals(unittest.TestCase):
 
         method_prefix = self.__message_prefix + "TestRemoteGoal"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7,planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
 
-        topic_name = method_prefix+ '/Topic'
+        topic_name = method_prefix + '/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, message_type = Bool, initial_value = False)
+        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
         TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                                name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+                               name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.addCondition(condition)
 
@@ -79,16 +79,16 @@ class TestGoals(unittest.TestCase):
 
         method_prefix = self.__message_prefix + "TestOfflineGoal"
         planner_prefix = method_prefix + "/Manager"
-        m = Manager(activationThreshold=7,planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
 
-        topic_name = method_prefix+ '/Topic'
+        topic_name = method_prefix + '/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, message_type = Bool, initial_value = False)
+        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
         TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                                name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+                               name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
         goal.add_condition(condition)
         m.add_goal(goal)

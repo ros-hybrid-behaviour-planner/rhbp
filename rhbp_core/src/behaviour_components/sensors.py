@@ -8,11 +8,11 @@ import time
 from threading import Lock
 
 import rospy
-from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
 
+from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 
 
