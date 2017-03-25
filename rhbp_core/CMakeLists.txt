@@ -203,4 +203,5 @@ catkin_add_nosetests(src/tests)
 
 find_package(rostest REQUIRED)
 add_rostest(launch/dynamic_sensor_test.test)
+add_rostest(launch/network_behavior_test.test)
 add_rostest(launch/topic_listener_test.test)
