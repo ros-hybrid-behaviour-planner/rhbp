@@ -56,7 +56,7 @@ class TestGreedyActivator(unittest.TestCase):
     def test_activator(self):
         method_prefix = self.__message_prefix + "TestOfflineGoal"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
 
         topic_name = 'IncreaseTopicTest/Topic'
 
@@ -73,7 +73,7 @@ class TestGreedyActivator(unittest.TestCase):
         goal.add_condition(condition)
         m.add_goal(goal)
 
-        for x in range(0, 19, 1):
+        for x in range(0, 16, 1):
             m.step()
             rospy.sleep(0.1)
 

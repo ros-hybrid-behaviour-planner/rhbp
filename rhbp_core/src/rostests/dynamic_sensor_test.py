@@ -11,8 +11,8 @@ import unittest
 import rospy
 import rostest
 from behaviour_components.sensors import DynamicSensor
-from utils.topic_listener import TopicListener
 from std_msgs.msg import String, Int32
+from utils.topic_listener import TopicListener
 
 from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 
@@ -56,6 +56,10 @@ class MaxValueSensor(DynamicSensor):
     @property
     def max_value(self):
         return self._max_value
+
+    def _convert_ros_message_to_output_format(self, message):
+        return message.data
+
 
 class TopicListenerMock(object):
     def __init__(self, service_prefix):
@@ -285,8 +289,8 @@ class DynamicSensorTest(unittest.TestCase):
         topic_listener.remove_topic(topic.name)
         rospy.sleep(0.1)
         sensor.sync()
-        self.assertEqual(default_value, sensor.value,
-                         'the default value is not used after removing last topic, it is instead: ' + str(sensor.value))
+        self.assertEqual(1, sensor.value,
+                         'The latest value is not used after removing last topic, it is instead: ' + str(sensor.value))
 
     def test_aggregation_help_values(self):
         """
@@ -304,21 +308,21 @@ class DynamicSensorTest(unittest.TestCase):
         topic1 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value was not received, it is instead: ' + str(sensor.value))
-        self.assertEqual(Int32(1),sensor.last_value,'Latest value was not updated')
-        self.assertEqual(topic1.name,sensor.last_received_topic)
+        self.assertEqual(Int32(1), sensor.last_value, 'Latest value was not updated')
+        self.assertEqual(topic1.name, sensor.last_received_topic)
 
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'Second value was not received, it is instead: ' + str(sensor.value))
-        self.assertEqual(Int32(2),sensor.last_value,'Second value is not latest value')
-        self.assertEqual(topic2.name,sensor.last_received_topic)
+        self.assertEqual(Int32(2), sensor.last_value, 'Second value is not latest value')
+        self.assertEqual(topic2.name, sensor.last_received_topic)
 
         topic_listener.remove_topic(topic2.name)
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Second topic was removed, but value is still present')
-        self.assertEqual(Int32(2),sensor.last_value,'Latest value shouldnt change after removing topic')
-        self.assertEqual(topic2.name,sensor.last_received_topic)
+        self.assertEqual(Int32(2), sensor.last_value, 'Latest value shouldnt change after removing topic')
+        self.assertEqual(topic2.name, sensor.last_received_topic)
 
         topic1.publish(0)
         rospy.sleep(0.1)
