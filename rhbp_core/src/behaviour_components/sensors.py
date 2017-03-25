@@ -13,9 +13,9 @@ from knowledge_base.update_handler import KnowledgeBaseFactCache
 from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
+from utils.topic_listener import TopicListener
 
 from .pddl import create_valid_pddl_name
-from .topic_listener import TopicListener
 
 
 class Sensor(object):

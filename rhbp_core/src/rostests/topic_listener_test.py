@@ -11,7 +11,7 @@ import unittest
 import rospy
 import rostest
 from behaviour_components.sensors import DynamicSensor
-from behaviour_components.topic_listener import TopicListener
+from utils.topic_listener import TopicListener
 from std_msgs.msg import Int32
 
 from rhbp_core.srv import TopicUpdateSubscribe

@@ -20,8 +20,6 @@ class TopicListener(object):
     Provides a method, which checks for new or removed topics and informs subscribers about.
     The topic listener is usually started as own node, see main below. The clients of this service
     register through a service interface and are updated by a topic of new topcis that match their pattern.
-
-    TODO: Move to utils package
     """
 
     DEFAULT_NAME = 'TopicListenerNode'
