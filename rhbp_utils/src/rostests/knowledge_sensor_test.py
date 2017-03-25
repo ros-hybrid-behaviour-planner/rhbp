@@ -10,7 +10,7 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.sensors import KnowledgeSensor
+from rhbp_utils.knowledge_sensors import KnowledgeSensor
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import Push
 from knowledge_base.srv import Pop
