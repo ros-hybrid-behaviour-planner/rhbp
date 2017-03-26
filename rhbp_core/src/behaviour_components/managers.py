@@ -221,7 +221,7 @@ class Manager(object):
         5) The last planning attempt was unsuccessful
         '''
 
-        if rospy.get_param("~planBias", 1.0) == 0.0:
+        if self.__plan_bias == 0.0:
             return # return if planner is disabled
 
         domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
