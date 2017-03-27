@@ -298,13 +298,6 @@ class BehaviourBase(object):
         Constructor
         '''
         self._name = name # a unique name is mandatory
-        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatusCallback)
-        self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
-        self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
-        self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
-        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
-        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
-        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger, self.setExecutionTimeoutCallback)
         # This are the preconditions for the behaviour. They may not be used but the default implementations of
         # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
@@ -324,7 +317,7 @@ class BehaviourBase(object):
         self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0
         # The priority indicators are unsigned ints. The higher the more important
         self._priority = kwargs["priority"] if "priority" in kwargs else 0
-        # This determines whether the manager will treat it as an error and re-plan if the behaviour run but wasn't
+        # This determines whether the manager will treat it as an error and re-plan if the behaviour is running but wasn't
         #  part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
         self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False
         # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again)
@@ -336,12 +329,25 @@ class BehaviourBase(object):
         self._activated = True # The activate Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
 
+        self._init_services()
+
+    def _init_services(self):
+        """
+        Init all required ROS services
+        """
+        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatusCallback)
+        self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
+        self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
+        self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
+        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
+        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
+        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger,
+                                                      self.setExecutionTimeoutCallback)
         if self._requires_execution_steps:
             self.__execution_step_service = rospy.Service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
-
 
     def final_init(self):
         """
@@ -508,10 +514,10 @@ class BehaviourBase(object):
     def pddlCallback(self, dummy):
         if not self._independentFromPlanner and len(self._correlations) == 0:
             # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logerr('Behavior {0} has no effects but is not independent from planner'.format(self._name))
+            rospy.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
         if self._independentFromPlanner and len(self._correlations) > 0:
             # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logerr('Behavior {0} has effects but is independent from planner'.format(self._name))
+            rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
         actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
         state = self.getStatePDDL()
         return GetPDDLResponse(**{"actionStatement" : actions.statement, 
