@@ -32,9 +32,6 @@ class TestManager(unittest.TestCase):
         # prevent influence of previous tests
         self.__message_prefix = 'TestManager_' + str(time.time()).replace('.', '')
         rospy.init_node('manager_test_node', log_level=rospy.DEBUG)
-        # Disable planner, since the change from python to C
-        #  disturbs the connection between the test process and the node process
-        #rospy.set_param("~planBias", 0.0)
 
     def test_independent_behaviour(self):
 
@@ -48,13 +45,8 @@ class TestManager(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         condition_function_name = condition.getFunctionNames()[0]
-        dependent_behaviour = SetTrueBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
-                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
-
-        #here we actually do not want an effect, it is suppose to be not executed
-        independent_behaviour = SetTrueBehavior(effect_name="Foobar", topic_name=topic_name_1,
-                                                name=method_prefix + "TopicIncreaser2", plannerPrefix=planner_prefix, independentFromPlanner=True)
-
+        independent_behaviour = SetTrueBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
+                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, independentFromPlanner=True)
 
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.addCondition(condition)
@@ -67,9 +59,7 @@ class TestManager(unittest.TestCase):
         goal_proxy.sync()
         self.assertTrue(goal_proxy.satisfied, 'Goal is not satisfied')
 
-        self.assertFalse(independent_behaviour._isExecuting, "Independent Behaviour is executed")
-        self.assertTrue(dependent_behaviour._isExecuting,"Dependent Behaviour is not executed")
-
+        self.assertTrue(independent_behaviour._isExecuting, "Independent Behaviour is not executed")
 
 
 if __name__ == '__main__':
