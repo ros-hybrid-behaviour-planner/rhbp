@@ -78,18 +78,6 @@ class Behaviour(object):
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         self.__execution_step_service()
 
-    def matchingCorrelations(self, effect_name):
-        '''
-        returns a list of correlations matching the effect_name.
-        '''
-        return [item[1] for item in self._correlations if item[0] == effect_name]
-    
-    def matchingWishes(self, effect_name):
-        '''
-        returns a list of indicators matching the effect_name.
-        '''
-        return [item[1] for item in self._wishes if item[0] == effect_name]
-    
     def fetchStatus(self):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
@@ -317,17 +305,34 @@ class BehaviourBase(object):
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
         self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger, self.setExecutionTimeoutCallback)
-        self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
+        # This are the preconditions for the behaviour. They may not be used but the default implementations of
+        # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
+        self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
-        self._correlations = kwargs["correlations"] if "correlations" in kwargs else [] # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning: effect_nameme -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. Optional condition -> a piece of pddl when this effect happens. # Be careful with the effect_name! It has to actually match something that exists!
-        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
-        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
+        # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning:
+        #  effect_nameme -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected.
+        # 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
+        # Optional condition -> a piece of pddl when this effect happens. # Be careful with the effect_name!
+        # It has to actually match something that exists!
+        self._correlations = kwargs["correlations"] if "correlations" in kwargs else []
+        # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
+        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
+        # if you have multiple planners in the same ROS environment use a prefix to name the right one.
+        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
-        self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
-        self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
-        self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False # This determines whether the manager will treat it as an error and re-plan if the behaviour run but wasn't part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
-        self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1 # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again) 
-        self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
+        # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
+        self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0
+        # The priority indicators are unsigned ints. The higher the more important
+        self._priority = kwargs["priority"] if "priority" in kwargs else 0
+        # This determines whether the manager will treat it as an error and re-plan if the behaviour run but wasn't
+        #  part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
+        self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False
+        # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again)
+        self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1
+        # if anything in the behaviour is not initialized or working properly this must be set to False and communicated
+        # via getStatus service. The value of this variable is set to self._activated at the start of each status poll
+        # and should be set to False in case of errors.
+        self._active = True
         self._activated = True # The activate Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
 
