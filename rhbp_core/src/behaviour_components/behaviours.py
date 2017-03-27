@@ -24,7 +24,7 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, independentFromPlanner = False, create_log_files = False, requires_execution_steps = False):
+    def __init__(self, name, independentFromPlanner=False, create_log_files=False, requires_execution_steps=False):
         '''
         Constructor
         '''
