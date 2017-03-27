@@ -9,9 +9,10 @@ import sys
 from threading import Lock
 
 import rospy
-from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 from rosgraph.masterapi import Master
 from std_msgs.msg import String
+
+from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 
 
 class TopicListener(object):
@@ -20,8 +21,6 @@ class TopicListener(object):
     Provides a method, which checks for new or removed topics and informs subscribers about.
     The topic listener is usually started as own node, see main below. The clients of this service
     register through a service interface and are updated by a topic of new topcis that match their pattern.
-
-    TODO: Move to utils package
     """
 
     DEFAULT_NAME = 'TopicListenerNode'
@@ -33,7 +32,7 @@ class TopicListener(object):
         :param include_regex_into_topic_names: Whether names of update topic should contain the pattern. Just for better debugging. Has no influence on functionality
         :param prefix: address of the topic listener. The address is used for the subscribe service and all update topics.
         """
-        self.__handler = Master(rospy.get_name()) #get access to the ROS master to use the topic directoy
+        self.__handler = Master(rospy.get_name())  # get access to the ROS master to use the topic directoy
         self.__lock = Lock()
         self.__update_topics = {}
         self.__include_regex_into_topic_names = include_regex_into_topic_names
@@ -110,30 +109,33 @@ class TopicListener(object):
                                                 topicNameTopicRemoved=removed_topic_name,
                                                 existingTopics=self.__find_matching_topcis(regex))
 
-
-    def __inform_about_topic_change(self, changed_topics, index_of_topic_in_pair):
+    def __inform_about_topic_change(self, changed_topics, inform_about_added_topics):
         """
-        TODO rieger --> Especially the second parameter needs explanation, it might also be worth to discuss the detailled
-        design regarding this point here
-        :param changed_topics:
-        :param index_of_topic_in_pair:
-        :return:
+        Informs all subscribed topics about the topic changes.
+        Each client is only informed about changes of matching topics
+        :param changed_topics: names of all changed topics
+        :param inform_about_added_topics: whether the changed topics are added (or removed).
+                                          Is used for decision about used topic
         """
+        if (inform_about_added_topics):
+            index_of_topic_in_pair = 0
+        else:
+            index_of_topic_in_pair = 1
         for regex in self.__subscribed_regular_expressions:
             for topic in changed_topics:
                 if (regex.match(topic)):
                     self.__update_topics[regex][index_of_topic_in_pair].publish(topic)
 
     def __inform_about_added_topics(self, added_topics):
-        self.__inform_about_topic_change(added_topics, 0)
+        self.__inform_about_topic_change(added_topics, True)
 
     def __inform_about_removed_topics(self, removed_topics):
-        self.__inform_about_topic_change(removed_topics, 1)
+        self.__inform_about_topic_change(removed_topics, False)
 
     def check(self):
         """
         Update method that tracks known and new topics
-        It triggers the pattern comparission in case of new
+        It triggers the pattern comparision in case of new
         available topics
         """
         with self.__lock:
@@ -143,7 +145,7 @@ class TopicListener(object):
             topics = self.__handler.getPublishedTopics('')
             for topic in topics:
                 topic_name = topic[0]
-                #cache and update existing and new topics
+                # cache and update existing and new topics
                 self.__existing_topics.append(topic_name)
                 if (topic_name in expected_topics):
                     expected_topics.remove(topic_name)

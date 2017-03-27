@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package>
+  <name>rhbp_utils</name>
+  <version>0.0.2</version>
+  <description>Some additional modules for rhbp, which are not included in the core package</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag --> 
+  <maintainer email="christopher-eyk.hrabia@dai-labor.de">Christopher-Eyk Hrabia</maintainer>
+  <maintainer email="rieger@campus.tu-berlin.de">Phillip Rieger</maintainer>
+
+  <license>LGPLv3</license>
+
+  <author email="rieger@campus.tu-berlin.de">Phillip Rieger</author>
+  <author email="christopher-eyk.hrabia@dai-labor.de">Christopher-Eyk Hrabia</author>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>knowledge_base</build_depend>
+  <build_depend>rhbp_core</build_depend>
+  <build_depend>rospy</build_depend>
+  <run_depend>knowledge_base</run_depend>
+  <run_depend>rhbp_core</run_depend>
+  <run_depend>rospy</run_depend>
+
+
+</package>

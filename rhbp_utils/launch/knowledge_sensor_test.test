@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="knowledge_base" type="knowledge_base_node.py" name ="None" />
+    <test pkg="rhbp_utils" type="knowledge_sensor_test.py" test-name="knowledge_sensor_test_node"/>
+</launch>

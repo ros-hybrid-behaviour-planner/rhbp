@@ -29,7 +29,7 @@ System test for the GreedyActivator
 
 class IncreaserBehavior(BehaviourBase):
     """
-    Behavior, which adds a fact at execution to knowledge base
+    Behavior, which increases an int value
     """
 
     def __init__(self, topic_name, effect_name, name='increaserAdderBehaviour',
@@ -52,6 +52,9 @@ class TestGreedyActivator(unittest.TestCase):
         # prevent influence of previous tests
         self.__message_prefix = 'TestGreedyActivator' + str(time.time()).replace('.', '')
         rospy.init_node('TestGreedyActivatorTestNode', log_level=rospy.DEBUG)
+        # Disable planner, since the change from python to C
+        #  disturbs the connection between the test process and the node process
+        rospy.set_param("~planBias", 0.0)
 
     def test_activator(self):
         method_prefix = self.__message_prefix + "TestOfflineGoal"
@@ -73,7 +76,7 @@ class TestGreedyActivator(unittest.TestCase):
         goal.add_condition(condition)
         m.add_goal(goal)
 
-        for x in range(0, 19, 1):
+        for x in range(0, 16, 1):
             m.step()
             rospy.sleep(0.1)
 

@@ -1,3 +1,3 @@
 #The added fact
-string[] old
+Fact[] removed
 string[] new
