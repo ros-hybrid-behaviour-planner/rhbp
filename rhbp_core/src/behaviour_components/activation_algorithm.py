@@ -121,7 +121,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         self.plan_bias=kwargs['plan_bias']
         self.conflictor_bias=kwargs['conflictor_bias']
         self.goal_bias=kwargs['goal_bias']
-        self.succesor_bias=kwargs['successor_bias']
+        self.successor_bias=kwargs['successor_bias']
         self.predecessor_bias=kwargs['predecessor_bias']
         self._activation_decay=kwargs['activation_decay']
 
