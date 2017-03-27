@@ -48,11 +48,11 @@ class TestManager(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         condition_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
+        dependent_behaviour = SetTrueBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
                         name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
 
-
-        independent_behaviour = SetTrueBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
+        #here we actually do not want an effect, it is suppose to be not executed
+        independent_behaviour = SetTrueBehavior(effect_name="Foobar", topic_name=topic_name_1,
                                                 name=method_prefix + "TopicIncreaser2", plannerPrefix=planner_prefix, independentFromPlanner=True)
 
 
@@ -67,7 +67,8 @@ class TestManager(unittest.TestCase):
         goal_proxy.sync()
         self.assertTrue(goal_proxy.satisfied, 'Goal is not satisfied')
 
-        self.assertTrue(independent_behaviour._isExecuting, "Independent Behaviour not executed")
+        self.assertFalse(independent_behaviour._isExecuting, "Independent Behaviour is executed")
+        self.assertTrue(dependent_behaviour._isExecuting,"Dependent Behaviour is not executed")
 
 
 
