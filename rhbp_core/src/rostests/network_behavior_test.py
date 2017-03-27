@@ -48,19 +48,19 @@ class TestNetworkBehavior(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestNetworkBehavior, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
-        self.__message_prefix = 'TestNetworkBehavior' + str(time.time()).replace('.', '')
+        self.__message_prefix = 'TestNetworkBehavior_' + str(time.time()).replace('.', '')
         rospy.init_node('NetworkBehaviorTestNode', log_level=rospy.DEBUG)
         # Disable planner, since the change from python to C
         #  disturbs the connection between the test process and the node process
         rospy.set_param("~planBias", 0.0)
 
-    def test_network_behavior(self):
+    def test_multiple_embedded_network_behaviors(self):
         """
         Tests the case, that one network behavior is embedded into another network behavior.
         The goal requires to receive an int (3) in a topic.
         """
 
-        method_prefix = self.__message_prefix + "TestNetworkBehavior"
+        method_prefix = self.__message_prefix + "/test_multiple_embedded_network_behaviors"
 
         topic_name = method_prefix + '/Topic'
         sensor = SimpleTopicSensor(topic=topic_name, message_type=Int32, initial_value=False)
