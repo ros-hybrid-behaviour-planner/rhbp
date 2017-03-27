@@ -10,11 +10,11 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.sensors import DynamicSensor
-from std_msgs.msg import String, Int32
-from utils.topic_listener import TopicListener
-
 from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
+from std_msgs.msg import String, Int32
+
+from behaviour_components.sensors import DynamicSensor
+from utils.topic_listener import TopicListener
 
 PKG = 'rhbp_core'
 

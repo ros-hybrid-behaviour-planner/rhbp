@@ -645,8 +645,11 @@ class BehaviourBase(object):
     def start(self):
         """
         This method should be overridden with one that actually does something.
+
+        By default we forward the call to do_step() in order to execute also something
+        after activation if start() is not explicitly overwritten
         """
-        pass
+        self.do_step()
     
     def stop(self):
         """

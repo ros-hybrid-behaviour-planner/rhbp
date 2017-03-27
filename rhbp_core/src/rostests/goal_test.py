@@ -11,35 +11,21 @@ import unittest
 
 import rospy
 import rostest
+
+from std_msgs.msg import Bool
+
 from behaviour_components.activators import Condition, BooleanActivator
-from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
-from behaviour_components.pddl import Effect
 from behaviour_components.sensors import SimpleTopicSensor
-from std_msgs.msg import Bool
+
+from tests.common import SetTrueBehavior
 
 PKG = 'rhbp_core'
 
 """
 System test for goals. Assumes, that a rosmaster is running
 """
-
-
-class TopicIncreaserBehavior(BehaviourBase):
-    """
-    Behavior, which publishs True in the given topic
-    """
-
-    def __init__(self, effect_name, topic_name, name, **kwargs):
-        super(TopicIncreaserBehavior, self).__init__(name, **kwargs)
-        self._correlations = [Effect(effect_name, 1, sensorType=bool)]
-        self.__publisher = rospy.Publisher(topic_name, Bool, queue_size=10)
-        rospy.sleep(0.1)
-
-    def start(self):
-        self.__publisher.publish(True)
-        self._isExecuting = False
 
 
 class TestGoals(unittest.TestCase):
@@ -64,8 +50,8 @@ class TestGoals(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
-        TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                               name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.addCondition(condition)
 
@@ -89,8 +75,8 @@ class TestGoals(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
-        TopicIncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                               name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
         goal.add_condition(condition)
         m.add_goal(goal)
