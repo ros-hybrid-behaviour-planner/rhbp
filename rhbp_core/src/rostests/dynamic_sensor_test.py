@@ -96,7 +96,7 @@ class TopicListenerMock(object):
         added_topic = rospy.Publisher(added_topic_name, String, queue_size=10)
         removed_topic_name = base_topic_name + '/TopicRemoved'
         removed_topic = rospy.Publisher(removed_topic_name, String, queue_size=10)
-        rospy.sleep(1)
+        rospy.sleep(0.1)
         self.__update_topics[regex] = (added_topic, removed_topic)
         return TopicUpdateSubscribeResponse(topicNameTopicAdded=added_topic_name,
                                             topicNameTopicRemoved=removed_topic_name,

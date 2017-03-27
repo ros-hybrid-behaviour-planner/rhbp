@@ -35,7 +35,7 @@ class TopicIncreaserBehavior(BehaviourBase):
         super(TopicIncreaserBehavior, self).__init__(name, **kwargs)
         self._correlations = [Effect(effect_name, 1, sensorType=bool)]
         self.__publisher = rospy.Publisher(topic_name, Bool, queue_size=10)
-        rospy.sleep(1)
+        rospy.sleep(0.1)
 
     def start(self):
         self.__publisher.publish(True)
@@ -48,12 +48,15 @@ class TestGoals(unittest.TestCase):
         # prevent influence of previous tests
         self.__message_prefix = 'TestGoals' + str(time.time()).replace('.', '')
         rospy.init_node('goal_test_node', log_level=rospy.DEBUG)
+        # Disable planner, since the change from python to C
+        #  disturbs the connection between the test process and the node process
+        rospy.set_param("~planBias", 0.0)
 
     def test_remote_goal(self):
 
         method_prefix = self.__message_prefix + "TestRemoteGoal"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
 
         topic_name = method_prefix + '/Topic'
 
@@ -71,7 +74,6 @@ class TestGoals(unittest.TestCase):
             rospy.sleep(0.1)
 
         goal_proxy = m.goals[0]
-        rospy.sleep(1)
         goal_proxy.sync()
         self.assertTrue(goal_proxy.satisfied, 'Goal is not satisfied')
 
@@ -79,7 +81,7 @@ class TestGoals(unittest.TestCase):
 
         method_prefix = self.__message_prefix + "TestOfflineGoal"
         planner_prefix = method_prefix + "/Manager"
-        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
 
         topic_name = method_prefix + '/Topic'
 
@@ -96,10 +98,10 @@ class TestGoals(unittest.TestCase):
             m.step()
             rospy.sleep(0.1)
 
-        rospy.sleep(1)
         goal.sync()
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
 
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'test_goals_node', TestGoals)
+    rospy.spin()

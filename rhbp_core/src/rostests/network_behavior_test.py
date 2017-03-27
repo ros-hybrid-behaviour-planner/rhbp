@@ -37,7 +37,7 @@ class TopicIncreaserBehavior(BehaviourBase):
         self._correlations = [effect]
         self.__publisher = rospy.Publisher(topic_name, Int32, queue_size=10)
         self.__next_value = 1
-        rospy.sleep(1)
+        rospy.sleep(0.1)
 
     def do_step(self):
         self.__publisher.publish(Int32(self.__next_value))
@@ -50,6 +50,9 @@ class TestNetworkBehavior(unittest.TestCase):
         # prevent influence of previous tests
         self.__message_prefix = 'TestNetworkBehavior' + str(time.time()).replace('.', '')
         rospy.init_node('NetworkBehaviorTestNode', log_level=rospy.DEBUG)
+        # Disable planner, since the change from python to C
+        #  disturbs the connection between the test process and the node process
+        rospy.set_param("~planBias", 0.0)
 
     def test_network_behavior(self):
         """
@@ -64,9 +67,7 @@ class TestNetworkBehavior(unittest.TestCase):
         condition = Condition(sensor, ThresholdActivator(thresholdValue=3))
 
         planner_prefix = method_prefix + "/Manager"
-        # Disable planner, since the change from python to C
-        #  disturbs the connection between the test process and the node process
-        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
         goal.add_condition(condition)
         m.add_goal(goal)
@@ -75,10 +76,10 @@ class TestNetworkBehavior(unittest.TestCase):
         effect = Effect(pddl_function_name, 1, sensorType=int)
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
-                                              effects=[(sensor, effect)], planBias=0.0)
+                                              effects=[(sensor, effect)])
         seccond_level_network = NetworkBehavior(name=method_prefix + '/SeccondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(),
-                                                effects=[(sensor, effect)], planBias=0.0)
+                                                effects=[(sensor, effect)])
 
         increaser_behavior = TopicIncreaserBehavior(effect=effect, topic_name=topic_name,
                                                     name=method_prefix + "TopicIncreaser",

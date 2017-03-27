@@ -52,11 +52,14 @@ class TestGreedyActivator(unittest.TestCase):
         # prevent influence of previous tests
         self.__message_prefix = 'TestGreedyActivator' + str(time.time()).replace('.', '')
         rospy.init_node('TestGreedyActivatorTestNode', log_level=rospy.DEBUG)
+        # Disable planner, since the change from python to C
+        #  disturbs the connection between the test process and the node process
+        rospy.set_param("~planBias", 0.0)
 
     def test_activator(self):
         method_prefix = self.__message_prefix + "TestOfflineGoal"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, planBias=0.0, prefix=planner_prefix)
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
 
         topic_name = 'IncreaseTopicTest/Topic'
 
