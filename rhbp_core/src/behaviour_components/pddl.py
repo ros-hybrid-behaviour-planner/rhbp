@@ -33,6 +33,10 @@ class PDDL(object):
                 self.functions = set([functions])
         else:
             self.functions = set()
+
+    @property
+    def empty(self):
+        return not self.statement.strip() and len(self.predicates) == 0 and len(self.predicates) == 0
     
     def __repr__(self):
         return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement

@@ -526,7 +526,12 @@ class BehaviourBase(object):
             # Since the correlations arent setted in constructor once right place for warning is here
             rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
         actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
-        state = self.getStatePDDL()
+
+        if not actions.empty:
+            state = self.getStatePDDL() #do not use state PDDL of empty actions (e.g. independent from planner)
+        else:
+            state = PDDL()
+
         return GetPDDLResponse(**{"actionStatement" : actions.statement, 
                                   "actionPredicates" : list(actions.predicates),
                                   "actionFunctions" : list(actions.functions),
