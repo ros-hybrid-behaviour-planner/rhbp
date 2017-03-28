@@ -386,15 +386,16 @@ class Manager(object):
                     continue
                 if behaviour.isExecuting: # it must not already run
                     rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
+                    #It is important to remember that only interruptable behaviours can be stopped by the manager
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                             and behaviour.interruptable:
                         rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
                         currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, True)
                         self.__replanningNeeded = True # this is unusual so replan
-                    elif not behaviour.executable:
+                    elif not behaviour.executable and behaviour.interruptable:
                         rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
                         currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, True)
-                    elif behaviour.activation < self._activationThreshold:
+                    elif behaviour.activation < self._activationThreshold and behaviour.interruptable:
                         rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
                         currentlyInfluencedSensors = self._stop_behaviour(behaviour, currentlyInfluencedSensors, False)
                     else:

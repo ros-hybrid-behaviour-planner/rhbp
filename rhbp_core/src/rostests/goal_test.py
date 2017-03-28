@@ -51,7 +51,7 @@ class TestGoals(unittest.TestCase):
 
         pddl_function_name = condition.getFunctionNames()[0]
         SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.addCondition(condition)
 
@@ -76,7 +76,7 @@ class TestGoals(unittest.TestCase):
 
         pddl_function_name = condition.getFunctionNames()[0]
         SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix)
+                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal')
         goal.add_condition(condition)
         m.add_goal(goal)

@@ -312,7 +312,8 @@ class BehaviourBase(object):
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
         # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
-        self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
+        # configure if a running behaviour can be stopped by the manager, default is True
+        self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else True
         # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
         self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0
         # The priority indicators are unsigned ints. The higher the more important
@@ -484,6 +485,12 @@ class BehaviourBase(object):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
+        effects = [x.getEffectPDDL() for x in self._correlations]
+        if len(effects) < 1:
+            if not self._independentFromPlanner:
+                rospy.logwarn("Behaviour %s doesn't have effects and is not independent from planner, it will be ignored for PDDL-based planning", self._name)
+            return PDDL()
+
         action_name = create_valid_pddl_name(self._name)
         pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(action_name), functions = "costs")
         preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions if not x.optional] # do not use optional preconditions for planning
@@ -493,7 +500,7 @@ class BehaviourBase(object):
             pddl.statement += ":precondition (and " + " ".join(map(lambda x: x.statement, preconds)) + ")\n"
         elif len(preconds) == 1:
             pddl.statement += ":precondition " + preconds[0].statement + "\n"
-        effects = [x.getEffectPDDL() for x in self._correlations]
+
         pddl.predicates = pddl.predicates.union(*map(lambda x: x.predicates, effects)) # adds predicates from the effects
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, effects)) # adds functions from the effects
         if len(effects) > 1:
@@ -566,6 +573,21 @@ class BehaviourBase(object):
             self._preconditions.append(precondition)
         else:
             warnings.warn("That's no conditional object!")
+
+
+    def set_activated(self, activated):
+        """
+        Set behaviour to activated or deactivated
+        Should be called manually if the behaviour is not
+        interruptable and has finished its task
+        :param activated: activation state
+        :type activated: bool
+        :return:
+        """
+        self._activated = activated
+        if self._activated == False:
+            self.stop()
+            self._isExecuting = False
     
     def startCallback(self, dummy):
         '''
@@ -590,12 +612,9 @@ class BehaviourBase(object):
         This method activates or deactivates the behaviour.
         This method must not block.
         '''
-        self._activated = request.active
-        if self._activated == False:
-            self.stop() 
-            self._isExecuting = False
+        self.set_activated(request.active)
         return ActivateResponse()
-    
+
     def setPriorityCallback(self, request):
         self._priority = request.value
         return SetIntegerResponse()
