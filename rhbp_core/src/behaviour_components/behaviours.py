@@ -24,7 +24,7 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, independentFromPlanner = False, create_log_files = False, requires_execution_steps = False):
+    def __init__(self, name, independentFromPlanner=False, create_log_files=False, requires_execution_steps=False):
         '''
         Constructor
         '''
@@ -32,14 +32,13 @@ class Behaviour(object):
         self._isExecuting = False   # Set this to True if this behaviour is selected for execution.
         self._correlations = []     # Stores sensor correlations as list of (sensor name <string> : correlation <float> [-1 to 1]) tuples. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. We get this value via getStatus service of actual behaviour node
         self._wishes = []           # Stores wishes exactly like correlations. We get this via getStatus service of actual behaviour node
-        self._manager = None        # This is the Manager that supplies global variables an access to all foreign objects
         self._activation = 0.0      # This is the magic activation that it's all about
+        self._current_activation_step = 0.0 # The temporary activation step not yet combined with prior activation
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
         self._interruptable = False # We get it via getStatus service of actual behaviour node
         self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
-        self._activationDecay = 0.0 # This reduces accumulated activation if the situation does not fit any more
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
         self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
@@ -49,7 +48,6 @@ class Behaviour(object):
         self._reset_activation = True
         self._create_log_files = create_log_files
         self._independentFromPlanner = independentFromPlanner
-        self.__currentActivationStep = 0.0
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps=requires_execution_steps
         Behaviour._instanceCounter += 1
@@ -80,18 +78,6 @@ class Behaviour(object):
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         self.__execution_step_service()
 
-    def matchingCorrelations(self, effect_name):
-        '''
-        returns a list of correlations matching the effect_name.
-        '''
-        return [item[1] for item in self._correlations if item[0] == effect_name]
-    
-    def matchingWishes(self, effect_name):
-        '''
-        returns a list of indicators matching the effect_name.
-        '''
-        return [item[1] for item in self._wishes if item[0] == effect_name]
-    
     def fetchStatus(self):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
@@ -139,163 +125,7 @@ class Behaviour(object):
             return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
-            
-    def getActivationFromGoals(self, goal_bias,logging = False):
-        '''
-        This method computes the activation from goals.
-        Precondition is that correlations are known so that the effect of this behaviour can be evaluated
-        '''
-        activatedByGoals = []
-        for goal in self._manager.activeGoals:
-            #check for each sensor in the goal wishes for behaviours that have sensor effect correlations
-            for (effect_name, indicator) in goal.wishes:
-                # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours will get activation from the goal).
-                behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
-                for correlation in self.matchingCorrelations(effect_name):
-                    if correlation * indicator > 0.0: # This means we affect the sensor in a way that is desirable by the goal
-                        totalActivation = correlation * indicator * goal_bias
-                        if logging:
-                            rospy.logdebug("Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",  self.name, len(behavioursActivatedBySameGoal), goal.name, effect_name, behavioursActivatedBySameGoal, totalActivation, goal_bias)
-                        activatedByGoals.append((goal, totalActivation / len(behavioursActivatedBySameGoal)))        # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return (0.0,) if len(activatedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in activatedByGoals)), activatedByGoals)
-    
-    def getInhibitionFromGoals(self, conflictor_bias, logging = False):
-        '''
-        This method computes the inhibition (actually, activation but negative sign!) caused by goals it conflicts with.
-        Precondition is that correlations are known so that the effect of this behaviour can be evaluated
-        '''
-        inhibitedByGoals = []
-        for goal in self._manager.activeGoals:
-            for (effect_name, indicator) in goal.wishes:
-                # Make a list of all active behaviours that inhibit this goal.
-                # Such behaviours are either negatively correlated to the goals wish (would prevent us from reaching the goal)
-                # or the goal's condition has already been reached and the behaviour would undo it (goal's wish indicator is 0 but there is non-zero correlation of the behaviour to that particular sensor)
-                behavioursInhibitedBySameGoal = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator < 0.0 or (x * indicator == 0.0 and x != 0.0), b.matchingCorrelations(effect_name)))]
-                for correlation in self.matchingCorrelations(effect_name):
-                    if correlation * indicator < 0.0: #This means we affect the sensor in a way that is not desirable by the goal
-                        # We want the inhibition to be stronger if the condition that we would worsen is almost true.
-                        # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * conflictor_bias
-                        if logging:
-                            rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name, behavioursInhibitedBySameGoal, totalInhibition)
-                        inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-                    elif correlation != 0 and indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
-                        totalInhibition = -abs(correlation) * conflictor_bias
-                        if logging:
-                            rospy.logdebug("Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",  self.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name, behavioursInhibitedBySameGoal, totalInhibition)
-                        inhibitedByGoals.append((goal, totalInhibition / len(behavioursInhibitedBySameGoal)))      # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-        return (0.0,) if len(inhibitedByGoals) == 0 else (reduce(lambda x, y: x + y, (x[1] for x in inhibitedByGoals)), inhibitedByGoals)
-    
-    def getActivationFromPredecessors(self,predecessor_bias, logging = False):
-        '''
-        This method computes the activation based on the fact that other behaviours can fulfill a precondition (wish) of this behaviour.
-        This is scaled by the "readyness" (precondition satisfaction) of the predecessor as it makes only sense to activate a successor if it is likely that it is executable soon.
-        '''
-        activatedByPredecessors = []
-        for behaviour in self._manager.activeBehaviours:
-            if behaviour == self or not behaviour.executable: # ignore ourselves and non-executable predecessors
-                continue
-            for (effect_name, indicator) in self._wishes: # this is what we wish from a predecessor
-                # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
-                behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingWishes(effect_name)))]
-                for correlation in behaviour.matchingCorrelations(effect_name): # correlations that the behaviour (potential predecessor) has to the sensor of this wish
-                    if correlation * behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
-                        totalActivation = correlation * indicator * (behaviour.activation / self._manager.totalActivation) * predecessor_bias
-                        if logging:
-                            rospy.logdebug("Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",  self._name, len(behavioursThatShareThisWish), behaviour.name, effect_name, behavioursThatShareThisWish, totalActivation)
-                        activatedByPredecessors.append((behaviour, effect_name, totalActivation / len(behavioursThatShareThisWish))) # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. behavioursThatShareThisWish knows how many more behaviours will get activation from this predecessor so we distribute it equally
-        return (0.0,) if len(activatedByPredecessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
 
-    def getActivationFromSuccessors(self,successor_bias, logging = False):
-        '''
-        This method computes the activation this behaviour receives because it fulfills a precondition (is a predecessor) of a successor which has unfulfilled wishes.
-        '''
-        activatedBySuccessors = []
-        for behaviour in self._manager.activeBehaviours:
-            if behaviour == self or behaviour.executable: # ignore ourselves and successors that are already executable
-                continue
-            for (effect_name, indicator) in self._correlations: # this is what can give to a successor
-                # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
-                behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * indicator > 0.0, b.matchingCorrelations(effect_name)))]
-                for wish in behaviour.matchingWishes(effect_name): # if we affect other behaviour's wishes somehow
-                    if wish * indicator > 0: # if we are a predecessor so we get activation from that successor
-                        totalActivation = wish * indicator * (behaviour.activation / self._manager.totalActivation) * successor_bias
-                        if logging:
-                            rospy.logdebug("Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f", self._name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name, behavioursThatShareOurCorrelation, totalActivation)
-                        activatedBySuccessors.append((behaviour, effect_name, totalActivation / len(behavioursThatShareOurCorrelation))) # The activation we get is our expected contribution to the fulfillment of our successors precondition. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatShareOurCorrelation) is used to distribute activation among all predecessors
-        return (0.0,) if len(activatedBySuccessors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in activatedBySuccessors)), activatedBySuccessors)
-
-    def getInhibitionFromConflicted(self,conflictor_bias, logging = False):
-        '''
-        This method computes the inhibition (actually, activation but negative sign!) caused by other behaviours whose preconditions get antagonized when this behaviour runs.
-        '''
-        inhibitionFromConflictors = []
-        for behaviour in self._manager.activeBehaviours:
-            if behaviour == self: # ignore ourselves
-                continue
-            for (effect_name, correlation) in self._correlations: # this is what we do to sensors
-                for wish in behaviour.matchingWishes(effect_name):
-                    # Make a list of all behaviours that have the same bad influence on other behaviours as we have.
-                    # Such behaviours are either also negatively correlated another behaviour's wish as we are
-                    # or would undo an already satisfied precondition of other behaviours as we would.
-                    behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation = [b for b in self._manager.activeBehaviours if any(map(lambda x: x * wish < 0.0 or (x * wish == 0.0 and x != 0.0), b.matchingCorrelations(effect_name)))]
-                    if wish * correlation < 0.0:       # if we make an existing conflict stronger
-                        # We want the inhibition to be stronger if the condition that we would worsen is almost true.
-                        # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish)) * abs(correlation) * (behaviour.activation / self._manager.totalActivation) * conflictor_bias
-                        if logging:
-                            rospy.logdebug("Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f", self.name, behaviour.name, effect_name, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
-                        inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) #  Actually only the value is needed but it is a tuple for debug purposes. The length of behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation says how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
-                    elif wish * correlation == 0.0 and wish == 0:    # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
-                        totalInhibition = -abs(correlation) * (behaviour.activation / self._manager.totalActivation) * conflictor_bias
-                        if logging:
-                            rospy.logdebug("Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f", self.name, behaviour.name, effect_name, wish, len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation), behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
-                        inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation))) # The inhibition experienced is my bad influence (my correlation to this effect_name) times the wish of the other behaviour concerning this effect_nameme. Actually only the value is needed but it is a tuple for debug purposes. len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) knows how many more behaviours cause the same harm to this conflictor so its inhibition shall be distributed among them.
-        return (0.0,) if len(inhibitionFromConflictors) == 0 else (reduce(lambda x, y: x + y, (x[2] for x in inhibitionFromConflictors)), inhibitionFromConflictors)
-
-    def getActivationFromPlan(self, plan_bias, logging = False):
-        '''
-        This method computes the activation this behaviour receives because of its place on the plan.
-        Behaviours at the top of the list will be activated most, other not so much.
-        '''
-        if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
-            return (0.0, 0xFF)
-        own_pddl_name = create_valid_pddl_name(self.name)
-        for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(self._manager.plan["actions"].keys())): # walk along the plan starting at where we are
-            if self._manager.plan["actions"][index] == own_pddl_name: # if we are on the plan
-                return (1 / (index - self._manager.planExecutionIndex + 1) * plan_bias, index) # index in zero-based
-        return (0.0, -1)
-       
-    def computeActivation(self,situation_bias,plan_bias, conflictor_bias, goal_bias, successor_bias, predecessor_bias):
-        '''
-        This method sums up all components of activation to compute the additional activation in this step.
-        @:param situation_bias: float
-        '''
-        #TODO this is also calculated several times, if the single functions are accessed from outside
-        with_extensive_logging = False
-        if self._active:
-            self.__currentActivationStep = self._activationFromPreconditions *  situation_bias \
-                                         + self.getActivationFromGoals(logging=with_extensive_logging, goal_bias=goal_bias)[0] \
-                                         + self.getInhibitionFromGoals(logging=with_extensive_logging,conflictor_bias=conflictor_bias)[0] \
-                                         + self.getActivationFromPredecessors(logging=with_extensive_logging, predecessor_bias=predecessor_bias)[0] \
-                                         + self.getActivationFromSuccessors(logging=with_extensive_logging, successor_bias=successor_bias)[0] \
-                                         + self.getInhibitionFromConflicted(logging=with_extensive_logging,conflictor_bias=conflictor_bias)[0] \
-                                         + self.getActivationFromPlan(logging=with_extensive_logging, plan_bias=plan_bias)[0]
-        else:
-            return 0.0
-    
-    def commitActivation(self):
-        '''
-        This method applies the activatipn of this iteration to the overall activation.
-        '''
-        self._activation = self._activation * self._activationDecay + self.__currentActivationStep
-        if self._activation < 0.0:
-            self._activation = 0
-        self.__currentActivationStep = 0.0
-        if self._create_log_files:
-            self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
-            self.__logFile.flush()
-    
     def start(self):
         '''
         This method calls the start service of the actual behaviour.
@@ -364,14 +194,26 @@ class Behaviour(object):
     @property
     def activationFromPreconditions(self):
         return self._activationFromPreconditions
-    
+
     @property
-    def activationDecay(self):
-        return self._activationDecay
-    
-    @activationDecay.setter
-    def activationDecay(self, rate):
-        self._activationDecay = rate
+    def activation(self):
+        return self._activation
+
+    @activation.setter
+    def activation(self, value):
+        self._activation = value
+
+        if self._create_log_files:
+            self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
+            self.__logFile.flush()
+
+    @property
+    def current_activation_step(self):
+        return self._current_activation_step
+
+    @current_activation_step.setter
+    def current_activation_step(self, value):
+        self._current_activation_step = value
         
     @property
     def manualStart(self):
@@ -380,15 +222,7 @@ class Behaviour(object):
     @manualStart.setter
     def manualStart(self, status):
         self._manualStart = status
-        
-    @property
-    def manager(self):
-        return self._manager
-    
-    @manager.setter
-    def manager(self, manager):
-        self._manager = manager
-        
+
     @property
     def executable(self):
         return self._preconditionSatisfaction >= self._readyThreshold
@@ -464,33 +298,57 @@ class BehaviourBase(object):
         Constructor
         '''
         self._name = name # a unique name is mandatory
+        # This are the preconditions for the behaviour. They may not be used but the default implementations of
+        # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
+        self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
+        self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
+        # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning:
+        #  effect_nameme -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected.
+        # 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
+        # Optional condition -> a piece of pddl when this effect happens. # Be careful with the effect_name!
+        # It has to actually match something that exists!
+        self._correlations = kwargs["correlations"] if "correlations" in kwargs else []
+        # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
+        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
+        # if you have multiple planners in the same ROS environment use a prefix to name the right one.
+        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
+        # configure if a running behaviour can be stopped by the manager, default is True
+        self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else True
+        # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
+        self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0
+        # The priority indicators are unsigned ints. The higher the more important
+        self._priority = kwargs["priority"] if "priority" in kwargs else 0
+        # This determines whether the manager will treat it as an error and re-plan if the behaviour is running but wasn't
+        #  part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
+        self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False
+        # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again)
+        self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1
+        # if anything in the behaviour is not initialized or working properly this must be set to False and communicated
+        # via getStatus service. The value of this variable is set to self._activated at the start of each status poll
+        # and should be set to False in case of errors.
+        self._active = True
+        self._activated = True # The activate Service sets the value of this property.
+        self._requires_execution_steps = requires_execution_steps
+
+        self._init_services()
+
+    def _init_services(self):
+        """
+        Init all required ROS services
+        """
         self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatusCallback)
         self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
-        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger, self.setExecutionTimeoutCallback)
-        self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else [] # This are the preconditions for the behaviour. They may not be used but the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
-        self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
-        self._correlations = kwargs["correlations"] if "correlations" in kwargs else [] # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning: effect_nameme -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. Optional condition -> a piece of pddl when this effect happens. # Be careful with the effect_name! It has to actually match something that exists!
-        self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8 # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
-        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else "" # if you have multiple planners in the same ROS environment use a prefix to name the right one.
-        self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else False # The name says it all
-        self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0 # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
-        self._priority = kwargs["priority"] if "priority" in kwargs else 0 # The priority indicators are unsigned ints. The higher the more important
-        self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False # This determines whether the manager will treat it as an error and re-plan if the behaviour run but wasn't part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
-        self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1 # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again) 
-        self._active = True # if anything in the behaviour is not initialized or working properly this must be set to False and communicated via getStatus service. The value of this variable is set to self._activated at the start of each status poll and should be set to False in case of errors.
-        self._activated = True # The activate Service sets the value of this property.
-        self._requires_execution_steps = requires_execution_steps
-
+        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger,
+                                                      self.setExecutionTimeoutCallback)
         if self._requires_execution_steps:
             self.__execution_step_service = rospy.Service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
-
 
     def final_init(self):
         """
@@ -627,6 +485,12 @@ class BehaviourBase(object):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
+        effects = [x.getEffectPDDL() for x in self._correlations]
+        if len(effects) < 1:
+            if not self._independentFromPlanner:
+                rospy.logwarn("Behaviour %s doesn't have effects and is not independent from planner, it will be ignored for PDDL-based planning", self._name)
+            return PDDL()
+
         action_name = create_valid_pddl_name(self._name)
         pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(action_name), functions = "costs")
         preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions if not x.optional] # do not use optional preconditions for planning
@@ -636,7 +500,7 @@ class BehaviourBase(object):
             pddl.statement += ":precondition (and " + " ".join(map(lambda x: x.statement, preconds)) + ")\n"
         elif len(preconds) == 1:
             pddl.statement += ":precondition " + preconds[0].statement + "\n"
-        effects = [x.getEffectPDDL() for x in self._correlations]
+
         pddl.predicates = pddl.predicates.union(*map(lambda x: x.predicates, effects)) # adds predicates from the effects
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, effects)) # adds functions from the effects
         if len(effects) > 1:
@@ -657,12 +521,17 @@ class BehaviourBase(object):
     def pddlCallback(self, dummy):
         if not self._independentFromPlanner and len(self._correlations) == 0:
             # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logerr('Behavior {0} has no effects but is not independent from planner'.format(self._name))
+            rospy.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
         if self._independentFromPlanner and len(self._correlations) > 0:
             # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logerr('Behavior {0} has effects but is independent from planner'.format(self._name))
+            rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
         actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
-        state = self.getStatePDDL()
+
+        if not actions.empty:
+            state = self.getStatePDDL() #do not use state PDDL of empty actions (e.g. independent from planner)
+        else:
+            state = PDDL()
+
         return GetPDDLResponse(**{"actionStatement" : actions.statement, 
                                   "actionPredicates" : list(actions.predicates),
                                   "actionFunctions" : list(actions.functions),
@@ -709,6 +578,21 @@ class BehaviourBase(object):
             self._preconditions.append(precondition)
         else:
             warnings.warn("That's no conditional object!")
+
+
+    def set_activated(self, activated):
+        """
+        Set behaviour to activated or deactivated
+        Should be called manually if the behaviour is not
+        interruptable and has finished its task
+        :param activated: activation state
+        :type activated: bool
+        :return:
+        """
+        self._activated = activated
+        if self._activated == False:
+            self.stop()
+            self._isExecuting = False
     
     def startCallback(self, dummy):
         '''
@@ -733,12 +617,9 @@ class BehaviourBase(object):
         This method activates or deactivates the behaviour.
         This method must not block.
         '''
-        self._activated = request.active
-        if self._activated == False:
-            self.stop() 
-            self._isExecuting = False
+        self.set_activated(request.active)
         return ActivateResponse()
-    
+
     def setPriorityCallback(self, request):
         self._priority = request.value
         return SetIntegerResponse()
@@ -794,8 +675,11 @@ class BehaviourBase(object):
     def start(self):
         """
         This method should be overridden with one that actually does something.
+
+        By default we forward the call to do_step() in order to execute also something
+        after activation if start() is not explicitly overwritten
         """
-        pass
+        self.do_step()
     
     def stop(self):
         """

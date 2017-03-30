@@ -13,38 +13,18 @@ import unittest
 import rospy
 import rostest
 from behaviour_components.activators import Condition, GreedyActivator
-from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
-from behaviour_components.pddl import Effect
 from behaviour_components.sensors import SimpleTopicSensor
 from std_msgs.msg import Int32
+
+from tests.common import IncreaserBehavior
 
 PKG = 'rhbp_core'
 
 """
 System test for the GreedyActivator
 """
-
-
-class IncreaserBehavior(BehaviourBase):
-    """
-    Behavior, which increases an int value
-    """
-
-    def __init__(self, topic_name, effect_name, name='increaserAdderBehaviour',
-                 **kwargs):
-        super(IncreaserBehavior, self).__init__(name, **kwargs)
-        self._correlations = [Effect(effect_name, 1, sensorType=int)]
-        self.__publisher = rospy.Publisher(topic_name, Int32, queue_size=10)
-        self.__next_value = 1
-        rospy.sleep(1)
-
-    def start(self):
-        self.__publisher.publish(Int32(self.__next_value))
-        self.__next_value += 1
-        self._isExecuting = False
-
 
 class TestGreedyActivator(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -76,11 +56,14 @@ class TestGreedyActivator(unittest.TestCase):
         goal.add_condition(condition)
         m.add_goal(goal)
 
-        for x in range(0, 16, 1):
+        number_of_steps = 15
+        for x in range(0, number_of_steps + 1 , 1):
             m.step()
             rospy.sleep(0.1)
 
-        self.assertEquals(7, sensor.latestValue)
+        # it takes 2 steps until the activation has increased
+        expected_behaviour_steps = number_of_steps - 2
+        self.assertEquals(expected_behaviour_steps, sensor.latestValue)
 
 
 if __name__ == '__main__':

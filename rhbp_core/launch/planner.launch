@@ -11,6 +11,7 @@
         <param name="prefix" type="string" value="" />
         <param name="createLogFiles" type="bool" value="true"/>
         <param name="automatic_stepping" type="bool" value="true"/>
+        <param name="activation_algorithm" type="string" value="default"/>
     </node>
 </launch>
 

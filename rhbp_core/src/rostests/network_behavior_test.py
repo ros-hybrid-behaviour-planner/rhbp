@@ -20,50 +20,34 @@ from behaviour_components.pddl import Effect
 from behaviour_components.sensors import SimpleTopicSensor
 from std_msgs.msg import Int32
 
+from tests.common import IncreaserBehavior
+
 PKG = 'rhbp_core'
 
 """
 System test for network behavior. Assumes, that a rosmaster is running
 """
 
-
-class TopicIncreaserBehavior(BehaviourBase):
-    """
-    Behavior, which increases an int value
-    """
-
-    def __init__(self, effect, topic_name, name, **kwargs):
-        super(TopicIncreaserBehavior, self).__init__(name, requires_execution_steps=True, **kwargs)
-        self._correlations = [effect]
-        self.__publisher = rospy.Publisher(topic_name, Int32, queue_size=10)
-        self.__next_value = 1
-        rospy.sleep(0.1)
-
-    def do_step(self):
-        self.__publisher.publish(Int32(self.__next_value))
-        self.__next_value += 1
-
-
 class TestNetworkBehavior(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestNetworkBehavior, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
-        self.__message_prefix = 'TestNetworkBehavior' + str(time.time()).replace('.', '')
-        rospy.init_node('NetworkBehaviorTestNode', log_level=rospy.DEBUG)
+        self.__message_prefix = 'TestNetworkBehavior_' + str(time.time()).replace('.', '')
+        rospy.init_node('NetworkBehaviorTestNode', log_level=rospy.INFO)
         # Disable planner, since the change from python to C
         #  disturbs the connection between the test process and the node process
         rospy.set_param("~planBias", 0.0)
 
-    def test_network_behavior(self):
+    def test_multiple_embedded_network_behaviors(self):
         """
         Tests the case, that one network behavior is embedded into another network behavior.
         The goal requires to receive an int (3) in a topic.
         """
 
-        method_prefix = self.__message_prefix + "TestNetworkBehavior"
+        method_prefix = self.__message_prefix + "/test_multiple_embedded_network_behaviors"
 
         topic_name = method_prefix + '/Topic'
-        sensor = SimpleTopicSensor(topic=topic_name, message_type=Int32, initial_value=False)
+        sensor = SimpleTopicSensor(topic=topic_name, message_type=Int32, initial_value=0)
         condition = Condition(sensor, ThresholdActivator(thresholdValue=3))
 
         planner_prefix = method_prefix + "/Manager"
@@ -73,17 +57,18 @@ class TestNetworkBehavior(unittest.TestCase):
         m.add_goal(goal)
 
         pddl_function_name = condition.getFunctionNames()[0]
-        effect = Effect(pddl_function_name, 1, sensorType=int)
+        effect = Effect(sensorName=pddl_function_name, indicator=1, sensorType=int)
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
                                               effects=[(sensor, effect)])
-        seccond_level_network = NetworkBehavior(name=method_prefix + '/SeccondLevel',
+        second_level_network = NetworkBehavior(name=method_prefix + '/SeccondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(),
                                                 effects=[(sensor, effect)])
 
-        increaser_behavior = TopicIncreaserBehavior(effect=effect, topic_name=topic_name,
+        increaser_behavior = IncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
                                                     name=method_prefix + "TopicIncreaser",
-                                                    plannerPrefix=seccond_level_network.get_manager_prefix())
+                                                    plannerPrefix=second_level_network.get_manager_prefix())
+
 
         # activate the first_level_network, second_level_network and increaser_Behavior
         for x in range(0, 3, 1):
@@ -93,14 +78,14 @@ class TestNetworkBehavior(unittest.TestCase):
         self.assertTrue(first_level_network._isExecuting)
 
         for x in range(0, 3, 1):
-            self.assertFalse(seccond_level_network._isExecuting)
+            self.assertFalse(second_level_network._isExecuting)
             first_level_network.do_step()
             rospy.sleep(0.1)
-        self.assertTrue(seccond_level_network._isExecuting)
+        self.assertTrue(second_level_network._isExecuting)
 
         for x in range(0, 3, 1):
             self.assertFalse(increaser_behavior._isExecuting)
-            seccond_level_network.do_step()
+            second_level_network.do_step()
             rospy.sleep(0.1)
         self.assertTrue(increaser_behavior._isExecuting)
 
@@ -108,7 +93,7 @@ class TestNetworkBehavior(unittest.TestCase):
         for step in range(0, 3, 1):
             sensor.sync()
             self.assertEqual(step, sensor.value)
-            seccond_level_network.do_step()
+            second_level_network.do_step()
             rospy.sleep(0.1)
 
         goal.sync()

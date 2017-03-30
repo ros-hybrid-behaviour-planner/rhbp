@@ -10,11 +10,11 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.sensors import DynamicSensor
-from std_msgs.msg import Int32
-from utils.topic_listener import TopicListener
-
 from rhbp_core.srv import TopicUpdateSubscribe
+from std_msgs.msg import Int32
+
+from behaviour_components.sensors import DynamicSensor
+from utils.topic_listener import TopicListener
 
 PKG = 'rhbp_core'
 
@@ -40,7 +40,7 @@ class TopicListenerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TopicListenerTest, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
-        self.__message_prefix = 'TopicListenerTestSuite' + str(int(time.time()))
+        self.__message_prefix = 'TopicListenerTestSuite_' + str(int(time.time()))
         rospy.init_node('TopicListenerTestNode', log_level=rospy.DEBUG)
         self.__subscribe_service = rospy.ServiceProxy(
             TopicListener.DEFAULT_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe)
