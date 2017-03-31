@@ -159,7 +159,7 @@ class DynamicSensor(Sensor):
     """
 
     def __init__(self, pattern, default_value=None, optional=False,
-                 topic_listener_name=TopicListener.DEFAULT_NAME, sensor_name=None,
+                 topic_listener_name=TopicListener.DEFAULT_NAME, name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False):
         """
@@ -176,7 +176,7 @@ class DynamicSensor(Sensor):
         :param expiration_time_values_of_removed_topics: time in secconds, after a value of a removed topic is outdated
         :param subscribe_only_first: whether this sensor only subscribe to the first matching topic (and no other)
         """
-        super(DynamicSensor, self).__init__(name=sensor_name, optional=optional, initial_value=default_value)
+        super(DynamicSensor, self).__init__(name=name, optional=optional, initial_value=default_value)
 
         self._last_value = None
         self.__time_of_latest_value = None

@@ -14,8 +14,8 @@ class KnowledgeSensor(Sensor):
     Sensor, which provides information about existence of a fact, which matches the given pattern
     """
 
-    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, sensor_name=None):
-        super(KnowledgeSensor, self).__init__(name=sensor_name, optional=optional, initial_value=None)
+    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, name=None):
+        super(KnowledgeSensor, self).__init__(name=name, optional=optional, initial_value=None)
         self.__value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
 
     def sync(self):

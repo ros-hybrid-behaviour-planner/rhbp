@@ -9,7 +9,7 @@ PKG = 'knowledge_base'
 
 class TupleSpaceTestSuite(unittest.TestCase):
     """
-    Tests the used tuple space from libary
+    Tests the used tuple space from library
     """
 
     def test_add(self):
