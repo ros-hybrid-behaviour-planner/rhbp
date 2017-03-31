@@ -17,20 +17,23 @@ class KnowledgeBaseClient(object):
     Simple wrapper for the services (and the push topic) of the knowledge base.
     Some methods do some value conversion, for better usability.
     IMPORTANT: The service proxies are created once, but the initialization is lazy:
-    The init method waits 10 secconds for the knowledge base.
+    The init method waits for the knowledge base for the duration of the timeout parameter.
     After the timeout the constructor returns and the initialisation is done during first usage of this client
     (without timeout).
     """
 
-    def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
+    def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, timeout=2):
         """
         :param knowledge_base_name: Name of the knowledge base (without any postfix)
+        :param timeout: Timeout for the knowledge base service discovery
+        :type timeout: int in seconds
         """
         self.__initialized = False
         self.__knowledge_base_name = knowledge_base_name
         self.__init_lock = Lock
+        self._timeout = timeout
         try:
-            rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=10)
+            rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
         except rospy.ROSException:
             rospy.loginfo(
@@ -48,8 +51,11 @@ class KnowledgeBaseClient(object):
         try:
             rospy.logerr(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
-            rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
+            rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
+        except rospy.ROSException:
+            rospy.loginfo(
+                'The following knowledge base node is currently not present. Connection will be established later: ' + self.__knowledge_base_name)
         finally:
             self.__init_lock.release()
 
