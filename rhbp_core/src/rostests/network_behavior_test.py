@@ -61,7 +61,7 @@ class TestNetworkBehavior(unittest.TestCase):
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
                                               effects=[(sensor, effect)])
-        second_level_network = NetworkBehavior(name=method_prefix + '/SeccondLevel',
+        second_level_network = NetworkBehavior(name=method_prefix + '/SecondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(),
                                                 effects=[(sensor, effect)])
 
