@@ -34,7 +34,7 @@ class Manager(object):
         Constructor
         '''
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
-        self._sensors = []
+        self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
         self._activeGoals = [] # pre-computed (in step()) list of operational goals
         self._behaviours = []
@@ -390,7 +390,7 @@ class Manager(object):
                     #It is important to remember that only interruptable behaviours can be stopped by the manager
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                             and behaviour.interruptable:
-                        rospy.loginfo("STOP BEHAVIOUR %s because it timed out and is interruptable", behaviour.name)
+                        rospy.loginfo("STOP BEHAVIOUR %s because it timed out", behaviour.name)
                         self._stop_behaviour(behaviour, True)
                         self.__replanningNeeded = True # this is unusual so replan
                     elif not behaviour.executable and behaviour.interruptable:
