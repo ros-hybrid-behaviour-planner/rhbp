@@ -9,6 +9,8 @@ import unittest
 
 import rospy
 import rostest
+import roslaunch
+
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import Fact, FactRemoved, FactUpdated
@@ -17,7 +19,7 @@ from knowledge_base.srv import All
 PKG = 'knowledge_base'
 
 """
-System test for knowledge base. Assumes, that a rosmaster and the knowledge base is running
+System test for knowledge base.
 """
 
 
@@ -58,11 +60,29 @@ class UpdateSubscriberMock(object):
 class TupleSpaceTestSuite(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TupleSpaceTestSuite, self).__init__(*args, **kwargs)
-        rospy.init_node('TupleSpaceTestSuite', log_level=rospy.DEBUG)
-        # prevent influence of previous tests
+
+    def setUp(self):
+
         self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
         self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME
+
+        #start KnowledgeBase
+        package = 'knowledge_base'
+        executable = 'knowledge_base_node.py'
+        node = roslaunch.core.Node(package=package, node_type=executable, name=self.__knowledge_base_address)
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+
+        self._kb_process = launch.launch(node)
+
+
+        rospy.init_node('TupleSpaceTestSuite', log_level=rospy.DEBUG)
+        # prevent influence of previous tests
+
         self.__client = KnowledgeBaseClient(self.__knowledge_base_address)
+
+    def tearDown(self):
+        self._kb_process.stop()
 
     def __wait_for_tuple(self, wait_for_it):
         """
