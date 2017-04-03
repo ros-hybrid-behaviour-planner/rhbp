@@ -57,6 +57,7 @@ class BehaviourWidget(QWidget):
         if not self.executionTimeoutSpinBox.hasFocus():
             self.executionTimeoutSpinBox.setValue(newValues["executionTimeout"])
         self.interruptableLabel.setText(newValues["interruptable"])
+        self.independentFromPlannerLabel.setText(newValues["independentFromPlanner"])
         
     def refresh(self, msg):
         """
@@ -79,7 +80,8 @@ class BehaviourWidget(QWidget):
                                    "executionTime" : msg.executionTime,
                                    "progress" : msg.progress,
                                    "priority" : msg.priority,
-                                   "interruptable" : str(msg.interruptable)
+                                   "interruptable" : str(msg.interruptable),
+                                   "independentFromPlanner": str(msg.independentFromPlanner)
                                   })
     
     def activationCallback(self, status):

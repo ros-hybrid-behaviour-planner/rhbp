@@ -365,6 +365,7 @@ class Manager(object):
                 statusMessage.threshold = behaviour.readyThreshold
                 statusMessage.priority = behaviour.priority
                 statusMessage.interruptable = behaviour.interruptable
+                statusMessage.independentFromPlanner = behaviour.independentFromPlanner
                 statusMessage.activated = behaviour.activated
                 statusMessage.active = behaviour.active
                 statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
@@ -378,7 +379,7 @@ class Manager(object):
 
             rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
-            currently_influenced_sensors = None
+            currently_influenced_sensors = set()
 
             for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
