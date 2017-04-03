@@ -412,23 +412,12 @@ class Manager(object):
                     continue
 
                 currently_influenced_sensors = self._get_currently_influenced_sensors()
-                interferingCorrelations = currently_influenced_sensors.intersection(set([item[0] for item in behaviour.correlations]))
-                if len(interferingCorrelations) > 0 and not behaviour.manualStart: # it must not conflict with an already running behaviour ...
-                    alreadyRunningBehavioursRelatedToConflict = filter(lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0, self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
-                    assert len(alreadyRunningBehavioursRelatedToConflict) <= 1 # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
-                    # This implementation deals with a list although it it clear that there is at most one element.
-                    stoppableBehaviours = filter(lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart, alreadyRunningBehavioursRelatedToConflict) # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
-                    if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict): # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
-                        rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
-                        for conflictor in stoppableBehaviours:
-                            rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s", behaviour.name, conflictor.name)
-                            self._stop_behaviour(conflictor, True)
-                            #stopping a behaviour here requires to recalulate the currently_influenced_sensors
-                            currently_influenced_sensors = self._get_currently_influenced_sensors()
-                        ### we have now made room for the higher-priority behaviour ###
-                    else:
-                        rospy.loginfo("%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)", behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
-                        continue
+
+                behaviour_is_interferring_others = self.handle_interferring_correlations(behaviour, currently_influenced_sensors)
+
+                if behaviour_is_interferring_others:
+                    continue
+
                 ### if the behaviour got here it really is ready to be started ###
                 rospy.loginfo("START BEHAVIOUR %s", behaviour.name)
                 if behaviour.manualStart:
@@ -457,6 +446,44 @@ class Manager(object):
 
             self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
+
+    def handle_interferring_correlations(self, behaviour, currently_influenced_sensors):
+        """
+        Method checks and resolves (if possible) conflicts with other behaviours of a given behaviour
+        :param behaviour: the behaviour that is about to be started
+        :param currently_influenced_sensors: list of the currently influenced sensors, will be updated if necessary
+        :return: True if this behaviour is interfering and this cannot be resolved
+        """
+        interferingCorrelations = currently_influenced_sensors.intersection(
+            set([item[0] for item in behaviour.correlations]))
+        if len(
+                interferingCorrelations) > 0 and not behaviour.manualStart:  # it must not conflict with an already running behaviour ...
+            alreadyRunningBehavioursRelatedToConflict = filter(
+                lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0,
+                self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
+            assert len(
+                alreadyRunningBehavioursRelatedToConflict) <= 1  # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
+            # This implementation deals with a list although it it clear that there is at most one element.
+            stoppableBehaviours = filter(
+                lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart,
+                alreadyRunningBehavioursRelatedToConflict)  # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
+            if set(stoppableBehaviours) == set(
+                    alreadyRunningBehavioursRelatedToConflict):  # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
+                rospy.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved",
+                              behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                for conflictor in stoppableBehaviours: # stop another behaviour in order to resolve the conflict
+                    rospy.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s",
+                                  behaviour.name, conflictor.name)
+                    self._stop_behaviour(conflictor, True)
+                    # stopping a behaviour here requires to recalulate the currently_influenced_sensors
+                    currently_influenced_sensors = self._get_currently_influenced_sensors()
+                    ### we have now made room for the higher-priority behaviour ###
+            else:
+                rospy.loginfo(
+                    "%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)",
+                    behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                return True
+        return False
 
     def _get_currently_influenced_sensors(self):
         """
