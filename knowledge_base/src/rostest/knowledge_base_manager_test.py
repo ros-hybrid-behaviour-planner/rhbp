@@ -63,6 +63,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
 
     def setUp(self):
 
+        # prevent influence of previous tests
         self.__message_prefix = 'TupleSpaceTestSuite' + str(time.time())
         self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME
 
@@ -75,9 +76,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
 
         self._kb_process = launch.launch(node)
 
-
         rospy.init_node('TupleSpaceTestSuite', log_level=rospy.DEBUG)
-        # prevent influence of previous tests
 
         self.__client = KnowledgeBaseClient(self.__knowledge_base_address)
 
