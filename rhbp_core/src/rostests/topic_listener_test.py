@@ -10,6 +10,7 @@ import unittest
 
 import rospy
 import rostest
+import roslaunch
 from rhbp_core.srv import TopicUpdateSubscribe
 from std_msgs.msg import Int32
 
@@ -20,7 +21,6 @@ PKG = 'rhbp_core'
 
 """
 System test for the topic listener (including the DynamicSensor)
-Requires a running TopicListener
 """
 
 
@@ -39,11 +39,25 @@ class MaxValueSensor(DynamicSensor):
 class TopicListenerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TopicListenerTest, self).__init__(*args, **kwargs)
+
+
+    def setUp(self):
         # prevent influence of previous tests
         self.__message_prefix = 'TopicListenerTestSuite_' + str(int(time.time()))
+
+        #start topic listener node
+        node = roslaunch.core.Node(package='rhbp_core', node_type='topic_listener.py', name='TopicListenerNode')
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+        self._kb_process = launch.launch(node)
+
+        #init test node
         rospy.init_node('TopicListenerTestNode', log_level=rospy.DEBUG)
         self.__subscribe_service = rospy.ServiceProxy(
             TopicListener.DEFAULT_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe)
+
+    def tearDown(self):
+        self._kb_process.stop()
 
     @staticmethod
     def create_topic(topic_name):
