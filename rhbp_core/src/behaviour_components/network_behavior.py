@@ -88,7 +88,7 @@ class NetworkBehavior(BehaviourBase):
             condition = Condition(activator=activator, sensor=sensor)
             return OfflineGoal(goal_name, permanent=True, conditions={condition})
         if (effect.sensorType == int or effect.sensorType == float):
-            activator = GreedyActivator(maximize=effect.indicator > 0, step_size=effect.realWorldImpact,
+            activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator),
                                         name=activator_name)
             condition = Condition(activator=activator, sensor=sensor)
             return OfflineGoal(goal_name, permanent=True, conditions={condition})
