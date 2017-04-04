@@ -83,18 +83,27 @@ class BehaviourWidget(QWidget):
                                    "interruptable" : str(msg.interruptable),
                                    "independentFromPlanner": str(msg.independentFromPlanner)
                                   })
+
+    def _get_service_prefix(self):
+        """
+        generate the service prefix based on the current planner prefix value
+        :return: str prefix
+        """
+        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
     
     def activationCallback(self, status):
-        rospy.logdebug("Waiting for service %s", self._name + 'Activate')
-        rospy.wait_for_service(self._name + 'Activate')
-        activateRequest = rospy.ServiceProxy(self._name + 'Activate', Activate)
+        service_name = self._get_service_prefix() + 'Activate'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        activateRequest = rospy.ServiceProxy(service_name, Activate)
         activateRequest(status)
         rospy.logdebug("Set activated of %s to %s", self._name, status)
         
     def forceStartCallback(self, status):
-        rospy.logdebug("Waiting for service %s", self._overviewPlugin.plannerPrefix + 'ForceStart')
-        rospy.wait_for_service(self._overviewPlugin.plannerPrefix + 'ForceStart')
-        forceStartRequest = rospy.ServiceProxy(self._overviewPlugin.plannerPrefix + 'ForceStart', ForceStart)
+        service_name = self._overviewPlugin.plannerPrefix + '/'+ 'ForceStart'
+        rospy.logdebug("Waiting for service %s", )
+        rospy.wait_for_service(service_name)
+        forceStartRequest = rospy.ServiceProxy(service_name, ForceStart)
         forceStartRequest(self._name, status)
         if status == True:
             self.forceStartButton.setText("back to normal")
@@ -103,16 +112,18 @@ class BehaviourWidget(QWidget):
         rospy.logdebug("Set forceStart of %s to %s", self._name, status)
     
     def setPriorityCallback(self):
-        rospy.logdebug("Waiting for service %s", self._name + 'Priority')
-        rospy.wait_for_service(self._name + 'Priority')
-        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', SetInteger)
+        service_name = self._get_service_prefix() + 'Priority'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        priorityRequest = rospy.ServiceProxy(service_name, SetInteger)
         priorityRequest(self.prioritySpinBox.value())
         rospy.logdebug("Set priority of %s to %s", self._name, self.prioritySpinBox.value())
     
     def setExecutionTimeoutCallback(self):
-        rospy.logdebug("Waiting for service %s", self._name + 'ExecutionTimeout')
-        rospy.wait_for_service(self._name + 'ExecutionTimeout')
-        priorityRequest = rospy.ServiceProxy(self._name + 'ExecutionTimeout', SetInteger)
+        service_name = self._get_service_prefix() + 'ExecutionTimeout'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        priorityRequest = rospy.ServiceProxy(service_name, SetInteger)
         priorityRequest(self.executionTimeoutSpinBox.value())
         rospy.logdebug("Set executionTimeout of %s to %s", self._name, self.executionTimeoutSpinBox.value())
         

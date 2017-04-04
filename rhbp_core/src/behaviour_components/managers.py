@@ -87,17 +87,24 @@ class Manager(object):
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
 
-        self.__addBehaviourService = rospy.Service(self._prefix + 'AddBehaviour', AddBehaviour, self.__add_behaviour_callback)
-        self.__addGoalService = rospy.Service(self._prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
-        self.__removeBehaviourService = rospy.Service(self._prefix + 'RemoveBehaviour', RemoveBehaviour, self.__removeBehaviour)
-        self.__removeGoalService = rospy.Service(self._prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
-        self.__manualStartService = rospy.Service(self._prefix + 'ForceStart', ForceStart, self.__manualStart)
-        self.__pauseService = rospy.Service(self._prefix + 'Pause', Empty, self.__pauseCallback)
-        self.__resumeService = rospy.Service(self._prefix + 'Resume', Empty, self.__resumeCallback)
-        self.__statusPublisher = rospy.Publisher('/' + self._prefix + 'Planner/plannerStatus', PlannerStatus, queue_size=1)
+        self.init_services()
 
         self._filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
         self.__executedBehaviours = []
+
+    def init_services(self):
+        self._service_prefix = self._prefix + '/'
+        self.__addBehaviourService = rospy.Service(self._service_prefix + 'AddBehaviour', AddBehaviour,
+                                                   self.__add_behaviour_callback)
+        self.__addGoalService = rospy.Service(self._service_prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
+        self.__removeBehaviourService = rospy.Service(self._service_prefix + 'RemoveBehaviour', RemoveBehaviour,
+                                                      self.__removeBehaviour)
+        self.__removeGoalService = rospy.Service(self._service_prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
+        self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manualStart)
+        self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pauseCallback)
+        self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resumeCallback)
+        self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
+                                                 queue_size=1)
 
     @staticmethod
     def __make_log_dir_available(dir_path):
@@ -322,11 +329,9 @@ class Manager(object):
                 statusMessage.priority = goal.priority
                 plannerStatusMessage.goals.append(statusMessage)
                 rospy.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
+                #Deactive non-permanent and satisfied goals
                 if goal.active and not goal.isPermanent and goal.satisfied:
-                    rospy.logdebug("Waiting for service %s", goal.name + 'Activate')
-                    rospy.wait_for_service(goal.name + 'Activate')
-                    activateRequest = rospy.ServiceProxy(goal.name + 'Activate', Activate)
-                    activateRequest(False)
+                    goal.activated = False
                     rospy.logdebug("Set Activated of %s goal to False", goal.name)
                     goal.active = False # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
             ### do housekeeping ###
@@ -542,7 +547,7 @@ class Manager(object):
         :type request: AddGoal
         :return: AddGoalResponse
         """
-        goal = GoalProxy(request.name, request.permanent)
+        goal = GoalProxy(name=request.name, permanent=request.permanent, planner_prefix=self._prefix)
         self.add_goal(goal)
         return AddGoalResponse()
 
@@ -566,9 +571,9 @@ class Manager(object):
         :param request: service request
         :type request: AddBehaviour
         """
-        behaviour = Behaviour(name = request.name, independentFromPlanner = request.independentFromPlanner,
-                                  requires_execution_steps = request.requiresExecutionSteps,
-                                  create_log_files = self._create_log_files)
+        behaviour = Behaviour(name = request.name, planner_prefix=self._prefix, independentFromPlanner = request.independentFromPlanner,
+                              requires_execution_steps = request.requiresExecutionSteps,
+                              create_log_files = self._create_log_files)
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
     
@@ -676,13 +681,15 @@ class ManagerControl(object):
         self.__plannerPrefix = plannerPrefix
 
     def pause(self):
-        rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Pause')
-        rospy.wait_for_service(self.__plannerPrefix + 'Pause')
-        pauseRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Pause', Empty)
+        service_name = self.__plannerPrefix + '/' + 'Pause'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        pauseRequest = rospy.ServiceProxy(service_name, Empty)
         pauseRequest()
 
     def resume(self):
-        rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Resume')
-        rospy.wait_for_service(self.__plannerPrefix + 'Resume')
-        resumeRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Resume', Empty)
+        service_name = self.__plannerPrefix + '/' + 'Resume'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        resumeRequest = rospy.ServiceProxy(service_name, Empty)
         resumeRequest()

@@ -52,7 +52,7 @@ class TestNetworkBehavior(unittest.TestCase):
 
         planner_prefix = method_prefix + "/Manager"
         m = Manager(activationThreshold=7, prefix=planner_prefix)
-        goal = OfflineGoal('CentralGoal')
+        goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
 
