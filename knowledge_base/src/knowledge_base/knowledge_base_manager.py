@@ -10,9 +10,9 @@ import sys
 from threading import Lock
 
 import rospy
-from knowledge_base.msg import Push, Fact, FactRemoved, FactUpdated
+from knowledge_base.msg import Fact, FactRemoved, FactUpdated
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
-    UpdateSubscribeResponse, Update, UpdateResponse
+    UpdateSubscribeResponse, Update, UpdateResponse, Push, PushResponse
 from lindypy.TupleSpace import TSpace
 
 from inverted_tuple_space import InvertedTupleSpace
@@ -20,8 +20,7 @@ from inverted_tuple_space import InvertedTupleSpace
 
 class KnowledgeBase(object):
     """
-    Provides a tuple space for ROS. The tuple space is accessible through several ROS services (Peek, Pop, Exists, All),
-    and the Push topic.
+    Provides a tuple space for ROS. The tuple space is accessible through several ROS services (Peek, Pop, Exists, All, Push).
     It allows subscribing for updates (see UpdateSubscribe service).
     Although this class is just a wrapper for accessing the real tuple space
     """
@@ -33,7 +32,7 @@ class KnowledgeBase(object):
     ALL_SERVICE_NAME_POSTFIX = '/All'
     UPDATE_SERVICE_NAME_POSTFIX = '/Update'
     UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX = '/UpdateSubscriber'
-    PUSH_TOPIC_NAME_POSTFIX = '/Push'
+    PUSH_SERVICE_NAME_POSTFIX = '/Push'
 
     def __init__(self, name=DEFAULT_NAME, include_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
@@ -42,7 +41,7 @@ class KnowledgeBase(object):
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
-        self.__pusher = rospy.Subscriber(name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push, self.__push)
+        self.__push_service = rospy.Service(name + KnowledgeBase.PUSH_SERVICE_NAME_POSTFIX, Push, self.__push)
         self.__exists_service = rospy.Service(name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists, self.__exists)
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
         self.__pop_service = rospy.Service(name + KnowledgeBase.POP_SERVICE_NAME_POSTFIX, Pop, self.__pop)
@@ -63,6 +62,7 @@ class KnowledgeBase(object):
         self.__all_service.shutdown()
         self.__update_service.shutdown()
         self.__update_subscriber_service.shutdown()
+        self.__push_service.shutdown()
 
     @staticmethod
     def __converts_request_to_tuple_space_format(pattern):
@@ -80,13 +80,15 @@ class KnowledgeBase(object):
     def __push(self, request):
         """
         Adds the fact to the tuple space
-        :param request: Push message, as defined as ROS message
+        :param request: Push message, as defined as ROS service
+        :return: an empty PushResponse
         """
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
         rospy.logdebug('New tuple {0}'.format(str(request.content)))
         self.__push_internal(request.content, converted, None)
+        return PushResponse()
 
     def __push_internal(self, unconverted_fact, fact, dont_inform):
         """
