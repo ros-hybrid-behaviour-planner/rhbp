@@ -270,7 +270,7 @@ class KnowledgeBase(object):
         remove_publisher = rospy.Publisher(removed_topic_name, FactRemoved, queue_size=10, latch=True)
         update_topic_name = basic_topic_name + '/Update'
         update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=10, latch=True)
-        rospy.sleep(1)
+        rospy.sleep(0.1)
         self.__fact_update_topics[converted] = (add_publisher, remove_publisher, update_publisher)
         self.__subscribed_patterns_space.add(converted)
         return UpdateSubscribeResponse(removed_topic_name=removed_topic_name, added_topic_name=added_topic_name,
