@@ -19,9 +19,9 @@ class KnowledgeBaseFactCache:
         self.__knowledge_base_name = knowledge_base_name
         self.__pattern = pattern
         self.__initialized = False
-        self.__client = KnowledgeBaseClient(knowledge_base_name)
         self.__contained_facts = []
         self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
+        self.__client = KnowledgeBaseClient(knowledge_base_name)
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
