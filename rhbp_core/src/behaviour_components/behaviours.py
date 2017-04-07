@@ -24,11 +24,12 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, independentFromPlanner=False, create_log_files=False, requires_execution_steps=False):
+    def __init__(self, name, planner_prefix, independentFromPlanner=False, create_log_files=False, requires_execution_steps=False):
         '''
         Constructor
         '''
         self._name = name if name else "Behaviour {0}".format(Behaviour._instanceCounter)
+        self._service_prefix = planner_prefix + '/' + self._name + '/'
         self._isExecuting = False   # Set this to True if this behaviour is selected for execution.
         self._correlations = []     # Stores sensor correlations as list of (sensor name <string> : correlation <float> [-1 to 1]) tuples. 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything. We get this value via getStatus service of actual behaviour node
         self._wishes = []           # Stores wishes exactly like correlations. We get this via getStatus service of actual behaviour node
@@ -52,12 +53,13 @@ class Behaviour(object):
         self.__requires_execution_steps=requires_execution_steps
         Behaviour._instanceCounter += 1
         if self._create_log_files:
+            #TODO file name should somehow reflect the prefix in case of several behaviours with the same name in different sub networks
             self.__logFile = open("{0}.log".format(self._name), 'w')
             self.__logFile.write('Time\t{0}\n'.format(self._name))
 
         if (self.__requires_execution_steps):
-            rospy.wait_for_service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
-            self.__execution_step_service = rospy.ServiceProxy(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX,
+            rospy.wait_for_service(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
+            self.__execution_step_service = rospy.ServiceProxy(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX,
                                                                Empty)
         else:
             self.__execution_step_service = None
@@ -86,10 +88,10 @@ class Behaviour(object):
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
         self._justFinished = False
-        rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
-        rospy.wait_for_service(self._name + 'GetStatus')
+        rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+        rospy.wait_for_service(self._service_prefix + 'GetStatus')
         try:
-            getStatusRequest = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
+            getStatusRequest = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = getStatusRequest().status
             self._activationFromPreconditions = status.activation
             self._correlations = [(correlation.sensorName, correlation.indicator) for correlation in status.correlations]
@@ -120,10 +122,10 @@ class Behaviour(object):
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
         It returns a tuple of (action_pddl, state_pddl).
         '''
-        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
-        rospy.wait_for_service(self._name + 'PDDL')
+        rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
+        rospy.wait_for_service(self._service_prefix + 'PDDL')
         try:
-            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
+            getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
             return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
         except rospy.ServiceException as e:
@@ -138,9 +140,9 @@ class Behaviour(object):
         self._isExecuting = True
         self._executionTime = 0
         try:
-            rospy.logdebug("Waiting for service %s", self._name + 'Start')
-            rospy.wait_for_service(self._name + 'Start')
-            startRequest = rospy.ServiceProxy(self._name + 'Start', Empty)
+            rospy.logdebug("Waiting for service %s", self._service_prefix + 'Start')
+            rospy.wait_for_service(self._service_prefix + 'Start')
+            startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
             startRequest()
             rospy.loginfo("Started action of %s", self._name)
         except rospy.ServiceException as e:
@@ -158,9 +160,9 @@ class Behaviour(object):
             self.reset_activation()
 
         try:
-            rospy.logdebug("Waiting for service %s", self._name + 'Stop')
-            rospy.wait_for_service(self._name + 'Stop')
-            stopRequest = rospy.ServiceProxy(self._name + 'Stop', Empty)
+            rospy.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
+            rospy.wait_for_service(self._service_prefix + 'Stop')
+            stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
             stopRequest()
             rospy.loginfo("Stopping action of %s", self._name)
         except rospy.ServiceException as e:
@@ -339,16 +341,17 @@ class BehaviourBase(object):
         """
         Init all required ROS services
         """
-        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatusCallback)
-        self._startService = rospy.Service(self._name + 'Start', Empty, self.startCallback)
-        self._stopService = rospy.Service(self._name + 'Stop', Empty, self.stopCallback)
-        self._activateService = rospy.Service(self._name + 'Activate', Activate, self.activateCallback)
-        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
-        self._priorityService = rospy.Service(self._name + 'Priority', SetInteger, self.setPriorityCallback)
-        self._executionTimeoutService = rospy.Service(self._name + 'ExecutionTimeout', SetInteger,
+        service_prefix = self._plannerPrefix + '/' + self._name + '/'
+        self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self.getStatusCallback)
+        self._startService = rospy.Service(service_prefix+ 'Start', Empty, self.startCallback)
+        self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self.stopCallback)
+        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self.activateCallback)
+        self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self.pddlCallback)
+        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
+        self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
                                                       self.setExecutionTimeoutCallback)
         if self._requires_execution_steps:
-            self.__execution_step_service = rospy.Service(self._name + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
+            self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
@@ -365,8 +368,8 @@ class BehaviourBase(object):
         """
         try:
             rospy.logdebug("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
-            rospy.wait_for_service(self._plannerPrefix + 'AddBehaviour')
-            registerMe = rospy.ServiceProxy(self._plannerPrefix + 'AddBehaviour', AddBehaviour)
+            rospy.wait_for_service(self._plannerPrefix + '/' + 'AddBehaviour')
+            registerMe = rospy.ServiceProxy(self._plannerPrefix + '/' +'AddBehaviour', AddBehaviour)
             registerMe(self._name, self._independentFromPlanner,self._requires_execution_steps)
             rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
         except rospy.ServiceException as e:

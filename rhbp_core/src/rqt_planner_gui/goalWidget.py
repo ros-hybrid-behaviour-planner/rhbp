@@ -13,9 +13,10 @@ from PyQt5.QtCore import pyqtSignal
 # Custum Widget for goal
 class GoalWidget(QWidget):
     updateGUIsignal = pyqtSignal(dict)
-    def __init__(self, name):
+    def __init__(self, name, plugin):
         super(GoalWidget, self).__init__()
         self._name = name
+        self._overviewPlugin = plugin # this is where we get the planner prefix from
         # Give QObjects reasonable names
         self.setObjectName(self._name + 'Widget')
         # Get path to UI file which should be in the "resource" folder of this node
@@ -26,6 +27,13 @@ class GoalWidget(QWidget):
         self.activatedCheckbox.toggled.connect(self.activationCallback)
         self.priorityButton.clicked.connect(self.setPriorityCallback)
         self.updateGUIsignal.connect(self.updateGUI)
+
+    def _get_service_prefix(self):
+        """
+        generate the service prefix based on the current planner prefix value
+        :return: str prefix
+        """
+        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
 
     def __del__(self):
         self.__deleted = True
@@ -55,15 +63,17 @@ class GoalWidget(QWidget):
                                   })
     
     def activationCallback(self, status):
-        rospy.logdebug("Waiting for service %s", self._name + 'Activate')
-        rospy.wait_for_service(self._name + 'Activate')
-        activateRequest = rospy.ServiceProxy(self._name + 'Activate', Activate)
+        service_name = self._get_service_prefix() + 'Activate'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        activateRequest = rospy.ServiceProxy(service_name, Activate)
         activateRequest(status)
         rospy.logdebug("Set activated of %s goal to %s", self._name, status)
        
     def setPriorityCallback(self):
-        rospy.logdebug("Waiting for service %s", self._name + 'Priority')
-        rospy.wait_for_service(self._name + 'Priority')
-        priorityRequest = rospy.ServiceProxy(self._name + 'Priority', SetInteger)
+        service_name = self._get_service_prefix() + 'Priority'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        priorityRequest = rospy.ServiceProxy(service_name, SetInteger)
         priorityRequest(self.prioritySpinBox.value())
         rospy.logdebug("Set priority of %s to %s", self._name, self.prioritySpinBox.value())

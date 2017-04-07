@@ -18,7 +18,7 @@ class ActivationAlgorithmTestSuite(unittest.TestCase):
 
         self.assertNotEqual(algo, None, 'Algorithm is none')
 
-        self.assertTrue(isinstance(algo,BaseActivationAlgorithm), "Not the correct algorithm")
+        self.assertTrue(isinstance(algo, BaseActivationAlgorithm), "Not the correct algorithm")
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,7 @@ int32 executionTime
 float32 progress
 bool active
 bool interruptable
+bool independentFromPlanner
 int32 priority
 bool activated
 bool executable

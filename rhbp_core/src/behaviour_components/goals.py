@@ -8,6 +8,8 @@ import itertools
 import operator
 import warnings
 
+from abc import ABCMeta, abstractmethod
+
 import rospy
 from std_msgs.msg import Bool
 
@@ -25,6 +27,8 @@ class AbstractGoalRepresentation(object):
     '''
     This class represents a goal in the manager.
     '''
+
+    __metaclass__ = ABCMeta
 
     def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0, active=True, activated=True):
         self._name = name
@@ -69,7 +73,6 @@ class AbstractGoalRepresentation(object):
     @wishes.setter
     def wishes(self, wishes):
         '''
-
         :param wishes: list of (sensor name <string> : indicator <float> [-1 to 1])
         '''
         self.__wishes = wishes
@@ -110,6 +113,7 @@ class AbstractGoalRepresentation(object):
     def satisfied(self):
         return self._fulfillment >= self._satisfaction_threshold
 
+    @abstractmethod
     def fetchPDDL(self):
         '''
         This method generates pddl.
@@ -117,6 +121,7 @@ class AbstractGoalRepresentation(object):
         '''
         raise NotImplementedError()
 
+    @abstractmethod
     def sync(self):
         '''
         Update satisfaction, wishes and all other stuff
@@ -130,18 +135,26 @@ class Goal(object):
     Therefore conditions can registered, which are used for satisfaction computation
     '''
 
-    def __init__(self, name, conditions=[], satisfaction_threshold=1.0, priority=0, active=True, activated=True):
+    def __init__(self, name, planner_prefix, conditions=[], satisfaction_threshold=1.0, priority=0, active=True, activated=True):
         '''
         Constructor
         '''
-        self._activateService = rospy.Service(name + 'Activate', Activate, self.activateCallback)
-        self._priorityService = rospy.Service(name + 'Priority', SetInteger, self.setPriorityCallback)
+        self._name = name
+        self._planner_prefix = planner_prefix
         self._conditions = []
         self._conditions.extend(conditions)
         self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
         self._active = active  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = activated  # The activate Service sets the value of this property.
         self._priority = priority  # The higher the (unsigned) number the higher the importance
+        self._init_services()
+
+    def _init_services(self):
+        service_prefix = self._planner_prefix + '/' + self._name + '/'
+
+        #these are convenience services which can be called remotely in order to configure currently active goals and priorities
+        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activateCallback)
+        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
 
     def __del__(self):
         '''
@@ -149,7 +162,7 @@ class Goal(object):
         '''
         try:
             self._activateService.shutdown()
-            self._priorityService.shutdown();
+            self._priorityService.shutdown()
         except Exception as e:
             rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
 
@@ -194,7 +207,7 @@ class Goal(object):
                 pddl = mergeStatePDDL(s, pddl)
         return pddl
 
-    def activateCallback(self, request):
+    def _activateCallback(self, request):
         '''
         This method activates or deactivates the goal.
         This method must not block.
@@ -223,6 +236,10 @@ class Goal(object):
     def activated(self):
         return self._activated
 
+    @activated.setter
+    def activated(self, activated):
+        self._activated = activated
+
     @property
     def priority(self):
         return self._priority
@@ -239,23 +256,24 @@ class Goal(object):
 class GoalProxy(AbstractGoalRepresentation):
     '''
     This class connects a remote goal with the manager.
-    Is instanciated automatically. Don't instanciate manually
+    It is instantiated automatically. Don't instantiated it manually
     '''
 
-    def __init__(self, name, permanent):
+    def __init__(self, name, permanent, planner_prefix):
         '''
         Constructor
         '''
         super(GoalProxy, self).__init__(name, permanent)
+        self._service_prefix = planner_prefix + '/' + self._name + '/'
 
     def fetchPDDL(self):
         '''
         This method fetches the PDDL from the actual goal node via GetPDDLservice call
         '''
-        rospy.logdebug("Waiting for service %s", self._name + 'PDDL')
-        rospy.wait_for_service(self._name + 'PDDL')
+        rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
+        rospy.wait_for_service(self._service_prefix + 'PDDL')
         try:
-            getPDDLRequest = rospy.ServiceProxy(self._name + 'PDDL', GetPDDL)
+            getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
             return (PDDL(statement=pddl.goalStatement),
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
@@ -267,10 +285,10 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         This method fetches the status from the actual goal node via GetStatus service call
         '''
-        rospy.logdebug("Waiting for service %s", self._name + 'GetStatus')
-        rospy.wait_for_service(self._name + 'GetStatus')
+        rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+        rospy.wait_for_service(self._service_prefix + 'GetStatus')
         try:
-            get_status_request = rospy.ServiceProxy(self._name + 'GetStatus', GetStatus)
+            get_status_request = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = get_status_request().status
             self.fulfillment = status.satisfaction
             self.wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
@@ -287,6 +305,17 @@ class GoalProxy(AbstractGoalRepresentation):
                            self.wishes)
         except rospy.ServiceException as e:
             rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
+
+    @AbstractGoalRepresentation.activated.setter
+    def activated(self, value):
+        self._activated = value
+
+        #inform remote goal about new activated state
+        service_name = self._service_prefix + 'Activate'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        activateRequest = rospy.ServiceProxy(service_name, Activate)
+        activateRequest(value)
 
 
 # TODO Rename to RemoteGoal
@@ -308,14 +337,19 @@ class GoalBase(Goal):
         :param priority:
         :param satisfaction_threshold:
         '''
-        super(GoalBase, self).__init__(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold,
+        super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions, satisfaction_threshold=satisfaction_threshold,
                                        priority=priority)
         self._name = name
 
-        self._getStatusService = rospy.Service(self._name + 'GetStatus', GetStatus, self.getStatus)
-        self._pddlService = rospy.Service(self._name + 'PDDL', GetPDDL, self.pddlCallback)
         self._permanent = permanent
         self._planner_prefix = plannerPrefix
+
+
+    def _init_services(self):
+        super(GoalBase, self)._init_services()
+        self._service_prefix = self._planner_prefix + '/' + self._name + '/'
+        self._getStatusService = rospy.Service(self._service_prefix + 'GetStatus', GetStatus, self.getStatus)
+        self._pddlService = rospy.Service(self._service_prefix + 'PDDL', GetPDDL, self.pddlCallback)
 
     def final_init(self):
         """
@@ -328,8 +362,8 @@ class GoalBase(Goal):
             rospy.logdebug(
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
                 self._planner_prefix, self._name)
-            rospy.wait_for_service(self._planner_prefix + 'AddGoal')
-            registerMe = rospy.ServiceProxy(self._planner_prefix + 'AddGoal', AddGoal)
+            rospy.wait_for_service(self._planner_prefix + '/' + 'AddGoal')
+            registerMe = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
             registerMe(self._name, self._permanent)
             rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                            self._planner_prefix, self._name)
@@ -377,13 +411,14 @@ class OfflineGoal(AbstractGoalRepresentation):
     As consequence no messages are used for communicating with the manager.
     '''
 
-    def __init__(self, name, permanent=False, conditions=[], priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, planner_prefix, permanent=False, conditions=[], priority=0, satisfaction_threshold=1.0):
         '''
         Constructor
         '''
         super(OfflineGoal, self).__init__(name=name, permanent=permanent,
                                           satisfaction_threshold=satisfaction_threshold, priority=priority)
-        self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold)
+        #nested goal object that takes care of calculation and provides management services
+        self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold, planner_prefix=planner_prefix)
         for condition in conditions:
             self.add_condition(condition)
 
@@ -419,7 +454,7 @@ class PublisherGoal(GoalBase):
                                             plannerPrefix=plannerPrefix, priority=priority,
                                             satisfaction_threshold=satisfaction_threshold)
 
-        self.__topic_name = self._name + "_activated"
+        self.__topic_name = self._service_prefix + "_activated"
         self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=10)
 
     def updateComputation(self):

@@ -25,9 +25,9 @@ class ManagerNode(object):
         if not self.automatic_stepping:
             rospy.logwarn("Started in manual stepping mode")
 
-        self._set_automatic_stepping_service= rospy.Service(prefix + 'set_automatic_stepping', SetStepping, self._set_stepping_callback)
+        self._set_automatic_stepping_service= rospy.Service(prefix + '/' +'set_automatic_stepping', SetStepping, self._set_stepping_callback)
 
-        self._stepping_service = rospy.Service(prefix + 'step', Empty, self._step_callback)
+        self._stepping_service = rospy.Service(prefix + '/' + 'step', Empty, self._step_callback)
 
     def _set_stepping_callback(self, request):
         """

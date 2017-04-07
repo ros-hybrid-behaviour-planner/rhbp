@@ -77,7 +77,7 @@ class TestGoals(unittest.TestCase):
         pddl_function_name = condition.getFunctionNames()[0]
         SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
                         name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
-        goal = OfflineGoal('CentralGoal')
+        goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
         for x in range(0, 3, 1):
