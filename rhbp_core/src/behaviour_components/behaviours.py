@@ -78,7 +78,10 @@ class Behaviour(object):
             rospy.logerr('Step method is called, but behavior does not need a step')
             return
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
-        self.__execution_step_service()
+        try:
+            self.__execution_step_service()
+        except rospy.ServiceException as e:
+            rospy.logerr('%s behaviour step service failed: %s', self._name, e)
 
     def fetchStatus(self):
         '''
