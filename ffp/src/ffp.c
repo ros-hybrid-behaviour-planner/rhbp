@@ -140,7 +140,9 @@ static PyObject* plan(PyObject* self, PyObject* args, PyObject* kw)
   }
   else if (pid > 0)
   { //the process parent part
-    close(pipefd[1]); // close the write-end of the pipe, I'm not going to use it
+    close(pipefd[1]); // close the write-end of the pipe, it is not going to be used
+
+    PyObject* ret = -1;
 
     Py_ssize_t len;
     size_t totalBytesRead = 0;
@@ -163,80 +165,133 @@ static PyObject* plan(PyObject* self, PyObject* args, PyObject* kw)
           PyObject* result = PyDict_New();
           if (!result)
           {
-            return NULL;
+            ret = NULL;
+            PyErr_SetString(PlannerProxyError, "Couldn't create python dict");
+            break;
           }
           PyObject* actions = PyDict_New();
           if (!actions)
           {
-            return NULL;
+            Py_DecRef(result);
+            PyErr_SetString(PlannerProxyError, "Couldn't create python dict");
+            ret = NULL;
+            break;
           }
           if (PyDict_SetItemString(result, "actions", actions) != 0)
           {
-            return NULL;
+            Py_DecRef(result);
+            Py_DecRef(actions);
+            PyErr_SetString(PlannerProxyError, "Couldn't set actions string");
+            ret = NULL;
+            break;
           }
           Py_DecRef(actions);
           if (WEXITSTATUS(status) == 0x42)
           { // all goals are already fulfilled
             PyObject* cost_value = PyFloat_FromDouble(0);
             if (!cost_value)
-              return NULL;
+            {
+              Py_DecRef(result);
+              PyErr_SetString(PlannerProxyError, "Couldn't create costs float");
+              ret = NULL;
+              break;
+            }
             if (PyDict_SetItemString(result, "cost", cost_value) != 0)
-              return NULL;
+            {
+              Py_DecRef(result);
+              PyErr_SetString(PlannerProxyError, "Couldn't set costs");
+              ret = NULL;
+              break;
+            }
             Py_DecRef(cost_value);
-            return result;
+            ret = result;
           }
           else if (WEXITSTATUS(status) == 0xFF)
           { // plan not solvable
             PyObject* cost_value = PyFloat_FromDouble(-1); // This is the indicator for python the planning problem is impossible
             if (!cost_value)
-              return NULL;
-            if (PyDict_SetItemString(result, "cost", cost_value) != 0)
-              return NULL;
-            Py_DecRef(cost_value);
-            return result;
-          }
-          else if (WEXITSTATUS(status) == 0x01)
             {
-              PyErr_SetString(PlannerProxyError, "Planner exited with failure.");
-
-              return NULL;
+              PyErr_SetString(PlannerProxyError, "Couldn't create costs float");
+              Py_DecRef(result);
+              ret = NULL;
+              break;
             }
+            if (PyDict_SetItemString(result, "cost", cost_value) != 0)
+            {
+              Py_DecRef(result);
+              PyErr_SetString(PlannerProxyError, "Couldn't set costs");
+              ret = NULL;
+              break;
+            }
+            Py_DecRef(cost_value);
+            ret = result;
+          }
+          else if (WEXITSTATUS(status) == EXIT_FAILURE)
+          {
+            Py_DecRef(result);
+            PyErr_SetString(PlannerProxyError, "Planner exited with failure.");
+            ret = NULL;
+            break;
+          }
+          else if (WEXITSTATUS(status) == EXIT_SUCCESS)
+          {
+            //this might occur with an empty plan which was simplified to false
+            Py_DecRef(result);
+            break;
+          }
           else
           {
+            Py_DecRef(result);
             char msg[100];
             snprintf(msg, sizeof(msg), "Unexpected exit status: %x", WEXITSTATUS(status));
             PyErr_SetString(PlannerProxyError, msg);
-            return NULL;
+            ret = NULL;
+            break;
           }
         }else{
           char msg[100];
           snprintf(msg, sizeof(msg), "Planner exited abnormally. Exit status: %x\n", WEXITSTATUS(status));
           PyErr_SetString(PlannerProxyError, msg);
-          return NULL;
+          ret = NULL;
+          break;
         }
       }
     }
-    char* serialisedResult = (char*)calloc(len, sizeof(char));
-    if (!serialisedResult)
-      return PyErr_NoMemory();
-    totalBytesRead = 0;
-    currentBytesRead = 0;
-    while (totalBytesRead < len)
+    //ret == 1 means that no ret value was assigned before, which would indicate some error handling before
+    //thus we continue with default result reading and deserialization
+    if(ret == -1)
     {
-      if ((currentBytesRead = read(pipefd[0], serialisedResult + totalBytesRead, len - totalBytesRead)) > 0)
-        totalBytesRead += currentBytesRead;
-      else
+      char* serialisedResult = (char*)calloc(len, sizeof(char));
+      if (!serialisedResult)
       {
-        waitpid(pid, NULL, WNOHANG);
-        PyErr_SetString(PlannerProxyError, "Failed to read result from child");
-        return NULL;
+        close(pipefd[0]);
+        return PyErr_NoMemory();
       }
+      totalBytesRead = 0;
+      currentBytesRead = 0;
+      while (totalBytesRead < len)
+      {
+        if ((currentBytesRead = read(pipefd[0], serialisedResult + totalBytesRead, len - totalBytesRead)) > 0)
+          totalBytesRead += currentBytesRead;
+        else
+        {
+          waitpid(pid, NULL, WNOHANG);
+          PyErr_SetString(PlannerProxyError, "Failed to read result from child");
+          ret = NULL;
+        }
+      }
+      close(pipefd[0]); // close the read-end of the pipe
+      waitpid(pid, NULL, 0);
+
+      PyObject* result = PyMarshal_ReadObjectFromString(serialisedResult, len);
+      free(serialisedResult);
+      return result;
+    }else
+    {
+      close(pipefd[0]); // close the read-end of the pipe
+      waitpid(pid, NULL, 0);
+	  return ret;
     }
-    close(pipefd[0]); // close the read-end of the pipe
-    waitpid(pid, NULL, 0);
-    PyObject* result = PyMarshal_ReadObjectFromString(serialisedResult, len);
-    free(serialisedResult);
-    return result;
   }
   else
   {
