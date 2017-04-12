@@ -32,6 +32,7 @@ class KnowledgeBaseClient(object):
         self.__knowledge_base_name = knowledge_base_name
         self.__init_lock = allocate_lock()
         self._timeout = timeout
+
         try:
             rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
@@ -50,7 +51,7 @@ class KnowledgeBaseClient(object):
             if (self.__initialized):
                 # Another check, protected by the lock
                 return True
-            rospy.logerr(
+            rospy.logdebug(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
             rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
