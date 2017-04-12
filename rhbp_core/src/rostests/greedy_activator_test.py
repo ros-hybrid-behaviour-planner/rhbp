@@ -52,7 +52,7 @@ class TestGreedyActivator(unittest.TestCase):
 
         IncreaserBehavior(topic_name=topic_name, effect_name=pddl_function_name,
                           createLogFiles=True, plannerPrefix=planner_prefix)
-        goal = OfflineGoal(name=self.__message_prefix + 'CentralGoal')
+        goal = OfflineGoal(name=self.__message_prefix + 'CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
 

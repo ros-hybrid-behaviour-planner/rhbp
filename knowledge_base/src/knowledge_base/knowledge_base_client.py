@@ -9,6 +9,7 @@ from threading import Lock
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.srv import Exists, Peek, Pop, All, Update, UpdateSubscribe, Push
+from thread import allocate_lock
 
 
 class KnowledgeBaseClient(object):
@@ -16,39 +17,48 @@ class KnowledgeBaseClient(object):
     Simple wrapper for the services (and the push topic) of the knowledge base.
     Some methods do some value conversion, for better usability.
     IMPORTANT: The service proxies are created once, but the initialization is lazy:
-    The init method waits 10 secconds for the knowledge base.
+    The init method waits for the knowledge base for the duration of the timeout parameter.
     After the timeout the constructor returns and the initialisation is done during first usage of this client
     (without timeout).
     """
 
-    def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
+    def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, timeout=2):
         """
         :param knowledge_base_name: Name of the knowledge base (without any postfix)
+        :param timeout: Timeout for the knowledge base service discovery
+        :type timeout: int in seconds
         """
         self.__initialized = False
         self.__knowledge_base_name = knowledge_base_name
-        self.__init_lock = Lock
+        self.__init_lock = allocate_lock()
+        self._timeout = timeout
         try:
-            rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=10)
+            rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
         except rospy.ROSException:
             rospy.loginfo(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + knowledge_base_name)
 
     def __ensure_initialization(self):
+
         if self.__initialized:
-            return
+            return True
+
         self.__init_lock.acquire()
 
-        if (self.__initialized):
-            # Another check, protected by the lock
-            return
-
         try:
+            if (self.__initialized):
+                # Another check, protected by the lock
+                return True
             rospy.logerr(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
-            rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
+            rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
+            return True
+        except rospy.ROSException:
+            rospy.loginfo(
+                'The following knowledge base node is currently not present. Connection will be established later: ' + self.__knowledge_base_name)
+            return False
         finally:
             self.__init_lock.release()
 
@@ -79,8 +89,8 @@ class KnowledgeBaseClient(object):
         :param pattern: (array of strings) pattern, use * as placeholder
         :return: (bool) result
         """
-        self.__ensure_initialization()
-        return self.__exists_service(pattern).exists
+        if self.__ensure_initialization():
+            return self.__exists_service(pattern).exists
 
     def pop(self, pattern):
         """
@@ -88,22 +98,24 @@ class KnowledgeBaseClient(object):
         :param pattern:  (array or tuple  of strings) pattern, use * as placeholder
         :return: All removed facts as list of list of strings
         """
-        self.__ensure_initialization()
-        request_result = self.__pop_service(pattern)
-        removed = []
-        for fact in request_result.removed:
-            removed.append(tuple(fact.content))
-        return removed
+        if self.__ensure_initialization():
+            request_result = self.__pop_service(pattern)
+            removed = []
+            for fact in request_result.removed:
+                removed.append(tuple(fact.content))
+            return removed
+        else:
+            return None
 
     def peek(self, pattern):
         """
         :param pattern:  (array or tuple  of strings) pattern, use * as placeholder
         :return: matching fact (string tupple) or none if not matching fact exists
         """
-        self.__ensure_initialization()
-        request_result = self.__peek_service(pattern)
-        if (request_result.exists):
-            return tuple(request_result.example)
+        if self.__ensure_initialization():
+            request_result = self.__peek_service(pattern)
+            if (request_result.exists):
+                return tuple(request_result.example)
         return None
 
     def all(self, pattern):
@@ -111,12 +123,14 @@ class KnowledgeBaseClient(object):
         :param pattern:  (array or tuple of strings) pattern, use * as placeholder
         :return: all matching facts, as list of string tuples
         """
-        self.__ensure_initialization()
-        request_result = self.__all_service(pattern)
-        result = []
-        for fact in request_result.found:
-            result.append(tuple(fact.content))
-        return result
+        if self.__ensure_initialization():
+            request_result = self.__all_service(pattern)
+            result = []
+            for fact in request_result.found:
+                result.append(tuple(fact.content))
+            return result
+        else:
+            return None
 
     def update(self, pattern, new, push_without_existing=True):
         """
@@ -132,14 +146,18 @@ class KnowledgeBaseClient(object):
         WARNING: This operation is executed asynchronus
         :param fact: array or tuple  of strings. No placeholders are allowed
         """
-        self.__ensure_initialization()
-        self.__push_service(fact)
+        if self.__ensure_initialization():
+            self.__push_service(fact)
+        else:
+            return None
 
     def subscribe_for_updates(self, pattern):
         """
         :param pattern:  (array or tuple of strings) pattern, use * as placeholder
         :return: added topic name, updated topic name, removed topic name
         """
-        self.__ensure_initialization()
-        request_result = self.__update_subscribe_service(pattern)
-        return request_result.added_topic_name, request_result.updated_topic_name, request_result.removed_topic_name
+        if self.__ensure_initialization():
+            request_result = self.__update_subscribe_service(pattern)
+            return request_result.added_topic_name, request_result.updated_topic_name, request_result.removed_topic_name
+        else:
+            return None

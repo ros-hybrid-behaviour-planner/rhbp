@@ -9,23 +9,44 @@ import unittest
 
 import rospy
 import rostest
+import roslaunch
+
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
+from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
 
 PKG = 'knowledge_base'
 
 """
-System test for knowledge base fact cache. Assumes, that a rosmaster and the knowledge base is running
+System test for knowledge base fact cache.
 """
 
 
 class UpdateHandlerTestSuite(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
-        rospy.init_node('UpdateHandlerTestSuite', log_level=rospy.DEBUG)
+
+    def setUp(self):
+
+        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME
         # prevent influence of previous tests
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
-        self.__client = KnowledgeBaseClient()
+
+        # start KnowledgeBase
+        package = 'knowledge_base'
+        executable = 'knowledge_base_node.py'
+        node = roslaunch.core.Node(package=package, node_type=executable, name=self.__knowledge_base_address)
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+
+        self._kb_process = launch.launch(node)
+
+        rospy.init_node('UpdateHandlerTestSuite', log_level=rospy.DEBUG)
+
+        self.__client = KnowledgeBaseClient(self.__knowledge_base_address)
+
+    def tearDown(self):
+        self._kb_process.stop()
 
     def test_simple_adding(self):
         """
@@ -123,7 +144,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         new_fact = (prefix, 'updated', '3')
 
         self.__client.update((prefix,'toUpdate','*'),new_fact)
-        self.__check_content(cache,new_fact, not_influenced)
+        self.__check_content(cache, not_influenced, new_fact)
 
 
 if __name__ == '__main__':

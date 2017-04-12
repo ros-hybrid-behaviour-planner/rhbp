@@ -52,7 +52,7 @@ class TestNetworkBehavior(unittest.TestCase):
 
         planner_prefix = method_prefix + "/Manager"
         m = Manager(activationThreshold=7, prefix=planner_prefix)
-        goal = OfflineGoal('CentralGoal')
+        goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
 
@@ -61,7 +61,7 @@ class TestNetworkBehavior(unittest.TestCase):
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
                                               effects=[(sensor, effect)])
-        second_level_network = NetworkBehavior(name=method_prefix + '/SeccondLevel',
+        second_level_network = NetworkBehavior(name=method_prefix + '/SecondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(),
                                                 effects=[(sensor, effect)])
 

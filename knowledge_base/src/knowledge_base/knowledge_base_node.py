@@ -16,7 +16,7 @@ if __name__ == '__main__':
     for arg in sys.argv:
         if (arg.startswith('__name:=')):
             node_name = arg[len('__name:='):]
-    # Design decision for to allow using default name from launch files
+    # Design decision to allow using default name from launch files
     if (node_name is None) or (node_name == 'None'):
         node_name = KnowledgeBase.DEFAULT_NAME
     KnowledgeBase(name=node_name)

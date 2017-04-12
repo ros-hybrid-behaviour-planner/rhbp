@@ -41,7 +41,7 @@ class Overview(Plugin):
             rospy.loginfo("using planner prefix %s", self.__plannerPrefix)
         
         # subscribe to our information source
-        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planner/plannerStatus", PlannerStatus, self.plannerStatusCallback)
+        self.__sub = rospy.Subscriber(self.__plannerPrefix + "Planner/plannerStatus", PlannerStatus, self.plannerStatusCallback)
             
         # Create QWidget
         self._widget = QWidget()
@@ -82,7 +82,7 @@ class Overview(Plugin):
         self._widget.behaviourFrame.layout().addWidget(self.__behaviours[name])
         
     def addGoalWidget(self, name):
-        self.__goals[name] = GoalWidget(name)
+        self.__goals[name] = GoalWidget(name, self)
         self._widget.goalFrame.layout().addWidget(self.__goals[name])
 
 
@@ -97,15 +97,17 @@ class Overview(Plugin):
     def pauseButtonCallback(self, status):
         try:
             if status == True:
-                rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Pause')
-                rospy.wait_for_service(self.__plannerPrefix + 'Pause')
-                pauseRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Pause', Empty)
+                service_name = self.__plannerPrefix + '/' + 'Pause'
+                rospy.logdebug("Waiting for service %s", service_name)
+                rospy.wait_for_service(service_name)
+                pauseRequest = rospy.ServiceProxy(service_name, Empty)
                 pauseRequest()
                 self.setPauseResumeButton(False)
             else:
-                rospy.logdebug("Waiting for service %s", self.__plannerPrefix + 'Resume')
-                rospy.wait_for_service(self.__plannerPrefix + 'Resume')
-                resumeRequest = rospy.ServiceProxy(self.__plannerPrefix + 'Resume', Empty)
+                service_name = self.__plannerPrefix + '/' + 'Resume'
+                rospy.logdebug("Waiting for service %s", service_name)
+                rospy.wait_for_service(service_name)
+                resumeRequest = rospy.ServiceProxy(service_name, Empty)
                 resumeRequest()
                 self.setPauseResumeButton(True)
         except Exception as e:
@@ -142,8 +144,9 @@ class Overview(Plugin):
     def setPlannerPrefix(self):
         self.__sub.unregister()
         self.__plannerPrefix = self._widget.plannerPrefixEdit.text()
-        rospy.loginfo("subscribing to %s", "/" + self.__plannerPrefix + "Planner/plannerStatus")
-        self.__sub = rospy.Subscriber("/" + self.__plannerPrefix + "Planner/plannerStatus", PlannerStatus, self.plannerStatusCallback)
+        status_topic_name =  self.__plannerPrefix + '/' + "Planner/plannerStatus"
+        rospy.loginfo("subscribing to %s", status_topic_name)
+        self.__sub = rospy.Subscriber(status_topic_name, PlannerStatus, self.plannerStatusCallback)
     
     def plannerStatusCallback(self, msg):
         rospy.logdebug("received %s", msg)
