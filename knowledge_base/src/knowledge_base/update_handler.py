@@ -3,6 +3,7 @@
 @author: rieger
 '''
 import rospy
+from thread import allocate_lock
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
@@ -22,6 +23,7 @@ class KnowledgeBaseFactCache:
         self.__contained_facts = []
         self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
         self.__client = KnowledgeBaseClient(knowledge_base_name)
+        self.__value_lock = allocate_lock()
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
@@ -47,36 +49,41 @@ class KnowledgeBaseFactCache:
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        if (not fact_added.content in self.__contained_facts):
-            self.__contained_facts.append(tuple(fact_added.content))
+        with(self.__value_lock):
+            if (not fact_added.content in self.__contained_facts):
+                self.__contained_facts.append(tuple(fact_added.content))
 
     def __handle_remove_update(self, fact_removed):
         """
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        try:
-            self.__contained_facts.remove(tuple(fact_removed.fact))
-        except KeyError:
-            pass
+        with(self.__value_lock):
+            try:
+                self.__contained_facts.remove(tuple(fact_removed.fact))
+            except ValueError:
+                pass
 
     def __handle_fact_update(self, fact_updated):
-        if (not fact_updated.new in self.__contained_facts):
-            self.__contained_facts.append(tuple(fact_updated.new))
+        with(self.__value_lock):
+            if (not fact_updated.new in self.__contained_facts):
+                self.__contained_facts.append(tuple(fact_updated.new))
 
-        for removed_fact in fact_updated.removed:
-            try:
-                self.__contained_facts.remove(tuple(removed_fact.content))
-            except KeyError:
-                pass
+            for removed_fact in fact_updated.removed:
+                try:
+                    self.__contained_facts.remove(tuple(removed_fact.content))
+                except ValueError:
+                    pass
 
     def update_state_manually(self):
         """
         requests in knowledge base, whether a matching state exists
         :return: whether matching fact exists
         """
-        self.__contained_facts = self.__client.all(self.__pattern)
-        return not (len(self.__contained_facts) == 0)
+        new_content = self.__client.all(self.__pattern)
+        with (self.__value_lock):
+            self.__contained_facts = new_content
+            return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
         if not self.__initialized:
@@ -89,8 +96,10 @@ class KnowledgeBaseFactCache:
         :return: current cached value
         """
         self.__ensure_initialization()
-        return not (len(self.__contained_facts) == 0)
+        with (self.__value_lock):
+            return not (len(self.__contained_facts) == 0)
 
     def get_all_matching_facts(self):
         self.__ensure_initialization()
-        return self.__contained_facts
+        with (self.__value_lock):
+            return self.__contained_facts
