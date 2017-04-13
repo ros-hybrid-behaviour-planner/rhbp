@@ -2,5 +2,5 @@
 <launch>
     <test pkg="knowledge_base" type="knowledge_base_manager_test.py" test-name="knowledge_base_manager_test_node"/>
     <test pkg="knowledge_base" type="update_handler_test.py" test-name="update_handler_test_node"/>
-    <include file="$(find knowledge_base)/launch/unit_tests.test" />
+    <include file="$(find knowledge_base)/test/unit_tests.test" />
 </launch>

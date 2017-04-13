@@ -47,7 +47,6 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  Push.msg
   Fact.msg
   FactRemoved.msg
   FactUpdated.msg
@@ -56,6 +55,7 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
+  Push.srv
   Peek.srv
   Pop.srv
   Exists.srv
