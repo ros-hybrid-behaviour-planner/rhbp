@@ -19,11 +19,12 @@ class NetworkBehavior(BehaviourBase):
 
     MANAGER_POSTFIX = "/Manager"
 
-    def __init__(self, effects, name, requires_execution_steps=False,
+    def __init__(self, name, requires_execution_steps=False,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
+                 correlations = [],
                  **kwargs):
         """
-        :param effects: tuple <sensor,Effect>
+        :param correlations: tuple <sensor,Effect>
         :param name: name of the behaviour that is also used to create the sub manager name together with the NetworkBehavior.MANAGER_POSTFIX
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
@@ -41,16 +42,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
-        #Generate goals for effect
-        correlations = []
-        for effect in effects:
-            correlations.append(effect[1])
-            goal_name = self.__generate_goal_name(effect[1])
-            activator_name = self._restore_condition_name_from_pddl_function_name(effect[1].sensorName, effect[0].name)
-            goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
-                                     activator_name=activator_name)
-            self.__manager.add_goal(goal)
-        self.correlations = correlations
+        self.add_correlations(correlations)
 
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
@@ -95,7 +87,30 @@ class NetworkBehavior(BehaviourBase):
         raise RuntimeError(msg='Cant create goal for effect type \'' + str(
             effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
 
-    def _add_additional_goal(self, goal):
+    def add_correlations(self,correlations):
+        """
+        Adds the given effects to the correlations of this Behavior. 
+        Furthermore creates a goal for each Effect and register it at the nested Manager
+        :param correlations: tuple of (Sensor, Effect)
+        """
+        for effect in correlations:
+            goal_name = self.__generate_goal_name(effect[1])
+            activator_name = self._restore_condition_name_from_pddl_function_name(effect[1].sensorName, effect[0].name)
+            goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
+                                     activator_name=activator_name)
+            self.__manager.add_goal(goal)
+            self._correlations.append(effect[1])
+
+    @property
+    def correlations(self):
+        return super(NetworkBehavior, self)._correlations
+
+    @correlations.setter
+    def set_correlations(self,correlations):
+        raise NotImplementedError('Setting Effects is not supported for NetworkBehaviors. Use add_correlations instead.')
+
+
+    def add_goal(self, goal):
         """
         Adds the given goal to nested manager
         :param goal: AbstractGoalRepresentation
