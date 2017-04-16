@@ -24,11 +24,12 @@ Tests the integration of the DynamicSensor into ROS
 
 
 class MaxValueSensor(DynamicSensor):
-    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics=1000, default_value=0):
+    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics=1000, default_value=0,
+                 topic_type=None):
         super(MaxValueSensor, self).__init__(pattern=pattern_prefix,
                                              topic_listener_name=service_prefix,
                                              expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics,
-                                             default_value=default_value)
+                                             default_value=default_value, topic_type=topic_type)
         self.last_received_topic = None
 
     def _aggregate_values(self, values):
@@ -83,8 +84,8 @@ class TopicListenerMock(object):
         regex = re.compile(pattern)
         if (regex in self.__update_topics):
             topic_names = self.__update_topics[regex]
-            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0],
-                                                topicNameTopicRemoved=topic_names[1],
+            return TopicUpdateSubscribeResponse(topicNameTopicAdded=topic_names[0].name,
+                                                topicNameTopicRemoved=topic_names[1].name,
                                                 existingTopics=self.__find_matching_topcis(regex))
 
         self.__subscribed_expressions.append(regex)
@@ -133,10 +134,19 @@ class DynamicSensorTest(unittest.TestCase):
             TopicListener.DEFAULT_NAME + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX, TopicUpdateSubscribe)
 
     @staticmethod
-    def create_topic(topic_name):
-        pub = rospy.Publisher(topic_name, Int32, queue_size=10)
+    def create_topic(topic_name, topic_type=Int32):
+        pub = rospy.Publisher(topic_name, topic_type, queue_size=10)
         rospy.sleep(0.1)
         return pub
+
+    @staticmethod
+    def create_topic_and_publish(topic_listener, name, first_value, topic_type=Int32):
+        topic = DynamicSensorTest.create_topic(name, topic_type=topic_type)
+        topic_listener.add_topic(name)
+        rospy.sleep(0.1)
+        topic.publish(first_value)
+        rospy.sleep(0.1)
+        return topic
 
     def test_basic(self):
         """
@@ -164,11 +174,7 @@ class DynamicSensorTest(unittest.TestCase):
         self.assertEqual(1, sensor.value, 'Value has not changed')
         self.assertEqual(topic1.name, sensor.last_received_topic)
 
-        topic2 = DynamicSensorTest.create_topic(prefix + 'anyTopic2')
-        topic_listener.add_topic(prefix + 'anyTopic2')
-        rospy.sleep(0.1)
-        topic2.publish(2)
-        rospy.sleep(0.1)
+        topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'anyTopic2', 2)
         sensor.sync()
         self.assertEqual(2, sensor.value, 'Seccond value was not passed')
         self.assertEqual(topic2.name, sensor.last_received_topic)
@@ -199,15 +205,6 @@ class DynamicSensorTest(unittest.TestCase):
         rospy.sleep(0.1)
         sensor.sync()
         self.assertEqual(1, sensor.value, 'Value has not changed')
-
-    @staticmethod
-    def create_topic_and_publish(topic_listener, name, first_value):
-        topic = DynamicSensorTest.create_topic(name)
-        topic_listener.add_topic(name)
-        rospy.sleep(0.1)
-        topic.publish(first_value)
-        rospy.sleep(0.1)
-        return topic
 
     def test_default_aggregation(self):
         """
@@ -329,6 +326,30 @@ class DynamicSensorTest(unittest.TestCase):
 
         self.assertEqual(0, sensor.min_value.data)
         self.assertEqual(2, sensor.max_value.data)
+
+    def test_topic_type_filtering(self):
+        prefix = '/' + self.__message_prefix + 'testTopicType'
+        service_prefix = prefix + 'Service'
+        topic_listener = TopicListenerMock(service_prefix=service_prefix)
+        sensor = DynamicSensor(pattern=prefix,
+                               topic_listener_name=service_prefix,
+                               expiration_time_values_of_removed_topics=-1,
+                               default_value=Int32(-1), topic_type=Int32)
+        sensor.sync()
+        self.assertEqual(Int32(-1), sensor.value)
+
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + '/First/ToSubscribe', 1, topic_type=Int32)
+        sensor.sync()
+        self.assertEqual(Int32(1), sensor.value, 'Value was not received, it is instead: ' + str(sensor.value))
+
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + '/WrongType', 'MyFamousMessage',
+                                                   topic_type=String)
+        sensor.sync()
+        self.assertEqual(Int32(1), sensor.value, 'Value has changed unexpectedly: ' + str(sensor.value))
+
+        DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + '/Second/ToSubscribe', 42, topic_type=Int32)
+        sensor.sync()
+        self.assertEqual(Int32(42), sensor.value, 'Value was not received, it is instead: ' + str(sensor.value))
 
 
 if __name__ == '__main__':
