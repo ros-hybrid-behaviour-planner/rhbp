@@ -144,6 +144,9 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         new_fact = (prefix, 'updated', '3')
 
         self.__client.update((prefix,'toUpdate','*'),new_fact)
+
+        rospy.sleep(0.1)
+
         self.__check_content(cache, not_influenced, new_fact)
 
 

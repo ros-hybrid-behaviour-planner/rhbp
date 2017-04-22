@@ -8,8 +8,7 @@ from threading import Lock
 
 import rospy
 from knowledge_base.knowledge_base_manager import KnowledgeBase
-from knowledge_base.msg import Push
-from knowledge_base.srv import Exists, Peek, Pop, All, Update, UpdateSubscribe
+from knowledge_base.srv import Exists, Peek, Pop, All, Update, UpdateSubscribe, Push
 from thread import allocate_lock
 
 
@@ -33,6 +32,7 @@ class KnowledgeBaseClient(object):
         self.__knowledge_base_name = knowledge_base_name
         self.__init_lock = allocate_lock()
         self._timeout = timeout
+
         try:
             rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
@@ -51,7 +51,7 @@ class KnowledgeBaseClient(object):
             if (self.__initialized):
                 # Another check, protected by the lock
                 return True
-            rospy.logerr(
+            rospy.logdebug(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
             rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
@@ -80,9 +80,8 @@ class KnowledgeBaseClient(object):
             self.__knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX, Update)
         self.__update_subscribe_service = rospy.ServiceProxy(
             self.__knowledge_base_name + KnowledgeBase.UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX, UpdateSubscribe)
-        self.__push_topic = rospy.Publisher(self.__knowledge_base_name + KnowledgeBase.PUSH_TOPIC_NAME_POSTFIX, Push,
-                                            queue_size=10, latch=True)
-        rospy.sleep(1)
+        self.__push_service = rospy.ServiceProxy(self.__knowledge_base_name + KnowledgeBase.PUSH_SERVICE_NAME_POSTFIX,
+                                                 Push)
         self.__initialized = True
 
     def exists(self, pattern):
@@ -134,7 +133,7 @@ class KnowledgeBaseClient(object):
         else:
             return None
 
-    def update(self, pattern, new, push_without_existing = True):
+    def update(self, pattern, new, push_without_existing=True):
         """
         :param old:  fact, which should replaced.
         :param new: new fact
@@ -149,7 +148,7 @@ class KnowledgeBaseClient(object):
         :param fact: array or tuple  of strings. No placeholders are allowed
         """
         if self.__ensure_initialization():
-            self.__push_topic.publish(fact)
+            self.__push_service(fact)
         else:
             return None
 
