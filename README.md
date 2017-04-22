@@ -34,13 +34,32 @@ From a user perspective you will only depend on the packages **[rhbp_core](rhbp_
 If you want to refer to our work in scientific context, please cite the following articles.
 
 For the core implementation:
+
+```
+Towards Goal-driven Behaviour Control of Multi-Robot Systems
+Christopher-Eyk Hrabia, Stephan Wypler and Sahin Albayrak
+In: 2017 IEEE 3nd International Conference on Control, Automation and Robotics (ICCAR); 2017
+```
+
 ```bibtex
-TODO
+@INPROCEEDINGS{hrabia_goal_driven_2017,
+author={Christopher-Eyk Hrabia, Stephan Wypler and Sahin Albayrak},
+booktitle={2017 3nd International Conference on Control, Automation and Robotics (ICCAR)},
+title={Towards Goal-driven Behaviour Control of Multi-Robot Systems},
+year={2017},
+}
 ```
 
 For application of RHBP in the German SpaceBot Cup competition:
+
+```
+An autonomous companion UAV for the SpaceBot Cup competition 2015
+Christopher-Eyk Hrabia, Martin Berger, Axel Hessler, Stephan Wypler, Jan Brehmer, Simon Matern and Sahin Albayrak
+In: Robot Operating System (ROS) - The Complete Reference (Volume 2); 2017
+```
+
 ```bibtex
-@InBook{Hrabia_ROS_2017,
+@InBook{hrabia_ros_2017,
   Title                    = {Robot Operating System (ROS) - The Complete Reference (Volume 2)},
   Author                   = {Christopher-Eyk Hrabia and Martin Berger and Axel Hessler and Stephan Wypler and Jan Brehmer and Simon Matern and Sahin Albayrak},
   Chapter                  = {An autonomous companion UAV for the SpaceBot Cup competition 2015},
