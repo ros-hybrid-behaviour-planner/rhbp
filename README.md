@@ -17,7 +17,7 @@ In order to use this package in your ROS application just clone this repository 
 
 ```bash
 cd src
-git clone --recursive https://gitlab.tubit.tu-berlin.de/hrabia/rhbp.git
+git clone --recursive https://github.com/DAInamite/rhbp
 ```
 
 Build everything
