@@ -1,8 +1,22 @@
-# BEHAVIOUR_PLANNER MANUAL
+# ROS Hybrid Behaviour Planner (RHBP) Core
 
+## Table of contents
+
+* [General](#general)
+* [Important Behaviour Properties](#important-behaviour-properties)
+* [Start Conditions Checked by the Planner](#start-conditions-checked-by-the-planner)
+* [Activation Calculation](#activation-calculation)
+* [Planner - Behaviour and Planner - Goal Communication](#planner---behaviour-and-planner---goal-communication)
+* [Writing Your Own Behaviours and Goals](#writing-your-own-behaviours-and-goals)
+* [Example](#example)
+* [Debugging](#debugging)
+ * [Logging](#logging)
+ * [Creating an activation plot](#creating-an-activation-plot)
+
+## General
 
 A behaviour planner works by periodically spreading activation in a network of behaviours and goals.
-Behaviours accumulate activation every iteration (and lose it over time with a factor called activationDecay to ensure their activation is indeed caused by the current situation and not by events in the past). 
+Behaviours accumulate activation every iteration (and lose it over time with a factor called activationDecay to ensure their activation is indeed caused by the current situation and not by events in the past).
 Executable behaviours with high-enough activation (above the global activationThreshold of the planner) and satisfied preconditions (above their individual readyThreshold) are started (Well, there is more to it - keep reading).
 When they finish executing their activation is reset to 0 to give other behaviours a chance.
 
@@ -20,7 +34,7 @@ Those properties are:
 
 The previous section indicates that the planner actually checks more than just the activation value before launching a behaviour.
 At first the behaviours are sorted by activation in decending order. The the planner examines every behaviour and checks the following conditions:
-1. If a behaviour is active. Acitve means antivated and there have been no internal issues that could render the behaviour inactive.
+1. If a behaviour is active. Acitve means activated and there have been no internal issues that could render the behaviour inactive.
 2. If it is already executing. If so, it won't get started again
 3. If it is executable (precondition satisfaction larger than readyThreshold)
 4. If its activation is high enough (activation larger than activationThreshold)
@@ -30,27 +44,27 @@ The activationThrehold is decreased by the factor activationThresholdDecay at ev
 
 ## Activation Calculation
 
-Activation basically comes from 3 different sources: The situation, the behaviour constellation and goals. Note that this also works in the opposite way and a conflict will introduce negative activation that reduces the overall sum.
+Activation basically comes from 4 different sources: The situation, the behaviour constellation, goals and the planner. Note that this also works in the opposite way and a conflict will introduce negative activation that reduces the overall sum.
 Activation by the situation comes from the preconditions and is in the range [0, 1]. If there are no preconditions then it can run in any situations so this value is 1. If there are at least one precondition then the activation by the situation is the average satisfaction of each precondition (also [0 to 1]).
-Because behaviour may have precondition they want them to be fulfilled. They express these desires with a collection of wishes. Wishes are similar to correlations and that is no coincidence: A wish is a tuple of a (sensor) name and an indicator with a comparable meaning to the indicator of correlations. Let's say a rechargeBehaviour has a precondition saying that the "batterySensor" should read 5V or less and the current battery has 6V. In this situation it would have a wish for the "batterySensor" with a negative indicator value (meaning that it wants the value to fall).
-Consider a UAV as another example: The explorationBehaviour wants the aircraft to fly at a certain height. Right at the beginning this explorationBehaviour has a wish for the "altitudeSensor" to read e.g. 2m but the UAV is still on the ground so the sensor reports 0m and the wish indicates 1 for the "altitudeSensor" (desire to rise). Now it happens that there is a startBehviour that is correlated with the "altitudeSensor" in a positive way because it lifts the UAV up in the air. This startBehaviour can fulfill a precondition of the explorationBehaviour and is therefor called a predecessor of the explorationBehaviour. The explorationBehaviour is therefore consequently the successor of the startBehaviour and the landBehaviour having a negative correlation the the "altitudeSensor" would be a conflictor to the explorationbehaviour.
+Because behaviour may have precondition they want them to be fulfilled. They express these desires with a collection of wishes. Wishes are similar to correlations and that is no coincidence: A wish is a tuple of a sensor_activator_tuple name and an indicator with a comparable meaning to the indicator of correlations. Let's say a rechargeBehaviour has a precondition saying that the "batterySensor" should read 5V or less and the current battery has 6V. In this situation it would have a wish for the tuple of "batterySensor" and its activator with a negative indicator value (meaning that it wants the value to fall).
+Consider a UAV as another example: The explorationBehaviour wants the aircraft to fly at a certain height. Right at the beginning this explorationBehaviour has a wish for the "altitudeSensor" and its activator to read e.g. 2m but the UAV is still on the ground so the sensor reports 0m and the wish indicates 1 for the "altitudeSensor" (desire to rise). Now it happens that there is a startBehviour that is correlated with the "altitudeSensor" in a positive way because it lifts the UAV up in the air. This startBehaviour can fulfill a precondition of the explorationBehaviour and is therefor called a predecessor of the explorationBehaviour. The explorationBehaviour is therefore consequently the successor of the startBehaviour and the landBehaviour having a negative correlation the the "altitudeSensor" would be a conflictor to the explorationbehaviour.
 Now that the relationships created by correlations and preconditions (via wishes) are established we have a network of behaviours. Within this network activation is fed backwards from a successor to a predecessor if it can make a a precondition of the successor come true. Executable behaviours spread activation forward to their successors because if they, as predecessors, are executed it is likely that also the successors will be executed. If a behaviour conflicts with another its activation will be reduced.
-The last component in the network are goals. Goals incorporate conditions and are either permanent or one-time. Non-permanent goals vanish once they are achieved. Like behaviours, goals express their desires by wishes and the thus influence the spreading of activation the just the same way as behaviours do: Aactivation is given to behaviours that are positively correlated to the sensors contained in the goal's conditions or taken away otherwise.
+The last component in the network are goals. Goals incorporate conditions and are either permanent or one-time. Non-permanent goals vanish once they are achieved. Like behaviours, goals express their desires by wishes and the thus influence the spreading of activation the just the same way as behaviours do: Activation is given to behaviours that are positively correlated to the sensors contained in the goal's conditions or taken away otherwise.
 
-## Planner - Behaviour and Planner - Goal Communication 
+## Planner - Behaviour and Planner - Goal Communication
 
-The planner and all goals and behaviours are decoupled and use ROS Services to communicate. The planner itself offers services called 'AddBehaviour', 'AddGoal', 'RemoveBehaviour', 'RemoveGoal', and 'ForceStart'. Each of them is prefixed with the planner's prefix so that multiple planners can run simultaneously. If the plannerPrefix is for example 'sim' then the service to add a behaviour has the name 'simAddBehaviour'.
+The hybrid planner (RHBP manager) and all goals and behaviours are decoupled and use ROS Services to communicate. The hybrid planner itself offers services called 'AddBehaviour', 'AddGoal', 'RemoveBehaviour', 'RemoveGoal', and 'ForceStart'. Each of them is prefixed with the planner's prefix so that multiple planners can run simultaneously. If the plannerPrefix is for example 'sim' then the service to add a behaviour has the name 'sim/AddBehaviour'.
 Behaviours and goals also have to offer services to interact with the planner. For a behaviour those services are 'GetStatus', 'Start', 'Stop', 'Activate', and 'Priority', each prefixed with the behaviour's name. The 'GetStatus' service is polled by the planner periodically to update its internal state. The planner uses 'Start' and 'Stop' to execute and interrupt the behaviour, respectively.
 Goals must offer the 'Activate' and 'GetStatus' service (again, prefixed with the goal's name).
 
 ## Writing Your Own Behaviours and Goals
 
-Base classes for behaviours and goals do all the necessary service registration and offer a lot of functionality that can be used to get started quickly.
+Base classes for behaviours and goals do all the necessary service registration and offer a lot of functionality that can be used to get started quickly. Hence, you actually do not have to worry about the service interface discussed in the previous section.
 The constructor of the BehaviourBase takes only the behaviour's name as mandatory argument but offers to configure all parameter of the behaviour via convenient keyword arguments. Almost all properties can also be adjusted later. The GoalBase's constructor can also take all necessary parameters all at once. Please see the well commented __init__() methods and examples for further information.
 The planner only requires that the services operate as expected and report the needed values in the correct format.
 For the behaviour, only the following methods need to be implemented so that the automatically registered 'GetStatus' service callback can send the values back to the planner:
 ```python
-computeActivation() 
+computeActivation()
 computeSatisfaction()
 self.computeWishes()
 self.getProgress()
@@ -58,7 +72,7 @@ self.getProgress()
 Please see the doxygen documentation for details.
 
 The default implementations of the above methods try to reduce the effort to a minimum: These implementations (except for getProgress, of course) are designed to operate on the precondition list (specifiable in the constructor) if those preconditions offer the right interface.
-A condition must have provide the 2 properties satisfaction (and return a float [0, 1]) and optional (bool) and the method getWishes which must return a list of (name, indicator) tuples.
+A condition has to provide the 2 properties satisfaction (and return a float [0, 1]) and optional (bool) and the method getWishes which must return a list of (name, indicator) tuples.
 Besides a regular Condition object that wraps an Activator object there are the pseudo-conditions Conjunction and Disjunction the take multiple regular conditions, Conjunctions, and Disjunctions and compute the corresponding logical expressions of them.
 Sensors must offer a value property and are identified by a name. It is important that the Sensors' names are consistent in the entire system e.g. in wishes and correlations. Sensors may represent the actual state of the world or system and subscribe to ROS topics for example (there is a SimpleTopicSensor that does exactly that). But they could also represent anything else like an intermediate value or flag not measurable in the world. Sensors can be used for information exchange among behaviours. This is especially meaningful when this information affects another behaviours activation or execution.
 Activator wrap a Sensor and a desired value (or value range or anything) and abstract those arbitrary types and values to a activation value from 0 to 1 using their activation function. They also offer the feature to compute a wish-indicator from the activator's internal activation function and the current sensor's value. There are a couple of simple activation functions pre-implemented that work with boolean, int and real sensor values: A BooleanActivator for a desired boolean value, a ThresholdActivator that implements a lower or upper boundary, and a LinearActivator where the activation rises linear within an interval.
@@ -104,7 +118,7 @@ if __name__ == '__main__':
     # setting up conditions
     isFlying = Condition(heightSensor, LinearActivator(0, .7), name = "isFlyingCondition") # the first argument of the linear activator marks the value with 0 activation, the second the value with full activation. Values out of that range are clamped to 0 and 1
     isNotFlying = Condition(heightSensor, LinearActivator(1, .3), name = "isNotFlyingCondition") # it also works in reverse
-    # behaviours 
+    # behaviours
     startBehaviour = testBehaviours.StartBehaviour(plannerPrefix = "sim") # Note that the planner prefix is consistent
     goHomeBehaviour = testBehaviours.GoHomeBehaviour(plannerPrefix = "sim")
     landBehaviour = testBehaviours.LandBehaviour(plannerPrefix = "sim")
@@ -128,9 +142,9 @@ class SonarSensor(SimpleTopicSensor):
     This class extracts the height value of a sensor_msgs.msg.Range message
     """
     def __init__(self, name, topic, createLog = False):
-        super(SonarSensor, self).__init__(name, topic, Range, createLog) # as all Sensors it takes a name as argument. The SimpleTopicSensor additionally needs the topic to subscribe to, the data type published at the topic and optionally a flag indicating that it should create a log file dor debug purposes. 
+        super(SonarSensor, self).__init__(name, topic, Range, createLog) # as all Sensors it takes a name as argument. The SimpleTopicSensor additionally needs the topic to subscribe to, the data type published at the topic and optionally a flag indicating that it should create a log file dor debug purposes.
         self.__messageCounter = 0
-        
+
     def subscriptionCallback(self, msg):
         self.update(msg.range) # this is the only line that does actual work here. It extracts the message and provides the plain value.
         if self._iShouldCreateLog and self.__messageCounter > 50:
@@ -168,14 +182,14 @@ class LandBehaviour(BehaviourBase):
                                Condition(self._poseSensor, DistanceActivator(self._home), name = "atHomeConditionL"), # The DistanceActivated will also be explained later because it demonstrates how to work with complex types.
                                Condition(self._batterySensor, LinearActivator(14.0, 12.8), name = "fullBatteryCondition")
                               ]
-    
+
     def start(self):
         rospy.loginfo("########### LAND NOW ###########")
         rospy.wait_for_service("/position_controller/set_altitude")
         setAltitudeService = rospy.ServiceProxy("/position_controller/set_altitude", SetAltitude)
         result = setAltitudeService(0.0)
-        rospy.loginfo("called setAltitude(0.0) with result: %s", result) 
-        
+        rospy.loginfo("called setAltitude(0.0) with result: %s", result)
+
     def getStatus(self, request):
         if self._isExecuting: # the startCallback inherited from BehaviourBase sets this attribute to true when it starts the behaviour.
             if self._heightSensor.value > .3: # the ground level is not 0!
@@ -197,7 +211,7 @@ class PoseSensor(SimpleTopicSensor):
     """
     def __init__(self, name, topic, createLog = False):
         super(PoseSensor, self).__init__(name, topic, Odometry, createLog)
-        
+
     def subscriptionCallback(self, msg):
         self.update(msg.pose.pose) # although this is only a part of the message the result is still a complex type and we need a suitable Activator to deal with it.
 ```       
@@ -218,24 +232,24 @@ class DistanceActivator(LinearActivator):
         self._desired = desiredValue # this is the desired Pose
         self._zeroActivationDistance = zeroActivationDistance
         self._fullActivationDistance = fullActivationDistance
-    
+
     def computeActivation(self, value):
         """
         computes a linear slope based on distance
         """
         assert isinstance(value, Pose)
         return super(DistanceActivator, self).computeActivation(self._distance(value))
-    
+
     def getWish(self, value):
         """
         return whether there is a desire to move
         """
         assert isinstance(value, Pose)
         return abs(super(DistanceActivator, self).getWish(self._distance(value)))
-        
+
     def _distance(self, p):
         """
-        computes Manhattan distance 
+        computes Manhattan distance
         cares only about distance in x-y-direction
         """
         return abs(p.position.x - self._desired.position.x) + abs(p.position.y - self._desired.position.y)
@@ -247,7 +261,7 @@ class DistanceActivator(LinearActivator):
 * The planner/manager log level is defined in  “planner_node.py”. It might be handy to adjust it during development.
 
 ### Creating an activation plot
-The parameter ```<param name="createLogFiles" type="bool" value="True"/>``` enables the generation of several special logfiles (domain and problem PDDL, activation values of single behaviours) 
+The parameter ```<param name="createLogFiles" type="bool" value="True"/>``` enables the generation of several special logfiles (domain and problem PDDL, activation values of single behaviours)
 that can be found in „~/.ros“ or in the current directory of rhbp source if you launch the node directly
 
 These loggfiles can also be used to create an activation plot.

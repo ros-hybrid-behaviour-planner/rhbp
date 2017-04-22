@@ -4,7 +4,7 @@
   <version>0.0.2</version>
   <description>The core modules of the rhbp planner</description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag --> 
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <maintainer email="christopher-eyk.hrabia@dai-labor.de">Christopher-Eyk Hrabia</maintainer>
 
   <!-- One license tag required, multiple allowed, one license per tag -->
@@ -21,6 +21,7 @@
   <!-- Authors do not have to be maintianers, but could be -->
   <author email="s.wypler@campus.tu-berlin.de">Stephan Wypler</author>
   <author email="christopher-eyk.hrabia@dai-labor.de">Christopher-Eyk Hrabia</author>
+  <author email="rieger@campus.tu-berlin.de">Phillip Rieger</author>
 
 
   <!-- The *_depend tags are used to specify dependencies -->
@@ -42,6 +43,6 @@
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <rqt_gui plugin="${prefix}/plugin.xml"/>
-    <rosdoc config="rosdoc.yaml"/>    
+    <rosdoc config="rosdoc.yaml"/>
   </export>
 </package>
