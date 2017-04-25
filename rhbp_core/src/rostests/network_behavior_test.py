@@ -11,8 +11,8 @@ import unittest
 
 import rospy
 import rostest
+
 from behaviour_components.activators import Condition, ThresholdActivator
-from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
 from behaviour_components.network_behavior import NetworkBehavior

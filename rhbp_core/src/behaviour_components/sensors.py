@@ -19,8 +19,8 @@ from .pddl import create_valid_pddl_name
 class Sensor(object):
     '''
     This class represents information necessary to make decisions.
-    Although it is not abstract it will be barely useful and should be used as base class for actual clever implementations that for planner_node subscribe to ROS topics.
-    
+    Although it is not abstract it will be barely useful and should be used as base class for actual
+    implementations
     '''
 
     _instanceCounter = 0
@@ -93,12 +93,12 @@ class PassThroughTopicSensor(Sensor):
     "PassThrough" because the sensor just forwards the received msg
     """
 
-    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False, print_updates=True):
+    def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False, print_updates=False):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
         :param name: name of the sensor, if None a name is generated from the topic
-        :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the master
+        :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the ROS master
         :param print_updates: Whether a message should be logged (debug), each time, a new value is received
         """
 
@@ -140,16 +140,30 @@ class PassThroughTopicSensor(Sensor):
 
 
 class SimpleTopicSensor(PassThroughTopicSensor):
-    def __init__(self, topic, name=None, message_type=None, initial_value=None, create_log=False, print_updates=True):
+    """
+    ROS topic sensor that subscribes to the given topic and provides defined primitive (for this reason simple)
+    attributes (parameter message_attr) from the message,
+    default is 'data' that is valid for simple ROS messages of type Bool, Float and Int32 ...
+    """
+
+    def __init__(self, topic, name=None, message_type=None, initial_value=None, message_attr='data', create_log=False, print_updates=False):
         """
-        "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
+        :param topic: see :class:PassThroughTopicSensor
+        :param name: see :class:PassThroughTopicSensor
+        :param message_type: see :class:PassThroughTopicSensor
+        :param initial_value: see :class:PassThroughTopicSensor
+        :param message_attr: the message attribute of the msg to use
+        :param create_log: see :class:PassThroughTopicSensor
+        :param print_updates: see :class:PassThroughTopicSensor
         """
         super(SimpleTopicSensor, self).__init__(name=name, topic=topic, message_type=message_type,
                                                 initial_value=initial_value, create_log=create_log,
                                                 print_updates=print_updates)
+        self._message_field = message_attr
 
     def subscription_callback(self, msg):
-        super(SimpleTopicSensor, self).subscription_callback(msg.data)
+        msg_value = getattr(msg, self._message_field)
+        super(SimpleTopicSensor, self).subscription_callback(msg_value)
 
 
 class DynamicSensor(Sensor):

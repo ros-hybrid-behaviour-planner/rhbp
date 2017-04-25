@@ -277,11 +277,11 @@ class TupleSpaceTestSuite(unittest.TestCase):
                                                 pattern=(prefix, 'old', '*'))
         informer_updated = UpdateSubscriberMock(mock_name='updated', client=self.__client,
                                                 pattern=(prefix, '*', '*'))
-        informer_seccond_target = UpdateSubscriberMock(mock_name='seccond', client=self.__client,
+        informer_second_target = UpdateSubscriberMock(mock_name='seccond', client=self.__client,
                                                        pattern=(prefix, 'seccond_target', '*'))
         informer_not_influenced = UpdateSubscriberMock(mock_name='not_influended', client=self.__client,
                                                        pattern=(prefix, 'not_influenced', '*'))
-        all_informers = [informer_added, informer_removed, informer_updated, informer_seccond_target,
+        all_informers = [informer_added, informer_removed, informer_updated, informer_second_target,
                          informer_not_influenced]
 
         self.assertTrue(self.__client.update(old_fact, new_fact), 'First update failed')

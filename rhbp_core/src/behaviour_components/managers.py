@@ -15,6 +15,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 import os
+import sys
 import threading
 
 class Manager(object):
@@ -54,6 +55,9 @@ class Manager(object):
         self.__successor_bias = kwargs['successorBias'] if 'successorBias' in kwargs else None
         self.__plan_bias = kwargs['planBias'] if 'planBias' in kwargs else None
         self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
+
+        self.__max_parallel_behaviours = kwargs['max_parallel_behaviours'] if 'max_parallel_behaviours' in kwargs else \
+            rospy.get_param("~max_parallel_behaviours", sys.maxint)
 
         self._stepCounter = 0
 
@@ -422,6 +426,10 @@ class Manager(object):
                 behaviour_is_interferring_others = self.handle_interferring_correlations(behaviour, currently_influenced_sensors)
 
                 if behaviour_is_interferring_others:
+                    continue
+
+                # Do not start more behaviours than allowed, behaviours are ordered by activation hence we prefer behaviours with higher activation
+                if self.__max_parallel_behaviours > 0 and len(self.__executedBehaviours) >= self.__max_parallel_behaviours:
                     continue
 
                 ### if the behaviour got here it really is ready to be started ###

@@ -112,6 +112,27 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertTrue(updated_new in current, 'Update not noticed')
         self.assertTrue(not_influenced in current, 'NotInfluenced was influenced')
 
+    def test_multiple_updates(self):
+        prefix = self.__message_prefix + '_test_multiple_updates'
+        updated_old_1 = (prefix, 'fact_1', '1')
+        updated_old_2 = (prefix, 'fact_2', '2')
+        self.__client.push(updated_old_1)
+        self.__client.push(updated_old_2)
+
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+
+        updated_new_1 = (prefix, 'fact_1', '3')
+        self.__client.update(updated_old_1, updated_new_1)
+
+        updated_new_2 = (prefix, 'fact_2', '4')
+        self.__client.update(updated_old_2, updated_new_2)
+        rospy.sleep(0.1)
+
+        current = cache.get_all_matching_facts()
+        self.assertEqual(2, len(current))
+        self.assertTrue(updated_new_1 in current, 'Update not noticed')
+        self.assertTrue(updated_new_2 in current, 'Update not noticed')
+
     def __check_content(self,fact_cache, *expected_facts):
 
         content = fact_cache.get_all_matching_facts()
