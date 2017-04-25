@@ -3,13 +3,14 @@
 @author: rieger
 '''
 import rospy
+
 from thread import allocate_lock
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
 
 
-class KnowledgeBaseFactCache:
+class KnowledgeBaseFactCache(object):
     """
     Adapter for using update mechanism of knowledge base for caching the value.
     If the knowledge base does not exists at initialization, than the subscribe is done at first using of the cache.
@@ -102,4 +103,5 @@ class KnowledgeBaseFactCache:
     def get_all_matching_facts(self):
         self.__ensure_initialization()
         with (self.__value_lock):
+            #TODO better return copy here? Maybe use deepcopy?!
             return self.__contained_facts
