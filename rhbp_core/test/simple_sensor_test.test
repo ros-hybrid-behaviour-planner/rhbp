@@ -1,0 +1,3 @@
+<launch>
+  <test pkg="rhbp_core" type="simple_sensor_test.py" test-name="SensorTestNode"/>
+</launch>
