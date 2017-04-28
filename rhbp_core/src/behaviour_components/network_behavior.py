@@ -90,7 +90,7 @@ class NetworkBehavior(BehaviourBase):
     def add_correlations(self,correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
-        Furthermore creates a goal for each Effect and register it at the nested Manager
+        Furthermore creates a goal for each Effect and registers it at the nested Manager
         :param correlations: tuple of (Sensor, Effect)
         """
         for effect in correlations:
