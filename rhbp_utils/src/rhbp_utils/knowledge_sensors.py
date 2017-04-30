@@ -11,7 +11,7 @@ from knowledge_base.update_handler import KnowledgeBaseFactCache
 
 class KnowledgeSensor(Sensor):
     """
-    Sensor, which provides information about existence of a fact, which matches the given pattern
+    Sensor, which provides information about existence of any fact, matching the given pattern
     """
 
     def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, name=None):

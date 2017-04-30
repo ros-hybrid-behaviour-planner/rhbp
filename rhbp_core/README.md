@@ -57,6 +57,12 @@ The hybrid planner (RHBP manager) and all goals and behaviours are decoupled and
 Behaviours and goals also have to offer services to interact with the planner. For a behaviour those services are *GetStatus*, *Start*, *Stop*, *Activate*, and *Priority*, each prefixed with the behaviour's name. The *GetStatus* service is polled by the planner periodically to update its internal state. The planner uses *Start* and *Stop* to execute and interrupt the behaviour, respectively.
 Goals must offer the *Activate* and *GetStatus* service (again, prefixed with the goal's name).
 
+## Subnetworks
+Several behaviors can be embedded into another behavior, for building subnetworks. The subnetwork is realized through the class NetworkBehavior. Therefore the network behavior uses internally an own manager. All children have to be registered at the embeded manager, through the planner prefix.
+The children are disabled, until the respective network behavior is enabled. The network behavior provides own effects and preconditions to influence the activation level. They are independent from the effects and preconditions of its children. Therefore they have to be defined manually and have to be registered via the constructor. The effects can also be registered via the method add\_correlations. Since the effects needs to be converted into goals, each effect has to be registered as a tuple, together with a sensor for measuring it. The generation of goals is done autonomously for boolean and number values. For all other types, the method \_create_goal of the class NetworkBehavior needs to be overridden. For more details, see the well documented class NetworkBehavior.
+The bias values of the internal manager can be configured about the constructor arguments of the NetworkBehavior. Therefore all parameters of the manager can also applied to the NetworkBehavior. The only exception is the planner prefix. The planner prefix argument configures the parent of the NetworkBehavior.
+An example, how to use NetworkBehaviors, is available as a system test (NetworkBehaviorTest).
+
 ## Writing Your Own Behaviours and Goals
 
 Base classes for behaviours and goals do all the necessary service registration and offer a lot of functionality that can be used to get started quickly. Hence, you actually do not have to worry about the service interface discussed in the previous section.

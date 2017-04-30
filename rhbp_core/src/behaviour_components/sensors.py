@@ -175,7 +175,7 @@ class DynamicSensor(Sensor):
     def __init__(self, pattern, default_value=None, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NAME, name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
-                 subscribe_only_first=False):
+                 subscribe_only_first=False, topic_type=None):
         """
         :param pattern: pattern, which will be used for detect relevant topics. The pattern must be of type str.
                         Additionally the pattern must be a valid regular expression,
@@ -189,6 +189,8 @@ class DynamicSensor(Sensor):
                                                         after a value of a still existing topic is outdated
         :param expiration_time_values_of_removed_topics: time in secconds, after a value of a removed topic is outdated
         :param subscribe_only_first: whether this sensor only subscribe to the first matching topic (and no other)
+        :param topic_type: (Type) Type of subscribed topics. The sensor will only subscribe to a topics, 
+                if the type matches. If topic_type is None, no type check is done
         """
         super(DynamicSensor, self).__init__(name=name, optional=optional, initial_value=default_value)
 
@@ -203,6 +205,7 @@ class DynamicSensor(Sensor):
         self.__expiration_time_values_of_active_topics = expiration_time_values_of_active_topics
         self.__expiration_time_values_of_removed_topics = expiration_time_values_of_removed_topics
         self.__remaining_allowed_topic_subscribing = 1 if subscribe_only_first else -1
+        self.__topic_type = topic_type
         service_name = topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
         rospy.wait_for_service(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
         subscribe_service = rospy.ServiceProxy(service_name,
@@ -213,7 +216,21 @@ class DynamicSensor(Sensor):
         for topic_name in subscribe_result.existingTopics:
             self.__subscribe_to_topic(topic_name)
 
+    def _matches_topic_type(self, topic_name, topic_type):
+        """
+        Checks, whether the type of the topic has the correct type
+        :param topic_type: (Type) type of topic, which is checked
+        :param topic_name: name of topic
+        :return: whether the topic type is valid
+        """
+        if (self.__topic_type is None):
+            return True;
+        return self.__topic_type == topic_type
+
     def __subscribe_to_topic(self, topic_name):
+        topic_type = get_topic_type(topic_name)
+        if (not self._matches_topic_type(topic_name, topic_type)):
+            return
         if (self.__remaining_allowed_topic_subscribing >= 0):
             if (self.__remaining_allowed_topic_subscribing == 0):
                 rospy.logdebug('Dont subscribe to topics because already subscribed to another: ' + topic_name)
@@ -228,7 +245,6 @@ class DynamicSensor(Sensor):
                 self.__values_of_removed_topics.pop(topic_name)
         finally:
             self.__value_lock.release()
-        topic_type = get_topic_type(topic_name)
         rospy.Subscriber(topic_name, topic_type, lambda value: self.__value_updated(topic_name, value))
 
     def _value_updated(self, topic, value, time_stamp):

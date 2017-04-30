@@ -17,6 +17,10 @@ class KnowledgeBaseFactCache(object):
     """
 
     def __init__(self, pattern, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
+        """
+        :param pattern: tuple of strings. The update handler caches all facts, matching the pattern.
+        :param knowledge_base_name:
+        """
 
         self.__knowledge_base_name = knowledge_base_name
         self.__pattern = pattern
