@@ -42,7 +42,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
-        self.add_correlations_and_goals(correlations)
+        self.add_correlations(correlations)
 
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
@@ -89,7 +89,7 @@ class NetworkBehavior(BehaviourBase):
 
     def add_correlations(self,correlations):
         """
-        Adds the given effects to the correlations of this Behavior.
+        Adds the given effects to the correlations of this Behavior. 
         :param correlations: list of Effects
         """
         self._correlations.append(correlations)
@@ -97,7 +97,7 @@ class NetworkBehavior(BehaviourBase):
     def add_correlations_and_goals(self,correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
-        Furthermore creates a goal for each Effect and register it at the nested Manager
+        Furthermore creates a goal for each Effect and registers it at the nested Manager
         :param correlations: list of tuples of (Sensor, Effect)
         """
         for effect in correlations:
@@ -107,7 +107,6 @@ class NetworkBehavior(BehaviourBase):
                                      activator_name=activator_name)
             self.__manager.add_goal(goal)
             self._correlations.append(effect[1])
-
 
     def add_goal(self, goal):
         """
