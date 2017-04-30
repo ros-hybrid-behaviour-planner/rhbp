@@ -42,7 +42,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
-        self.add_correlations(correlations)
+        self.add_correlations_and_goals(correlations)
 
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
@@ -89,9 +89,16 @@ class NetworkBehavior(BehaviourBase):
 
     def add_correlations(self,correlations):
         """
+        Adds the given effects to the correlations of this Behavior.
+        :param correlations: list of Effects
+        """
+        self._correlations.append(correlations)
+
+    def add_correlations_and_goals(self,correlations):
+        """
         Adds the given effects to the correlations of this Behavior. 
         Furthermore creates a goal for each Effect and register it at the nested Manager
-        :param correlations: tuple of (Sensor, Effect)
+        :param correlations: list of tuples of (Sensor, Effect)
         """
         for effect in correlations:
             goal_name = self.__generate_goal_name(effect[1])
@@ -100,14 +107,6 @@ class NetworkBehavior(BehaviourBase):
                                      activator_name=activator_name)
             self.__manager.add_goal(goal)
             self._correlations.append(effect[1])
-
-    @property
-    def correlations(self):
-        return super(NetworkBehavior, self)._correlations
-
-    @correlations.setter
-    def set_correlations(self,correlations):
-        raise NotImplementedError('Setting Effects is not supported for NetworkBehaviors. Use add_correlations instead.')
 
 
     def add_goal(self, goal):
