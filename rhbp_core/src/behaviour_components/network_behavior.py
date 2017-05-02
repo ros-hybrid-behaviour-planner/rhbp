@@ -14,7 +14,6 @@ class NetworkBehavior(BehaviourBase):
     """
     Behavior, which encapsulates an additional manager and behaviors.
     This allows to build hierarchies of hybrid behaviour planners.
-    It must be in separate file, because of circular dependencies (depends on manager, but manager depends on Behavior)
     """
 
     MANAGER_POSTFIX = "/Manager"
@@ -24,7 +23,7 @@ class NetworkBehavior(BehaviourBase):
                  correlations = [],
                  **kwargs):
         """
-        :param correlations: tuple <sensor,Effect>
+        :param correlations: tuple <Effect>
         :param name: name of the behaviour that is also used to create the sub manager name together with the NetworkBehavior.MANAGER_POSTFIX
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
@@ -87,20 +86,20 @@ class NetworkBehavior(BehaviourBase):
         raise RuntimeError(msg='Cant create goal for effect type \'' + str(
             effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
 
-    def add_correlations(self,correlations):
+    def add_correlations(self, correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
         :param correlations: list of Effects
         """
-        self._correlations.append(correlations)
+        self._correlations.extend(correlations)
 
-    def add_correlations_and_goals(self,correlations):
+    def add_correlations_and_goals(self, sensor_correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
         Furthermore creates a goal for each Effect and registers it at the nested Manager
-        :param correlations: list of tuples of (Sensor, Effect)
+        :param sensor_correlations: list of tuples of (Sensor, Effect)
         """
-        for effect in correlations:
+        for effect in sensor_correlations:
             goal_name = self.__generate_goal_name(effect[1])
             activator_name = self._restore_condition_name_from_pddl_function_name(effect[1].sensorName, effect[0].name)
             goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
