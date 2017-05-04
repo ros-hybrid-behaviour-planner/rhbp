@@ -298,7 +298,7 @@ class Manager(object):
                     rospy.logerr("PLANNER ERROR: %s", e)
                     self.__replanningNeeded = True # in case of planning exceptions try again next iteration
         else:
-            rospy.loginfo("### NOT PLANNING ###\nbecause replanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s\n current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
+            rospy.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
@@ -385,6 +385,7 @@ class Manager(object):
             rospy.loginfo("############## ACTIONS ###############")
             self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
             amount_started_behaviours = 0
+            amount_currently_selected_behaviours = 0
 
             rospy.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
@@ -393,24 +394,28 @@ class Manager(object):
             for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
                 if not behaviour.active and not behaviour.manualStart: # it must be active
-                    rospy.loginfo("%s will not be started because it is not active", behaviour.name)
+                    rospy.loginfo("'%s' will not be started because it is not active", behaviour.name)
                     continue
                 if behaviour.isExecuting: # it must not already run
-                    rospy.loginfo("%s will not be started because it is already executing", behaviour.name)
                     #It is important to remember that only interruptable behaviours can be stopped by the manager
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                             and behaviour.interruptable:
-                        rospy.loginfo("STOP BEHAVIOUR %s because it timed out", behaviour.name)
+                        rospy.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
                         self._stop_behaviour(behaviour, True)
                         self.__replanningNeeded = True # this is unusual so replan
                     elif not behaviour.executable and behaviour.interruptable:
-                        rospy.loginfo("STOP BEHAVIOUR %s because it is not executable anymore", behaviour.name)
+                        rospy.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
                         self._stop_behaviour(behaviour, True)
                     elif behaviour.activation < self._activationThreshold and behaviour.interruptable:
-                        rospy.loginfo("STOP BEHAVIOUR %s because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
+                        rospy.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
+                        self._stop_behaviour(behaviour, False)
+                    elif self.__max_parallel_behaviours > 0 and amount_currently_selected_behaviours >= self.__max_parallel_behaviours:
+                        rospy.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
                         self._stop_behaviour(behaviour, False)
                     else:
+                        rospy.loginfo("'%s' will not be started because it is already executing", behaviour.name)
                         behaviour.executionTime += 1
+                        amount_currently_selected_behaviours +=1
                         if behaviour.requires_execution_steps:
                             behaviour.do_step()
                     continue
@@ -428,8 +433,9 @@ class Manager(object):
                 if behaviour_is_interferring_others:
                     continue
 
-                # Do not start more behaviours than allowed, behaviours are ordered by activation hence we prefer behaviours with higher activation
-                if self.__max_parallel_behaviours > 0 and len(self.__executedBehaviours) >= self.__max_parallel_behaviours:
+                # Do not execute more behaviours than allowed, behaviours are ordered by decending activation hence
+                # we prefer behaviours with higher activation
+                if self.__max_parallel_behaviours > 0 and amount_currently_selected_behaviours >= self.__max_parallel_behaviours:
                     continue
 
                 ### if the behaviour got here it really is ready to be started ###
@@ -535,7 +541,7 @@ class Manager(object):
         behaviour.stop(reset_activation)
         self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
 
-        rospy.loginfo("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
+        rospy.logdebug("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
 
     def add_goal(self,goal):
         '''
