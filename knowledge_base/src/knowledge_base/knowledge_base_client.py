@@ -137,6 +137,7 @@ class KnowledgeBaseClient(object):
         """
         :param old:  fact, which should replaced.
         :param new: new fact
+        :param push_without_existing: True for creating a new fact if it does not yet exist
         :return: whether new fact exists now in the knowledge base
         """
         self.__ensure_initialization()

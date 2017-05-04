@@ -441,13 +441,19 @@ class ThresholdActivator(Activator):
     This class is an activator that compares a sensor's value (expected to be int or float) to a threshold.
     '''
     def __init__(self, thresholdValue, isMinimum = True, valueRange = None, minActivation = 0, maxActivation = 1, name = None):
-        '''
-        Constructor
-        '''
+        """
+        :param thresholdValue: This is the threshold Value above/below we get full activation depending on isMinimum
+        :param isMinimum: isMinimum=True -> full activation above threshold, isMinimum=False -> full activation below threshold
+                          isMinimum defines the direction in which the threshold must be passed in order to be activated: 
+        :param valueRange: This is used to assess value deviation (wish calculation). When the range is known it can be estimated how much a given value differs from a satisfactory one (assumed linear relation)
+        :param minActivation: see :class:Activator
+        :param maxActivation: see :class:Activator
+        :param name: see :class:Activator
+        """
         super(ThresholdActivator, self).__init__(minActivation, maxActivation, name)
-        self._threshold = float(thresholdValue)   # This is the threshold Value
-        self._isMinimum = isMinimum               # The direction in which the threshold must be crossed in order to be activated
-        self._valueRange = valueRange             # This is used to assess value deviation. When the range is known it can be estimated how much a given value differs from a satisfactory one (assumed linear relation)
+        self._threshold = float(thresholdValue)
+        self._isMinimum = isMinimum
+        self._valueRange = valueRange
         
     @property
     def threshold(self):
