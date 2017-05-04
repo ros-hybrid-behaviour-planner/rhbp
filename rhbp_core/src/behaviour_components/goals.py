@@ -7,6 +7,7 @@ Created on 22.04.2015
 import itertools
 import operator
 import warnings
+import traceback
 
 from abc import ABCMeta, abstractmethod
 
@@ -278,8 +279,9 @@ class GoalProxy(AbstractGoalRepresentation):
             return (PDDL(statement=pddl.goalStatement),
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
                          functions=pddl.stateFunctions))
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
+                         traceback.format_exc())
 
     def sync(self):
         '''
@@ -303,19 +305,23 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name,
                            self.fulfillment,
                            self.wishes)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'sync' of goal '%s': %s", self._name,
+                         traceback.format_exc())
 
     @AbstractGoalRepresentation.activated.setter
     def activated(self, value):
         self._activated = value
-
-        #inform remote goal about new activated state
-        service_name = self._service_prefix + 'Activate'
-        rospy.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name)
-        activateRequest = rospy.ServiceProxy(service_name, Activate)
-        activateRequest(value)
+        try:
+            #inform remote goal about new activated state
+            service_name = self._service_prefix + 'Activate'
+            rospy.logdebug("Waiting for service %s", service_name)
+            rospy.wait_for_service(service_name)
+            activateRequest = rospy.ServiceProxy(service_name, Activate)
+            activateRequest(value)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'activated' of goal '%s': %s", self._name,
+                         traceback.format_exc())
 
 
 # TODO Rename to RemoteGoal
@@ -367,8 +373,9 @@ class GoalBase(Goal):
             registerMe(self._name, self._permanent)
             rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                            self._planner_prefix, self._name)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GoalBase constructor (for goal node %s): %s", self._name, e)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
+                         traceback.format_exc())
 
     def __del__(self):
         '''
@@ -382,27 +389,37 @@ class GoalBase(Goal):
             rospy.logerr("Error in destructor of GoalBase: %s", e)
 
     def pddlCallback(self, dummy):
-        self.updateComputation()
-        goalStatements = self.getGoalStatements()
-        statePDDL = self.getStatePDDL()
-        return GetPDDLResponse(**{"goalStatement": goalStatements,
-                                  "stateStatement": statePDDL.statement,
-                                  "statePredicates": list(statePDDL.predicates),
-                                  "stateFunctions": list(statePDDL.functions)})
+        try:
+            self.updateComputation()
+            goalStatements = self.getGoalStatements()
+            statePDDL = self.getStatePDDL()
+            return GetPDDLResponse(**{"goalStatement": goalStatements,
+                                      "stateStatement": statePDDL.statement,
+                                      "statePredicates": list(statePDDL.predicates),
+                                      "stateFunctions": list(statePDDL.functions)})
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'pddlCallback' of goal '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
 
     def getStatus(self, request):
-        self.updateComputation()
-        self._active = self._activated
-        status = Status(**{
-            "name": self._name,
-            "satisfaction": self.computeSatisfaction(),
-            "wishes": self.computeWishes(),
-            "active": self._active,
-            "activated": self._activated,
-            "priority": self._priority,
-            "threshold": self._satisfaction_threshold
-        })
-        return GetStatusResponse(status)
+        try:
+            self.updateComputation()
+            self._active = self._activated
+            status = Status(**{
+                "name": self._name,
+                "satisfaction": self.computeSatisfaction(),
+                "wishes": self.computeWishes(),
+                "active": self._active,
+                "activated": self._activated,
+                "priority": self._priority,
+                "threshold": self._satisfaction_threshold
+            })
+            return GetStatusResponse(status)
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'getStatus' of goal '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
 
 
 class OfflineGoal(AbstractGoalRepresentation):

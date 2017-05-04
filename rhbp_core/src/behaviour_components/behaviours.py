@@ -4,6 +4,7 @@ Created on 13.04.2015
 @author: wypler,hrabia
 ''' 
 from __future__ import division # force floating point division when using plain /
+import traceback
 import rospy
 import operator
 import warnings
@@ -80,8 +81,8 @@ class Behaviour(object):
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         try:
             self.__execution_step_service()
-        except rospy.ServiceException as e:
-            rospy.logerr('%s behaviour step service failed: %s', self._name, e)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'do_step' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def fetchStatus(self):
         '''
@@ -114,8 +115,8 @@ class Behaviour(object):
             if self._name != status.name:
                 rospy.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in GetStatus of %s: %s", self._name, e)  
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
     
     def fetchPDDL(self):
         '''
@@ -127,9 +128,10 @@ class Behaviour(object):
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in fetchPDDL of %s: %s", self._name, e)
+            return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), \
+                   PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'fetchPDDL' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def start(self):
         '''
@@ -145,9 +147,9 @@ class Behaviour(object):
             startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
             startRequest()
             rospy.loginfo("Started action of %s", self._name)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Start', e)
-    
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'start' of behaviour '%s': %s", self._name, traceback.format_exc())
+
     def stop(self, reset_activation = True):
         '''
         This method calls the stop service of the actual behaviour.
@@ -164,9 +166,9 @@ class Behaviour(object):
             rospy.wait_for_service(self._service_prefix + 'Stop')
             stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
             stopRequest()
-            rospy.loginfo("Stopping action of %s", self._name)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception while calling %s: %s", self._name + 'Stop', e)
+            rospy.logdebug("Stopping action of %s", self._name)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'stop' of behaviour '%s': %s", self._name, traceback.format_exc())
         self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
 
     def reset_activation(self):
@@ -372,8 +374,8 @@ class BehaviourBase(object):
             registerMe = rospy.ServiceProxy(self._plannerPrefix + '/' +'AddBehaviour', AddBehaviour)
             registerMe(self._name, self._independentFromPlanner,self._requires_execution_steps)
             rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
-        except rospy.ServiceException as e:
-            rospy.logerr("ROS service exception in BehaviourBase constructor (for behaviour node %s): %s", self._name, e)
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in '_register_behaviour' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def __del__(self):
         '''
@@ -387,10 +389,9 @@ class BehaviourBase(object):
             self._priorityService.shutdown()
             self._executionTimeoutService.shutdown()
             self._pddlService.shutdown()
-        except Exception as e:
-            rospy.logerr("Error in destructor of BehaviourBase: %s", e)
-            
-            
+        except Exception:
+            rospy.logerr("Error in destructor of BehaviourBase: %s", traceback.format_exc())
+
     def updateComputation(self):
         """
         Updates all subentities of the behaviour in order to do computations only once
@@ -434,7 +435,6 @@ class BehaviourBase(object):
 
         return activation_value
             
-    
     def computeSatisfaction(self):
         """
         This method returns the satisfaction of the preconditions (the readiness) as float [0 to 1].
@@ -525,49 +525,59 @@ class BehaviourBase(object):
         return pddl                      
 
     def pddlCallback(self, dummy):
-        if not self._independentFromPlanner and len(self._correlations) == 0:
-            # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
-        if self._independentFromPlanner and len(self._correlations) > 0:
-            # Since the correlations arent setted in constructor once right place for warning is here
-            rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
-        actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
+        try:
+            if not self._independentFromPlanner and len(self._correlations) == 0:
+                # Since the correlations arent setted in constructor once right place for warning is here
+                rospy.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
+            if self._independentFromPlanner and len(self._correlations) > 0:
+                # Since the correlations arent setted in constructor once right place for warning is here
+                rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
+            actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
 
-        if not actions.empty:
-            state = self.getStatePDDL() #do not use state PDDL of empty actions (e.g. independent from planner)
-        else:
-            state = PDDL()
+            if not actions.empty:
+                state = self.getStatePDDL() #do not use state PDDL of empty actions (e.g. independent from planner)
+            else:
+                state = PDDL()
 
-        return GetPDDLResponse(**{"actionStatement" : actions.statement, 
-                                  "actionPredicates" : list(actions.predicates),
-                                  "actionFunctions" : list(actions.functions),
-                                  "stateStatement" : state.statement,
-                                  "statePredicates" : list(state.predicates),
-                                  "stateFunctions" : list(state.functions)
-                                 })
+            return GetPDDLResponse(**{"actionStatement" : actions.statement,
+                                      "actionPredicates" : list(actions.predicates),
+                                      "actionFunctions" : list(actions.functions),
+                                      "stateStatement" : state.statement,
+                                      "statePredicates" : list(state.predicates),
+                                      "stateFunctions" : list(state.functions)
+                                     })
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'pddlCallback' of behaviour '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
     
     def getStatusCallback(self, request):
-        #update everything before generating the status message
-        self.updateComputation()
-        self._active = self._activated
-        # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
-        # this would eliminate the doubled calculation of it
-        status = Status(**{
-                           "name"         : self._name, # this is sent for sanity check and planner status messages only
-                           "activation"   : self.computeActivation(),
-                           "correlations" : [Correlation(x.sensorName, x.indicator) for x in self._correlations],
-                           "satisfaction" : self.computeSatisfaction(),
-                           "threshold"    : self._readyThreshold,
-                           "wishes"       : self.computeWishes(),
-                           "isExecuting"  : self._isExecuting,
-                           "executionTimeout" : self._executionTimeout,
-                           "progress"     : self.getProgress(),
-                           "active"       : self._active, # if any of the above methods failed this property has been set to False by now
-                           "priority"     : self._priority,
-                           "interruptable": self._is_interruptible(),
-                           "activated"    : self._activated
-                          })
-        return GetStatusResponse(status)
+        try:
+            #update everything before generating the status message
+            self.updateComputation()
+            self._active = self._activated
+            # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
+            # this would eliminate the doubled calculation of it
+            status = Status(**{
+                               "name"         : self._name, # this is sent for sanity check and planner status messages only
+                               "activation"   : self.computeActivation(),
+                               "correlations" : [Correlation(x.sensorName, x.indicator) for x in self._correlations],
+                               "satisfaction" : self.computeSatisfaction(),
+                               "threshold"    : self._readyThreshold,
+                               "wishes"       : self.computeWishes(),
+                               "isExecuting"  : self._isExecuting,
+                               "executionTimeout" : self._executionTimeout,
+                               "progress"     : self.getProgress(),
+                               "active"       : self._active, # if any of the above methods failed this property has been set to False by now
+                               "priority"     : self._priority,
+                               "interruptable": self._is_interruptible(),
+                               "activated"    : self._activated
+                              })
+            return GetStatusResponse(status)
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'getStatusCallback' of behaviour '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
 
     def _is_interruptible(self):
         return self._interruptable
@@ -605,18 +615,28 @@ class BehaviourBase(object):
         This method should switch the behaviour on.
         This method must not block.
         '''
-        self._isExecuting = True
-        self.start()
-        return EmptyResponse()
+        try:
+            self._isExecuting = True
+            self.start()
+            return EmptyResponse()
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'startCallback' of behaviour '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
     
     def stopCallback(self, dummy):
         '''
         This method should switch the behaviour off.
         This method must not block.
         '''
-        self.stop()        
-        self._isExecuting = False
-        return EmptyResponse()
+        try:
+            self.stop()
+            self._isExecuting = False
+            return EmptyResponse()
+        except Exception:
+            rospy.logerr("ROS service callback exception in 'stopCallback' of behaviour '%s':  %s", self._name,
+                         traceback.format_exc())
+            return None
     
     def activateCallback(self, request):
         '''
