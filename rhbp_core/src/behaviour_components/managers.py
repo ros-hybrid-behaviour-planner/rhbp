@@ -443,6 +443,7 @@ class Manager(object):
                 if behaviour.manualStart:
                     rospy.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
                 behaviour.start()
+                amount_currently_selected_behaviours +=1
 
                 self.__executedBehaviours.append(behaviour)
                 amount_started_behaviours += 1
