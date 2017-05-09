@@ -13,7 +13,7 @@ import conditions
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
-from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
+from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
 from utils.misc import FinalInitCaller
 
 class Behaviour(object):
@@ -595,7 +595,20 @@ class BehaviourBase(object):
         if issubclass(type(precondition), conditions.Conditonal):
             self._preconditions.append(precondition)
         else:
-            warnings.warn("That's no conditional object!")
+            rospy.logwarn("Passed wrong object, requires Conditional")
+
+
+    def add_effect(self, effect):
+        '''
+        This method adds an effect/correlation to the behaviour.
+        It is not mandatory to use this method at all but it may make development easier because the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work with the preconditions added here.
+        If you don't want to use this mechanism then you HAVE TO implement those yourself!
+        There is an AND relationship between all correltation, effect elements
+        '''
+        if issubclass(type(effect), Effect):
+            self._correlations.append(effect)
+        else:
+            rospy.logwarn("Passed wrong object, requires Effect")
 
 
     def set_activated(self, activated):
