@@ -486,7 +486,7 @@ class Manager(object):
                 alreadyRunningBehavioursRelatedToConflict) <= 1  # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
             # This implementation deals with a list although it it clear that there is at most one element.
             stoppableBehaviours = filter(
-                lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart,
+                lambda x: x.priority <= behaviour.priority and x.interruptable and not x.manualStart,
                 alreadyRunningBehavioursRelatedToConflict)  # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
             if set(stoppableBehaviours) == set(
                     alreadyRunningBehavioursRelatedToConflict):  # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
@@ -588,7 +588,7 @@ class Manager(object):
         """
         behaviour = Behaviour(name = request.name, planner_prefix=self._prefix, independentFromPlanner = request.independentFromPlanner,
                               requires_execution_steps = request.requiresExecutionSteps,
-                              create_log_files = self._create_log_files)
+                              create_log_files = self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix)
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
     

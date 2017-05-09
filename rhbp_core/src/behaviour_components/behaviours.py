@@ -25,7 +25,7 @@ class Behaviour(object):
     
     _instanceCounter = 0 # static counter to get distinguishable names
 
-    def __init__(self, name, planner_prefix, independentFromPlanner=False, create_log_files=False, requires_execution_steps=False):
+    def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix=""):
         '''
         Constructor
         '''
@@ -53,9 +53,11 @@ class Behaviour(object):
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps=requires_execution_steps
         Behaviour._instanceCounter += 1
+
+        self._log_file_path_prefix = log_file_path_prefix
         if self._create_log_files:
             #TODO file name should somehow reflect the prefix in case of several behaviours with the same name in different sub networks
-            self.__logFile = open("{0}.log".format(self._name), 'w')
+            self.__logFile = open(self._log_file_path_prefix + "{0}.log".format(self._name), 'w')
             self.__logFile.write('Time\t{0}\n'.format(self._name))
 
         if (self.__requires_execution_steps):
