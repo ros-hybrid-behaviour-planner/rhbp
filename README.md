@@ -14,7 +14,6 @@ RHBP is a planning and decision making component for ROS. The hybrid approach is
 
 In order to use this package in your ROS application just clone this repository into your workspace sources and build your workspace.
 
-
 ```bash
 cd src
 git clone --recursive https://github.com/DAInamite/rhbp
