@@ -712,6 +712,10 @@ class BehaviourBase(object):
     @interruptable.setter
     def interruptable(self, interruptable):
         self._interruptable = interruptable
+
+    @property
+    def name(self):
+        return self._name
     
     def start(self):
         """
