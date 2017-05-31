@@ -312,7 +312,7 @@ class Manager(object):
         self._totalActivation = 0.0
 
         with self._step_lock:
-            rospy.loginfo("###################################### STEP {0} ######################################".format(self._stepCounter))
+            rospy.logdebug("###################################### STEP {0} ######################################".format(self._stepCounter))
             ### collect information about behaviours ###
             for behaviour in self._behaviours:
                 behaviour.fetchStatus()
@@ -540,8 +540,10 @@ class Manager(object):
         :param reset_activation: true or false if the activation of the behaviour should be reseted
         """
         behaviour.stop(reset_activation)
-        self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
-
+        try:
+            self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
+        except ValueError as e:
+            rospy.logwarn("Tried to stop already stopped behaviour %s", behaviour.name)
         rospy.logdebug("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
 
     def add_goal(self,goal):
