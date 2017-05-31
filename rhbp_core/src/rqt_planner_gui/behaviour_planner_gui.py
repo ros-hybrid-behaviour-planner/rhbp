@@ -18,13 +18,15 @@ from PyQt5.QtCore import pyqtSignal
 class Overview(Plugin):
     updateRequest = pyqtSignal(dict)
     addBehaviourRequest = pyqtSignal(str)
+    removeBehaviourRequest = pyqtSignal(str)
     addGoalRequest = pyqtSignal(str)
+    removeGoalRequest = pyqtSignal(str)
 
     def __init__(self, context):
         super(Overview, self).__init__(context)
         
-        self.__behaviours = {} # this stores all behaviours
-        self.__goals = {}      # this stores all goals
+        self.__behaviour_widgets = {} # this stores all behaviours
+        self.__goal_widgets = {}      # this stores all goals
         self.__plannerPrefix = ""
         
         # Give QObjects reasonable names
@@ -67,7 +69,9 @@ class Overview(Plugin):
         # Connect signal so we can refresh Widgets from the main thread        
         self.updateRequest.connect(self.updateGUI)
         self.addBehaviourRequest.connect(self.addBehaviourWidget)
+        self.removeBehaviourRequest.connect(self.removeBehaviourWidget)
         self.addGoalRequest.connect(self.addGoalWidget)
+        self.removeGoalRequest.connect(self.removeGoalWidget)
         
     def updateGUI(self, newValues):
         self._widget.activationThresholdDoubleSpinBox.setValue(newValues["activationThreshold"])
@@ -78,13 +82,24 @@ class Overview(Plugin):
         self.setPauseResumeButton(True) # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
-        self.__behaviours[name] = BehaviourWidget(name, self)
-        self._widget.behaviourFrame.layout().addWidget(self.__behaviours[name])
+        self.__behaviour_widgets[name] = BehaviourWidget(name, self)
+        self._widget.behaviourFrame.layout().addWidget(self.__behaviour_widgets[name])
+
+    def removeBehaviourWidget(self, name):
+        behaviour = self.__behaviour_widgets[name]
+        self._widget.behaviourFrame.layout().removeWidget(behaviour)
+        behaviour.deleteLater()
+        del self.__behaviour_widgets[name]
         
     def addGoalWidget(self, name):
-        self.__goals[name] = GoalWidget(name, self)
-        self._widget.goalFrame.layout().addWidget(self.__goals[name])
+        self.__goal_widgets[name] = GoalWidget(name, self)
+        self._widget.goalFrame.layout().addWidget(self.__goal_widgets[name])
 
+    def removeGoalWidget(self, name):
+        goal = self.__goal_widgets[name]
+        self._widget.goalFrame.layout().removeWidget(goal)
+        goal.deleteLater()
+        del self.__goal_widgets[name]
 
     def setPauseResumeButton(self, running):
         if running:
@@ -113,30 +128,46 @@ class Overview(Plugin):
         except Exception as e:
             rospy.logerr("error while toggling pause or resume: %s", str(e))
     
-    def updateBehaviour(self, msg):
+    def updateBehaviours(self, behaviours):
         """
-        Add the behaviour to our management structure if it does not exist in there.
+        Add/remove behaviours to our management structure if necessary
         Update the behaviour Widget using its refresh() method.
         """
-        if not msg.name in self.__behaviours:
-            self.addBehaviourRequest.emit(msg.name)
-        try:
-            self.__behaviours[msg.name].refresh(msg)
-        except KeyError as e: # this happens at the first time because the GUI thread with the main loop did not create the widget yet
-            rospy.logdebug("%s", e)
-    
-    def updateGoal(self, msg):
+        updated_behaviour_names=[]
+        for b in behaviours:
+            if b.name not in self.__behaviour_widgets:
+                self.addBehaviourRequest.emit(b.name)
+                rospy.logdebug("Added behaviour %s",b.name)
+            else:
+                self.__behaviour_widgets[b.name].refresh(b)
+            updated_behaviour_names.append(b.name)
+
+        # check if we have to delete a behaviour widget
+        for name, b in self.__behaviour_widgets.items():
+            if name not in updated_behaviour_names:
+                self.removeBehaviourRequest.emit(name)
+                rospy.logdebug("Removed behaviour %s", name)
+
+    def updateGoals(self, goals):
         """
-        Add the goal to our management structure if it does not exist in there.
-        Update the goal Widget using its refresh() method.
+        Add/remove goals to our management structure if necessary
+        Update the goals Widget using its refresh() method.
         """
-        if not msg.name in self.__goals:
-            self.addGoalRequest.emit(msg.name)
-        try:
-            self.__goals[msg.name].refresh(msg)
-        except KeyError as e: # this happens at the first time because the GUI thread with the main loop did not create the widget yet
-            rospy.logdebug("%s", e)
-    
+        updated_goal_names = []
+        for g in goals:
+            if g.name not in self.__goal_widgets:
+                self.addGoalRequest.emit(g.name)
+                rospy.logdebug("Added goal %s", g.name)
+            else:
+                self.__goal_widgets[g.name].refresh(g)
+            updated_goal_names.append(g.name)
+
+        # check if we have to delete a goal widget
+        for name, g in self.__goal_widgets.items():
+            if name not in updated_goal_names:
+                self.removeGoalRequest.emit(name)
+                rospy.logdebug("Removed goal %s", name)
+
     def setActivationThresholdDecay(self):
         rospy.loginfo("setting activationThresholdDecay to %f", self._widget.activationThresholdDecayDoubleSpinBox.value())
         rospy.set_param("activationThresholdDecay", self._widget.activationThresholdDecayDoubleSpinBox.value())
@@ -149,12 +180,9 @@ class Overview(Plugin):
         self.__sub = rospy.Subscriber(status_topic_name, PlannerStatus, self.plannerStatusCallback)
     
     def plannerStatusCallback(self, msg):
-        rospy.logdebug("received %s", msg)
         try:
-            for behaviour in msg.behaviours:
-                self.updateBehaviour(behaviour)
-            for goal in msg.goals:
-                self.updateGoal(goal)
+            self.updateBehaviours(msg.behaviours)
+            self.updateGoals(msg.goals)
             self.updateRequest.emit({
                                      "activationThreshold" : msg.activationThreshold,
                                      "activationThresholdDecay" : msg.activationThresholdDecay,
