@@ -16,7 +16,7 @@ from std_msgs.msg import Bool
 
 from rhbp_core.msg import Wish, Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
-    SetInteger, SetIntegerResponse
+    SetInteger, SetIntegerResponse, RemoveGoal
 from .activators import Condition, BooleanActivator
 from .conditions import Conditonal
 from .pddl import PDDL, mergeStatePDDL
@@ -260,6 +260,8 @@ class GoalProxy(AbstractGoalRepresentation):
     It is instantiated automatically. Don't instantiated it manually
     '''
 
+    SERVICE_TIMEOUT = 2
+
     def __init__(self, name, permanent, planner_prefix):
         '''
         Constructor
@@ -271,8 +273,12 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         This method fetches the PDDL from the actual goal node via GetPDDLservice call
         '''
-        rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
-        rospy.wait_for_service(self._service_prefix + 'PDDL')
+        try:
+            rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
+            rospy.wait_for_service(self._service_prefix + 'PDDL')
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
@@ -287,8 +293,14 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         This method fetches the status from the actual goal node via GetStatus service call
         '''
-        rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
-        rospy.wait_for_service(self._service_prefix + 'GetStatus')
+
+        try:
+            rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+            rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
+
         try:
             get_status_request = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = get_status_request().status
@@ -308,6 +320,15 @@ class GoalProxy(AbstractGoalRepresentation):
         except rospy.ServiceException:
             rospy.logerr("ROS service exception in 'sync' of goal '%s': %s", self._name,
                          traceback.format_exc())
+
+    def _handle_service_timeout(self):
+        """
+        basically deactivate the goal in case a service has timeout
+        """
+        rospy.logerr("ROS service timeout of goal '%s': %s. Fulfillment will be reset", self._name,
+                     traceback.format_exc())
+        self._active = False
+        self.fulfillment = 0.0
 
     @AbstractGoalRepresentation.activated.setter
     def activated(self, value):
@@ -333,6 +354,8 @@ class GoalBase(Goal):
 
     __metaclass__ = FinalInitCaller
 
+    SERVICE_TIMEOUT = 5
+
     def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         '''
 
@@ -349,6 +372,7 @@ class GoalBase(Goal):
 
         self._permanent = permanent
         self._planner_prefix = plannerPrefix
+        self._registered = False  # keeps track of goal registration state
 
 
     def _init_services(self):
@@ -361,9 +385,16 @@ class GoalBase(Goal):
         """
         Ensure registration after the entire initialisation (including sub classes) is done
         """
-        self._register_goal()
+        self.register()
 
-    def _register_goal(self):
+    def register(self):
+        """
+        register goal at the manager, this is automatically called during initialization/construction
+        only call it manually if you have manually unregistred the goal before
+        """
+        if self._registered:
+            rospy.logwarn("Goal '%s' is already registred", self._name)
+            return
         try:
             rospy.logdebug(
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
@@ -371,10 +402,31 @@ class GoalBase(Goal):
             rospy.wait_for_service(self._planner_prefix + '/' + 'AddGoal')
             registerMe = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
             registerMe(self._name, self._permanent)
+            self._registered = True
             rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                            self._planner_prefix, self._name)
         except rospy.ServiceException:
             rospy.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
+                         traceback.format_exc())
+
+    def unregister(self):
+        """
+        Remove/Unregister behaviour from the manager
+        """
+        try:
+            service_name = self._planner_prefix + '/' + 'RemoveGoal'
+            try:
+                rospy.logdebug("Waiting for service %s", service_name)
+                # do not wait forever here, manager might be already closed
+                rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+            except rospy.ROSException:
+                # if the service is not available this is not crucial.
+                return
+            remove_goal = rospy.ServiceProxy(service_name, RemoveGoal)
+            remove_goal(self._name)
+            self._registered = False
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'unregister' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def __del__(self):
@@ -382,6 +434,8 @@ class GoalBase(Goal):
         Destructor
         '''
         try:
+            if self._registered:
+                self.unregister()
             self._getStatusService.shutdown()
             self._pddlService.shutdown()
             super(GoalBase, self).__del__()

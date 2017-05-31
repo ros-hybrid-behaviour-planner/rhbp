@@ -7,12 +7,11 @@ from __future__ import division # force floating point division when using plain
 import traceback
 import rospy
 import operator
-import warnings
 import itertools
-import conditions
+from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
-from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse
+from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
 from utils.misc import FinalInitCaller
 
@@ -24,6 +23,8 @@ class Behaviour(object):
     EXECUTION_STEP_SERVICE_POSTFIX = 'ExecutionStep'
     
     _instanceCounter = 0 # static counter to get distinguishable names
+
+    SERVICE_TIMEOUT = 2
 
     def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix=""):
         '''
@@ -67,7 +68,6 @@ class Behaviour(object):
         else:
             self.__execution_step_service = None
 
-    
     def __del__(self):
         '''
         Destructor
@@ -91,8 +91,12 @@ class Behaviour(object):
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
         self._justFinished = False
-        rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
-        rospy.wait_for_service(self._service_prefix + 'GetStatus')
+        try:
+            rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+            rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
         try:
             getStatusRequest = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = getStatusRequest().status
@@ -119,7 +123,18 @@ class Behaviour(object):
             rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException:
             rospy.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
-    
+
+    def _handle_service_timeout(self):
+        """
+        basically deactivate the behaviour in case a service has timeout
+        """
+        rospy.logerr("ROS service timeout of behaviour '%s': %s. Activation will be reset", self._name,
+                     traceback.format_exc())
+        self._isExecuting = False
+        self._active = False
+        self._activation = 0.0
+        self._preconditionSatisfaction = 0.0
+
     def fetchPDDL(self):
         '''
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
@@ -144,8 +159,12 @@ class Behaviour(object):
         self._isExecuting = True
         self._executionTime = 0
         try:
-            rospy.logdebug("Waiting for service %s", self._service_prefix + 'Start')
-            rospy.wait_for_service(self._service_prefix + 'Start')
+            try:
+                rospy.logdebug("Waiting for service %s", self._service_prefix + 'Start')
+                rospy.wait_for_service(self._service_prefix + 'Start')
+            except rospy.ROSException:
+                self._handle_service_timeout()
+                return
             startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
             startRequest()
             rospy.loginfo("Started action of %s", self._name)
@@ -164,8 +183,12 @@ class Behaviour(object):
             self.reset_activation()
 
         try:
-            rospy.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
-            rospy.wait_for_service(self._service_prefix + 'Stop')
+            try:
+                rospy.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
+                rospy.wait_for_service(self._service_prefix + 'Stop')
+            except rospy.ROSException:
+                self._handle_service_timeout()
+                return
             stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
             stopRequest()
             rospy.logdebug("Stopping action of %s", self._name)
@@ -302,6 +325,8 @@ class BehaviourBase(object):
 
     __metaclass__ = FinalInitCaller
 
+    SERVICE_TIMEOUT = 5
+
     def __init__(self, name, requires_execution_steps = False, **kwargs):
         '''
         Constructor
@@ -343,17 +368,20 @@ class BehaviourBase(object):
 
     def _init_services(self):
         """
-        Init all required ROS services
+        Init all required ROS services that are provided by the behaviour
         """
         service_prefix = self._plannerPrefix + '/' + self._name + '/'
         self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self.getStatusCallback)
-        self._startService = rospy.Service(service_prefix+ 'Start', Empty, self.startCallback)
+        self._startService = rospy.Service(service_prefix + 'Start', Empty, self.startCallback)
         self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self.stopCallback)
         self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self.activateCallback)
         self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self.pddlCallback)
         self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
         self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
                                                       self.setExecutionTimeoutCallback)
+
+        self._registered = False # keeps track of behaviour registration state
+
         if self._requires_execution_steps:
             self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
                                                           self.do_step_callback)
@@ -364,26 +392,53 @@ class BehaviourBase(object):
         """
         Ensure registration after the entire initialisation (including sub classes) is done
         """
-        self._register_behaviour()
+        self.register()
 
-    def _register_behaviour(self):
+    def register(self):
         """
         Register behaviour in the manager
+        Only call this directly if you have unrregistered the behaviour manually before
+        """
+        if self._registered:
+            rospy.logwarn("Behaviour '%s' is already registred", self._name)
+            return
+        try:
+            service_name= self._plannerPrefix + '/' + 'AddBehaviour'
+            rospy.logdebug("Waiting for service %s", service_name)
+            rospy.wait_for_service(service_name)
+            register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
+            register_behaviour(self._name, self._independentFromPlanner,self._requires_execution_steps)
+            self._registered = True
+        except rospy.ServiceException:
+            rospy.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())
+
+    def unregister(self):
+        """
+        Remove/Unregister behaviour from the manager
         """
         try:
-            rospy.logdebug("BehaviourBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
-            rospy.wait_for_service(self._plannerPrefix + '/' + 'AddBehaviour')
-            registerMe = rospy.ServiceProxy(self._plannerPrefix + '/' +'AddBehaviour', AddBehaviour)
-            registerMe(self._name, self._independentFromPlanner,self._requires_execution_steps)
-            rospy.logdebug("BehaviourBase constructor registered at planner manager with prefix '%s' for behaviour node %s", self._plannerPrefix, self._name)
+            service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
+            try:
+                rospy.logdebug("Waiting for service %s", service_name)
+                # do not wait forever here, manager might be already closed
+                rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+            except rospy.ROSException:
+                # if the service is not available this is not crucial.
+                return
+            remove_behaviour = rospy.ServiceProxy(service_name, RemoveBehaviour)
+            remove_behaviour(self._name)
+            self._registered = False
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in '_register_behaviour' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rospy.logerr("ROS service exception in 'unregister()' of behaviour '%s': %s", self._name,
+                         traceback.format_exc())
 
     def __del__(self):
         '''
         Destructor
         '''
         try:
+            if self._registered:
+                self.unregister()
             self._getStatusService.shutdown()
             self._startService.shutdown()
             self._stopService.shutdown()
@@ -591,8 +646,10 @@ class BehaviourBase(object):
         If you don't want to use this mechanism then you HAVE TO implement those yourself!
         There is an AND relationship between all elements (all have to be fulfilled so that the behaviour is ready)
         To enable OR semantics use the Disjunction object.
+        :arg precondition: the precondition to add
+        :type precondition: Conditonal
         '''
-        if issubclass(type(precondition), conditions.Conditonal):
+        if issubclass(type(precondition), Conditonal):
             self._preconditions.append(precondition)
         else:
             rospy.logwarn("Passed wrong object, requires Conditional")

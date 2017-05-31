@@ -609,13 +609,14 @@ class Manager(object):
     
     def __removeGoal(self, request):
         with self._step_lock:
-            self._goals = filter(lambda x: x.name != request.name, self._goals) # kick out existing goals with that name.
+            self._goals = [g for g in self._goals if
+                                g.name != request.name]  # kick out existing goals with that name.
             self.__replanningNeeded = True;
             return RemoveGoalResponse()
     
     def __removeBehaviour(self, request):
         with self._step_lock:
-            self._behaviours = filter(lambda x: x.name != request.name, self._behaviours) # kick out existing behaviours with the same name.
+            self._behaviours = [b for b in self._behaviours if b.name != request.name]# kick out existing behaviours with the same name.
             self.__replanningNeeded = True;
             return RemoveBehaviourResponse()
     
