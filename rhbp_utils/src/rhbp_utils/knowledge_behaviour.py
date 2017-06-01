@@ -16,6 +16,13 @@ class KnowledgeUpdateBehaviour(BehaviourBase):
     '''
 
     def __init__(self, name, pattern, new_tuple,knowledge_base_name=KnowledgeBase.DEFAULT_NAME, **kwargs):
+        """
+        :param name: behaviour name
+        :param pattern: pattern match that will be updated
+        :param new_tuple: new tuple value that will replaced the matched tuples
+        :param knowledge_base_name: name of the knowledge base that is used
+        :param kwargs: further general BehaviourBase arguments
+        """
 
         super(KnowledgeUpdateBehaviour, self) \
             .__init__(name=name,**kwargs)
