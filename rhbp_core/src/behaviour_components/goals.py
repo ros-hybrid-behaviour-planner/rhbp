@@ -136,14 +136,16 @@ class Goal(object):
     Therefore conditions can registered, which are used for satisfaction computation
     '''
 
-    def __init__(self, name, planner_prefix, conditions=[], satisfaction_threshold=1.0, priority=0, active=True, activated=True):
+    def __init__(self, name, planner_prefix, conditions=None, satisfaction_threshold=1.0, priority=0, active=True, activated=True):
         '''
         Constructor
         '''
         self._name = name
         self._planner_prefix = planner_prefix
-        self._conditions = []
-        self._conditions.extend(conditions)
+        if conditions is None:
+            self._conditions = []
+        else:
+            self._conditions = conditions
         self._satisfaction_threshold = satisfaction_threshold  # treshhold that defines when the goal is satisfied/fulfilled from the preconditions
         self._active = active  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = activated  # The activate Service sets the value of this property.
@@ -356,7 +358,7 @@ class GoalBase(Goal):
 
     SERVICE_TIMEOUT = 5
 
-    def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         '''
 
         :param name:  a unique name is mandatory
@@ -482,16 +484,19 @@ class OfflineGoal(AbstractGoalRepresentation):
     As consequence no messages are used for communicating with the manager.
     '''
 
-    def __init__(self, name, planner_prefix, permanent=False, conditions=[], priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, planner_prefix, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0):
         '''
         Constructor
         '''
         super(OfflineGoal, self).__init__(name=name, permanent=permanent,
                                           satisfaction_threshold=satisfaction_threshold, priority=priority)
+
         #nested goal object that takes care of calculation and provides management services
         self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold, planner_prefix=planner_prefix)
-        for condition in conditions:
-            self.add_condition(condition)
+
+        if conditions is not None:
+            for condition in conditions:
+                self.add_condition(condition)
 
     def sync(self):
         self.__goal.updateComputation()
@@ -517,7 +522,7 @@ class PublisherGoal(GoalBase):
     Goal class which publishes its activation state as ROS topic
     """
 
-    def __init__(self, name, permanent=False, conditions=[], plannerPrefix="", priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0):
         """
         Without manual goal activation/deaction only permanent=False does make sense
         """

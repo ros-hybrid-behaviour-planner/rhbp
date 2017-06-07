@@ -20,7 +20,7 @@ class NetworkBehavior(BehaviourBase):
 
     def __init__(self, name, requires_execution_steps=False,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
-                 correlations = [],
+                 correlations = None,
                  **kwargs):
         """
         :param correlations: tuple <Effect>
@@ -41,7 +41,8 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_name_prefix = name + "/Goals/"
         self.__goal_counter = 0
 
-        self.add_correlations(correlations)
+        if correlations is not None:
+            self.add_correlations(correlations)
 
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
@@ -59,7 +60,7 @@ class NetworkBehavior(BehaviourBase):
         :param effect: instance of type  Effect
         :return: unique name for goal
         """
-        # x as seperator between counter an sensor names, to prevent conflict, caused by unusual names
+        # x as separator between counter an sensor names, to prevent conflict, caused by unusual names
         name = self.__goal_name_prefix + str(self.__goal_counter) + 'X' + effect.sensorName
         self.__goal_counter += 1
         return name
