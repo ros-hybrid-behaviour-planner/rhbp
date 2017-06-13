@@ -86,20 +86,22 @@ class Overview(Plugin):
         self._widget.behaviourFrame.layout().addWidget(self.__behaviour_widgets[name])
 
     def removeBehaviourWidget(self, name):
-        behaviour = self.__behaviour_widgets[name]
-        self._widget.behaviourFrame.layout().removeWidget(behaviour)
-        behaviour.deleteLater()
-        del self.__behaviour_widgets[name]
+        if name in self.__behaviour_widgets:
+            behaviour = self.__behaviour_widgets[name]
+            self._widget.behaviourFrame.layout().removeWidget(behaviour)
+            behaviour.deleteLater()
+            del self.__behaviour_widgets[name]
         
     def addGoalWidget(self, name):
         self.__goal_widgets[name] = GoalWidget(name, self)
         self._widget.goalFrame.layout().addWidget(self.__goal_widgets[name])
 
     def removeGoalWidget(self, name):
-        goal = self.__goal_widgets[name]
-        self._widget.goalFrame.layout().removeWidget(goal)
-        goal.deleteLater()
-        del self.__goal_widgets[name]
+        if name in self.__goal_widgets:
+            goal = self.__goal_widgets[name]
+            self._widget.goalFrame.layout().removeWidget(goal)
+            goal.deleteLater()
+            del self.__goal_widgets[name]
 
     def setPauseResumeButton(self, running):
         if running:
