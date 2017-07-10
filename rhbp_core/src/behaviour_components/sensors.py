@@ -11,6 +11,7 @@ import rospy
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
+from utils.misc import FinalInitCaller
 
 from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
@@ -93,6 +94,8 @@ class PassThroughTopicSensor(Sensor):
     "PassThrough" because the sensor just forwards the received msg
     """
 
+    __metaclass__ = FinalInitCaller
+
     def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False, print_updates=False):
         """
         "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
@@ -112,18 +115,25 @@ class PassThroughTopicSensor(Sensor):
 
         self.__print_updates = print_updates
         self._topic_name = topic
-        # if the type is not specified, try to detect it automatically
-        if message_type is None:
-            message_type = get_topic_type(topic)
+        self._iShouldCreateLog = create_log
+        self._message_type = message_type
 
-        if message_type is not None:
-            self._sub = rospy.Subscriber(topic, message_type, self.subscription_callback)
-            self._iShouldCreateLog = create_log
+    def final_init(self):
+        """
+        Ensure registration after the entire initialisation (including sub classes) is done
+        """
+        # if the type is not specified, try to detect it automatically
+        if self._message_type is None:
+            self._message_type = get_topic_type(self._topic_name)
+
+        if self._message_type is not None:
+            self._sub = rospy.Subscriber(self._topic_name, self._message_type, self.subscription_callback)
+
             if self._iShouldCreateLog:
                 self._logFile = open("{0}.log".format(self._name), 'w')
                 self._logFile.write('{0}\n'.format(self._name))
         else:
-            rospy.logerr("Could not determine message type of: " + topic)
+            rospy.logerr("Could not determine message type of: " + self._topic_name)
 
     def subscription_callback(self, msg):
         self.update(msg)
@@ -172,6 +182,8 @@ class DynamicSensor(Sensor):
     If no valid value exists, the default value is returned.
     """
 
+    __metaclass__ = FinalInitCaller
+
     def __init__(self, pattern, default_value=None, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NAME, name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
@@ -206,11 +218,15 @@ class DynamicSensor(Sensor):
         self.__expiration_time_values_of_removed_topics = expiration_time_values_of_removed_topics
         self.__remaining_allowed_topic_subscribing = 1 if subscribe_only_first else -1
         self.__topic_type = topic_type
-        service_name = topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
-        rospy.wait_for_service(topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
+        self._topic_listener_name = topic_listener_name
+        self._pattern = pattern
+
+    def final_init(self):
+        service_name = self._topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX
+        rospy.wait_for_service(self._topic_listener_name + TopicListener.SUBSCRIBE_SERVICE_NAME_POSTFIX)
         subscribe_service = rospy.ServiceProxy(service_name,
                                                TopicUpdateSubscribe)
-        subscribe_result = subscribe_service(pattern)
+        subscribe_result = subscribe_service(self._pattern)
         rospy.Subscriber(subscribe_result.topicNameTopicAdded, String, self.__topic_added_callback)
         rospy.Subscriber(subscribe_result.topicNameTopicRemoved, String, self.__topic_removed)
         for topic_name in subscribe_result.existingTopics:

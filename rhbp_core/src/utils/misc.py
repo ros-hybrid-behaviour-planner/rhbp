@@ -4,7 +4,9 @@ This module contains various general helper functions
 moduleauthor:: hrabia
 """
 
-class FinalInitCaller(type):
+from abc import ABCMeta, abstractmethod
+
+class FinalInitCaller(ABCMeta):
     """
     This decorator allows to implement an after __init__ hook
     This allows to guarantee the execution of special initialisation
@@ -20,3 +22,11 @@ class FinalInitCaller(type):
         obj = type.__call__(cls, *args, **kwargs)
         obj.final_init()
         return obj
+
+    @abstractmethod
+    def final_init(self):
+        """
+        after __init__ hook that has to be implemented by the user of this class.
+        It is called after all __init__ methods have been executed
+        """
+        raise NotImplementedError()
