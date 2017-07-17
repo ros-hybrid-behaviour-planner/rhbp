@@ -657,3 +657,35 @@ class LinearActivator(Activator):
     
     def __repr__(self):
         return "Linear Activator"
+
+class StringActivator(BooleanActivator):
+    '''
+    This class is an activator that compares a String to a desired value
+    '''
+
+    def __init__(self, desiredValue, minActivation=0, maxActivation=1, name=None):
+        '''
+        Constructor
+        '''
+        super(StringActivator, self).__init__(desiredValue=desiredValue, minActivation=minActivation, maxActivation=maxActivation, name=name)
+
+    def computeActivation(self, normalizedValue):
+        assert isinstance(normalizedValue, str)
+        return self._maxActivation if normalizedValue == self._desired else self._minActivation
+
+    def getDirection(self):
+        return 1.0
+
+    def getSensorWish(self, normalizedValue):
+        assert isinstance(normalizedValue, str)
+        if normalizedValue == self._desired:
+            return 0.0
+        else:
+            return 1.0
+
+    def __str__(self):
+        return "String Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
+
+    def __repr__(self):
+        return "String Activator"
+
