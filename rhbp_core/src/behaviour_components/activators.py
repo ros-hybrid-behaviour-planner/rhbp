@@ -6,6 +6,7 @@ from __future__ import division # force floating point division when using plain
 from behaviour_components.pddl import PDDL
 from std_msgs.msg import Float32
 import rospy
+import traceback
 
 from behaviour_components.conditions import Conditonal
 
@@ -50,9 +51,9 @@ class Condition(Conditonal):
         try:
             self._satisfaction = self._activator.computeActivation(self._normalizedSensorValue)
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor,
+            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?. %s", self._sensor,
                           self._name, type(self._sensor.value), " optional" if self._sensor.optional else "",
-                          self._sensor.name)
+                          self._sensor.name, traceback.format_exc())
             self._satisfaction = 0.0
             return
 
@@ -670,15 +671,17 @@ class StringActivator(BooleanActivator):
         super(StringActivator, self).__init__(desiredValue=desiredValue, minActivation=minActivation, maxActivation=maxActivation, name=name)
 
     def computeActivation(self, normalizedValue):
-        assert isinstance(normalizedValue, str)
-        return self._maxActivation if normalizedValue == self._desired else self._minActivation
+        value = str(normalizedValue)
+        assert isinstance(value, str)
+        return self._maxActivation if value == self._desired else self._minActivation
 
     def getDirection(self):
         return 1.0
 
     def getSensorWish(self, normalizedValue):
-        assert isinstance(normalizedValue, str)
-        if normalizedValue == self._desired:
+        value = str(normalizedValue)
+        assert isinstance(value, str)
+        if value == self._desired:
             return 0.0
         else:
             return 1.0

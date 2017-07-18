@@ -159,6 +159,18 @@ class LinearActivatorTestSuite(unittest.TestCase):
         self.assertEqual(activation, 0)
         self.assertEqual(wish, 1)
 
+        senor_value = None
+        activation = activator.computeActivation(senor_value)
+        wish = activator.getSensorWish(senor_value)
+        self.assertEqual(activation, 0)
+        self.assertEqual(wish, 1)
+
+        senor_value = 2
+        activation = activator.computeActivation(senor_value)
+        wish = activator.getSensorWish(senor_value)
+        self.assertEqual(activation, 0)
+        self.assertEqual(wish, 1)
+
         senor_value = "right"
         activation = activator.computeActivation(senor_value)
         wish = activator.getSensorWish(senor_value)
