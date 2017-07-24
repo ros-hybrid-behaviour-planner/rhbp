@@ -4,6 +4,8 @@ This module contains various general helper functions
 moduleauthor:: hrabia
 """
 
+import os
+
 from abc import ABCMeta, abstractmethod
 
 class FinalInitCaller(ABCMeta):
@@ -30,3 +32,10 @@ class FinalInitCaller(ABCMeta):
         It is called after all __init__ methods have been executed
         """
         raise NotImplementedError()
+
+
+def make_directory_path_available(dir_path):
+    if not (dir_path):
+        return
+    if not (os.path.exists(dir_path)):
+        os.makedirs(dir_path)

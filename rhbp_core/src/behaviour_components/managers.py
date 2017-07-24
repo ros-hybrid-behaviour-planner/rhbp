@@ -14,6 +14,8 @@ from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
+from utils.misc import make_directory_path_available
+
 import os
 import sys
 import threading
@@ -66,7 +68,7 @@ class Manager(object):
         self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
 
         if self._create_log_files:
-            Manager.__make_log_dir_available(self.__log_file_path_prefix)
+            make_directory_path_available(self.__log_file_path_prefix)
             rospy.loginfo('Write Logfiles to: %s', os.path.realpath(self.__log_file_path_prefix))
 
             self.__threshFile = open(self.__log_file_path_prefix + "threshold.log", 'w')
@@ -109,13 +111,6 @@ class Manager(object):
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resumeCallback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1)
-
-    @staticmethod
-    def __make_log_dir_available(dir_path):
-        if not (dir_path):
-            return
-        if not (os.path.exists(dir_path)):
-            os.makedirs(dir_path)
 
     def __del__(self):
         self.__addBehaviourService.shutdown()

@@ -13,7 +13,7 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
-from utils.misc import FinalInitCaller
+from utils.misc import FinalInitCaller, make_directory_path_available
 
 class Behaviour(object):
     '''
@@ -57,6 +57,7 @@ class Behaviour(object):
 
         self._log_file_path_prefix = log_file_path_prefix
         if self._create_log_files:
+            make_directory_path_available(self._log_file_path_prefix)
             #TODO file name should somehow reflect the prefix in case of several behaviours with the same name in different sub networks
             self.__logFile = open(self._log_file_path_prefix + "{0}.log".format(self._name), 'w')
             self.__logFile.write('Time\t{0}\n'.format(self._name))
