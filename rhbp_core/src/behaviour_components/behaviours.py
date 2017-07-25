@@ -13,7 +13,7 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
-from utils.misc import FinalInitCaller, make_directory_path_available
+from utils.misc import FinalInitCaller, LogFileWriter
 
 class Behaviour(object):
     '''
@@ -57,10 +57,12 @@ class Behaviour(object):
 
         self._log_file_path_prefix = log_file_path_prefix
         if self._create_log_files:
-            make_directory_path_available(self._log_file_path_prefix)
-            #TODO file name should somehow reflect the prefix in case of several behaviours with the same name in different sub networks
-            self.__logFile = open(self._log_file_path_prefix + "{0}.log".format(self._name), 'w')
-            self.__logFile.write('Time\t{0}\n'.format(self._name))
+            self.__logFile = LogFileWriter(path=self._log_file_path_prefix, filename=self._name, extension=".log")
+            try:
+                self.__logFile.write('Time\t{0}\n'.format(self._name))
+            except Exception as e:
+                rospy.logerr("Failed to create log files in behaviour '%s': %s", self._name,
+                             traceback.format_exc())
 
         if (self.__requires_execution_steps):
             rospy.wait_for_service(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
@@ -73,7 +75,6 @@ class Behaviour(object):
         '''
         Destructor
         '''
-        self.__logFile.close()
         if (self.__execution_step_service):
             self.__execution_step_service.shutdown()
 
@@ -237,8 +238,7 @@ class Behaviour(object):
         self._activation = value
 
         if self._create_log_files:
-            self.__logFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
-            self.__logFile.flush()
+            self.__logFile.append("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
 
     @property
     def current_activation_step(self):

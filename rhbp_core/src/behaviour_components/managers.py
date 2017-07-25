@@ -14,9 +14,8 @@ from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
-from utils.misc import make_directory_path_available
+from utils.misc import LogFileWriter
 
-import os
 import sys
 import threading
 
@@ -68,10 +67,7 @@ class Manager(object):
         self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
 
         if self._create_log_files:
-            make_directory_path_available(self.__log_file_path_prefix)
-            rospy.loginfo('Write Logfiles to: %s', os.path.realpath(self.__log_file_path_prefix))
-
-            self.__threshFile = open(self.__log_file_path_prefix + "threshold.log", 'w')
+            self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix,filename="threshold",extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
@@ -95,7 +91,6 @@ class Manager(object):
 
         self.init_services()
 
-        self._filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
         self.__executedBehaviours = []
 
     def init_services(self):
@@ -119,31 +114,10 @@ class Manager(object):
         self.__removeGoalService.shutdown()
         self.__manualStartService.shutdown()
         self.__statusPublisher.unregister()
-        self.__threshFile.close()
 
     def _getDomainName(self):
         return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
-    def _write_log_file(self, filename, extension ,data):
-        '''
-        Write a log file to disc with given data
-        The function takes care of the filename length as well as logging flags
-        :param filename: the filename
-        :param extension: file extension
-        :param data: the data that should be written to the wile
-        '''
-
-        #limit filename length to OS requirements
-        filename = filename[:self._filename_max_length-len(extension)] + extension
-        filename = filename.replace('/','-').replace('\\','-')
-
-        try:
-            if self._create_log_files:  # debugging only
-                with open(self.__log_file_path_prefix + filename, 'w') as outfile:
-                    outfile.write(data)
-        except Exception as e:
-            rospy.logerr("Logging failed: %s", e)
-    
     def _fetchPDDL(self):
         '''
         This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns a tuple of
@@ -189,7 +163,9 @@ class Manager(object):
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
-        self._write_log_file("pddl{0}Domain".format(self._stepCounter), ".pddl", domainPDDLString)
+        if self._create_log_files:
+            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename="pddl{0}Domain".format(self._stepCounter), extension=".pddl" )
+            domainLog.write(domainPDDLString)
 
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
@@ -206,8 +182,10 @@ class Manager(object):
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
 
-        filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
-        self._write_log_file(filename, ".pddl", problemPDDLString)
+        if self._create_log_files:
+            filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
+            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
+            domainLog.write(problemPDDLString)
 
         return problemPDDLString
     
@@ -300,8 +278,7 @@ class Manager(object):
             return
         plannerStatusMessage = PlannerStatus()
         if self._create_log_files:  # debugging only
-            self.__threshFile.write("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
-            self.__threshFile.flush()
+            self.__threshFile.append("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
 
         plannerStatusMessage.activationThreshold = self._activationThreshold
         self._totalActivation = 0.0

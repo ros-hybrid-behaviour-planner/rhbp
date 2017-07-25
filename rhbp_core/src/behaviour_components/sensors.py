@@ -11,7 +11,7 @@ import rospy
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
-from utils.misc import FinalInitCaller
+from utils.misc import FinalInitCaller, LogFileWriter
 
 from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
@@ -130,7 +130,7 @@ class PassThroughTopicSensor(Sensor):
             self._sub = rospy.Subscriber(self._topic_name, self._message_type, self.subscription_callback)
 
             if self._iShouldCreateLog:
-                self._logFile = open("{0}.log".format(self._name), 'w')
+                self._logFile = LogFileWriter(path="",filename=self._name,extension=".log")
                 self._logFile.write('{0}\n'.format(self._name))
         else:
             rospy.logerr("Could not determine message type of: " + self._topic_name)
@@ -141,8 +141,7 @@ class PassThroughTopicSensor(Sensor):
             rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
                            type(self._latestValue))
         if self._iShouldCreateLog:
-            self._logFile.write("{0:f}\t{1}\n".format(rospy.get_time(), self._latestValue))
-            self._logFile.flush()
+            self._logFile.append("{0:f}\t{1}\n".format(rospy.get_time(), self._latestValue))
 
     @property
     def topic_name(self):
