@@ -78,7 +78,7 @@ class NetworkBehavior(BehaviourBase):
             desired_value = True if effect.indicator > 0 else False
             activator = BooleanActivator(name=activator_name, desiredValue=desired_value)
             condition = Condition(activator=activator, sensor=sensor)
-            return OfflineGoal(goal_name, permanent=True, conditions={condition})
+            return OfflineGoal(name=goal_name,planner_prefix=self.get_manager_prefix(), permanent=True, conditions={condition})
         if (effect.sensorType == int or effect.sensorType == float):
             activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator),
                                         name=activator_name)
