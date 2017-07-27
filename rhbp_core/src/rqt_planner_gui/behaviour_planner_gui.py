@@ -70,6 +70,9 @@ class Overview(Plugin):
         self._widget.pausePushButton.toggled.connect(self.pauseButtonCallback)
         self._widget.stepPushButton.clicked.connect(self.step_push_button_callback)
         self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_Callback)
+        #this fire fore every key input
+        #self._widget.plannerPrefixComboBox.editTextChanged.connect(self.set_planner_prefix_callback)
+        self._widget.plannerPrefixComboBox.activated.connect(self.set_planner_prefix_callback)
 
         # Connect signal so we can refresh Widgets from the main thread        
         self.updateRequest.connect(self.updateGUI)
@@ -203,7 +206,11 @@ class Overview(Plugin):
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name, timeout=1)
         get_stepping = rospy.ServiceProxy(service_name, GetStepping)
-        get_stepping()
+        ret = get_stepping()
+        if ret and ret.automatic_stepping:
+            return True
+        else:
+            return False
 
     def setActivationThresholdDecay(self):
         rospy.loginfo("setting activationThresholdDecay to %f", self._widget.activationThresholdDecayDoubleSpinBox.value())
@@ -224,9 +231,9 @@ class Overview(Plugin):
         self.updateGoals([])
         try:
             enabled = self._is_automatic_stepping_enabled()
-            self._widget.automaticSteppingCheckBox.setChecked(enabled)
-            self._widget.automaticSteppingCheckBox.setEnabled(enabled)
-            self._widget.stepPushButton.setEnabled(enabled)
+            rospy.loginfo("Automatic stepping enabled: " + str(enabled))
+            self._widget.automaticSteppingCheckBox.setEnabled(True)
+            self._widget.stepPushButton.setEnabled(not enabled)
         except:
             self._widget.automaticSteppingCheckBox.setEnabled(False)
             self._widget.stepPushButton.setEnabled(False)
