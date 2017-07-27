@@ -76,6 +76,8 @@ class ManagerNode(object):
         while (not rospy.is_shutdown()):
             if self.automatic_stepping:
                 self._manager.step()
+            else:
+                self._manager.send_discovery()
             self.rate.sleep()
 
 if __name__ == '__main__':
