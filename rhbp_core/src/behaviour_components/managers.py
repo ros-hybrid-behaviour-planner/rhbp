@@ -7,7 +7,7 @@ Created on 23.04.2015
 import rospy
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish
+from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
 from .goals import GoalProxy
@@ -22,6 +22,8 @@ import threading
 class Manager(object):
 
     USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE = False
+
+    MANAGER_DISCOVERY_TOPIC = "rhbp_discover"
 
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
@@ -89,11 +91,11 @@ class Manager(object):
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
 
-        self.init_services()
+        self.init_services_topics()
 
         self.__executedBehaviours = []
 
-    def init_services(self):
+    def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
         self.__addBehaviourService = rospy.Service(self._service_prefix + 'AddBehaviour', AddBehaviour,
                                                    self.__add_behaviour_callback)
@@ -106,6 +108,8 @@ class Manager(object):
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resumeCallback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1)
+
+        self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
 
     def __del__(self):
         self.__addBehaviourService.shutdown()
@@ -273,6 +277,15 @@ class Manager(object):
         else:
             rospy.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
+    def send_discovery(self):
+        """
+        Send manager/planner discovery message
+        """
+        msg = DiscoverInfo()
+        msg.stamp = rospy.Time.now()
+        msg.manager_prefix = self._prefix
+        self.__pub_discover.publish(msg)
+
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
             return
@@ -282,6 +295,8 @@ class Manager(object):
 
         plannerStatusMessage.activationThreshold = self._activationThreshold
         self._totalActivation = 0.0
+
+        self.send_discovery()
 
         with self._step_lock:
             rospy.logdebug("###################################### STEP {0} ######################################".format(self._stepCounter))

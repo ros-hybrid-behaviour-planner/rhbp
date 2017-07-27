@@ -53,6 +53,7 @@ add_message_files(
   Correlation.msg
   Status.msg
   PlannerStatus.msg
+  DiscoverInfo.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -69,6 +70,7 @@ add_service_files(
   GetPDDL.srv
   TopicUpdateSubscribe.srv
   SetStepping.srv
+  GetStepping.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -116,7 +118,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rhbp_core
-#  CATKIN_DEPENDS rospy std_msgs
+  CATKIN_DEPENDS rospy std_msgs
 #  DEPENDS system_lib
 )
 
