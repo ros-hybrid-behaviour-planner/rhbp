@@ -44,6 +44,11 @@ class NetworkBehavior(BehaviourBase):
         if correlations is not None:
             self.add_correlations(correlations)
 
+    def updateComputation(self):
+        super(NetworkBehavior, self).updateComputation()
+        if not self._isExecuting:
+            self.__manager.send_discovery()
+
     def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
         return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
                                                                         sensor_name=sensor_name)

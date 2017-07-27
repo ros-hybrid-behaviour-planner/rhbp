@@ -6,7 +6,7 @@ Created on 13.04.2015
 '''
 import rospy
 from behaviour_components.managers import Manager
-from rhbp_core.srv import SetStepping, SetSteppingResponse
+from rhbp_core.srv import SetStepping, SetSteppingResponse, GetStepping, GetSteppingResponse
 from std_srvs.srv import Empty, EmptyResponse
 
 class ManagerNode(object):
@@ -25,8 +25,17 @@ class ManagerNode(object):
         if not self.automatic_stepping:
             rospy.logwarn("Started in manual stepping mode")
 
-        self._set_automatic_stepping_service= rospy.Service(prefix + '/' +'set_automatic_stepping', SetStepping, self._set_stepping_callback)
+        self._init_services(prefix)
 
+    def _init_services(self, prefix):
+        """
+        init all services handlers
+        :param prefix: manager prefix
+        """
+        self._set_automatic_stepping_service = rospy.Service(prefix + '/' + 'set_automatic_stepping', SetStepping,
+                                                             self._set_stepping_callback)
+        self._get_automatic_stepping_service = rospy.Service(prefix + '/' + 'get_automatic_stepping', GetStepping,
+                                                             self._get_stepping_callback)
         self._stepping_service = rospy.Service(prefix + '/' + 'step', Empty, self._step_callback)
 
     def _set_stepping_callback(self, request):
@@ -36,7 +45,18 @@ class ManagerNode(object):
         """
         self.automatic_stepping = request.automatic_stepping
 
-        return  SetSteppingResponse()
+        rospy.loginfo("Automatic Stepping changed to " + str(self.automatic_stepping))
+
+        return SetSteppingResponse()
+
+    def _get_stepping_callback(self, request):
+        """
+        Callback service for getting the current automatic stepping setting
+        :param request:
+        """
+        response = GetSteppingResponse(self.automatic_stepping)
+
+        return response
 
     def _step_callback(self, request):
         """
