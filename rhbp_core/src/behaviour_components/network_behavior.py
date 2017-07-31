@@ -9,6 +9,8 @@ from .behaviours import BehaviourBase
 from .goals import OfflineGoal
 from .managers import Manager
 
+from utils.deprecation import deprecated
+
 
 class NetworkBehavior(BehaviourBase):
     """
@@ -92,20 +94,39 @@ class NetworkBehavior(BehaviourBase):
         raise RuntimeError(msg='Cant create goal for effect type \'' + str(
             effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
 
+    @deprecated
     def add_correlations(self, correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
+        DEPRECATED: Use *add_effects* instead
         :param correlations: list of Effects
         """
-        self._correlations.extend(correlations)
+        self.add_effects(correlations)
 
+    @deprecated
     def add_correlations_and_goals(self, sensor_correlations):
         """
         Adds the given effects to the correlations of this Behavior. 
         Furthermore creates a goal for each Effect and registers it at the nested Manager
+        DEPRECATED: Use *add_effects_and_goals* instead
         :param sensor_correlations: list of tuples of (Sensor, Effect)
         """
-        for effect in sensor_correlations:
+        self.add_effects_and_goals(sensor_correlations)
+
+    def add_effects(self, effects):
+        """
+        Adds the given effects to this Behavior. 
+        :param effects: list of Effects
+        """
+        self._correlations.extend(effects)
+
+    def add_effects_and_goals(self, sensor_effect):
+        """
+        Adds the given effects to the correlations of this Behavior. 
+        Furthermore creates a goal for each Effect and registers it at the nested Manager
+        :param sensor_effect: list of tuples of (Sensor, Effect)
+        """
+        for effect in sensor_effect:
             goal_name = self.__generate_goal_name(effect[1])
             activator_name = self._restore_condition_name_from_pddl_function_name(effect[1].sensorName, effect[0].name)
             goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
