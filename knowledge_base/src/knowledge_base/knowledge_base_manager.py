@@ -316,13 +316,12 @@ class KnowledgeBase(object):
     def __update(self, update_request):
         """
         :param update_request: ROS service request Update
-        :return: true if replacing was sucessfull, false if not because old fact does not exists
+        :return: true if replacing was successful, false if not because old fact does not exists
         """
         pattern = self.__converts_request_to_tuple_space_format(update_request.pattern)
         newFact = self.__converts_request_to_tuple_space_format(update_request.newFact)
         if (self.__exists_tuple_as_is(newFact)):
             self.__pop_internal(pattern)
-            return UpdateResponse(True)
 
         removed_facts = self.__pop_internal(pattern, dont_inform=newFact).removed
         facts_removed = len(removed_facts) > 0

@@ -337,7 +337,7 @@ class TupleSpaceTestSuite(unittest.TestCase):
         self.assertEqual(old_fact, tuple(informer_removed.remove_msg[0].fact))
         informer_removed.remove_msg = []
         self.assertEqual(1, len(informer_updated.remove_msg),
-                         'Error at receiving seccond remove message: ' + str(len(informer_removed.remove_msg)))
+                         'Error at receiving second remove message: ' + str(len(informer_removed.remove_msg)))
         self.assertEqual(old_fact, tuple(informer_updated.remove_msg[0].fact))
         informer_updated.remove_msg = []
 
