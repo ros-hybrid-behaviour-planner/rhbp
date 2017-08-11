@@ -93,6 +93,29 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertTrue(cache1.does_fact_exists(), 'Tuple was added, but is not indicated as present')
         self.assertTrue(cache2.does_fact_exists(), 'Tuple was added, but is not indicated as present')
 
+    def test_middle_placeholder(self):
+        """
+        Test updating an existing fact 
+        """
+        prefix = self.__message_prefix + '_test_middle_placeholder'
+
+        first_fact = (prefix, 'updated', 'a', '1')
+
+        second_fact = (prefix, 'updated', 'b', '1')
+
+        self.__client.push(first_fact)
+        self.__client.push(second_fact)
+
+        cache = KnowledgeBaseFactCache(pattern=(prefix, 'updated', '*', '1'))
+
+        rospy.sleep(0.1)
+
+        current = cache.get_all_matching_facts()
+
+        self.assertEqual(2, len(current))
+        self.assertTrue(first_fact in current, 'fact not found')
+        self.assertTrue(second_fact in current, 'fact not found')
+
     def test_update_existing(self):
         """
         Test updating an existing fact 
