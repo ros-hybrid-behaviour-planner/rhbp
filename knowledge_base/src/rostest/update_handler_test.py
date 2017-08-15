@@ -33,17 +33,22 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
 
         # start KnowledgeBase
+        self.start_kb_node()
+
+        rospy.init_node('UpdateHandlerTestSuite', log_level=rospy.DEBUG)
+
+        self.__client = KnowledgeBaseClient(self.__knowledge_base_address)
+
+    def start_kb_node(self):
+        """
+        start the knowledge base node
+        """
         package = 'knowledge_base'
         executable = 'knowledge_base_node.py'
         node = roslaunch.core.Node(package=package, node_type=executable, name=self.__knowledge_base_address)
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
-
         self._kb_process = launch.launch(node)
-
-        rospy.init_node('UpdateHandlerTestSuite', log_level=rospy.DEBUG)
-
-        self.__client = KnowledgeBaseClient(self.__knowledge_base_address)
 
     def tearDown(self):
         self._kb_process.stop()
