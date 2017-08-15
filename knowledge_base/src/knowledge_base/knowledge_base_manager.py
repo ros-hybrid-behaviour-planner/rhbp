@@ -52,6 +52,8 @@ class KnowledgeBase(object):
                                                          self.__update_subscribe)
         self.__register_lock = Lock()
 
+        self.__tuple_lock = Lock()
+
     def __del__(self):
         """
             closes all services
@@ -99,7 +101,11 @@ class KnowledgeBase(object):
             # Placeholders are not allowed in facts
             assert not part == str
         if not self.__exists_tuple_as_is(fact):
-            self.__tuple_space.add(fact)
+            try:
+                self.__tuple_lock.acquire()
+                self.__tuple_space.add(fact)
+            finally:
+                self.__tuple_lock.release()
             self.__fact_was_added(Fact(unconverted_fact), fact, dont_inform)
 
     def __fact_was_added(self, sendeable_fact, original_fact, dont_inform):
@@ -127,16 +133,17 @@ class KnowledgeBase(object):
         """
         try:
             self.__tuple_space.get(to_check)
-            return True
         except KeyError:
             return False
+        return True
 
     def __exists(self, exists_request):
         """
         :param request: Exists, as defined as ROS service
         :return: bool, which indiciated, whether a tuple exists in knowledge base, which matchs the pattern
         """
-        converted = self.__converts_request_to_tuple_space_format(exists_request.pattern)
+        with self.__tuple_lock:
+            converted = self.__converts_request_to_tuple_space_format(exists_request.pattern)
         return self.__exists_tuple_as_is(converted)
 
     def __peek(self, peek_request):
@@ -146,28 +153,33 @@ class KnowledgeBase(object):
                 if a tuple exists in tuple space, an example is returned and the exists flag is setted
         """
         try:
+            self.__tuple_lock.acquire()
             converted = self.__converts_request_to_tuple_space_format(peek_request.pattern)
             result = self.__tuple_space.get(converted)
             return PeekResponse(example=result, exists=True)
         except KeyError:
             return PeekResponse(exists=False)
+        finally:
+            self.__tuple_lock.release()
 
     def __pop_internal(self, pattern, dont_inform=None):
         """
         :param pattern: fact, which should be removed
         :param dont_inform: all subscribers, which matches this fact are not informed
         """
-        to_remove = self.__tuple_space.many(pattern, sys.maxint)
-        removed_facts = []
-        for fact in to_remove:
-            real_fact = fact[1]
-            try:
-                self.__tuple_space.get(real_fact, remove=True)
-                removed_facts.append(Fact(content=real_fact))
-                self.__fact_removed(real_fact, dont_inform)
-            except KeyError:
-                pass
-        return PopResponse(removed=tuple(removed_facts))
+
+        with self.__tuple_lock:
+            to_remove = self.__tuple_space.many(pattern, sys.maxint)
+            removed_facts = []
+            for fact in to_remove:
+                real_fact = fact[1]
+                try:
+                    self.__tuple_space.get(real_fact, remove=True)
+                    removed_facts.append(Fact(content=real_fact))
+                    self.__fact_removed(real_fact, dont_inform)
+                except KeyError:
+                    pass
+            return PopResponse(removed=tuple(removed_facts))
 
     def __pop(self, pop_request):
         """
@@ -201,6 +213,7 @@ class KnowledgeBase(object):
         """
         converted = self.__converts_request_to_tuple_space_format(all_request.pattern)
         try:
+            self.__tuple_lock.acquire()
             found_tuples = self.__tuple_space.many(converted, sys.maxint)
             result_as_list = []
             for fact in found_tuples:
@@ -208,6 +221,8 @@ class KnowledgeBase(object):
             return AllResponse(found=tuple(result_as_list))
         except KeyError:
             return ()
+        finally:
+            self.__tuple_lock.release()
 
     @staticmethod
     def generate_topic_name_part_from_pattern(pattern):
