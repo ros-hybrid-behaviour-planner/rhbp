@@ -44,6 +44,10 @@ class KnowledgeBase(object):
         self.__tuple_space = TSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
+
+        self.__register_lock = Lock()
+        self.__tuple_lock = Lock()
+
         self.__push_service = rospy.Service(name + KnowledgeBase.PUSH_SERVICE_NAME_POSTFIX, Push, self.__push)
         self.__exists_service = rospy.Service(name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists, self.__exists)
         self.__peek_service = rospy.Service(name + KnowledgeBase.PEEK_SERVICE_NAME_POSTFIX, Peek, self.__peek)
@@ -53,10 +57,7 @@ class KnowledgeBase(object):
         self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX,
                                                          UpdateSubscribe,
                                                          self.__update_subscribe)
-        self.__register_lock = Lock()
-
-        self.__tuple_lock = Lock()
-
+        
     def __del__(self):
         """
             closes all services
