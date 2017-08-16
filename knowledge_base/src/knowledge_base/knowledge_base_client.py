@@ -11,6 +11,9 @@ from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.srv import Exists, Peek, Pop, All, Update, UpdateSubscribe, Push
 from thread import allocate_lock
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
+
 
 class KnowledgeBaseClient(object):
     """
@@ -37,7 +40,7 @@ class KnowledgeBaseClient(object):
             rospy.wait_for_service(knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
         except rospy.ROSException:
-            rospy.loginfo(
+            rhbplog.loginfo(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + knowledge_base_name)
 
     def __ensure_initialization(self):
@@ -51,13 +54,13 @@ class KnowledgeBaseClient(object):
             if (self.__initialized):
                 # Another check, protected by the lock
                 return True
-            rospy.logdebug(
+            rhbplog.logdebug(
                 'Wait for knowledge base: ' + self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX)
             rospy.wait_for_service(self.__knowledge_base_name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, timeout=self._timeout)
             self.__initialize()
             return True
         except rospy.ROSException:
-            rospy.loginfo(
+            rhbplog.loginfo(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + self.__knowledge_base_name)
             return False
         finally:

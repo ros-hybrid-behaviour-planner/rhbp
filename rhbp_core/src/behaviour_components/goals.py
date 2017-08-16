@@ -23,6 +23,9 @@ from .pddl import PDDL, mergeStatePDDL
 from .sensors import SimpleTopicSensor
 from utils.misc import FinalInitCaller
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.goals')
+
 
 class AbstractGoalRepresentation(object):
     '''
@@ -167,7 +170,7 @@ class Goal(object):
             self._activateService.shutdown()
             self._priorityService.shutdown()
         except Exception as e:
-            rospy.logerr("Fucked up in destructor of GoalBase: %s", e)
+            rhbplog.logerr("Fucked up in destructor of GoalBase: %s", e)
 
     def updateComputation(self):
         """
@@ -276,7 +279,7 @@ class GoalProxy(AbstractGoalRepresentation):
         This method fetches the PDDL from the actual goal node via GetPDDLservice call
         '''
         try:
-            rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
+            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
             rospy.wait_for_service(self._service_prefix + 'PDDL')
         except rospy.ROSException:
             self._handle_service_timeout()
@@ -288,7 +291,7 @@ class GoalProxy(AbstractGoalRepresentation):
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
                          functions=pddl.stateFunctions))
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def sync(self):
@@ -297,7 +300,7 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
 
         try:
-            rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
             rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
@@ -313,21 +316,21 @@ class GoalProxy(AbstractGoalRepresentation):
             self.priority = status.priority
             self.satisfaction_threshold = status.threshold
             if self._name != status.name:
-                rospy.logerr("%s fetched a status message from a different goal: %s. This cannot happen!",
+                rhbplog.logerr("%s fetched a status message from a different goal: %s. This cannot happen!",
                              self._name,
                              status.name)
-            rospy.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name,
+            rhbplog.logdebug("%s reports the following status:\nfulfillment %s\nwishes %s", self.name,
                            self.fulfillment,
                            self.wishes)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'sync' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'sync' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def _handle_service_timeout(self):
         """
         basically deactivate the goal in case a service has timeout
         """
-        rospy.logerr("ROS service timeout of goal '%s': %s. Fulfillment will be reset", self._name,
+        rhbplog.logerr("ROS service timeout of goal '%s': %s. Fulfillment will be reset", self._name,
                      traceback.format_exc())
         self._active = False
         self.fulfillment = 0.0
@@ -338,12 +341,12 @@ class GoalProxy(AbstractGoalRepresentation):
         try:
             #inform remote goal about new activated state
             service_name = self._service_prefix + 'Activate'
-            rospy.logdebug("Waiting for service %s", service_name)
+            rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name)
             activateRequest = rospy.ServiceProxy(service_name, Activate)
             activateRequest(value)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'activated' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'activated' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
 
@@ -395,20 +398,20 @@ class GoalBase(Goal):
         only call it manually if you have manually unregistred the goal before
         """
         if self._registered:
-            rospy.logwarn("Goal '%s' is already registred", self._name)
+            rhbplog.logwarn("Goal '%s' is already registred", self._name)
             return
         try:
-            rospy.logdebug(
+            rhbplog.logdebug(
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
                 self._planner_prefix, self._name)
             rospy.wait_for_service(self._planner_prefix + '/' + 'AddGoal')
             registerMe = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
             registerMe(self._name, self._permanent)
             self._registered = True
-            rospy.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
+            rhbplog.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                            self._planner_prefix, self._name)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def unregister(self):
@@ -418,7 +421,7 @@ class GoalBase(Goal):
         try:
             service_name = self._planner_prefix + '/' + 'RemoveGoal'
             try:
-                rospy.logdebug("Waiting for service %s", service_name)
+                rhbplog.logdebug("Waiting for service %s", service_name)
                 # do not wait forever here, manager might be already closed
                 rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             except rospy.ROSException:
@@ -428,7 +431,7 @@ class GoalBase(Goal):
             remove_goal(self._name)
             self._registered = False
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'unregister' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'unregister' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def __del__(self):
@@ -442,7 +445,7 @@ class GoalBase(Goal):
             self._pddlService.shutdown()
             super(GoalBase, self).__del__()
         except Exception as e:
-            rospy.logerr("Error in destructor of GoalBase: %s", e)
+            rhbplog.logerr("Error in destructor of GoalBase: %s", e)
 
     def pddlCallback(self, dummy):
         try:
@@ -454,7 +457,7 @@ class GoalBase(Goal):
                                       "statePredicates": list(statePDDL.predicates),
                                       "stateFunctions": list(statePDDL.functions)})
         except Exception:
-            rospy.logerr("ROS service callback exception in 'pddlCallback' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'pddlCallback' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
 
@@ -473,7 +476,7 @@ class GoalBase(Goal):
             })
             return GetStatusResponse(status)
         except Exception:
-            rospy.logerr("ROS service callback exception in 'getStatus' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'getStatus' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
 

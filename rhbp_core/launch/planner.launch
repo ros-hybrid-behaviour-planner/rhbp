@@ -1,4 +1,7 @@
 <launch>
+
+    <env name="ROS_PYTHON_LOG_CONFIG_FILE" value="$(find rhbp_core)/launch/python_logging.conf"/>
+
     <node pkg="rhbp_core" type="planner_node.py" name="behaviour_planner_node" output="screen">
         <param name="situationBias" type="double" value="0.7" />
         <param name="predecessorBias" type="double" value="1.0" />

@@ -10,6 +10,9 @@ import traceback
 
 from behaviour_components.conditions import Conditonal
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
+
 class Condition(Conditonal):
     '''
     This is the basic Condition class it brings together the sensor and the activation function and takes care
@@ -44,14 +47,14 @@ class Condition(Conditonal):
         try:
             self._normalizedSensorValue = self._normalize()
         except Exception as e:
-            rospy.logwarn("Normalization failed: " + e.message)
+            rhbplog.logwarn("Normalization failed: " + e.message)
             self._satisfaction = 0.0
             return
 
         try:
             self._satisfaction = self._activator.computeActivation(self._normalizedSensorValue)
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?. %s", self._sensor,
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?. %s", self._sensor,
                           self._name, type(self._sensor.value), " optional" if self._sensor.optional else "",
                           self._sensor.name, traceback.format_exc())
             self._satisfaction = 0.0
@@ -81,7 +84,7 @@ class Condition(Conditonal):
         try:
             return [(self._get_pddl_effect_name(self._sensor), self._activator.getSensorWish(self._normalizedSensorValue))]
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
 
     def _get_current_sensor_value_for_pddl_creation(self):
@@ -186,7 +189,7 @@ class MultiSensorCondition(Condition):
             self._satisfaction = self._reduceSatisfaction()
 
         except Exception as e:
-            rospy.logwarn("updateComputation failed: " +e.message)
+            rhbplog.logwarn("updateComputation failed: " +e.message)
             self._satisfaction = 0.0
             return
 
@@ -228,7 +231,7 @@ class MultiSensorCondition(Condition):
                 result.append((effect_name,self._activator.getSensorWish(self._normalizedSensorValues[sensor])))
             return result
         except AssertionError:
-            rospy.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
             raise
 
     def _get_value_of_sensor_for_pddl_creation(self, sensor):

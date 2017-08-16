@@ -8,12 +8,16 @@ import traceback
 import rospy
 import operator
 import itertools
+
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Wish, Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
 from utils.misc import FinalInitCaller, LogFileWriter
+
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
 
 class Behaviour(object):
     '''
@@ -61,7 +65,7 @@ class Behaviour(object):
             try:
                 self.__logFile.write('Time\t{0}\n'.format(self._name))
             except Exception as e:
-                rospy.logerr("Failed to create log files in behaviour '%s': %s", self._name,
+                rhbplog.logerr("Failed to create log files in behaviour '%s': %s", self._name,
                              traceback.format_exc())
 
         if (self.__requires_execution_steps):
@@ -80,13 +84,13 @@ class Behaviour(object):
 
     def do_step(self):
         if not (self.__execution_step_service):
-            rospy.logerr('Step method is called, but behavior does not need a step')
+            rhbplog.logerr('Step method is called, but behavior does not need a step')
             return
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         try:
             self.__execution_step_service()
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'do_step' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'do_step' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def fetchStatus(self):
         '''
@@ -94,7 +98,7 @@ class Behaviour(object):
         '''
         self._justFinished = False
         try:
-            rospy.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
+            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
             rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
@@ -108,7 +112,7 @@ class Behaviour(object):
             self._readyThreshold = status.threshold
             self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
             if self._isExecuting == True and status.isExecuting == False:
-                rospy.loginfo("%s finished. resetting activation", self._name)
+                rhbplog.loginfo("%s finished. resetting activation", self._name)
                 if self._reset_activation:
                     self._activation = 0.0
                 self._executionTime = -1
@@ -121,16 +125,16 @@ class Behaviour(object):
             self._activated = status.activated
             self._executionTimeout = status.executionTimeout
             if self._name != status.name:
-                rospy.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
-            rospy.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
+                rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
+            rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def _handle_service_timeout(self):
         """
         basically deactivate the behaviour in case a service has timeout
         """
-        rospy.logerr("ROS service timeout of behaviour '%s': %s. Activation will be reset", self._name,
+        rhbplog.logerr("ROS service timeout of behaviour '%s': %s. Activation will be reset", self._name,
                      traceback.format_exc())
         self._isExecuting = False
         self._active = False
@@ -142,7 +146,7 @@ class Behaviour(object):
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
         It returns a tuple of (action_pddl, state_pddl).
         '''
-        rospy.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
+        rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
         rospy.wait_for_service(self._service_prefix + 'PDDL')
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
@@ -150,7 +154,7 @@ class Behaviour(object):
             return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), \
                    PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'fetchPDDL' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'fetchPDDL' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def start(self):
         '''
@@ -162,16 +166,16 @@ class Behaviour(object):
         self._executionTime = 0
         try:
             try:
-                rospy.logdebug("Waiting for service %s", self._service_prefix + 'Start')
+                rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'Start')
                 rospy.wait_for_service(self._service_prefix + 'Start')
             except rospy.ROSException:
                 self._handle_service_timeout()
                 return
             startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
             startRequest()
-            rospy.loginfo("Started action of %s", self._name)
+            rhbplog.loginfo("Started action of %s", self._name)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'start' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'start' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def stop(self, reset_activation = True):
         '''
@@ -186,16 +190,16 @@ class Behaviour(object):
 
         try:
             try:
-                rospy.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
+                rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
                 rospy.wait_for_service(self._service_prefix + 'Stop')
             except rospy.ROSException:
                 self._handle_service_timeout()
                 return
             stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
             stopRequest()
-            rospy.logdebug("Stopping action of %s", self._name)
+            rhbplog.logdebug("Stopping action of %s", self._name)
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'stop' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'stop' of behaviour '%s': %s", self._name, traceback.format_exc())
         self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
 
     def reset_activation(self):
@@ -401,17 +405,17 @@ class BehaviourBase(object):
         Only call this directly if you have unrregistered the behaviour manually before
         """
         if self._registered:
-            rospy.logwarn("Behaviour '%s' is already registred", self._name)
+            rhbplog.logwarn("Behaviour '%s' is already registred", self._name)
             return
         try:
             service_name= self._plannerPrefix + '/' + 'AddBehaviour'
-            rospy.logdebug("Waiting for service %s", service_name)
+            rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name)
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
             register_behaviour(self._name, self._independentFromPlanner,self._requires_execution_steps)
             self._registered = True
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())
+            rhbplog.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def unregister(self):
         """
@@ -420,7 +424,7 @@ class BehaviourBase(object):
         try:
             service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
             try:
-                rospy.logdebug("Waiting for service %s", service_name)
+                rhbplog.logdebug("Waiting for service %s", service_name)
                 # do not wait forever here, manager might be already closed
                 rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             except rospy.ROSException:
@@ -430,7 +434,7 @@ class BehaviourBase(object):
             remove_behaviour(self._name)
             self._registered = False
         except rospy.ServiceException:
-            rospy.logerr("ROS service exception in 'unregister()' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'unregister()' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
 
     def __del__(self):
@@ -448,7 +452,7 @@ class BehaviourBase(object):
             self._executionTimeoutService.shutdown()
             self._pddlService.shutdown()
         except Exception:
-            rospy.logerr("Error in destructor of BehaviourBase: %s", traceback.format_exc())
+            rhbplog.logerr("Error in destructor of BehaviourBase: %s", traceback.format_exc())
 
     def updateComputation(self):
         """
@@ -478,7 +482,7 @@ class BehaviourBase(object):
                 try:
                     satisfactions.append(p.satisfaction)
                 except AssertionError as e:  # we don't care about errors in optional sensors
-                    rospy.logwarn(e)
+                    rhbplog.logwarn(e)
                     pass
         return satisfactions
     
@@ -552,7 +556,7 @@ class BehaviourBase(object):
         effects = [x.getEffectPDDL() for x in self._correlations]
         if len(effects) < 1:
             if not self._independentFromPlanner:
-                rospy.logwarn("Behaviour %s doesn't have effects and is not independent from planner, it will be ignored for PDDL-based planning", self._name)
+                rhbplog.logwarn("Behaviour %s doesn't have effects and is not independent from planner, it will be ignored for PDDL-based planning", self._name)
             return PDDL()
 
         action_name = create_valid_pddl_name(self._name)
@@ -586,10 +590,10 @@ class BehaviourBase(object):
         try:
             if not self._independentFromPlanner and len(self._correlations) == 0:
                 # Since the correlations arent setted in constructor once right place for warning is here
-                rospy.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
+                rhbplog.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))
             if self._independentFromPlanner and len(self._correlations) > 0:
                 # Since the correlations arent setted in constructor once right place for warning is here
-                rospy.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
+                rhbplog.logwarn('Behavior {0} has effects but is independent from planner'.format(self._name))
             actions = self.getActionPDDL() # TODO: this may be cached as it does not change unless the effects are changed during runtime
 
             if not actions.empty:
@@ -605,7 +609,7 @@ class BehaviourBase(object):
                                       "stateFunctions" : list(state.functions)
                                      })
         except Exception:
-            rospy.logerr("ROS service callback exception in 'pddlCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'pddlCallback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
     
@@ -633,7 +637,7 @@ class BehaviourBase(object):
                               })
             return GetStatusResponse(status)
         except Exception:
-            rospy.logerr("ROS service callback exception in 'getStatusCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'getStatusCallback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
 
@@ -653,7 +657,7 @@ class BehaviourBase(object):
         if issubclass(type(precondition), Conditonal):
             self._preconditions.append(precondition)
         else:
-            rospy.logwarn("Passed wrong object, requires Conditional")
+            rhbplog.logwarn("Passed wrong object, requires Conditional")
 
 
     def add_effect(self, effect):
@@ -666,7 +670,7 @@ class BehaviourBase(object):
         if issubclass(type(effect), Effect):
             self._correlations.append(effect)
         else:
-            rospy.logwarn("Passed wrong object, requires Effect")
+            rhbplog.logwarn("Passed wrong object, requires Effect")
 
 
     def set_activated(self, activated):
@@ -693,7 +697,7 @@ class BehaviourBase(object):
             self.start()
             return EmptyResponse()
         except Exception:
-            rospy.logerr("ROS service callback exception in 'startCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'startCallback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
     
@@ -707,7 +711,7 @@ class BehaviourBase(object):
             self._isExecuting = False
             return EmptyResponse()
         except Exception:
-            rospy.logerr("ROS service callback exception in 'stopCallback' of behaviour '%s':  %s", self._name,
+            rhbplog.logerr("ROS service callback exception in 'stopCallback' of behaviour '%s':  %s", self._name,
                          traceback.format_exc())
             return None
     

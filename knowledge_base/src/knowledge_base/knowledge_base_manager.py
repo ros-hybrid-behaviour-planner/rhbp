@@ -17,6 +17,9 @@ from lindypy.TupleSpace import TSpace
 
 from inverted_tuple_space import InvertedTupleSpace
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
+
 
 class KnowledgeBase(object):
     """
@@ -88,7 +91,7 @@ class KnowledgeBase(object):
         # Since all read request converts nones to string type, it must be done also here.
         # Otherwise the stored tuple can't readed or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
-        rospy.logdebug('New tuple {0}'.format(str(request.content)))
+        rhbplog.logdebug('New tuple {0}'.format(str(request.content)))
         self.__push_internal(request.content, converted, None)
         return PushResponse()
 

@@ -16,6 +16,8 @@ from utils.misc import FinalInitCaller, LogFileWriter
 from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
 class Sensor(object):
     '''
@@ -69,7 +71,7 @@ class Sensor(object):
     @optional.setter
     def optional(self, newValue):
         if not isinstance(newValue, bool):
-            rospy.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name,
+            rhbplog.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name,
                           newValue)
         else:
             self._optional = newValue
@@ -133,12 +135,12 @@ class PassThroughTopicSensor(Sensor):
                 self._logFile = LogFileWriter(path="",filename=self._name,extension=".log")
                 self._logFile.write('{0}\n'.format(self._name))
         else:
-            rospy.logerr("Could not determine message type of: " + self._topic_name)
+            rhbplog.logerr("Could not determine message type of: " + self._topic_name)
 
     def subscription_callback(self, msg):
         self.update(msg)
         if (self.__print_updates):
-            rospy.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
+            rhbplog.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
                            type(self._latestValue))
         if self._iShouldCreateLog:
             self._logFile.append("{0:f}\t{1}\n".format(rospy.get_time(), self._latestValue))
@@ -248,10 +250,10 @@ class DynamicSensor(Sensor):
             return
         if (self.__remaining_allowed_topic_subscribing >= 0):
             if (self.__remaining_allowed_topic_subscribing == 0):
-                rospy.logdebug('Dont subscribe to topics because already subscribed to another: ' + topic_name)
+                rhbplog.logdebug('Dont subscribe to topics because already subscribed to another: ' + topic_name)
                 return
             self.__remaining_allowed_topic_subscribing -= 1
-        rospy.logdebug('Subscribed to: ' + topic_name)
+        rhbplog.logdebug('Subscribed to: ' + topic_name)
         self.__value_lock.acquire()
         try:
             if (topic_name in self.__values_of_removed_topics):
@@ -313,7 +315,7 @@ class DynamicSensor(Sensor):
         if (hasattr(a, 'data') and hasattr(b, 'data')):
             return a.data < b.data
         # In this case, the result of comparison is probably wrong
-        rospy.logwarn(str(type(a)) + ' and ' + str(
+        rhbplog.logwarn(str(type(a)) + ' and ' + str(
             type(b)) + ' have not the attribute data. Unsafety default implementation is used')
         return a < b
 

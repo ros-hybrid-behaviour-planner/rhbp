@@ -8,6 +8,8 @@ from behaviour_components.sensors import Sensor
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
 
 class KnowledgeSensor(Sensor):
     """

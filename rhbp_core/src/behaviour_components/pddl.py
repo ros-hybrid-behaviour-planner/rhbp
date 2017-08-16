@@ -10,6 +10,9 @@ import rospy
 functionRegex = re.compile(r'\s*\(\s*=\s*\(\s*([a-zA-Z0-9_\.-]+)\s*\)\s*([-+]?[0-9]*\.?[0-9]+)\s*\)\s*')
 predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s*\)\s*')
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
+
 class PDDL(object):
     """
     This class wraps PDDL fragments while building statements. It is used to collect predicates that are used in the statement for easier domain description generation.

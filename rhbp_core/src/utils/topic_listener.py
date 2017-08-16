@@ -14,6 +14,8 @@ from std_msgs.msg import String
 
 from rhbp_core.srv import TopicUpdateSubscribe, TopicUpdateSubscribeResponse
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager()
 
 class TopicListener(object):
     """
@@ -104,7 +106,7 @@ class TopicListener(object):
             rospy.sleep(0.1)
             self.__update_topics[regex] = (added_topic, removed_topic)
 
-            rospy.logdebug('subscribed for pattern: ' + pattern)
+            rhbplog.logdebug('subscribed for pattern: ' + pattern)
             return TopicUpdateSubscribeResponse(topicNameTopicAdded=added_topic_name,
                                                 topicNameTopicRemoved=removed_topic_name,
                                                 existingTopics=self.__find_matching_topcis(regex))
@@ -153,10 +155,10 @@ class TopicListener(object):
                     added_topics.append(topic_name)
             self.__inform_about_added_topics(added_topics)
             if (added_topics):
-                rospy.logdebug('New Topics: ' + str(added_topics))
+                rhbplog.logdebug('New Topics: ' + str(added_topics))
 
             if (expected_topics):
-                rospy.logdebug('Removed Topics: ' + str(expected_topics))
+                rhbplog.logdebug('Removed Topics: ' + str(expected_topics))
             self.__inform_about_removed_topics(expected_topics)
 
 

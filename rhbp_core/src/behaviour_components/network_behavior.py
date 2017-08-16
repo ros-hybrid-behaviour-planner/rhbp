@@ -11,6 +11,8 @@ from .managers import Manager
 
 from utils.deprecation import deprecated
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
 
 class NetworkBehavior(BehaviourBase):
     """

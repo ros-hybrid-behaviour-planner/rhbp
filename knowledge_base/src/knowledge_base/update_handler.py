@@ -9,6 +9,9 @@ from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
+
 
 class KnowledgeBaseFactCache(object):
     """
@@ -34,7 +37,7 @@ class KnowledgeBaseFactCache(object):
             rospy.wait_for_service(self.__example_service_name, timeout=10)
             self.__register_for_updates()
         except rospy.ROSException:
-            rospy.loginfo(
+            rhbplog.loginfo(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + knowledge_base_name)
 
     def __register_for_updates(self):
@@ -47,7 +50,7 @@ class KnowledgeBaseFactCache(object):
         rospy.Subscriber(update_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
         self.__initialized = True
-        rospy.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
+        rhbplog.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 
     def __handle_add_update(self, fact_added):
         """
@@ -92,7 +95,7 @@ class KnowledgeBaseFactCache(object):
 
     def __ensure_initialization(self):
         if not self.__initialized:
-            rospy.loginfo('Wait for knowledge base service: ' + self.__example_service_name)
+            rhbplog.loginfo('Wait for knowledge base service: ' + self.__example_service_name)
             rospy.wait_for_service(self.__example_service_name)
             self.__register_for_updates()
 

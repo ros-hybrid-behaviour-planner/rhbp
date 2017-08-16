@@ -9,6 +9,8 @@ from behaviour_components.behaviours import BehaviourBase
 
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
 
 class KnowledgeUpdateBehaviour(BehaviourBase):
     '''
@@ -33,7 +35,7 @@ class KnowledgeUpdateBehaviour(BehaviourBase):
         self._kb_client = KnowledgeBaseClient(knowledge_base_name=knowledge_base_name)
 
     def start(self):
-        rospy.logdebug("Updating knowledge '%s' to '%s'", self.pattern, self.new_tuple)
+        rhbplog.logdebug("Updating knowledge '%s' to '%s'", self.pattern, self.new_tuple)
 
         self._kb_client.update(self.pattern, self.new_tuple )
 

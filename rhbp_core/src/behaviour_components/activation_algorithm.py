@@ -12,6 +12,8 @@ import rospy
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
 class AbstractActivationAlgorithm(object):
     """
@@ -135,13 +137,13 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
         activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
 
-        rospy.logdebug("\tactivation from preconditions: %s", activation_precondition)
-        rospy.logdebug("\tactivation from goals: %s", activation_goals)
-        rospy.logdebug("\tinhibition from goals: %s", inhibition_goals)
-        rospy.logdebug("\tactivation from predecessors: %s", activation_predecessors)
-        rospy.logdebug("\tactivation from successors: %s", activation_successors)
-        rospy.logdebug("\tinhibition from conflicted: %s", inhibition_conflictors)
-        rospy.logdebug("\tactivation from plan: %s", activation_plan)
+        rhbplog.logdebug("\tactivation from preconditions: %s", activation_precondition)
+        rhbplog.logdebug("\tactivation from goals: %s", activation_goals)
+        rhbplog.logdebug("\tinhibition from goals: %s", inhibition_goals)
+        rhbplog.logdebug("\tactivation from predecessors: %s", activation_predecessors)
+        rhbplog.logdebug("\tactivation from successors: %s", activation_successors)
+        rhbplog.logdebug("\tinhibition from conflicted: %s", inhibition_conflictors)
+        rhbplog.logdebug("\tactivation from plan: %s", activation_plan)
 
         current_activation_step =  activation_precondition \
                                         + activation_goals \
@@ -192,7 +194,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                     if correlation * indicator > 0.0:  # This means we affect the sensor in a way that is desirable by the goal
                         totalActivation = correlation * indicator * self._goal_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",
                                 ref_behaviour.name, len(behavioursActivatedBySameGoal), goal.name, effect_name,
                                 behavioursActivatedBySameGoal, totalActivation, self._goal_bias)
@@ -223,7 +225,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
                         totalInhibition = -(1 - abs(indicator)) * abs(correlation) * self._conflictor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",
                                 ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
@@ -232,7 +234,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                     elif correlation != 0 and indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
                         totalInhibition = -abs(correlation) * self._conflictor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",
                                 ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
@@ -263,7 +265,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         totalActivation = correlation * indicator * (
                         behaviour.activation / self._manager.totalActivation) * self._predecessor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",
                                 ref_behaviour.name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
                                 behavioursThatShareThisWish, totalActivation)
@@ -292,7 +294,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         totalActivation = wish * indicator * (
                         behaviour.activation / self._manager.totalActivation) * self._successor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating activation from successors for %s. There is/are %d active predecessor(s) of %s via %s: %s and a total activation score of %f",
                                 ref_behaviour.name, len(behavioursThatShareOurCorrelation), behaviour.name, effect_name,
                                 behavioursThatShareOurCorrelation, totalActivation)
@@ -328,7 +330,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         totalInhibition = -(1 - abs(wish)) * abs(correlation) * (
                         behaviour.activation / self._manager.totalActivation) * self._conflictor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating inhibition from conflicted for %s. %s is worsened via %s by %d behaviour(s): %s with a total score of %f",
                                 ref_behaviour.name, behaviour.name, effect_name,
                                 len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation),
@@ -339,7 +341,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         totalInhibition = -abs(correlation) * (
                         behaviour.activation / self._manager.totalActivation) * self._conflictor_bias
                         if self._extensive_logging:
-                            rospy.logdebug(
+                            rhbplog.logdebug(
                                 "Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f",
                                 ref_behaviour.name, behaviour.name, effect_name, wish,
                                 len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation),
