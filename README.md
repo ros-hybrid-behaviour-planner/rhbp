@@ -12,6 +12,17 @@ RHBP is a planning and decision making component for ROS. The hybrid approach is
 
 ## Build
 
+### Dependencies
+
+Required for knowledge_base
+
+```bash
+pip install lindypy
+
+```
+
+### Clone and build
+
 In order to use this package in your ROS application just clone this repository into your workspace sources and build your workspace.
 
 ```bash
