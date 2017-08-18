@@ -75,13 +75,6 @@ class Behaviour(object):
         else:
             self.__execution_step_service = None
 
-    def __del__(self):
-        '''
-        Destructor
-        '''
-        if (self.__execution_step_service):
-            self.__execution_step_service.shutdown()
-
     def do_step(self):
         if not (self.__execution_step_service):
             rhbplog.logerr('Step method is called, but behavior does not need a step')
@@ -417,40 +410,45 @@ class BehaviourBase(object):
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())
 
-    def unregister(self):
+    def unregister(self, terminate_services=True):
         """
         Remove/Unregister behaviour from the manager
+        :param terminate_services: True for shuting down all service interfaces as well
         """
         try:
             service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
+            rhbplog.logdebug("Waiting for service %s", service_name)
+            # do not wait forever here, manager might be already closed
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             try:
-                rhbplog.logdebug("Waiting for service %s", service_name)
-                # do not wait forever here, manager might be already closed
-                rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
-            except rospy.ROSException:
-                # if the service is not available this is not crucial.
-                return
-            remove_behaviour = rospy.ServiceProxy(service_name, RemoveBehaviour)
-            remove_behaviour(self._name)
-            self._registered = False
-        except rospy.ServiceException:
-            rhbplog.logerr("ROS service exception in 'unregister()' of behaviour '%s': %s", self._name,
-                         traceback.format_exc())
+                remove_behaviour = rospy.ServiceProxy(service_name, RemoveBehaviour)
+                remove_behaviour(self._name)
+            except rospy.ServiceException:
+                rhbplog.logerr("ROS service exception in 'unregister()' of behaviour '%s': %s", self._name,
+                               traceback.format_exc())
+        except rospy.ROSException:
+            # if the service is not available this is not crucial.
+            pass
+
+        if terminate_services:
+            self._getStatusService.shutdown()
+            self._startService.shutdown()
+            self._stopService.shutdown()
+            self._activateService.shutdown()
+            self._pddlService.shutdown()
+            self._priorityService.shutdown()
+            self._executionTimeoutService.shutdown()
+            if self._requires_execution_steps:
+                self.__execution_step_service.shutdown()
+        self._registered = False
 
     def __del__(self):
         '''
         Destructor
         '''
         try:
-            if self._registered:
-                self.unregister()
-            self._getStatusService.shutdown()
-            self._startService.shutdown()
-            self._stopService.shutdown()
-            self._activateService.shutdown()
-            self._priorityService.shutdown()
-            self._executionTimeoutService.shutdown()
-            self._pddlService.shutdown()
+            if hasattr(self,'_registered') and self._registered:
+                self.unregister(terminate_services=True)
         except Exception:
             rhbplog.logerr("Error in destructor of BehaviourBase: %s", traceback.format_exc())
 

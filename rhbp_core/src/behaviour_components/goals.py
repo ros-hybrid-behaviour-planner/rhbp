@@ -162,15 +162,21 @@ class Goal(object):
         self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activateCallback)
         self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
 
+    def _cleanup_topics_services(self):
+        """
+        Cleaning up ROS communication interface
+        """
+        self._activateService.shutdown()
+        self._priorityService.shutdown()
+
     def __del__(self):
         '''
         Destructor
         '''
         try:
-            self._activateService.shutdown()
-            self._priorityService.shutdown()
-        except Exception as e:
-            rhbplog.logerr("Fucked up in destructor of GoalBase: %s", e)
+            self._cleanup_topics_services()
+        except Exception:
+            rhbplog.logerr("Destructor of GoalBase failed: %s", traceback.format_exc())
 
     def updateComputation(self):
         """
@@ -414,25 +420,37 @@ class GoalBase(Goal):
             rhbplog.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
-    def unregister(self):
+    def _cleanup_topics_services(self):
+        """
+        Cleaning up ROS communication interface
+        """
+        super(GoalBase, self)._cleanup_topics_services()
+        self._getStatusService.shutdown()
+        self._pddlService.shutdown()
+
+    def unregister(self, terminate_services=True):
         """
         Remove/Unregister behaviour from the manager
+        :param terminate_services: True for shuting down all service interfaces as well
         """
         try:
             service_name = self._planner_prefix + '/' + 'RemoveGoal'
+            rhbplog.logdebug("Waiting for service %s", service_name)
+            # do not wait forever here, manager might be already closed
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             try:
-                rhbplog.logdebug("Waiting for service %s", service_name)
-                # do not wait forever here, manager might be already closed
-                rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
-            except rospy.ROSException:
-                # if the service is not available this is not crucial.
-                return
-            remove_goal = rospy.ServiceProxy(service_name, RemoveGoal)
-            remove_goal(self._name)
-            self._registered = False
-        except rospy.ServiceException:
-            rhbplog.logerr("ROS service exception in 'unregister' of goal '%s': %s", self._name,
-                         traceback.format_exc())
+                remove_goal = rospy.ServiceProxy(service_name, RemoveGoal)
+                remove_goal(self._name)
+            except rospy.ServiceException:
+                rhbplog.logerr("ROS service exception in 'unregister' of goal '%s': %s", self._name,
+                               traceback.format_exc())
+        except rospy.ROSException:
+            # if the service is not available this is not crucial.
+            pass
+
+        self._registered = False
+        if terminate_services:
+            self._cleanup_topics_services()
 
     def __del__(self):
         '''
@@ -440,9 +458,8 @@ class GoalBase(Goal):
         '''
         try:
             if self._registered:
-                self.unregister()
-            self._getStatusService.shutdown()
-            self._pddlService.shutdown()
+                self.unregister(terminate_services=True)
+
             super(GoalBase, self).__del__()
         except Exception as e:
             rhbplog.logerr("Error in destructor of GoalBase: %s", e)
@@ -551,3 +568,7 @@ class PublisherGoal(GoalBase):
                                    initial_value=self._activated)
         activator = BooleanActivator()
         return Condition(name=condition_name, sensor=sensor, activator=activator)
+
+    def _cleanup_topics_services(self):
+        super(PublisherGoal, self)._cleanup_topics_services(terminate_services=True)
+        self.__pub.charge()
