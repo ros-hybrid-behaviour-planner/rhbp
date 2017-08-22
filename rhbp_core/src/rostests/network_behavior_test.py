@@ -16,7 +16,7 @@ from behaviour_components.activators import Condition, ThresholdActivator
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
 from behaviour_components.network_behavior import NetworkBehavior
-from behaviour_components.pddl import Effect
+from behaviour_components.condition_elements import Effect
 from behaviour_components.sensors import SimpleTopicSensor
 from std_msgs.msg import Int32
 

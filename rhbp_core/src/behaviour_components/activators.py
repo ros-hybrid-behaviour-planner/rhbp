@@ -8,7 +8,8 @@ from std_msgs.msg import Float32
 import rospy
 import traceback
 
-from behaviour_components.conditions import Conditonal
+from .conditions import Conditonal
+from .condition_elements import Wish
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
@@ -80,9 +81,9 @@ class Condition(Conditonal):
         returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
         Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
         '''
-        effect_name = self._activator.getPDDLFunctionName(self._sensor.name)
         try:
-            return [(self._get_pddl_effect_name(self._sensor), self._activator.getSensorWish(self._normalizedSensorValue))]
+            indicator = self._activator.getSensorWish(self._normalizedSensorValue)
+            return [Wish(sensor_name=self._sensor.name, indicator=indicator, activator_name=self._activator.name)]
         except AssertionError:
             rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
@@ -227,8 +228,8 @@ class MultiSensorCondition(Condition):
         try:
             result = []
             for sensor in self._sensors:
-                effect_name = self._get_pddl_effect_name(sensor)
-                result.append((effect_name,self._activator.getSensorWish(self._normalizedSensorValues[sensor])))
+                indicator = self._activator.getSensorWish(self._normalizedSensorValues[sensor])
+                result.append(Wish(sensor_name=sensor.name, indicator=indicator, activator_name=self._activator.name))
             return result
         except AssertionError:
             rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
@@ -396,6 +397,10 @@ class Activator(object):
 
     def __repr__(self):
         return str(self)
+
+    @property
+    def name(self):
+        return self._name
     
 
 class BooleanActivator(Activator):

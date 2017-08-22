@@ -11,9 +11,10 @@ import itertools
 
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import Wish, Correlation, Status
+from rhbp_core.msg import Correlation, Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
-from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name, Effect
+from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
+from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter
 
 import utils.rhbp_logging
@@ -103,7 +104,7 @@ class Behaviour(object):
             self._correlations = [(correlation.sensorName, correlation.indicator) for correlation in status.correlations]
             self._preconditionSatisfaction = status.satisfaction
             self._readyThreshold = status.threshold
-            self._wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
+            self._wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
             if self._isExecuting == True and status.isExecuting == False:
                 rhbplog.loginfo("%s finished. resetting activation", self._name)
                 if self._reset_activation:
@@ -119,7 +120,9 @@ class Behaviour(object):
             self._executionTimeout = status.executionTimeout
             if self._name != status.name:
                 rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
-            rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s", self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction, self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
+            rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
+                             self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction,
+                             self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
 
@@ -204,6 +207,9 @@ class Behaviour(object):
             
     @property
     def wishes(self):
+        """
+        :return: list(Wishes()) 
+        """
         return self._wishes
     
     @property
@@ -508,6 +514,7 @@ class BehaviourBase(object):
         """
         This method should return a list of Wish messages indicating the desired sensor changes that would satisfy its preconditions.
         A Wish message is constructed from a string (sensor name) and a desire indicator (float, [-1 to 1]).
+        :return: list(Wish) << msg type
         """
         wishes = [] # this list gets filled with the wishes of the individual preconditions
         for p in filter(lambda x: x.optional == False, self._preconditions): # check mandatory ones first because if there is an error we don't need to look at the optional ones at all
@@ -523,7 +530,7 @@ class BehaviourBase(object):
                 pass
         if self.computeSatisfaction() > self._readyThreshold: # make sure that different sensor preconditions are really disjunctive. This is not the most efficient test but it ensures that all preconditions can (or better: have) be(en) met
             wishes = self.__filterWishes(wishes)
-        return [Wish(item[0], item[1]) for item in wishes]
+        return [item.get_wish_msg() for item in wishes]
     
     def __filterWishes(self, wishes):
         '''
@@ -531,13 +538,14 @@ class BehaviourBase(object):
         The idea behind that is that wishes concerning the same sensor are probably disjunctive and that the behaviour is satisfied if one of the options it has are fulfilled.
         The caller must ensure that this assumption holds true, otherwise it strip away legitimate wishes without which the behaviour's preconditions can never be met.
         '''
+        #TODO get_pddl_effect_name might have to be replaced/reconsidered
         filteredWishes = {}
-        for effect_name, indicator in wishes:
-            if not effect_name in filteredWishes:
-                filteredWishes[effect_name] = (effect_name, indicator)
+        for w in wishes:
+            if not w.sensor_name in filteredWishes:
+                filteredWishes[w.get_pddl_effect_name()] = w
             else:
-                if abs(filteredWishes[effect_name][1]) > abs(indicator):
-                    filteredWishes[effect_name] = (effect_name, indicator)
+                if abs(filteredWishes[w.get_pddl_effect_name()].indicator) > abs(w.indicator):
+                    filteredWishes[w.get_pddl_effect_name()] = w
         return filteredWishes.values()
     
     def getProgress(self):

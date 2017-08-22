@@ -44,42 +44,6 @@ class PDDL(object):
     def __repr__(self):
         return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement
 
-class Effect(object):
-    """
-    This class models effects and their combinations.
-    All effects (correlations) are assumed to happen simultaneously except otherwise stated.
-    """
-    def __init__(self, sensorName, indicator, sensorType = bool, condition = None):
-        """
-        :param sensorName: name of the influenced sensor/activator pair
-        :type sensorName: str
-        :param indicator: float value indicating the strength and the direction of the influence, commonly between [-1,1], 0 refers to no influence
-        :type indicator: float
-        :param sensorType: bool, int or float
-        :param condition: manually added conditional effect
-        :type condition: str
-        """
-        self.sensorName = sensorName
-        self.indicator = indicator
-        self.sensorType = sensorType
-        self.condition = condition
-        
-    def getEffectPDDL(self):
-        pddl = PDDL(statement = "(")
-        obr = 1 # count opened brackets
-        if self.condition is not None:
-            pddl.statement += "when ({0}) (".format(self.condition)
-            obr += 1
-        if self.sensorType is bool:
-            pddl.statement += self.sensorName if self.indicator > 0 else "not ({0})".format(self.sensorName)
-            pddl.predicates.add(self.sensorName) # TODO: What about other predicates employed in conditions by user??
-        else: # its numeric and not bool
-            pddl.statement += "{0} ({1}) {2}".format("increase" if self.indicator > 0.0 else "decrease", self.sensorName, abs(self.indicator))
-            pddl.functions.add(self.sensorName) # TODO: What about other functions employed in conditions by user??
-        pddl.statement += ")" * obr # close the brackets
-        return pddl
-        
-        
 def tokenizePDDL(pddlString):
     '''
     This function returns a list of first level tokens.

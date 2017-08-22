@@ -316,7 +316,7 @@ class Manager(object):
                 goal.sync()
                 statusMessage = Status()
                 statusMessage.name = goal.name
-                statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in goal.wishes]
+                statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]
                 statusMessage.active = goal.active
                 statusMessage.activated = goal.activated
                 statusMessage.satisfaction = goal.fulfillment
@@ -368,7 +368,7 @@ class Manager(object):
                 statusMessage.activated = behaviour.activated
                 statusMessage.active = behaviour.active
                 statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
-                statusMessage.wishes = [Wish(sensorName, indicator) for (sensorName, indicator) in behaviour.wishes]
+                statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
                 plannerStatusMessage.behaviours.append(statusMessage)
 
             rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)

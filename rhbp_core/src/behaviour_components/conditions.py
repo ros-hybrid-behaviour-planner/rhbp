@@ -1,13 +1,14 @@
 '''
 Created on 13.04.2015
 
-@author: stephan
+@author: wypler, hrabia
 '''
 
 import warnings
 import operator
 import itertools
 from .pddl import PDDL
+from .condition_elements import Wish
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
@@ -314,15 +315,15 @@ class Negation(Conditonal):
         
         l = []
         for w in wishes:
-            wish_value = w[1]
+            wish_value = w.indicator
             if wish_value > 0:
                 wish_value = (1 - wish_value) * -1
             elif wish_value < 0:
                 wish_value = (1 - abs(wish_value))
             else: #wish value == 0
                 # determine if it has to be -1 or +1
-                wish_value = directions[w[0]]
-            l.append((w[0], wish_value)) #negation
+                wish_value = directions[w.get_pddl_effect_name()]
+            l.append(Wish(sensor_name=w.sensor_name, indicator=wish_value, activator_name=w.activator_name)) #negation
         return l
 
     def getPreconditionPDDL(self, satisfaction_threshold):

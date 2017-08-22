@@ -14,11 +14,12 @@ from abc import ABCMeta, abstractmethod
 import rospy
 from std_msgs.msg import Bool
 
-from rhbp_core.msg import Wish, Status
+from rhbp_core.msg import Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse, RemoveGoal
 from .activators import Condition, BooleanActivator
 from .conditions import Conditonal
+from .condition_elements import Wish
 from .pddl import PDDL, mergeStatePDDL
 from .sensors import SimpleTopicSensor
 from utils.misc import FinalInitCaller
@@ -72,12 +73,15 @@ class AbstractGoalRepresentation(object):
 
     @property
     def wishes(self):
+        """
+        :return: list of (Wish())
+        """
         return self.__wishes
 
     @wishes.setter
     def wishes(self, wishes):
         '''
-        :param wishes: list of (sensor name <string> : indicator <float> [-1 to 1])
+        :param wishes: list of (Wish())
         '''
         self.__wishes = wishes
 
@@ -203,7 +207,7 @@ class Goal(object):
         A Wish message is constructed from a string (effect name) and a desire indicator (float, [-1 to 1]).
         """
         try:
-            return [Wish(item[0], item[1]) for item in
+            return [item.get_wish_msg() for item in
                     list(itertools.chain.from_iterable([x.getWishes() for x in self._conditions]))]
         except AssertionError:  # this probably comes from an uninitialized sensor or not matching activator for the sensor's data type in at least one precondition
             self._active = False
@@ -316,7 +320,7 @@ class GoalProxy(AbstractGoalRepresentation):
             get_status_request = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = get_status_request().status
             self.fulfillment = status.satisfaction
-            self.wishes = [(wish.sensorName, wish.indicator) for wish in status.wishes]
+            self.wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
             self.active = status.active
             self.activated = status.activated
             self.priority = status.priority
@@ -521,7 +525,7 @@ class OfflineGoal(AbstractGoalRepresentation):
     def sync(self):
         self.__goal.updateComputation()
         self.fulfillment = self.__goal.computeSatisfaction()
-        self.wishes = [(wish.sensorName, wish.indicator) for wish in self.__goal.computeWishes()]
+        self.wishes =  [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
         self._priority = self.__goal.priority
         self.active = self.__goal.activated
 

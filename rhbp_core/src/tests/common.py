@@ -11,7 +11,7 @@ import rospy
 from std_msgs.msg import Bool,Int32
 
 from behaviour_components.behaviours import BehaviourBase
-from behaviour_components.pddl import Effect
+from behaviour_components.condition_elements import Effect
 
 
 class SetTrueBehavior(BehaviourBase):
