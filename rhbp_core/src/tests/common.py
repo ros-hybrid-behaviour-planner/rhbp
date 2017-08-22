@@ -22,7 +22,7 @@ class SetTrueBehavior(BehaviourBase):
     def __init__(self, effect_name, topic_name, name, **kwargs):
         super(SetTrueBehavior, self).__init__(name, requires_execution_steps=True, **kwargs)
         if effect_name:
-            self._correlations = [Effect(effect_name, 1, sensorType=bool)]
+            self._correlations = [Effect(sensor_name=effect_name, indicator=1, sensor_type=bool)]
         self.__publisher = rospy.Publisher(topic_name, Bool, queue_size=10)
         self.was_executed = False
         rospy.sleep(0.1)
@@ -49,7 +49,7 @@ class IncreaserBehavior(BehaviourBase):
                  **kwargs):
         super(IncreaserBehavior, self).__init__(name, requires_execution_steps=True, **kwargs)
         if effect_name:
-            self._correlations = [Effect(effect_name, 1, sensorType=int)]
+            self._correlations = [Effect(sensor_name=effect_name, indicator=1, sensor_type=int)]
         self.__publisher = rospy.Publisher(topic_name, Int32, queue_size=10)
         self.__next_value = 1
         self.was_executed = False

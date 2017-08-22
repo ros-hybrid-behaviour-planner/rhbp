@@ -229,7 +229,7 @@ class Manager(object):
             changeWasExpected = False
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
-                    if item[0] == sensorName and item[1] * indicator > 0: # the observed change happened because of the running behaviour (at least the behaviour is correlated to the changed sensor in the correct way)
+                    if item.get_pddl_effect_name() == sensorName and item.indicator * indicator > 0: # the observed change happened because of the running behaviour (at least the behaviour is correlated to the changed sensor in the correct way)
                         changeWasExpected = True
                         break
                 if changeWasExpected:
@@ -367,7 +367,7 @@ class Manager(object):
                 statusMessage.independentFromPlanner = behaviour.independentFromPlanner
                 statusMessage.activated = behaviour.activated
                 statusMessage.active = behaviour.active
-                statusMessage.correlations = [Correlation(sensorName, value) for (sensorName, value) in behaviour.correlations]
+                statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
                 statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
                 plannerStatusMessage.behaviours.append(statusMessage)
 
@@ -418,7 +418,7 @@ class Manager(object):
 
                 currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                behaviour_is_interferring_others = self.handle_interferring_correlations(behaviour, currently_influenced_sensors)
+                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interferring_correlations(behaviour, currently_influenced_sensors)
 
                 if behaviour_is_interferring_others:
                     continue
@@ -463,14 +463,16 @@ class Manager(object):
         Method checks and resolves (if possible) conflicts with other behaviours of a given behaviour
         :param behaviour: the behaviour that is about to be started
         :param currently_influenced_sensors: list of the currently influenced sensors, will be updated if necessary
-        :return: True if this behaviour is interfering and this cannot be resolved
+        :return: tuple(True if this behaviour is interfering and this cannot be resolved, maybe updated currently_influenced_sensors)
         """
+        #TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
+
         interferingCorrelations = currently_influenced_sensors.intersection(
-            set([item[0] for item in behaviour.correlations]))
-        if len(
-                interferingCorrelations) > 0 and not behaviour.manualStart:  # it must not conflict with an already running behaviour ...
+            set([item.get_pddl_effect_name() for item in behaviour.correlations]))
+        # it must not conflict with an already running behaviour ...
+        if len(interferingCorrelations) > 0 and not behaviour.manualStart:
             alreadyRunningBehavioursRelatedToConflict = filter(
-                lambda x: len(interferingCorrelations.intersection(set([item[0] for item in x.correlations]))) > 0,
+                lambda x: len(interferingCorrelations.intersection(set([item.get_pddl_effect_name() for item in x.correlations]))) > 0,
                 self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
             assert len(
                 alreadyRunningBehavioursRelatedToConflict) <= 1  # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
@@ -478,8 +480,9 @@ class Manager(object):
             stoppableBehaviours = filter(
                 lambda x: x.priority <= behaviour.priority and x.interruptable and not x.manualStart,
                 alreadyRunningBehavioursRelatedToConflict)  # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
-            if set(stoppableBehaviours) == set(
-                    alreadyRunningBehavioursRelatedToConflict):  # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that doesn't solve the problem and they died for nothing.
+            # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that
+            # doesn't solve the problem and they died for nothing.
+            if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict):
                 rhbplog.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved",
                               behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
                 for conflictor in stoppableBehaviours: # stop another behaviour in order to resolve the conflict
@@ -493,16 +496,17 @@ class Manager(object):
                 rhbplog.loginfo(
                     "%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)",
                     behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
-                return True
-        return False
+                return True, currently_influenced_sensors
+        return False, currently_influenced_sensors
 
     def _get_currently_influenced_sensors(self):
         """
         Get a set of the currently influenced sensor of all executed behaviours
         :return: set of sensors
         """
+        # TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
         currently_influenced_sensors = set(list(
-            itertools.chain.from_iterable([[item[0] for item in x.correlations] for x in self.__executedBehaviours])))
+            itertools.chain.from_iterable([[item.get_pddl_effect_name() for item in x.correlations] for x in self.__executedBehaviours])))
         rhbplog.loginfo("currently influenced sensors: %s", currently_influenced_sensors)
         return currently_influenced_sensors
 

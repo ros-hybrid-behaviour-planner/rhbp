@@ -3,7 +3,7 @@
 #@author: wypler, hrabia, rieger
 
 from __future__ import division # force floating point division when using plain /
-from behaviour_components.pddl import PDDL
+from behaviour_components.pddl import PDDL, get_pddl_effect_name
 from std_msgs.msg import Float32
 import rospy
 import traceback
@@ -327,7 +327,7 @@ class Activator(object):
         self._maxActivation = float(maxActivation)
 
     def getPDDLFunctionName(self, sensorName):
-        return self._name + '_' + sensorName
+        return get_pddl_effect_name(sensorName, self._name)
 
     @staticmethod
     def restore_condition_name_from_pddl_function_name(pddl_function_name, sensor_name):

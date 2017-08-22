@@ -70,7 +70,7 @@ class NetworkBehavior(BehaviourBase):
         :return: unique name for goal
         """
         # x as separator between counter an sensor names, to prevent conflict, caused by unusual names
-        name = self.__goal_name_prefix + str(self.__goal_counter) + 'X' + effect.sensorName
+        name = self.__goal_name_prefix + str(self.__goal_counter) + 'X' + effect.sensor_name
         self.__goal_counter += 1
         return name
 
@@ -83,18 +83,18 @@ class NetworkBehavior(BehaviourBase):
         :param goal_name: unique name for the goal
         :return: a goal, which causes the manager to work on the effect during the whole time
         """
-        if (effect.sensorType == bool):
+        if effect.sensor_type == str(bool):
             desired_value = True if effect.indicator > 0 else False
             activator = BooleanActivator(name=activator_name, desiredValue=desired_value)
             condition = Condition(activator=activator, sensor=sensor)
             return OfflineGoal(name=goal_name,planner_prefix=self.get_manager_prefix(), permanent=True, conditions={condition})
-        if (effect.sensorType == int or effect.sensorType == float):
+        if effect.sensor_type == str(int) or effect.sensor_type == str(float):
             activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator),
                                         name=activator_name)
             condition = Condition(activator=activator, sensor=sensor)
             return OfflineGoal(goal_name, planner_prefix=self.get_manager_prefix(), permanent=True, conditions={condition})
-        raise RuntimeError(msg='Cant create goal for effect type \'' + str(
-            effect.sensorType) + '\'. Overwrite the method _create_goal for handle the type')
+        raise RuntimeError(msg='Cant create goal for effect type \'' +
+            effect.sensor_type + '\'. Overwrite the method _create_goal to handle the type')
 
     @deprecated
     def add_correlations(self, correlations):
@@ -128,13 +128,17 @@ class NetworkBehavior(BehaviourBase):
         Furthermore creates a goal for each Effect and registers it at the nested Manager
         :param sensor_effect: list of tuples of (Sensor, Effect)
         """
-        for effect in sensor_effect:
-            goal_name = self.__generate_goal_name(effect[1])
-            activator_name = self._restore_condition_name_from_pddl_function_name(effect[1].sensorName, effect[0].name)
-            goal = self._create_goal(sensor=effect[0], effect=effect[1], goal_name=goal_name,
+        #TODO this might has to be revised
+        for sensor, effect in sensor_effect:
+            goal_name = self.__generate_goal_name(effect)
+            if not effect.activator_name:
+                activator_name = self._restore_condition_name_from_pddl_function_name(effect.sensor_name, sensor.name)
+            else:
+                activator_name = effect.activator_name
+            goal = self._create_goal(sensor=sensor, effect=effect, goal_name=goal_name,
                                      activator_name=activator_name)
             self.__manager.add_goal(goal)
-            self._correlations.append(effect[1])
+            self._correlations.append(effect)
 
     def add_goal(self, goal):
         """

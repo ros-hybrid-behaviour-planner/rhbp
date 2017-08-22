@@ -56,8 +56,8 @@ class TestNetworkBehavior(unittest.TestCase):
         goal.add_condition(condition)
         m.add_goal(goal)
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        effect = Effect(sensorName=pddl_function_name, indicator=1, sensorType=int)
+
+        effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix, createLogFiles=True)
         first_level_network.add_correlations_and_goals([(sensor, effect)])
@@ -68,6 +68,7 @@ class TestNetworkBehavior(unittest.TestCase):
         # Both methods are used here, to demonstrate both ways.
         second_level_network.add_correlations_and_goals(sensor_correlations=[(sensor, effect)])
 
+        pddl_function_name = condition.getFunctionNames()[0]
         increaser_behavior = IncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
                                                     name=method_prefix + "TopicIncreaser",
                                                     plannerPrefix=second_level_network.get_manager_prefix())

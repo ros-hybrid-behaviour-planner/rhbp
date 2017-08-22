@@ -44,6 +44,19 @@ class PDDL(object):
     def __repr__(self):
         return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement
 
+
+def get_pddl_effect_name(sensor_name, activator_name):
+    """
+    generate an effect name that uniquely identifies a particular effect on a activator/sensor combination
+    :param sensor_name: name of the sensor
+    :param activator_name: name of the activator
+    :return: str pddl effect name
+    """
+    if activator_name:
+        return sensor_name  + '_' + activator_name
+    else:
+        return sensor_name
+
 def tokenizePDDL(pddlString):
     '''
     This function returns a list of first level tokens.

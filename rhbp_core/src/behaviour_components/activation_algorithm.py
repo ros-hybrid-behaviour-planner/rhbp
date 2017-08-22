@@ -187,18 +187,18 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for goal in self._manager.activeGoals:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in goal.wishes:
-                effect_name = wish.get_pddl_effect_name() #TODO this has to be reconsidered
-                indicator = wish.indicator
+                wish_name = wish.get_pddl_effect_name() #TODO this has to be reconsidered
+                wish_indicator = wish.indicator
                 # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours will get activation from the goal).
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(
-                    map(lambda x: x * indicator > 0.0, self._matching_effect_indicators(ref_behaviour=b, effect_name=effect_name)))]
-                for correlation in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=effect_name):
-                    if correlation * indicator > 0.0:  # This means we affect the sensor in a way that is desirable by the goal
-                        totalActivation = correlation * indicator * self._goal_bias
+                    map(lambda x: x * wish_indicator > 0.0, self._matching_effect_indicators(ref_behaviour=b, effect_name=wish_name)))]
+                for correlation_indicator in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=wish_name):
+                    if correlation_indicator * wish_indicator > 0.0:  # This means we affect the sensor in a way that is desirable by the goal
+                        totalActivation = correlation_indicator * wish_indicator * self._goal_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",
-                                ref_behaviour.name, len(behavioursActivatedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursActivatedBySameGoal), goal.name, wish_name,
                                 behavioursActivatedBySameGoal, totalActivation, self._goal_bias)
                         activatedByGoals.append((goal, totalActivation / len(
                             behavioursActivatedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -215,32 +215,32 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         inhibitedByGoals = []
         for goal in self._manager.activeGoals:
             for wish in goal.wishes:
-                effect_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
-                indicator = wish.indicator
+                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_indicator = wish.indicator
                 # Make a list of all active behaviours that inhibit this goal.
                 # Such behaviours are either negatively correlated to the goals wish (would prevent us from reaching the goal)
                 # or the goal's condition has already been reached and the behaviour would undo it (goal's wish indicator is 0 but there is non-zero correlation of the behaviour to that particular sensor)
                 behavioursInhibitedBySameGoal = [b for b in self._manager.activeBehaviours if any(
-                    map(lambda x: x * indicator < 0.0 or (x * indicator == 0.0 and x != 0.0),
-                        self._matching_effect_indicators(ref_behaviour=b, effect_name=effect_name)))]
-                for correlation in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=effect_name):
-                    if correlation * indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
+                    map(lambda x: x * wish_indicator < 0.0 or (x * wish_indicator == 0.0 and x != 0.0),
+                        self._matching_effect_indicators(ref_behaviour=b, effect_name=wish_name)))]
+                for correlation_indicator in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=wish_name):
+                    if correlation_indicator * wish_indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(indicator)) * abs(correlation) * self._conflictor_bias
+                        totalInhibition = -(1 - abs(wish_indicator)) * abs(correlation_indicator) * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",
-                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, wish_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(
                             behavioursInhibitedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
-                    elif correlation != 0 and indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
-                        totalInhibition = -abs(correlation) * self._conflictor_bias
+                    elif correlation_indicator != 0 and wish_indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
+                        totalInhibition = -abs(correlation_indicator) * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",
-                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, effect_name,
+                                ref_behaviour.name, len(behavioursInhibitedBySameGoal), goal.name, wish_name,
                                 behavioursInhibitedBySameGoal, totalInhibition)
                         inhibitedByGoals.append((goal, totalInhibition / len(
                             behavioursInhibitedBySameGoal)))  # The activation we get from that is the product of the correlation we have to this Sensor and the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition! Actually, we are only interested in the value itself but for debug purposed we make it a tuple including the goal itself
@@ -260,22 +260,22 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
             if behaviour == ref_behaviour or not behaviour.executable:  # ignore ourselves and non-executable predecessors
                 continue
             for wish in ref_behaviour.wishes:  # this is what we wish from a predecessor
-                effect_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
-                indicator = wish.indicator
+                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_indicator = wish.indicator
                 # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if
-                                               any(map(lambda x: x * indicator > 0.0, self._matching_wishes_indicators(ref_behaviour=b, effect_name=effect_name)))]
+                                               any(map(lambda x: x * wish_indicator > 0.0, self._matching_wishes_indicators(ref_behaviour=b, effect_name=wish_name)))]
                 # correlations that the behaviour (potential predecessor) has to the sensor of this wish
-                for correlation in self._matching_effect_indicators(ref_behaviour=behaviour, effect_name=effect_name):
-                    if correlation * behaviour.preconditionSatisfaction * indicator > 0.0:  # If a predecessor can satisfy my precondition
-                        totalActivation = correlation * indicator * (
+                for correlation_indicators in self._matching_effect_indicators(ref_behaviour=behaviour, effect_name=wish_name):
+                    if correlation_indicators * behaviour.preconditionSatisfaction * wish_indicator > 0.0:  # If a predecessor can satisfy my precondition
+                        totalActivation = correlation_indicators * wish_indicator * (
                         behaviour.activation / self._manager.totalActivation) * self._predecessor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating activation from predecessors for %s. There is/are %d active successor(s) of %s via %s: %s with total activation of %f",
-                                ref_behaviour.name, len(behavioursThatShareThisWish), behaviour.name, effect_name,
+                                ref_behaviour.name, len(behavioursThatShareThisWish), behaviour.name, wish_name,
                                 behavioursThatShareThisWish, totalActivation)
-                        activatedByPredecessors.append((behaviour, effect_name, totalActivation / len(
+                        activatedByPredecessors.append((behaviour, wish_name, totalActivation / len(
                             behavioursThatShareThisWish)))  # The activation we get is the likeliness that our predecessor fulfills the preconditions soon. behavioursThatShareThisWish knows how many more behaviours will get activation from this predecessor so we distribute it equally
         return (0.0,) if len(activatedByPredecessors) == 0 else (
         reduce(lambda x, y: x + y, (x[2] for x in activatedByPredecessors)), activatedByPredecessors)
@@ -291,13 +291,15 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for behaviour in self._manager.activeBehaviours:
             if behaviour == ref_behaviour or behaviour.executable:  # ignore ourselves and successors that are already executable
                 continue
-            for (effect_name, indicator) in ref_behaviour.correlations:  # this is what can give to a successor
+            for effect in ref_behaviour.correlations:  # this is what can give to a successor
+                effect_name = effect.get_pddl_effect_name() # TODO this has to be reconsidered
+                effect_indicator = effect.indicator
                 # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
                 behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(
-                    map(lambda x: x * indicator > 0.0, self._matching_effect_indicators(ref_behaviour=b, effect_name=effect_name)))]
+                    map(lambda x: x * effect_indicator > 0.0, self._matching_effect_indicators(ref_behaviour=b, effect_name=effect_name)))]
                 for wish_indicator in self._matching_wishes_indicators(ref_behaviour=behaviour, effect_name=effect_name):  # if we affect other behaviour's wishes somehow
-                    if wish_indicator * indicator > 0:  # if we are a predecessor so we get activation from that successor
-                        totalActivation = wish_indicator * indicator * (
+                    if wish_indicator * effect_indicator > 0:  # if we are a predecessor so we get activation from that successor
+                        totalActivation = wish_indicator * effect_indicator * (
                         behaviour.activation / self._manager.totalActivation) * self._successor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
@@ -320,7 +322,9 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for behaviour in self._manager.activeBehaviours:
             if behaviour == ref_behaviour:  # ignore ourselves
                 continue
-            for (effect_name, correlation) in ref_behaviour.correlations:  # this is what we do to sensors
+            for effect in ref_behaviour.correlations:  # this is what we do to sensors
+                effect_name = effect.get_pddl_effect_name()  # TODO this has to be reconsidered
+                effect_indicator = effect.indicator
                 for wish_indicator in self._matching_wishes_indicators(ref_behaviour=behaviour, effect_name=effect_name):
                     # Make a list of all behaviours that have the same bad influence on other behaviours as we have.
                     # Such behaviours are either also negatively correlated another behaviour's wish as we are
@@ -330,10 +334,10 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                                                                                           if any(
                             map(lambda x: x * wish_indicator < 0.0 or (x * wish_indicator == 0.0 and x != 0.0),
                                 self._matching_effect_indicators(ref_behaviour=b, effect_name=effect_name)))]
-                    if wish_indicator * correlation < 0.0:  # if we make an existing conflict stronger
+                    if wish_indicator * effect_indicator < 0.0:  # if we make an existing conflict stronger
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish_indicator)) * abs(correlation) * (
+                        totalInhibition = -(1 - abs(wish_indicator)) * abs(effect_indicator) * (
                         behaviour.activation / self._manager.totalActivation) * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
@@ -343,8 +347,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                                 behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, totalInhibition)
                         inhibitionFromConflictors.append((behaviour, effect_name, totalInhibition / len(
                             behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation)))  # Actually only the value is needed but it is a tuple for debug purposes. The length of behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation says how many more behaviours cause the same conflict to this conflictor so its inhibition shall be distributed among them.
-                    elif wish_indicator * correlation == 0.0 and wish_indicator == 0:  # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
-                        totalInhibition = -abs(correlation) * (
+                    elif wish_indicator * effect_indicator == 0.0 and wish_indicator == 0:  # if we would change the currently existing good state for that behaviour (wish is zero but we have non-zero correlation to it)
+                        totalInhibition = -abs(effect_indicator) * (
                         behaviour.activation / self._manager.totalActivation) * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
@@ -382,7 +386,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         :type effect_name: str
         :return: lst
         """
-        return [item[1] for item in ref_behaviour.correlations if item[0] == effect_name]
+        # TODO item.get_pddl_effect_name() might has to be reconsidered, maybe only sensor comparision is sufficient
+        return [item.indicator for item in ref_behaviour.correlations if item.get_pddl_effect_name() == effect_name]
 
     def _matching_wishes_indicators(self, ref_behaviour, effect_name):
         """
@@ -393,7 +398,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         :type effect_name: str
         :return: lst
         """
-        #TODO item.get_pddl_effect_name() might has to be reconsidered
+        #TODO item.get_pddl_effect_name() might has to be reconsidered, maybe only sensor comparision is sufficient
         return [item.indicator for item in ref_behaviour.wishes if item.get_pddl_effect_name() == effect_name]
 
 

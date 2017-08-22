@@ -101,7 +101,7 @@ class Behaviour(object):
             getStatusRequest = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
             status = getStatusRequest().status
             self._activationFromPreconditions = status.activation
-            self._correlations = [(correlation.sensorName, correlation.indicator) for correlation in status.correlations]
+            self._correlations = [Effect.from_msg(correlation) for correlation in status.correlations]
             self._preconditionSatisfaction = status.satisfaction
             self._readyThreshold = status.threshold
             self._wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
@@ -123,7 +123,7 @@ class Behaviour(object):
             rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
                              self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction,
                              self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
-        except rospy.ServiceException:
+        except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def _handle_service_timeout(self):
@@ -629,7 +629,7 @@ class BehaviourBase(object):
             status = Status(**{
                                "name"         : self._name, # this is sent for sanity check and planner status messages only
                                "activation"   : self.computeActivation(),
-                               "correlations" : [Correlation(x.sensorName, x.indicator) for x in self._correlations],
+                               "correlations" : [x.get_msg() for x in self._correlations],
                                "satisfaction" : self.computeSatisfaction(),
                                "threshold"    : self._readyThreshold,
                                "wishes"       : self.computeWishes(),
