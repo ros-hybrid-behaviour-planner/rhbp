@@ -38,6 +38,8 @@ class Condition(Conditonal):
         self._normalizedSensorValue = 0
         self._satisfaction = 0
 
+        Condition._instanceCounter += 1
+
     def sync(self):
         self._sensor.sync()
 
@@ -161,7 +163,7 @@ class MultiSensorCondition(Condition):
         :param name: see :py:class:`Condition`
         :param optional: see :py:class:`Condition`
         '''
-        self._name = name if name else "MultiSensorCondition {0}".format(Condition._instanceCounter)
+        self._name = name if name else "MultiSensorCondition {0}".format(MultiSensorCondition._instanceCounter)
 
         assert hasattr(sensors, '__getitem__'), "sensors is not a tuple or list"
         self._sensors = sensors
@@ -172,6 +174,8 @@ class MultiSensorCondition(Condition):
         self._sensorSatisfactions = dict.fromkeys(self._sensors, 0)
 
         self._satisfaction = 0
+
+        MultiSensorCondition._instanceCounter += 1
 
 
     def sync(self):
@@ -290,7 +294,6 @@ class PublisherCondition(Condition):
     This is a extended condition that automatically publishes the normalized value
     of the sensor used by this condition
     '''
-    _instanceCounter = 0  # static _instanceCounter to get distinguishable names
 
     def __init__(self, sensor, activator, name=None, optional=False):
         '''
@@ -325,6 +328,7 @@ class Activator(object):
         self._name = name if name else "Activator{0}".format(Activator._instanceCounter)
         self._minActivation = float(minActivation)
         self._maxActivation = float(maxActivation)
+        Activator._instanceCounter += 1
 
     def getPDDLFunctionName(self, sensorName):
         return get_pddl_effect_name(sensorName, self._name)
