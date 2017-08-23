@@ -51,18 +51,20 @@ class LogFileWriter(object):
 
     filename_max_length = os.pathconf('.', 'PC_NAME_MAX')
 
-    def __init__(self, path ,filename, extension):
+    def __init__(self, path, filename, extension, enable=True):
         """
         :param filename: the filename
         :param extension: file extension 
         """
-        self._enable = False
+        self._enable = enable
         self._file_handle = None
         self._path = path
 
         self.filename = self.clean_filename(extension, filename)
 
         make_directory_path_available(dir_path=path)
+
+        rospy.logdebug("Creating logfile %s", os.path.abspath(self._path + self.filename))
 
     def clean_filename(self, extension, filename):
         """

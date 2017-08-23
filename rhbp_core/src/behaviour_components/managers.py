@@ -72,7 +72,7 @@ class Manager(object):
         self.__log_file_path_prefix = self._prefix + '/' if self._prefix else ''
 
         if self._create_log_files:
-            self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix,filename="threshold",extension=".log")
+            self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix, filename="threshold", extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
