@@ -69,7 +69,7 @@ class Effect(object):
 
         pddl = PDDL(statement="(")
         obr = 1  # count opened brackets
-        if self.condition is not None:
+        if self.condition:
             pddl.statement += "when ({0}) (".format(self.condition)
             obr += 1
         if self.sensor_type == str(bool):
