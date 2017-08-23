@@ -163,7 +163,7 @@ class MultiSensorCondition(Condition):
         :param name: see :py:class:`Condition`
         :param optional: see :py:class:`Condition`
         '''
-        self._name = name if name else "MultiSensorCondition {0}".format(MultiSensorCondition._instanceCounter)
+        self._name = name if name else "MultiSensorCondition{0}".format(MultiSensorCondition._instanceCounter)
 
         assert hasattr(sensors, '__getitem__'), "sensors is not a tuple or list"
         self._sensors = sensors
@@ -217,7 +217,7 @@ class MultiSensorCondition(Condition):
     def _reduceSatisfaction(self):
         '''
         This class has to be implemented specific to used sensors and application
-        It has to return a new satisfaction value
+        ::return It has to return a new satisfaction value
         '''
         raise NotImplementedError()
 
@@ -284,7 +284,7 @@ class MultiSensorCondition(Condition):
         return  self._sensors
 
     def __str__(self):
-        return "{0} {1}".format(self._name, self.satisfaction)
+        return "{0}(satisfaction:{1})".format(self._name, self.satisfaction)
 
     def __repr__(self):
         return str(self)
@@ -607,8 +607,6 @@ class LinearActivator(Activator):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
 
         assert self.valueRange != 0
-
-        wish_value = 0
 
         if self.getDirection() > 0:
             # return how much is missing clamped to [0, 1]

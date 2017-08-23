@@ -663,7 +663,7 @@ class BehaviourBase(object):
         if issubclass(type(precondition), Conditonal):
             self._preconditions.append(precondition)
         else:
-            rhbplog.logwarn("Passed wrong object, requires Conditional")
+            rhbplog.logerr("Passed wrong object, requires Conditional")
 
 
     def add_effect(self, effect):
