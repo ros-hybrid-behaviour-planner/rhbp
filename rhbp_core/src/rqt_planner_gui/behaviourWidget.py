@@ -68,8 +68,10 @@ class BehaviourWidget(QWidget):
                                    "activated" : msg.activated,
                                    "satisfaction" : msg.satisfaction,
                                    "active" : str(msg.active),
+                                   #TODO information could be extended here
                                    "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
                                    "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes)),
+                                   #TODO information could be extended here
                                    "correlations" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "correlationsTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "activation" : msg.activation,
