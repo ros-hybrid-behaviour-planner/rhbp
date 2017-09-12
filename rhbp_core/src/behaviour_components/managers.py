@@ -292,86 +292,16 @@ class Manager(object):
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
             return
-        plannerStatusMessage = PlannerStatus()
+
         if self._create_log_files:  # debugging only
             self.__threshFile.append("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
-
-        plannerStatusMessage.activationThreshold = self._activationThreshold
-        self._totalActivation = 0.0
 
         self.send_discovery()
 
         with self._step_lock:
             rhbplog.logdebug("###################################### STEP {0} ######################################".format(self._stepCounter))
-            ### collect information about behaviours ###
-            for behaviour in self._behaviours:
-                behaviour.fetchStatus()
-                if behaviour.active:
-                    self._totalActivation += behaviour.activation
-            if self._totalActivation == 0.0:
-                self._totalActivation = 1.0 # the behaviours are going to divide by this so make sure it is non-zero
-            rhbplog.logdebug("############# GOAL STATES #############")
-            ### collect information about goals ###
-            for goal in self._goals:
-                goal.sync()
-                statusMessage = Status()
-                statusMessage.name = goal.name
-                statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]
-                statusMessage.active = goal.active
-                statusMessage.activated = goal.activated
-                statusMessage.satisfaction = goal.fulfillment
-                statusMessage.priority = goal.priority
-                plannerStatusMessage.goals.append(statusMessage)
-                rhbplog.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment, goal.wishes)
-                #Deactive non-permanent and satisfied goals
-                if goal.active and not goal.isPermanent and goal.satisfied:
-                    goal.activated = False
-                    rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
-                    goal.active = False # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
-            ### do housekeeping ###
-            self._activeGoals = filter(lambda x: x.active, self._goals)
-            self._activeBehaviours = filter(lambda x: x.active, self._behaviours) # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
-            ### use the symbolic planner if necessary ###
-            self._plan_if_necessary()
+            self.update_activation()
 
-            self._update_bias_parameters()
-
-            ### log behaviour stuff ###
-            rhbplog.logdebug("########## BEHAVIOUR  STATES ##########")
-            for behaviour in self._behaviours:
-                ### do the activation computation ###
-                self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
-                rhbplog.logdebug("%s", behaviour.name)
-                rhbplog.logdebug("\tactive %s", behaviour.active)
-                rhbplog.logdebug("\twishes %s", behaviour.wishes)
-                rhbplog.logdebug(
-                    "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
-
-            ### commit the activation computed in this step ###
-            for behaviour in self._behaviours:
-                self.activation_algorithm.commit_behaviour_activation(ref_behaviour=behaviour)
-                rhbplog.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
-                # collect all that stuff for the rqt gui
-                statusMessage = Status()
-                statusMessage.name = behaviour.name
-                statusMessage.activation = behaviour.activation
-                statusMessage.satisfaction = behaviour.preconditionSatisfaction
-                statusMessage.isExecuting = behaviour.isExecuting
-                statusMessage.executionTimeout = behaviour.executionTimeout
-                statusMessage.executionTime = behaviour.executionTime
-                statusMessage.progress = behaviour.progress
-                statusMessage.executable = behaviour.executable
-                statusMessage.threshold = behaviour.readyThreshold
-                statusMessage.priority = behaviour.priority
-                statusMessage.interruptable = behaviour.interruptable
-                statusMessage.independentFromPlanner = behaviour.independentFromPlanner
-                statusMessage.activated = behaviour.activated
-                statusMessage.active = behaviour.active
-                statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
-                statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
-                plannerStatusMessage.behaviours.append(statusMessage)
-
-            rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
             rhbplog.loginfo("############## ACTIONS ###############")
             self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
             amount_started_behaviours = 0
@@ -381,6 +311,7 @@ class Manager(object):
 
             currently_influenced_sensors = set()
 
+            # perform the decision making based on the calculated activations
             for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
                 if not behaviour.active and not behaviour.manualStart: # it must be active
@@ -439,10 +370,9 @@ class Manager(object):
                 amount_started_behaviours += 1
                 rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
-            plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
-            plannerStatusMessage.influencedSensors = currently_influenced_sensors
-
             activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
+
+            self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
             # Reduce or increase the activation threshold based on executed and started behaviours
             if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
@@ -452,11 +382,101 @@ class Manager(object):
                 rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                 self._activationThreshold *= (1 / activation_threshold_decay)
 
-            plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
-            plannerStatusMessage.stepCounter = self._stepCounter
-
-            self.__statusPublisher.publish(plannerStatusMessage)
         self._stepCounter += 1
+
+    def _publish_planner_status(self, activation_threshold_decay, currently_influenced_sensors):
+        """
+        Collect all information for the plannerStatusMessage and publish it
+        :param activation_threshold_decay: current activationThresholdDecay
+        :param currently_influenced_sensors: set() of currently influenced sensors
+        """
+        if self.__statusPublisher.get_num_connections() == 0:
+            return
+
+        plannerStatusMessage = PlannerStatus()
+        plannerStatusMessage.activationThreshold = self._activationThreshold
+        for goal in self._goals:
+            statusMessage = Status()
+            statusMessage.name = goal.name
+            statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]
+            statusMessage.active = goal.active
+            statusMessage.activated = goal.activated
+            statusMessage.satisfaction = goal.fulfillment
+            statusMessage.priority = goal.priority
+            plannerStatusMessage.goals.append(statusMessage)
+
+        # collect all that stuff for the rqt gui
+        for behaviour in self._behaviours:
+            statusMessage = Status()
+            statusMessage.name = behaviour.name
+            statusMessage.activation = behaviour.activation
+            statusMessage.satisfaction = behaviour.preconditionSatisfaction
+            statusMessage.isExecuting = behaviour.isExecuting
+            statusMessage.executionTimeout = behaviour.executionTimeout
+            statusMessage.executionTime = behaviour.executionTime
+            statusMessage.progress = behaviour.progress
+            statusMessage.executable = behaviour.executable
+            statusMessage.threshold = behaviour.readyThreshold
+            statusMessage.priority = behaviour.priority
+            statusMessage.interruptable = behaviour.interruptable
+            statusMessage.independentFromPlanner = behaviour.independentFromPlanner
+            statusMessage.activated = behaviour.activated
+            statusMessage.active = behaviour.active
+            statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
+            statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
+            plannerStatusMessage.behaviours.append(statusMessage)
+        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
+        plannerStatusMessage.influencedSensors = currently_influenced_sensors
+        plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
+        plannerStatusMessage.stepCounter = self._stepCounter
+        self.__statusPublisher.publish(plannerStatusMessage)
+
+    def update_activation(self):
+        """
+        Update all information about behaviours and goals and update the activation calculation
+        """
+        self._totalActivation = 0.0
+        ### collect information about behaviours ###
+        for behaviour in self._behaviours:
+            behaviour.fetchStatus()
+            if behaviour.active:
+                self._totalActivation += behaviour.activation
+        if self._totalActivation == 0.0:
+            self._totalActivation = 1.0  # the behaviours are going to divide by this so make sure it is non-zero
+        rhbplog.logdebug("############# GOAL STATES #############")
+        ### collect information about goals ###
+        for goal in self._goals:
+            goal.sync()
+            rhbplog.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment,
+                             goal.wishes)
+            # Deactivate non-permanent and satisfied goals
+            if goal.active and not goal.isPermanent and goal.satisfied:
+                goal.activated = False
+                rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
+                goal.active = False  # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
+        ### do housekeeping ###
+        self._activeGoals = filter(lambda x: x.active, self._goals)
+        self._activeBehaviours = filter(lambda x: x.active,
+                                        self._behaviours)  # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
+        ### use the symbolic planner if necessary ###
+        self._plan_if_necessary()
+        self._update_bias_parameters()
+        ### log behaviour stuff ###
+        rhbplog.logdebug("########## BEHAVIOUR  STATES ##########")
+        for behaviour in self._behaviours:
+            ### do the activation computation ###
+            self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
+            rhbplog.logdebug("%s", behaviour.name)
+            rhbplog.logdebug("\tactive %s", behaviour.active)
+            rhbplog.logdebug("\twishes %s", behaviour.wishes)
+            rhbplog.logdebug(
+                "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
+
+        ### commit the activation computed in this step ###
+        for behaviour in self._behaviours:
+            self.activation_algorithm.commit_behaviour_activation(ref_behaviour=behaviour)
+            rhbplog.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
+        rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
 
     def handle_interferring_correlations(self, behaviour, currently_influenced_sensors):
         """
