@@ -24,17 +24,19 @@ class NetworkBehavior(BehaviourBase):
 
     def __init__(self, name, requires_execution_steps=True,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
-                 correlations = None,
+                 correlations = None, always_update_activation = False,
                  **kwargs):
         """
         :param correlations: tuple <Effect>
         :param name: name of the behaviour that is also used to create the sub manager name together with the NetworkBehavior.MANAGER_POSTFIX
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
+        :param always_update_activation: if set to True the entire activation calculation of the sub manager is updated on each behaviour computation update
         :param kwargs: args for the manager, except the prefix arg
         """
         super(NetworkBehavior, self).__init__(name=name, requires_execution_steps=requires_execution_steps, **kwargs)
         self.requires_execution_steps = requires_execution_steps
+        self.always_update_activation = always_update_activation
         manager_args = {}
         manager_args.update(kwargs)
         manager_args['prefix'] = self.get_manager_prefix()
@@ -46,7 +48,7 @@ class NetworkBehavior(BehaviourBase):
         self.__goal_counter = 0
 
         if correlations is not None:
-            self.add_correlations(correlations)
+            self.add_effects(correlations)
 
     def updateComputation(self):
         super(NetworkBehavior, self).updateComputation()
@@ -146,6 +148,13 @@ class NetworkBehavior(BehaviourBase):
         :param goal: AbstractGoalRepresentation
         """
         self.__manager.add_goal(goal)
+
+    def updateComputation(self):
+        super(NetworkBehavior, self).updateComputation()
+
+        # only trigger the update if not already activated because then it would be executed anyhow
+        if self.always_update_activation and not self.__manager.activated:
+            self.__manager.update_activation(plan_if_necessary=False)
 
     def do_step(self):
         self.__manager.step()

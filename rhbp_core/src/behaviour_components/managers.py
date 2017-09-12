@@ -431,9 +431,10 @@ class Manager(object):
         plannerStatusMessage.stepCounter = self._stepCounter
         self.__statusPublisher.publish(plannerStatusMessage)
 
-    def update_activation(self):
+    def update_activation(self, plan_if_necessary=True):
         """
         Update all information about behaviours and goals and update the activation calculation
+        :param plan_if_necessary: enable or disable the check for required planning
         """
         self._totalActivation = 0.0
         ### collect information about behaviours ###
@@ -459,7 +460,8 @@ class Manager(object):
         self._activeBehaviours = filter(lambda x: x.active,
                                         self._behaviours)  # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
         ### use the symbolic planner if necessary ###
-        self._plan_if_necessary()
+        if plan_if_necessary:
+            self._plan_if_necessary()
         self._update_bias_parameters()
         ### log behaviour stuff ###
         rhbplog.logdebug("########## BEHAVIOUR  STATES ##########")
@@ -672,6 +674,10 @@ class Manager(object):
     @property
     def planExecutionIndex(self):
         return self._planExecutionIndex
+
+    @property
+    def activated(self):
+        return self.__activated
     
     @property
     def plan(self):
