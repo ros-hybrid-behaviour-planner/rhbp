@@ -436,11 +436,11 @@ class BooleanActivator(Activator):
     
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "(" + functionName + ")" if self._desired == True else "(not (" + functionName + "))", predicates = functionName)
+        return PDDL(statement = "(" + functionName + ")" if self._desired == True else "(not (" + functionName + "))", predicates=functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "(" + functionName + ")" if normalizedValue == True else "(not (" + functionName + "))", predicates = functionName)
+        return PDDL(statement="(" + functionName + ")" if normalizedValue == True else "(not (" + functionName + "))", predicates=functionName)
         
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -520,7 +520,7 @@ class ThresholdActivator(Activator):
     
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( = (" + functionName + ") {0:f} )".format(normalizedValue), functions = functionName)
+        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
     
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
