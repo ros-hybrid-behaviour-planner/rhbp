@@ -20,7 +20,7 @@
  * File: main.c
  * Description: The main routine for the Metric-FastForward Planner.
  *              Modified July 2011 to allow more command-line search 
- *              confiogurations, including improved cost-minimization
+ *              configurations, including improved cost-minimization
  *
  * Author: original version Joerg Hoffmann 2001/2002
  *         modified version Joerg Hoffmann 2012
