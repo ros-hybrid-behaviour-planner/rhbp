@@ -531,7 +531,10 @@ class ThresholdActivator(Activator):
 
 class GreedyActivator(Activator):
     """
-    This class is an activator that maximizes or minimizes a value
+    This class is an activator that maximizes or minimizes the current sensor value towards a given offset.
+    If the step_size=0 the activator will just be satisfied (not really greedy anymore) with the current sensor value,
+    but it will create PDDL conditions that are satisfied with the current value or higher/lower values depending on
+    the maximize parameter.
     """
 
     def __init__(self, maximize=True, step_size=1, name=None):
@@ -549,7 +552,10 @@ class GreedyActivator(Activator):
         return self.__maximize
 
     def computeActivation(self, normalizedValue):
-        return 0
+        if self.__step_size != 0:
+            return 0
+        else:
+            return 1
 
     def getDirection(self):
         return 1 if self.__maximize else -1
