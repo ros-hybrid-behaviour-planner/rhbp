@@ -104,11 +104,11 @@ class Manager(object):
                                                    self.__add_behaviour_callback)
         self.__addGoalService = rospy.Service(self._service_prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
         self.__removeBehaviourService = rospy.Service(self._service_prefix + 'RemoveBehaviour', RemoveBehaviour,
-                                                      self.__removeBehaviour)
-        self.__removeGoalService = rospy.Service(self._service_prefix + 'RemoveGoal', RemoveGoal, self.__removeGoal)
-        self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manualStart)
-        self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pauseCallback)
-        self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resumeCallback)
+                                                      self.__remove_behaviour_callback)
+        self.__removeGoalService = rospy.Service(self._service_prefix + 'RemoveGoal', RemoveGoal, self.__remove_goal_callback)
+        self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manual_start_callback)
+        self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
+        self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1)
 
@@ -572,7 +572,7 @@ class Manager(object):
             self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
             self._goals.append(goal)
             rhbplog.loginfo("A goal with name %s registered", goal.name)
-            self.__replanningNeeded = True;
+            self.__replanningNeeded = True
 
     def __add_goal_callback(self, request):
         """
@@ -597,7 +597,19 @@ class Manager(object):
             behaviour.manager = self
             self._behaviours.append(behaviour)
             rhbplog.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
-            self.__replanningNeeded = True;
+            self.__replanningNeeded = True
+
+    def remove_goal(self, goal_name):
+        with self._step_lock:
+            self._goals = [g for g in self._goals if
+                                g.name != goal_name]  # kick out existing goals with that name.
+            self.__replanningNeeded = True
+
+    def remove_behaviour(self, behaviour_name):
+        with self._step_lock:
+            # kick out existing behaviours with the same name.
+            self._behaviours = [b for b in self._behaviours if b.name != behaviour_name]
+            self.__replanningNeeded = True
 
     def __add_behaviour_callback(self, request):
         """
@@ -611,33 +623,28 @@ class Manager(object):
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
     
-    def __pauseCallback(self, dummy):
+    def __pause_callback(self, dummy):
         with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
             self.pause_counter += 1
             rhbplog.logdebug('Manager Paused')
             return EmptyResponse()
     
-    def __resumeCallback(self, dummy):
+    def __resume_callback(self, dummy):
         with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
             if self.pause_counter > 0:
                 self.pause_counter -= 1
                 rhbplog.logdebug('Manager Resumed')
             return EmptyResponse()
     
-    def __removeGoal(self, request):
-        with self._step_lock:
-            self._goals = [g for g in self._goals if
-                                g.name != request.name]  # kick out existing goals with that name.
-            self.__replanningNeeded = True;
-            return RemoveGoalResponse()
+    def __remove_goal_callback(self, request):
+        self.remove_goal(goal_name=request.name)
+        return RemoveGoalResponse()
+
+    def __remove_behaviour_callback(self, request):
+        self.remove_behaviour(behaviour_name=request.name)
+        return RemoveBehaviourResponse()
     
-    def __removeBehaviour(self, request):
-        with self._step_lock:
-            self._behaviours = [b for b in self._behaviours if b.name != request.name]# kick out existing behaviours with the same name.
-            self.__replanningNeeded = True;
-            return RemoveBehaviourResponse()
-    
-    def __manualStart(self, request):
+    def __manual_start_callback(self, request):
         for behaviour in self._behaviours:
             if behaviour.name == request.name:
                 behaviour.manualStart = request.forceStart
