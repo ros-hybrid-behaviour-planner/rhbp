@@ -85,7 +85,10 @@ class TestGoals(unittest.TestCase):
             rospy.sleep(0.1)
 
         goal.fetchStatus(3)
+
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
+
+        goal.unregister()
 
 
 if __name__ == '__main__':

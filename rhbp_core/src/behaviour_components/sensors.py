@@ -149,6 +149,9 @@ class PassThroughTopicSensor(Sensor):
     def topic_name(self):
         return self._topic_name
 
+    def __del__(self):
+        self._sub.unregister()
+
 
 class SimpleTopicSensor(PassThroughTopicSensor):
     """

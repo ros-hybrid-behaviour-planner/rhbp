@@ -158,6 +158,7 @@ class Goal(object):
         self._active = active  # if anything in the goal is not initialized or working properly this must be set to False and communicated via getStatus service
         self._activated = activated  # The activate Service sets the value of this property.
         self._priority = priority  # The higher the (unsigned) number the higher the importance
+        self._services_running = False
         self._init_services()
 
     def _init_services(self):
@@ -166,13 +167,16 @@ class Goal(object):
         #these are convenience services which can be called remotely in order to configure currently active goals and priorities
         self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activateCallback)
         self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
+        self._services_running = True
 
     def _cleanup_topics_services(self):
         """
         Cleaning up ROS communication interface
         """
-        self._activateService.shutdown()
-        self._priorityService.shutdown()
+        if self._services_running:
+            self._activateService.shutdown()
+            self._priorityService.shutdown()
+            self._services_running = False
 
     def __del__(self):
         '''
@@ -543,6 +547,9 @@ class OfflineGoal(AbstractGoalRepresentation):
 
     def add_condition(self, condition):
         self.__goal.addCondition(condition)
+
+    def unregister(self):
+        self.__goal._cleanup_topics_services()
 
 
 class PublisherGoal(GoalBase):
