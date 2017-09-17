@@ -44,7 +44,7 @@ class Behaviour(object):
         self._current_activation_step = 0.0 # The temporary activation step not yet combined with prior activation
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
-        self._interruptable = False # We get it via getStatus service of actual behaviour node
+        self._interruptable = True  # We get it via getStatus service of actual behaviour node
         self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
