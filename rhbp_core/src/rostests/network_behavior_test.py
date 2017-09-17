@@ -56,17 +56,16 @@ class TestNetworkBehavior(unittest.TestCase):
         goal.add_condition(condition)
         m.add_goal(goal)
 
-
         effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
 
         first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix, createLogFiles=True)
-        first_level_network.add_correlations_and_goals([(sensor, effect)])
+        first_level_network.add_effects_and_goals([(sensor, effect)])
 
         second_level_network = NetworkBehavior(name=method_prefix + '/SecondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(), createLogFiles=True)
         # Doesnt matter, whether the effects are added via the constructor or the add method.
         # Both methods are used here, to demonstrate both ways.
-        second_level_network.add_correlations_and_goals(sensor_correlations=[(sensor, effect)])
+        second_level_network.add_effects_and_goals([(sensor, effect)])
 
         pddl_function_name = condition.getFunctionNames()[0]
         increaser_behavior = IncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
