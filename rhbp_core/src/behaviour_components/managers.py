@@ -527,7 +527,7 @@ class Manager(object):
                                                 successor_bias=successor_bias, predecessor_bias=predecessor_bias,
                                                 activation_decay=activation_decay)
 
-    def _stop_behaviour(self, behaviour, reset_activation = True):
+    def _stop_behaviour(self, behaviour, reset_activation=True):
         """
         stop the execution of a behaviour
         :param behaviour: the behaviour to stop
