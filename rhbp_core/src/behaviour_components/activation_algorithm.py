@@ -137,13 +137,13 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
         activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
 
-        rhbplog.logdebug("\tactivation from preconditions: %s", activation_precondition)
-        rhbplog.logdebug("\tactivation from goals: %s", activation_goals)
-        rhbplog.logdebug("\tinhibition from goals: %s", inhibition_goals)
-        rhbplog.logdebug("\tactivation from predecessors: %s", activation_predecessors)
-        rhbplog.logdebug("\tactivation from successors: %s", activation_successors)
-        rhbplog.logdebug("\tinhibition from conflicted: %s", inhibition_conflictors)
-        rhbplog.logdebug("\tactivation from plan: %s", activation_plan)
+        rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
+        rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
+        rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
+        rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
+        rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
+        rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
+        rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
 
         current_activation_step =  activation_precondition \
                                         + activation_goals \
@@ -227,7 +227,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                     if correlation_indicator * wish_indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
                         # We want the inhibition to be stronger if the condition that we would worsen is almost true.
                         # So we take -(1 - abs(indicator * correlation)) as the amount of total inhibition created by this conflict and divide it by the number of conflictors
-                        totalInhibition = -(1 - abs(wish_indicator)) * abs(correlation_indicator) * self._conflictor_bias
+                        totalInhibition = -(1 - abs(wish_indicator)) * abs(correlation_indicator) * self._conflictor_bias # TODO somehow strange that we use the conflictor bias here
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",
@@ -387,6 +387,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         :return: lst
         """
         # TODO item.get_pddl_effect_name() might has to be reconsidered, maybe only sensor comparision is sufficient
+        # TODO this here can be really problematic as it very much depends on the indicator scale (might have been different with real_world_impact before)
         return [item.indicator for item in ref_behaviour.correlations if item.get_pddl_effect_name() == effect_name]
 
     def _matching_wishes_indicators(self, ref_behaviour, effect_name):
