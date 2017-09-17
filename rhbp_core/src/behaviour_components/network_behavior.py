@@ -149,8 +149,8 @@ class NetworkBehavior(BehaviourBase):
         """
         self.__manager.add_goal(goal)
 
-    def updateComputation(self):
-        super(NetworkBehavior, self).updateComputation()
+    def updateComputation(self, manager_step):
+        super(NetworkBehavior, self).updateComputation(manager_step)
 
         # only trigger the update if not already activated because then it would be executed anyhow
         if self.always_update_activation and not self.__manager.activated:
