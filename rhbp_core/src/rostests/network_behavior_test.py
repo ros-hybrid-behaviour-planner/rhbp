@@ -72,7 +72,6 @@ class TestNetworkBehavior(unittest.TestCase):
                                                     name=method_prefix + "TopicIncreaser",
                                                     plannerPrefix=second_level_network.get_manager_prefix())
 
-
         # activate the first_level_network, second_level_network and increaser_Behavior
         for x in range(0, 3, 1):
             self.assertFalse(first_level_network._isExecuting)
