@@ -22,6 +22,21 @@ class Conditonal(object):
     
     def __init__(self):
         Conditonal._instanceCounter += 1
+        self._last_update_step = -1
+
+    def need_update(self, manager_step):
+        """
+        Check if in the current manager step updates have already been computed
+        and set last update step to given manager_step
+        :param manager_step: current planning step of the manager
+        :return: True if sync and update_computation are required
+        """
+
+        if self._last_update_step != manager_step:
+            self._last_update_step = manager_step
+            return True
+        else:
+            return False
 
     def sync(self):
         '''
@@ -115,6 +130,21 @@ class Disjunction(Conditonal):
         else:
             warnings.warn("That's no condition!")
 
+    def need_update(self, manager_step):
+        """
+        Check if in the current manager step updates have already been computed
+        and set last update step to given manager_step
+        :param manager_step: current planning step of the manager
+        :return: True if sync and update_computation are required
+        """
+        need_update = False
+        for c in self._conditions:
+            if c.need_update(manager_step):
+                need_update = True
+                self._last_update_step = manager_step
+
+        return need_update
+
     def sync(self):
         for c in self._conditions:
             c.sync()
@@ -207,6 +237,21 @@ class Conjunction(Conditonal):
             self._conditions.append(condition)
         else:
             warnings.warn("That's no condition!")
+
+    def need_update(self, manager_step):
+        """
+        Check if in the current manager step updates have already been computed
+        and set last update step to given manager_step
+        :param manager_step: current planning step of the manager
+        :return: True if sync and update_computation are required
+        """
+        need_update = False
+        for c in self._conditions:
+            if c.need_update(manager_step):
+                need_update = True
+                self._last_update_step = manager_step
+
+        return need_update
 
     def sync(self):
         for c in self._conditions:

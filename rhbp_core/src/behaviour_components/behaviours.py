@@ -86,7 +86,7 @@ class Behaviour(object):
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'do_step' of behaviour '%s': %s", self._name, traceback.format_exc())
 
-    def fetchStatus(self):
+    def fetchStatus(self, current_step):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
@@ -99,13 +99,13 @@ class Behaviour(object):
             return
         try:
             getStatusRequest = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
-            status = getStatusRequest().status
+            status = getStatusRequest(current_step=current_step).status
             self._activationFromPreconditions = status.activation
             self._correlations = [Effect.from_msg(correlation) for correlation in status.correlations]
             self._preconditionSatisfaction = status.satisfaction
             self._readyThreshold = status.threshold
             self._wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
-            if self._isExecuting == True and status.isExecuting == False:
+            if self._isExecuting is True and status.isExecuting is False:
                 rhbplog.loginfo("%s finished. resetting activation", self._name)
                 if self._reset_activation:
                     self._activation = 0.0
@@ -147,8 +147,8 @@ class Behaviour(object):
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            return (PDDL(statement = pddl.actionStatement, predicates = pddl.actionPredicates, functions = pddl.actionFunctions), \
-                   PDDL(statement = pddl.stateStatement, predicates = pddl.statePredicates, functions = pddl.stateFunctions))
+            return (PDDL(statement=pddl.actionStatement, predicates=pddl.actionPredicates, functions=pddl.actionFunctions), \
+                   PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates, functions=pddl.stateFunctions))
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'fetchPDDL' of behaviour '%s': %s", self._name, traceback.format_exc())
 
@@ -421,6 +421,7 @@ class BehaviourBase(object):
         Remove/Unregister behaviour from the manager
         :param terminate_services: True for shuting down all service interfaces as well
         """
+        self._active = False
         try:
             service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
             rhbplog.logdebug("Waiting for service %s", service_name)
@@ -458,15 +459,19 @@ class BehaviourBase(object):
         except Exception:
             rhbplog.logerr("Error in destructor of BehaviourBase: %s", traceback.format_exc())
 
-    def updateComputation(self):
+    def updateComputation(self, manager_step):
         """
         Updates all subentities of the behaviour in order to do computations only once
+        :param manager_step: current planning decision_making step of the manager
         """
 
         #first synchronize the input data before doing the calculation
+        synchronized_conditions = []
         for p in self._preconditions:
-            p.sync()
-        for p in self._preconditions:
+            if p.need_update(manager_step):
+                p.sync()
+                synchronized_conditions.append(p)
+        for p in synchronized_conditions:
             p.updateComputation()
 
     def _get_satisfactions(self, include_optional=True):
@@ -587,8 +592,8 @@ class BehaviourBase(object):
     def getStatePDDL(self):
         pddl = PDDL()
         for p in self._preconditions:
-            if not p.optional: # do not use optional preconditions for planning
-                for s in p.getStatePDDL(): # it is a list because it may come from a composed condition
+            if not p.optional:  # do not use optional preconditions for planning
+                for s in p.getStatePDDL():  # it is a list because it may come from a composed condition
                     pddl = mergeStatePDDL(s, pddl)
         return pddl                      
 
@@ -622,7 +627,7 @@ class BehaviourBase(object):
     def getStatusCallback(self, request):
         try:
             #update everything before generating the status message
-            self.updateComputation()
+            self.updateComputation(request.current_step)
             self._active = self._activated
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             # this would eliminate the doubled calculation of it

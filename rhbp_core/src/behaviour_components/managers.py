@@ -305,7 +305,7 @@ class Manager(object):
             rhbplog.logdebug("###################################### STEP {0} ######################################".format(self._stepCounter))
             ### collect information about behaviours ###
             for behaviour in self._behaviours:
-                behaviour.fetchStatus()
+                behaviour.fetchStatus(self._stepCounter)
                 if behaviour.active:
                     self._totalActivation += behaviour.activation
             if self._totalActivation == 0.0:
@@ -313,7 +313,7 @@ class Manager(object):
             rhbplog.logdebug("############# GOAL STATES #############")
             ### collect information about goals ###
             for goal in self._goals:
-                goal.sync()
+                goal.fetchStatus(self._stepCounter)
                 statusMessage = Status()
                 statusMessage.name = goal.name
                 statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]

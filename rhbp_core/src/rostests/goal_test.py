@@ -60,7 +60,7 @@ class TestGoals(unittest.TestCase):
             rospy.sleep(0.1)
 
         goal_proxy = m.goals[0]
-        goal_proxy.sync()
+        goal_proxy.fetchStatus(3)
         self.assertTrue(goal_proxy.satisfied, 'Goal is not satisfied')
 
     def test_offline_goal(self):
@@ -84,7 +84,7 @@ class TestGoals(unittest.TestCase):
             m.step()
             rospy.sleep(0.1)
 
-        goal.sync()
+        goal.fetchStatus(3)
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
 
 

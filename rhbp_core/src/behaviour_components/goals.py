@@ -130,10 +130,11 @@ class AbstractGoalRepresentation(object):
         raise NotImplementedError()
 
     @abstractmethod
-    def sync(self):
-        '''
+    def fetchStatus(self, current_step):
+        """
         Update satisfaction, wishes and all other stuff
-        '''
+        :param current_step: 
+        """
         raise NotImplementedError()
 
 
@@ -182,13 +183,17 @@ class Goal(object):
         except Exception:
             rhbplog.logerr("Destructor of GoalBase failed: %s", traceback.format_exc())
 
-    def updateComputation(self):
+    def updateComputation(self, manager_step):
         """
         Updates all subentities of the behaviour in order to do computations only once
+        :param manager_step: current planning decision_making step of the manager
         """
+        synchronized_conditions = []
         for p in self._conditions:
-            p.sync()
-        for p in self._conditions:
+            if p.need_update(manager_step):
+                p.sync()
+                synchronized_conditions.append(p)
+        for p in synchronized_conditions:
             p.updateComputation()
 
     def computeSatisfaction(self):
@@ -304,10 +309,11 @@ class GoalProxy(AbstractGoalRepresentation):
             rhbplog.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
-    def sync(self):
-        '''
+    def fetchStatus(self, current_step):
+        """
         This method fetches the status from the actual goal node via GetStatus service call
-        '''
+        :param current_step: 
+        """
 
         try:
             rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
@@ -318,7 +324,7 @@ class GoalProxy(AbstractGoalRepresentation):
 
         try:
             get_status_request = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
-            status = get_status_request().status
+            status = get_status_request(current_step).status
             self.fulfillment = status.satisfaction
             self.wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
             self.active = status.active
@@ -333,7 +339,7 @@ class GoalProxy(AbstractGoalRepresentation):
                            self.fulfillment,
                            self.wishes)
         except rospy.ServiceException:
-            rhbplog.logerr("ROS service exception in 'sync' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service exception in 'fetchStatus' of goal '%s': %s", self._name,
                          traceback.format_exc())
 
     def _handle_service_timeout(self):
@@ -470,7 +476,6 @@ class GoalBase(Goal):
 
     def pddlCallback(self, dummy):
         try:
-            self.updateComputation()
             goalStatements = self.getGoalStatements()
             statePDDL = self.getStatePDDL()
             return GetPDDLResponse(**{"goalStatement": goalStatements,
@@ -484,7 +489,7 @@ class GoalBase(Goal):
 
     def getStatus(self, request):
         try:
-            self.updateComputation()
+            self.updateComputation(request.current_step)
             self._active = self._activated
             status = Status(**{
                 "name": self._name,
@@ -522,15 +527,14 @@ class OfflineGoal(AbstractGoalRepresentation):
             for condition in conditions:
                 self.add_condition(condition)
 
-    def sync(self):
-        self.__goal.updateComputation()
+    def fetchStatus(self, current_step):
+        self.__goal.updateComputation(current_step)
         self.fulfillment = self.__goal.computeSatisfaction()
-        self.wishes =  [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
+        self.wishes = [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
         self._priority = self.__goal.priority
         self.active = self.__goal.activated
 
     def fetchPDDL(self):
-        self.__goal.updateComputation()
         goal_statements = self.__goal.getGoalStatements()
         state_pddl = self.__goal.getStatePDDL()
         return (PDDL(statement=goal_statements),

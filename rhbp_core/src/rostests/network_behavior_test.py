@@ -100,7 +100,7 @@ class TestNetworkBehavior(unittest.TestCase):
             second_level_network.do_step()
             rospy.sleep(0.1)
 
-        goal.sync()
+        goal.fetchStatus(3)
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
 
 

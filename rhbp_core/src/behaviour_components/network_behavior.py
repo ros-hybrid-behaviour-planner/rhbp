@@ -4,10 +4,10 @@ Created on 05.01.2017
 @author: rieger
 '''
 
-from .activators import Activator, BooleanActivator, Condition, GreedyActivator
-from .behaviours import BehaviourBase
-from .goals import OfflineGoal
-from .managers import Manager
+from behaviour_components.activators import Activator, BooleanActivator, Condition, GreedyActivator
+from behaviour_components.behaviours import BehaviourBase
+from behaviour_components.goals import OfflineGoal
+from behaviour_components.managers import Manager
 
 from utils.deprecation import deprecated
 
@@ -48,8 +48,8 @@ class NetworkBehavior(BehaviourBase):
         if correlations is not None:
             self.add_correlations(correlations)
 
-    def updateComputation(self):
-        super(NetworkBehavior, self).updateComputation()
+    def updateComputation(self, manager_step):
+        super(NetworkBehavior, self).updateComputation(manager_step)
         if not self._isExecuting:
             self.__manager.send_discovery()
 
