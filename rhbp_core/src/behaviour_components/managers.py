@@ -110,7 +110,7 @@ class Manager(object):
         self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
-                                                 queue_size=1)
+                                                 queue_size=1, latch=True)
 
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
 
@@ -427,9 +427,11 @@ class Manager(object):
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
             plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
-        plannerStatusMessage.influencedSensors = currently_influenced_sensors
+        plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
         plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
+        plannerStatusMessage.plan = self._plan
+        plannerStatusMessage.plan_index = self._planExecutionIndex
         self.__statusPublisher.publish(plannerStatusMessage)
 
     def update_activation(self, plan_if_necessary=True):

@@ -5,3 +5,5 @@ float32  activationThresholdDecay
 string[] runningBehaviours
 string[] influencedSensors
 int32    stepCounter
+string[] plan
+uint32   plan_index
