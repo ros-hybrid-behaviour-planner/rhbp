@@ -15,6 +15,7 @@ from rhbp_core.msg import PlannerStatus, DiscoverInfo
 from rhbp_core.srv import SetStepping, GetStepping
 from PyQt5.QtCore import pyqtSignal
 from behaviour_components.managers import Manager
+from threading import Lock
 
 
 class Overview(Plugin):
@@ -29,7 +30,9 @@ class Overview(Plugin):
         super(Overview, self).__init__(context)
         
         self.__behaviour_widgets = {} # this stores all behaviours
+        self.__behaviour_names = []
         self.__goal_widgets = {}      # this stores all goals
+        self.__goal_names = []
         self.__plannerPrefix = ""
         
         # Give QObjects reasonable names
@@ -47,6 +50,9 @@ class Overview(Plugin):
             self.__plannerPrefix = args.plannerPrefix
             self._planner_prefix_collection.append(self.__plannerPrefix)
             rospy.loginfo("using planner prefix %s", self.__plannerPrefix)
+
+        self.__behaviour_lock = Lock()
+        self.__goal_lock = Lock()
 
         # Create QWidget
         self._widget = QWidget()
@@ -94,7 +100,8 @@ class Overview(Plugin):
             self._widget.activationThresholdDecayDoubleSpinBox.setValue(newValues["activationThresholdDecay"])
         self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
         self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
-        self.setPauseResumeButton(True) # if we receive updates the manager is running
+        self._widget.currentStepLabel.setText(str(newValues["stepCounter"]))
+        self.setPauseResumeButton(True)  # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
         self.__behaviour_widgets[name] = BehaviourWidget(name, self)
@@ -150,40 +157,46 @@ class Overview(Plugin):
         Add/remove behaviours to our management structure if necessary
         Update the behaviour Widget using its refresh() method.
         """
-        updated_behaviour_names=[]
-        for b in behaviours:
-            if b.name not in self.__behaviour_widgets:
-                self.addBehaviourRequest.emit(b.name)
-                rospy.logdebug("Added behaviour %s",b.name)
-            else:
-                self.__behaviour_widgets[b.name].refresh(b)
-            updated_behaviour_names.append(b.name)
+        with self.__behaviour_lock:
+            updated_behaviour_names = []
+            for b in behaviours:
+                if b.name not in self.__behaviour_names:
+                    self.__behaviour_names.append(b.name)
+                    self.addBehaviourRequest.emit(b.name)
+                    rospy.logdebug("Added behaviour %s", b.name)
+                else:
+                    self.__behaviour_widgets[b.name].refresh(b)
+                updated_behaviour_names.append(b.name)
 
-        # check if we have to delete a behaviour widget
-        for name, b in self.__behaviour_widgets.items():
-            if name not in updated_behaviour_names:
-                self.removeBehaviourRequest.emit(name)
-                rospy.logdebug("Removed behaviour %s", name)
+            # check if we have to delete a behaviour widget
+            for name in self.__behaviour_names:
+                if name not in updated_behaviour_names:
+                    self.__behaviour_names.remove(name)
+                    self.removeBehaviourRequest.emit(name)
+                    rospy.logdebug("Removed behaviour %s", name)
 
     def updateGoals(self, goals):
         """
         Add/remove goals to our management structure if necessary
         Update the goals Widget using its refresh() method.
         """
-        updated_goal_names = []
-        for g in goals:
-            if g.name not in self.__goal_widgets:
-                self.addGoalRequest.emit(g.name)
-                rospy.logdebug("Added goal %s", g.name)
-            else:
-                self.__goal_widgets[g.name].refresh(g)
-            updated_goal_names.append(g.name)
+        with self.__goal_lock:
+            updated_goal_names = []
+            for g in goals:
+                if g.name not in self.__goal_names:
+                    self.__goal_names.append(g.name)
+                    self.addGoalRequest.emit(g.name)
+                    rospy.logdebug("Added goal %s", g.name)
+                else:
+                    self.__goal_widgets[g.name].refresh(g)
+                updated_goal_names.append(g.name)
 
-        # check if we have to delete a goal widget
-        for name, g in self.__goal_widgets.items():
-            if name not in updated_goal_names:
-                self.removeGoalRequest.emit(name)
-                rospy.logdebug("Removed goal %s", name)
+            # check if we have to delete a goal widget
+            for name in self.__goal_names:
+                if name not in updated_goal_names:
+                    self.__goal_names.remove(name)
+                    self.removeGoalRequest.emit(name)
+                    rospy.logdebug("Removed goal %s", name)
 
     def step_push_button_callback(self):
         service_name = self.__plannerPrefix + '/' + 'step'
@@ -265,7 +278,8 @@ class Overview(Plugin):
                                      "activationThreshold" : msg.activationThreshold,
                                      "activationThresholdDecay" : msg.activationThresholdDecay,
                                      "influencedSensors" : ", ".join(msg.influencedSensors),
-                                     "runningBehaviours" : ", ".join(msg.runningBehaviours)
+                                     "runningBehaviours" : ", ".join(msg.runningBehaviours),
+                                     "stepCounter": msg.stepCounter
                                     }) 
         except Exception as e:
             rospy.logerr("%s", e)
