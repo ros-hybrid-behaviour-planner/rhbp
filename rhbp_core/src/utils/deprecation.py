@@ -1,11 +1,38 @@
 
 import warnings
 import functools
+import inspect
+import rospy
 
 """
 This module includes useful decorators to deal with deprectated functions, it is modified version of code found here:
 https://wiki.python.org/moin/PythonDecoratorLibrary#Smart_deprecation_warnings_.28with_valid_filenames.2C_line_numbers.2C_etc..29
 """
+
+
+class DeprecatedClass(type):
+    """
+    This is a decorator can be used to mark classes
+    as deprecated. It will result in a warning being emitted
+    when the class is used.
+
+    set metaclass like below
+    __metaclass__ = DeprecatedClass
+    """
+    def __call__(cls, *args, **kwargs):
+        """Called when you call MyNewClass() """
+        obj = type.__call__(cls, *args, **kwargs)
+
+        rospy.logwarn("Call to deprecated class {}.".format(cls.__name__))
+
+        warnings.warn_explicit(
+            "Call to deprecated class {}.".format(cls.__name__),
+            category=DeprecationWarning,
+            filename=inspect.getfile(cls.__class__),
+            lineno=int(inspect.getsourcelines(cls.__class__)[1])
+        )
+        return obj
+
 
 def deprecated(func):
     """
@@ -26,6 +53,9 @@ def deprecated(func):
     """
     @functools.wraps(func)
     def new_func(*args, **kwargs):
+
+        rospy.logwarn("Call to deprecated function {}.".format(func.__name__))
+
         warnings.warn_explicit(
             "Call to deprecated function {}.".format(func.__name__),
             category=DeprecationWarning,
@@ -34,7 +64,6 @@ def deprecated(func):
         )
         return func(*args, **kwargs)
     return new_func
-
 
 
 def ignore_deprecation_warnings(func):

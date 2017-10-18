@@ -11,6 +11,8 @@ import traceback
 from .conditions import Conditonal
 from .condition_elements import Wish
 
+from utils.deprecation import DeprecatedClass
+
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
 
@@ -146,7 +148,6 @@ class Condition(Conditonal):
     def __repr__(self):
         return str(self)
 
-
 class MultiSensorCondition(Condition):
     '''
     This is a special abstract condition class supporting multiple sensor instances
@@ -154,6 +155,9 @@ class MultiSensorCondition(Condition):
     and overwriting the normalize method
     The _reduceSatisfaction method has to be implemented in order combine the different sensors
     '''
+
+    __metaclass__ = DeprecatedClass
+
     _instanceCounter = 0  # static _instanceCounter to get distinguishable names
 
     def __init__(self, sensors, activator, name=None, optional=False):
