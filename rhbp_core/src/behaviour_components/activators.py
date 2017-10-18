@@ -146,6 +146,7 @@ class Condition(Conditonal):
     def __repr__(self):
         return str(self)
 
+
 class MultiSensorCondition(Condition):
     '''
     This is a special abstract condition class supporting multiple sensor instances
@@ -153,30 +154,27 @@ class MultiSensorCondition(Condition):
     and overwriting the normalize method
     The _reduceSatisfaction method has to be implemented in order combine the different sensors
     '''
-    _instanceCounter = 0 # static _instanceCounter to get distinguishable names
+    _instanceCounter = 0  # static _instanceCounter to get distinguishable names
 
-    def __init__(self, sensors, activator, name = None, optional = False):
-        '''
+    def __init__(self, sensors, activator, name=None, optional=False):
+        """
         Constructor
         :param sensors: list, tuple of :py:class:`sensors.Sensor` objects that this condition is using
         :param activator: see :py:class:`Condition`
         :param name: see :py:class:`Condition`
         :param optional: see :py:class:`Condition`
-        '''
+        """
+        super(MultiSensorCondition, self).__init__(sensor=None, activator=activator, name=name, optional=optional)
+
         self._name = name if name else "MultiSensorCondition{0}".format(MultiSensorCondition._instanceCounter)
 
         assert hasattr(sensors, '__getitem__'), "sensors is not a tuple or list"
         self._sensors = sensors
-        self._activator = activator
-        self._optional = optional
 
         self._normalizedSensorValues = dict.fromkeys(self._sensors, 0)
         self._sensorSatisfactions = dict.fromkeys(self._sensors, 0)
 
-        self._satisfaction = 0
-
         MultiSensorCondition._instanceCounter += 1
-
 
     def sync(self):
         for s in self._sensors:
