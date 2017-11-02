@@ -2,7 +2,9 @@
 import warnings
 import functools
 import inspect
-import rospy
+
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager()
 
 """
 This module includes useful decorators to deal with deprectated functions, it is modified version of code found here:
@@ -23,7 +25,7 @@ class DeprecatedClass(type):
         """Called when you call MyNewClass() """
         obj = type.__call__(cls, *args, **kwargs)
 
-        rospy.logwarn("Call to deprecated class {}.".format(cls.__name__))
+        rhbplog.logwarn("Call to deprecated class {}.".format(cls.__name__))
 
         warnings.warn_explicit(
             "Call to deprecated class {}.".format(cls.__name__),
@@ -53,8 +55,7 @@ def deprecated(func):
     """
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-
-        rospy.logwarn("Call to deprecated function {}.".format(func.__name__))
+        rhbplog.logwarn("Call to deprecated function {}.".format(func.__name__))
 
         warnings.warn_explicit(
             "Call to deprecated function {}.".format(func.__name__),
