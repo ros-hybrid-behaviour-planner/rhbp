@@ -16,6 +16,7 @@ from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, 
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter
+from utils.deprecation import deprecated
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
@@ -654,8 +655,12 @@ class BehaviourBase(object):
 
     def _is_interruptible(self):
         return self._interruptable
-    
+
+    @deprecated
     def addPrecondition(self, precondition):
+        self.add_precondition(precondition=precondition)
+
+    def add_precondition(self, precondition):
         '''
         This method adds a precondition to the behaviour.
         It is not mandatory to use this method at all but it may make development easier because the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work with the preconditions added here.
