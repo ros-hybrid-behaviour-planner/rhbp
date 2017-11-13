@@ -327,6 +327,7 @@ class Behaviour(object):
 class BehaviourBase(object):
     '''
     This is the base class for behaviour nodes in python
+    A common behaviour class would either override do_step() or start() and stop() methods
     '''
 
     __metaclass__ = FinalInitCaller
@@ -377,14 +378,14 @@ class BehaviourBase(object):
         Init all required ROS services that are provided by the behaviour
         """
         service_prefix = self._plannerPrefix + '/' + self._name + '/'
-        self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self.getStatusCallback)
-        self._startService = rospy.Service(service_prefix + 'Start', Empty, self.startCallback)
-        self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self.stopCallback)
-        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self.activateCallback)
-        self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self.pddlCallback)
-        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
+        self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self._get_status_callback)
+        self._startService = rospy.Service(service_prefix + 'Start', Empty, self._start_callback)
+        self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self._stop_callback)
+        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activate_callback)
+        self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self._pddl_callback)
+        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self._set_priority_callback)
         self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
-                                                      self.setExecutionTimeoutCallback)
+                                                      self._set_execution_timeout_callback)
 
         self._registered = False # keeps track of behaviour registration state
 
@@ -599,7 +600,7 @@ class BehaviourBase(object):
                     pddl = mergeStatePDDL(s, pddl)
         return pddl                      
 
-    def pddlCallback(self, dummy):
+    def _pddl_callback(self, dummy):
         try:
             if not self._independentFromPlanner and len(self._correlations) == 0:
                 # Since the correlations arent setted in constructor once right place for warning is here
@@ -622,11 +623,11 @@ class BehaviourBase(object):
                                       "stateFunctions" : list(state.functions)
                                      })
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'pddlCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_pddl_callback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
     
-    def getStatusCallback(self, request):
+    def _get_status_callback(self, request):
         try:
             #update everything before generating the status message
             self.updateComputation(request.current_step)
@@ -650,7 +651,7 @@ class BehaviourBase(object):
                               })
             return GetStatusResponse(status)
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'getStatusCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_get_status_callback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
 
@@ -704,7 +705,7 @@ class BehaviourBase(object):
             self.stop()
             self._isExecuting = False
     
-    def startCallback(self, dummy):
+    def _start_callback(self, dummy):
         '''
         This method should switch the behaviour on.
         This method must not block.
@@ -714,11 +715,11 @@ class BehaviourBase(object):
             self.start()
             return EmptyResponse()
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'startCallback' of behaviour '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_start_callback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
     
-    def stopCallback(self, dummy):
+    def _stop_callback(self, dummy):
         '''
         This method should switch the behaviour off.
         This method must not block.
@@ -728,11 +729,11 @@ class BehaviourBase(object):
             self._isExecuting = False
             return EmptyResponse()
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'stopCallback' of behaviour '%s':  %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_stop_callback' of behaviour '%s':  %s", self._name,
                          traceback.format_exc())
             return None
     
-    def activateCallback(self, request):
+    def _activate_callback(self, request):
         '''
         This method activates or deactivates the behaviour.
         This method must not block.
@@ -740,11 +741,11 @@ class BehaviourBase(object):
         self.set_activated(request.active)
         return ActivateResponse()
 
-    def setPriorityCallback(self, request):
+    def _set_priority_callback(self, request):
         self._priority = request.value
         return SetIntegerResponse()
     
-    def setExecutionTimeoutCallback(self, request):
+    def _set_execution_timeout_callback(self, request):
         self._executionTimeout = request.value
         return SetIntegerResponse()
     
