@@ -15,7 +15,7 @@ import rostest
 from behaviour_components.activators import Condition, ThresholdActivator
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
-from behaviour_components.network_behavior import NetworkBehavior
+from behaviour_components.network_behavior import NetworkBehaviour
 from behaviour_components.condition_elements import Effect
 from behaviour_components.sensors import SimpleTopicSensor
 from std_msgs.msg import Int32
@@ -28,12 +28,12 @@ PKG = 'rhbp_core'
 System test for network behavior. Assumes, that a rosmaster is running
 """
 
-class TestNetworkBehavior(unittest.TestCase):
+class TestNetworkBehaviour(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestNetworkBehavior, self).__init__(*args, **kwargs)
+        super(TestNetworkBehaviour, self).__init__(*args, **kwargs)
         # prevent influence of previous tests
-        self.__message_prefix = 'TestNetworkBehavior_' + str(time.time()).replace('.', '')
-        rospy.init_node('NetworkBehaviorTestNode', log_level=rospy.INFO)
+        self.__message_prefix = 'TestNetworkBehaviour_' + str(time.time()).replace('.', '')
+        rospy.init_node('NetworkBehaviourTestNode', log_level=rospy.INFO)
         # Disable planner, since the change from python to C
         #  disturbs the connection between the test process and the node process
         rospy.set_param("~planBias", 0.0)
@@ -58,10 +58,10 @@ class TestNetworkBehavior(unittest.TestCase):
 
         effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
 
-        first_level_network = NetworkBehavior(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix, createLogFiles=True)
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix, createLogFiles=True)
         first_level_network.add_effects_and_goals([(sensor, effect)])
 
-        second_level_network = NetworkBehavior(name=method_prefix + '/SecondLevel',
+        second_level_network = NetworkBehaviour(name=method_prefix + '/SecondLevel',
                                                 plannerPrefix=first_level_network.get_manager_prefix(), createLogFiles=True)
         # Doesnt matter, whether the effects are added via the constructor or the add method.
         # Both methods are used here, to demonstrate both ways.
@@ -103,4 +103,4 @@ class TestNetworkBehavior(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun(PKG, 'NetworkBehaviorTestNode', TestNetworkBehavior)
+    rostest.rosrun(PKG, 'NetworkBehaviourTestNode', TestNetworkBehaviour)
