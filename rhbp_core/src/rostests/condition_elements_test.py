@@ -16,7 +16,8 @@ import rostest
 
 from std_msgs.msg import Bool
 
-from behaviour_components.activators import Condition, MultiSensorCondition, LinearActivator
+from behaviour_components.activators import LinearActivator
+from behaviour_components.conditions import Condition, MultiSensorCondition
 from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import SimpleTopicSensor, Sensor

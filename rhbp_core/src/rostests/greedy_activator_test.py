@@ -12,7 +12,8 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.activators import Condition, GreedyActivator
+from behaviour_components.activators import GreedyActivator
+from behaviour_components.conditions import Condition
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import SimpleTopicSensor

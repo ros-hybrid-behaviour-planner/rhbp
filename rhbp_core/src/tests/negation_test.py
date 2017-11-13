@@ -17,7 +17,7 @@ class NegationTestSuite(unittest.TestCase):
 
         mock_sensor = sensors.Sensor(initial_value=3)
 
-        condition = activators.Condition(sensor=mock_sensor, activator=activator)
+        condition = conditions.Condition(sensor=mock_sensor, activator=activator)
 
         neg_condition = conditions.Negation(condition)
 
@@ -41,7 +41,7 @@ class NegationTestSuite(unittest.TestCase):
 
         mock_sensor = sensors.Sensor(initial_value=3)
 
-        condition = activators.Condition(sensor=mock_sensor, activator=activator)
+        condition = conditions.Condition(sensor=mock_sensor, activator=activator)
 
         neg_condition = conditions.Negation(condition)
 
@@ -65,7 +65,7 @@ class NegationTestSuite(unittest.TestCase):
 
         mock_sensor = sensors.Sensor(initial_value=12)
 
-        condition = activators.Condition(sensor=mock_sensor, activator=activator)
+        condition = conditions.Condition(sensor=mock_sensor, activator=activator)
 
         neg_condition = conditions.Negation(condition)
 
@@ -89,7 +89,7 @@ class NegationTestSuite(unittest.TestCase):
 
         mock_sensor = sensors.Sensor(initial_value=3)
 
-        condition = activators.Condition(sensor=mock_sensor, activator=activator)
+        condition = conditions.Condition(sensor=mock_sensor, activator=activator)
 
         neg_condition = conditions.Negation(condition)
 

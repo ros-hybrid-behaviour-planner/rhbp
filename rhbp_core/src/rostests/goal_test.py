@@ -14,7 +14,8 @@ import rostest
 
 from std_msgs.msg import Bool
 
-from behaviour_components.activators import Condition, BooleanActivator
+from behaviour_components.activators import BooleanActivator
+from behaviour_components.conditions import Condition
 from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import SimpleTopicSensor

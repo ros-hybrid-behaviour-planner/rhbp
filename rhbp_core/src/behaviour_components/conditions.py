@@ -3,10 +3,18 @@ Created on 13.04.2015
 
 @author: wypler, hrabia
 '''
-
+import traceback
 import warnings
 import operator
 import itertools
+
+import rospy
+from std_msgs.msg import Float32
+
+from behaviour_components.activators import rhbplog
+from behaviour_components.condition_elements import Wish
+from behaviour_components.pddl import PDDL
+from utils.deprecation import DeprecatedClass
 from .pddl import PDDL
 from .condition_elements import Wish
 
@@ -392,4 +400,306 @@ class Negation(Conditonal):
     
     def __str__(self):
         return "{0} of {1}".format(self._name, self._condition)
-    
+
+
+class Condition(Conditonal):
+    '''
+    This is the basic Condition class it brings together the sensor and the activation function and takes care
+    of the processing and caching of calculated data
+    '''
+    _instanceCounter = 0 # static _instanceCounter to get distinguishable names
+
+    def __init__(self, sensor, activator, name = None, optional = False):
+        """
+        Constructor
+        :param sensor: The sensor :py:class:`sensors.Sensor` that is evaluated by this condition
+        :param activator: The :py:class:`Activator` that is used to calculate the activation from the sensor value
+        :param name: condition name, a name will be generated if None is passed
+        :param optional: If true the condition will not be considered for precondition satisfaction and only for activation calculation
+        """
+        super(Condition, self).__init__()
+        self._name = name if name else "Condition{0}".format(Condition._instanceCounter)
+        self._sensor = sensor
+        self._activator = activator
+        self._optional = optional
+
+        self._normalizedSensorValue = 0
+        self._satisfaction = 0
+
+        Condition._instanceCounter += 1
+
+    def sync(self):
+        self._sensor.sync()
+
+    def updateComputation(self):
+        '''
+        This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
+        '''
+        try:
+            self._normalizedSensorValue = self._normalize()
+        except Exception as e:
+            rhbplog.logwarn("Normalization failed: " + e.message)
+            self._satisfaction = 0.0
+            return
+
+        try:
+            self._satisfaction = self._activator.computeActivation(self._normalizedSensorValue)
+        except AssertionError:
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?. %s", self._sensor,
+                          self._name, type(self._sensor.value), " optional" if self._sensor.optional else "",
+                          self._sensor.name, traceback.format_exc())
+            self._satisfaction = 0.0
+            return
+
+    def _normalize(self):
+        '''
+        Normalize the current sensor value into a floating point number
+        '''
+        if self._sensor:
+            return self._sensor.value
+        else:
+            raise Exception("Sensor not available")
+
+    def getDirections(self):
+        return {self._get_pddl_effect_name(self._sensor): self._activator.getDirection()}
+
+    def _get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
+
+    def getWishes(self):
+        '''
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
+        Well, there is only one wish from one sensor - activator pair here but to keep a uniform interface with conjunction and disjunction this method wraps them into a list.
+        '''
+        try:
+            indicator = self._activator.getSensorWish(self._normalizedSensorValue)
+            return [Wish(sensor_name=self._sensor.name, indicator=indicator, activator_name=self._activator.name)]
+        except AssertionError:
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            raise
+
+    def _get_current_sensor_value_for_pddl_creation(self):
+        return self._normalizedSensorValue
+
+    def getPreconditionPDDL(self, satisfaction_threshold):
+        return self._activator.get_sensor_precondition_pddl_using_current_value(self._sensor.name, satisfaction_threshold,
+                                                         self._get_current_sensor_value_for_pddl_creation())
+
+    def getStatePDDL(self):
+        return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue)]
+
+    def getFunctionNames(self):
+        """
+        Provides a list of virtual sensor activator function names
+        :return list of function namestrings
+        """
+        return [self._get_pddl_effect_name(self._sensor)]
+
+    @property
+    def satisfaction(self):
+        '''
+        This property specifies to what extend the condition is fulfilled.
+        '''
+        return self._satisfaction
+
+    @property
+    def sensor(self):
+        '''
+        :return: The used sensor of this condition
+        '''
+        return self._sensor
+
+    @property
+    def activator(self):
+        """
+        :return: The used activator of this condition
+        """
+        return self._activator
+
+    @property
+    def optional(self):
+        """
+        The condition is either optional if itself is defined is optional or if the used sensor is optional
+        :return: True if optional
+        """
+        return self._optional or self._sensor.optional
+
+    @optional.setter
+    def optional(self, value):
+        self._optional = value
+
+    def __str__(self):
+        return "{0} {{{1} : v: {2}, s: {3}}}".format(self._name, self._sensor, self._normalizedSensorValue, self._satisfaction)
+
+    def __repr__(self):
+        return str(self)
+
+
+class MultiSensorCondition(Condition):
+    '''
+    This is a special abstract condition class supporting multiple sensor instances
+    The normalization can be implemented sensor type specific by subclassing
+    and overwriting the normalize method
+    The _reduceSatisfaction method has to be implemented in order combine the different sensors
+    '''
+
+    __metaclass__ = DeprecatedClass
+
+    _instanceCounter = 0  # static _instanceCounter to get distinguishable names
+
+    def __init__(self, sensors, activator, name=None, optional=False):
+        """
+        Constructor
+        :param sensors: list, tuple of :py:class:`sensors.Sensor` objects that this condition is using
+        :param activator: see :py:class:`Condition`
+        :param name: see :py:class:`Condition`
+        :param optional: see :py:class:`Condition`
+        """
+        super(MultiSensorCondition, self).__init__(sensor=None, activator=activator, name=name, optional=optional)
+
+        self._name = name if name else "MultiSensorCondition{0}".format(MultiSensorCondition._instanceCounter)
+
+        assert hasattr(sensors, '__getitem__'), "sensors is not a tuple or list"
+        self._sensors = sensors
+
+        self._normalizedSensorValues = dict.fromkeys(self._sensors, 0)
+        self._sensorSatisfactions = dict.fromkeys(self._sensors, 0)
+
+        MultiSensorCondition._instanceCounter += 1
+
+    def sync(self):
+        for s in self._sensors:
+            s.sync()
+
+    def updateComputation(self):
+        '''
+        This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
+        '''
+        try:
+            self._normalize()
+
+            self._computeSatisfactions()
+
+            self._satisfaction = self._reduceSatisfaction()
+
+        except Exception as e:
+            rhbplog.logwarn("updateComputation failed: " +e.message)
+            self._satisfaction = 0.0
+            return
+
+    def _normalize(self):
+        '''
+        Normalize the current sensor values resulting in a dict of sensors and normalized values
+        This also allows to reduce several sensors into one normalized value
+        '''
+        for s in self._sensors:
+            self._normalizedSensorValues[s] = s.value
+
+    def _computeSatisfactions(self):
+        '''
+        This method is a base implementation that calculates the satisfaction for each sensor
+        It can also be omitted if the _reduceSatisfaction method is not usind the _sensorSatisfactions dict
+        '''
+        for s in self._sensors:
+            self._sensorSatisfactions[s] = self._activator.computeActivation(self._normalizedSensorValues[s])
+
+    def _reduceSatisfaction(self):
+        '''
+        This class has to be implemented specific to used sensors and application
+        ::return It has to return a new satisfaction value
+        '''
+        raise NotImplementedError()
+
+    def getDirections(self):
+
+        return {self._get_pddl_effect_name(sensor): self._activator.getDirection() for sensor in self._sensors}
+
+    def getWishes(self):
+        '''
+        returns a list of wishes (a wish is a tuple (effect name, indicator <float> [-1, 1]).
+        '''
+        try:
+            result = []
+            for sensor in self._sensors:
+                indicator = self._activator.getSensorWish(self._normalizedSensorValues[sensor])
+                result.append(Wish(sensor_name=sensor.name, indicator=indicator, activator_name=self._activator.name))
+            return result
+        except AssertionError:
+            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensors, self._name, type(self._sensors.value), " optional" if self._sensors.optional else "", self._sensors.name)
+            raise
+
+    def _get_value_of_sensor_for_pddl_creation(self, sensor):
+        return self._normalizedSensorValues[sensor]
+
+    def getPreconditionPDDL(self, satisfaction_threshold):
+        # Calling getSensorPreconditionPDDL for all sensors
+        conditions = [self._activator.get_sensor_precondition_pddl_using_current_value(s.name, satisfaction_threshold,
+                                                                self._get_value_of_sensor_for_pddl_creation(s)) for s in
+                      self._sensors]
+
+        # TODO this code is copy pasted from conjuction condition
+        pddl = PDDL(statement = "(and")
+        for cond_pddl in conditions:
+            pddl.statement += " {0}".format(cond_pddl.statement)
+            pddl.predicates = pddl.predicates.union(cond_pddl.predicates)
+            pddl.functions = pddl.functions.union(cond_pddl.functions)
+        pddl.statement += ")"
+        return pddl
+
+    def getStatePDDL(self):
+        #Calling getSensorStatePDDL for all sensors
+        return [self._activator.getSensorStatePDDL(s.name, self._normalizedSensorValues[s]) for s in self._sensors]
+
+    def _get_pddl_effect_name(self, sensor):
+        return self._activator.getPDDLFunctionName(sensor.name)
+
+    def getFunctionNames(self):
+        """
+        Provides a list of virtual sensor activator function names
+        :return list of function namestrings
+        """
+        return [self._get_pddl_effect_name(s) for s in self._sensors]
+
+    @property
+    def optional(self):
+        return self._optional or reduce(lambda x, y: x and y, self._sensors, False)
+
+    @optional.setter
+    def optional(self, value):
+        self._optional = value
+
+    @property
+    def sensors(self):
+        return  self._sensors
+
+    def __str__(self):
+        return "{0}(satisfaction:{1})".format(self._name, self.satisfaction)
+
+    def __repr__(self):
+        return str(self)
+
+
+class PublisherCondition(Condition):
+    '''
+    This is a extended condition that automatically publishes the normalized value
+    of the sensor used by this condition
+    '''
+
+    def __init__(self, sensor, activator, name=None, optional=False):
+        '''
+        Constructor
+        '''
+        super(PublisherCondition, self).__init__(sensor=sensor, activator=activator, name=name, optional=optional)
+
+        self._topic_name = activator.getPDDLFunctionName(sensorName=sensor.name)
+
+        self.__pub = rospy.Publisher(self._topic_name, Float32, queue_size=10)
+
+    def updateComputation(self):
+
+        super(PublisherCondition, self).updateComputation()
+        self.__pub.publish(self._normalizedSensorValue)
+
+    @property
+    def topic_name(self):
+        return self._topic_name

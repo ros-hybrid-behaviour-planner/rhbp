@@ -17,7 +17,8 @@ from std_msgs.msg import Bool
 from rhbp_core.msg import Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse, RemoveGoal
-from .activators import Condition, BooleanActivator
+from .activators import BooleanActivator
+from behaviour_components.conditions import Condition
 from .conditions import Conditonal
 from .condition_elements import Wish
 from .pddl import PDDL, mergeStatePDDL

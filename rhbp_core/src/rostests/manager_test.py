@@ -11,7 +11,8 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.activators import Condition, ThresholdActivator, BooleanActivator, GreedyActivator
+from behaviour_components.activators import ThresholdActivator, BooleanActivator, GreedyActivator
+from behaviour_components.conditions import Condition
 from behaviour_components.goals import  GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import SimpleTopicSensor, Sensor
