@@ -11,8 +11,9 @@ import itertools
 
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import Correlation, Status
-from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
+from rhbp_core.msg import Status
+from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, \
+    SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter

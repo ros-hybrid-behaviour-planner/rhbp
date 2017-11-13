@@ -63,7 +63,7 @@ class TestManager(unittest.TestCase):
                                                  independentFromPlanner=False)
 
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
-        goal.addCondition(condition)
+        goal.add_condition(condition)
 
         for x in range(0, 3, 1):
             m.step()
@@ -105,8 +105,8 @@ class TestManager(unittest.TestCase):
         non_interruptable_behaviour.addPrecondition(enable_cond)
 
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix, permanent=True)
-        goal.addCondition(non_interruptable_condition)
-        goal.addCondition(interruptable_condition)
+        goal.add_condition(non_interruptable_condition)
+        goal.add_condition(interruptable_condition)
 
         # first normal operation: every behaviour runs as expected
         for x in range(0, 4, 1):

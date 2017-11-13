@@ -24,6 +24,8 @@ from .condition_elements import Wish
 from .pddl import PDDL, mergeStatePDDL
 from .sensors import SimpleTopicSensor
 from utils.misc import FinalInitCaller
+from utils.deprecation import deprecated
+
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.goals')
@@ -245,7 +247,11 @@ class Goal(object):
         self._priority = request.value
         return SetIntegerResponse()
 
+    @deprecated
     def addCondition(self, condition):
+        self.add_condition(condition=condition)
+
+    def add_condition(self, condition):
         '''
         This method adds a condition to the goal.
         It is not mandatory to use this method at all but it may make development easier because the default implementations of computeActivation(), computeSatisfaction(), and computeWishes work with the preconditions added here.
@@ -400,7 +406,6 @@ class GoalBase(Goal):
         self._planner_prefix = plannerPrefix
         self._registered = False  # keeps track of goal registration state
 
-
     def _init_services(self):
         super(GoalBase, self)._init_services()
         self._service_prefix = self._planner_prefix + '/' + self._name + '/'
@@ -547,7 +552,7 @@ class OfflineGoal(AbstractGoalRepresentation):
                     state_pddl.functions)))
 
     def add_condition(self, condition):
-        self.__goal.addCondition(condition)
+        self.__goal.add_condition(condition)
 
     def unregister(self):
         self.__goal._cleanup_topics_services()
