@@ -168,8 +168,8 @@ class Goal(object):
         service_prefix = self._planner_prefix + '/' + self._name + '/'
 
         #these are convenience services which can be called remotely in order to configure currently active goals and priorities
-        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activateCallback)
-        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self.setPriorityCallback)
+        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activate_callback)
+        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self._set_priority_callback)
         self._services_running = True
 
     def _cleanup_topics_services(self):
@@ -235,7 +235,7 @@ class Goal(object):
                 pddl = mergeStatePDDL(s, pddl)
         return pddl
 
-    def _activateCallback(self, request):
+    def _activate_callback(self, request):
         '''
         This method activates or deactivates the goal.
         This method must not block.
@@ -243,7 +243,7 @@ class Goal(object):
         self._activated = request.active
         return ActivateResponse()
 
-    def setPriorityCallback(self, request):
+    def _set_priority_callback(self, request):
         self._priority = request.value
         return SetIntegerResponse()
 
@@ -409,8 +409,8 @@ class GoalBase(Goal):
     def _init_services(self):
         super(GoalBase, self)._init_services()
         self._service_prefix = self._planner_prefix + '/' + self._name + '/'
-        self._getStatusService = rospy.Service(self._service_prefix + 'GetStatus', GetStatus, self.getStatus)
-        self._pddlService = rospy.Service(self._service_prefix + 'PDDL', GetPDDL, self.pddlCallback)
+        self._getStatusService = rospy.Service(self._service_prefix + 'GetStatus', GetStatus, self._get_status_callback)
+        self._pddlService = rospy.Service(self._service_prefix + 'PDDL', GetPDDL, self._pddl_callback)
 
     def final_init(self):
         """
@@ -484,7 +484,7 @@ class GoalBase(Goal):
         except Exception as e:
             rhbplog.logerr("Error in destructor of GoalBase: %s", e)
 
-    def pddlCallback(self, dummy):
+    def _pddl_callback(self, dummy):
         try:
             goalStatements = self.getGoalStatements()
             statePDDL = self.getStatePDDL()
@@ -493,11 +493,11 @@ class GoalBase(Goal):
                                       "statePredicates": list(statePDDL.predicates),
                                       "stateFunctions": list(statePDDL.functions)})
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'pddlCallback' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_pddl_callback' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
 
-    def getStatus(self, request):
+    def _get_status_callback(self, request):
         try:
             self.updateComputation(request.current_step)
             self._active = self._activated
@@ -512,7 +512,7 @@ class GoalBase(Goal):
             })
             return GetStatusResponse(status)
         except Exception:
-            rhbplog.logerr("ROS service callback exception in 'getStatus' of goal '%s': %s", self._name,
+            rhbplog.logerr("ROS service callback exception in '_get_status_callback' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
 
