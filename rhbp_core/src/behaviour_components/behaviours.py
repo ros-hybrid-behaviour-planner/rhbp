@@ -334,7 +334,7 @@ class BehaviourBase(object):
 
     SERVICE_TIMEOUT = 5
 
-    def __init__(self, name, requires_execution_steps = False, **kwargs):
+    def __init__(self, name, requires_execution_steps=False, **kwargs):
         '''
         Constructor
         '''
@@ -414,7 +414,7 @@ class BehaviourBase(object):
             rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name)
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
-            register_behaviour(self._name, self._independentFromPlanner,self._requires_execution_steps)
+            register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps)
             self._registered = True
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())

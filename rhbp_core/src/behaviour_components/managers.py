@@ -1,8 +1,11 @@
-'''
+"""
 Created on 23.04.2015
 
 @author: wypler,hrabia
-'''
+"""
+
+import sys
+import threading
 
 import rospy
 import itertools
@@ -19,8 +22,6 @@ from utils.misc import LogFileWriter
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
-import sys
-import threading
 
 class Manager(object):
 
@@ -304,7 +305,10 @@ class Manager(object):
             self.update_activation()
 
             rhbplog.loginfo("############## ACTIONS ###############")
-            self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours) # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active before isExecuting we are safe this way
+            # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active
+            # before isExecuting we are safe this way
+            self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
+            amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
             amount_started_behaviours = 0
             amount_currently_selected_behaviours = 0
 
@@ -318,33 +322,43 @@ class Manager(object):
                 if not behaviour.active and not behaviour.manualStart: # it must be active
                     rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
                     continue
-                if behaviour.isExecuting: # it must not already run
-                    #It is important to remember that only interruptable behaviours can be stopped by the manager
+                # Behaviour is not already running and is not manually activated
+                if behaviour.isExecuting:
+                    # It is important to remember that only interruptable behaviours can be stopped by the manager
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
-                            and behaviour.interruptable:
+                            and behaviour.interruptable and not behaviour.manualStart:
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
                         self._stop_behaviour(behaviour, True)
-                        self.__replanningNeeded = True # this is unusual so replan
-                    elif not behaviour.executable and behaviour.interruptable:
+                        self.__replanningNeeded = True  # this is unusual so we trigger replanning
+                    elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
                         self._stop_behaviour(behaviour, True)
-                    elif behaviour.activation < self._activationThreshold and behaviour.interruptable:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f", behaviour.name, behaviour.activation, self._activationThreshold )
+                    elif behaviour.activation < self._activationThreshold and behaviour.interruptable \
+                            and not behaviour.manualStart:
+                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
+                                        behaviour.name, behaviour.activation, self._activationThreshold)
                         self._stop_behaviour(behaviour, False)
-                    elif self.__max_parallel_behaviours > 0 and amount_currently_selected_behaviours >= self.__max_parallel_behaviours:
+                    elif self.__max_parallel_behaviours > 0 and \
+                                    amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
+                            and not behaviour.manualStart:
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
                         self._stop_behaviour(behaviour, False)
                     else:
-                        rhbplog.loginfo("'%s' will not be started because it is already executing", behaviour.name)
+                        rhbplog.logdebug("'%s' will not be started because it is already executing", behaviour.name)
                         behaviour.executionTime += 1
-                        amount_currently_selected_behaviours +=1
+
+                        if behaviour.manualStart:
+                            amount_of_manually_startable_behaviours -= 1
+
+                        amount_currently_selected_behaviours += 1
+
                         if behaviour.requires_execution_steps:
                             behaviour.do_step()
                     continue
-                if not behaviour.executable and not behaviour.manualStart: # it must be executable
+                if not behaviour.executable and not behaviour.manualStart:  # it must be executable
                     rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
                     continue
-                if behaviour.activation < self._activationThreshold and not behaviour.manualStart: # it must have high-enough activation
+                if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
                     rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
                     continue
 
@@ -355,17 +369,21 @@ class Manager(object):
                 if behaviour_is_interferring_others:
                     continue
 
-                # Do not execute more behaviours than allowed, behaviours are ordered by decending activation hence
+                if behaviour.manualStart:
+                    rhbplog.loginfo("BEHAVIOUR %s IS STARTED BECAUSE OF MANUAL REQUEST", behaviour.name)
+                # Do not execute more behaviours than allowed, behaviours are ordered by descending activation hence
                 # we prefer behaviours with higher activation
-                if self.__max_parallel_behaviours > 0 and amount_currently_selected_behaviours >= self.__max_parallel_behaviours:
+                elif self.__max_parallel_behaviours > 0 and \
+                                (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
+                                >= self.__max_parallel_behaviours:
+                    rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
                     continue
 
                 ### if the behaviour got here it really is ready to be started ###
-                rhbplog.loginfo("START BEHAVIOUR %s", behaviour.name)
-                if behaviour.manualStart:
-                    rhbplog.loginfo("BEHAVIOUR %s WAS STARTED BECAUSE OF MANUAL REQUEST")
+                rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
                 behaviour.start()
-                amount_currently_selected_behaviours +=1
+
+                amount_currently_selected_behaviours += 1
 
                 self.__executedBehaviours.append(behaviour)
                 amount_started_behaviours += 1
