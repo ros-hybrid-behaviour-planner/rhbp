@@ -572,10 +572,11 @@ class PublisherGoal(GoalBase):
                                             satisfaction_threshold=satisfaction_threshold)
 
         self.__topic_name = self._service_prefix + "_activated"
-        self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=10)
+        self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=1)
+        self.__condition = None
 
-    def updateComputation(self):
-        super(PublisherGoal, self).updateComputation()
+    def updateComputation(self, manager_step):
+        super(PublisherGoal, self).updateComputation(manager_step)
         self.__pub.publish(self._activated)
 
     def create_condition(self):
@@ -583,13 +584,15 @@ class PublisherGoal(GoalBase):
         Creating a new condition object based on the positive goal activation state --> full activation on activated goal
         :returns new condition object
         """
-        condition_name = self._name + "_condition"
-        sensor_name = self._name + "_sensor"
-        sensor = SimpleTopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
-                                   initial_value=self._activated)
-        activator = BooleanActivator()
-        return Condition(name=condition_name, sensor=sensor, activator=activator)
+        if not self.__condition:
+            condition_name = self._name + "_condition"
+            sensor_name = self._name + "_sensor"
+            sensor = SimpleTopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
+                                       initial_value=self._activated)
+            activator = BooleanActivator(desiredValue=True)
+            self.__condition = Condition(name=condition_name, sensor=sensor, activator=activator)
+        return self.__condition
 
     def _cleanup_topics_services(self):
         super(PublisherGoal, self)._cleanup_topics_services(terminate_services=True)
-        self.__pub.charge()
+        self.__pub.unregister()

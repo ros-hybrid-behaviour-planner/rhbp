@@ -4,7 +4,7 @@ Tests the goal implementations
 
 Created on 15.12.2016
 
-@author: rieger
+@author: rieger, hrabia
 '''
 import time
 import unittest
@@ -16,7 +16,7 @@ from std_msgs.msg import Bool
 
 from behaviour_components.activators import BooleanActivator
 from behaviour_components.conditions import Condition
-from behaviour_components.goals import OfflineGoal, GoalBase
+from behaviour_components.goals import OfflineGoal, GoalBase, PublisherGoal
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import SimpleTopicSensor
 
@@ -90,6 +90,42 @@ class TestGoals(unittest.TestCase):
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
 
         goal.unregister()
+
+    def test_publisher_goal(self):
+
+        method_prefix = self.__message_prefix + "TestPublisherGoal"
+        planner_prefix = method_prefix + "Manager"
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
+
+        topic_name = method_prefix + '/Topic'
+
+        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
+        condition = Condition(sensor, BooleanActivator())
+
+        pddl_function_name = condition.getFunctionNames()[0]
+        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
+        goal = PublisherGoal(method_prefix + 'PublisherGoal', plannerPrefix=planner_prefix)
+        goal.add_condition(condition)
+
+        goal_activated_condition = goal.create_condition()
+
+        m.step()
+        rospy.sleep(0.1)
+
+        sensor.update(True)
+
+        m.step()
+        rospy.sleep(0.1)
+
+        goal_proxy = m.goals[0]
+        goal_proxy.fetchStatus(2)
+        self.assertFalse(goal_proxy.activated, 'Goal still activated')
+        # manually updating this conditions because it is not registered somewhere
+        goal_activated_condition.sync()
+        goal_activated_condition.updateComputation()
+        # Satisfaction should become 0.0 if the goal is deactivated, this also tests the publishing part indirectly
+        self.assertEquals(goal_activated_condition.satisfaction, 0.0, 'goal_condition not properly updated')
 
 
 if __name__ == '__main__':
