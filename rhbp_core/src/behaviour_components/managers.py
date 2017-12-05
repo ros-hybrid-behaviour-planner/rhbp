@@ -521,7 +521,7 @@ class Manager(object):
                 alreadyRunningBehavioursRelatedToConflict) <= 1  # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
             # This implementation deals with a list although it it clear that there is at most one element.
             stoppableBehaviours = filter(
-                lambda x: x.priority <= behaviour.priority and x.interruptable and not x.manualStart,
+                lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart,
                 alreadyRunningBehavioursRelatedToConflict)  # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
             # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that
             # doesn't solve the problem and they died for nothing.
