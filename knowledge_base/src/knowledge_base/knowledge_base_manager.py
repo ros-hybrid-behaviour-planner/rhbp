@@ -55,8 +55,7 @@ class KnowledgeBase(object):
         self.__all_service = rospy.Service(name + KnowledgeBase.ALL_SERVICE_NAME_POSTFIX, All, self.__all)
         self.__update_service = rospy.Service(name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX, Update, self.__update)
         self.__update_subscriber_service = rospy.Service(name + KnowledgeBase.UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX,
-                                                         UpdateSubscribe,
-                                                         self.__update_subscribe)
+                                                         UpdateSubscribe, self.__update_subscribe)
         
     def __del__(self):
         """

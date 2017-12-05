@@ -51,7 +51,7 @@ class KnowledgeBaseClient(object):
         self.__init_lock.acquire()
 
         try:
-            if (self.__initialized):
+            if self.__initialized:
                 # Another check, protected by the lock
                 return True
             rhbplog.logdebug(
