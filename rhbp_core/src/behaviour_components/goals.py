@@ -48,7 +48,7 @@ class AbstractGoalRepresentation(object):
         self._active = active  # This indicates (if True) that there have been no severe issues in the actual goal node
         # and the goal can be expected to be operational. If the actual goal reports ready == False
         # we will ignore it in activation computation.
-        self._activated = activated  # This member only exists as proxy for the corrsponding actual goal's property.
+        self._activated = activated  # This member only exists as proxy for the corresponding actual goal's property.
         # It is here because of the comprehensive status message,
         # published each step by the manager for rqt
 
@@ -388,7 +388,8 @@ class GoalBase(Goal):
 
     SERVICE_TIMEOUT = 5
 
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
+                 activated=True):
         '''
 
         :param name:  a unique name is mandatory
@@ -397,9 +398,11 @@ class GoalBase(Goal):
         :param plannerPrefix: if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         :param priority:
         :param satisfaction_threshold:
+        :param active:
         '''
-        super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions, satisfaction_threshold=satisfaction_threshold,
-                                       priority=priority)
+        super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions,
+                                       satisfaction_threshold=satisfaction_threshold, priority=priority, active=active,
+                                       activated=activated)
         self._name = name
 
         self._permanent = permanent
@@ -523,12 +526,14 @@ class OfflineGoal(AbstractGoalRepresentation):
     As consequence no messages are used for communicating with the manager.
     '''
 
-    def __init__(self, name, planner_prefix, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, planner_prefix, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0,
+                 activated=True):
         '''
         Constructor
         '''
         super(OfflineGoal, self).__init__(name=name, permanent=permanent,
-                                          satisfaction_threshold=satisfaction_threshold, priority=priority)
+                                          satisfaction_threshold=satisfaction_threshold, priority=priority,
+                                          activated=activated)
 
         #nested goal object that takes care of calculation and provides management services
         self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold, planner_prefix=planner_prefix)
@@ -563,13 +568,14 @@ class PublisherGoal(GoalBase):
     Goal class which publishes its activation state as ROS topic
     """
 
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0):
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
+                 activated=True):
         """
         Without manual goal activation/deaction only permanent=False does make sense
         """
         super(PublisherGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
                                             plannerPrefix=plannerPrefix, priority=priority,
-                                            satisfaction_threshold=satisfaction_threshold)
+                                            satisfaction_threshold=satisfaction_threshold, activated=activated)
 
         self.__topic_name = self._service_prefix + "_activated"
         self.__pub = rospy.Publisher(self.__topic_name, Bool, queue_size=1)
