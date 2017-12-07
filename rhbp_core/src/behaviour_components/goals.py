@@ -401,7 +401,7 @@ class GoalBase(Goal):
         :param active:
         '''
         super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions,
-                                       satisfaction_threshold=satisfaction_threshold, priority=priority, active=active,
+                                       satisfaction_threshold=satisfaction_threshold, priority=priority, 
                                        activated=activated)
         self._name = name
 
