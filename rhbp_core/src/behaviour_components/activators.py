@@ -247,9 +247,9 @@ class GreedyActivator(Activator):
 
     def computeActivation(self, normalizedValue):
         if self.__step_size != 0:
-            return 0
+            return self.minActivation
         else:
-            return 1
+            return self.maxActivation
 
     def getDirection(self):
         return 1 if self.__maximize else -1
