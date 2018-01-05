@@ -115,13 +115,23 @@ class Manager(object):
 
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
 
-    def __del__(self):
+    def unregister(self):
+        """
+        Unregister all remote services of the manager, this should only be called when the manager instance is not used
+        any longer
+        """
         self.__addBehaviourService.shutdown()
         self.__addGoalService.shutdown()
         self.__removeBehaviourService.shutdown()
         self.__removeGoalService.shutdown()
         self.__manualStartService.shutdown()
+        self.__pauseService.shutdown()
+        self.__resumeService.shutdown()
         self.__statusPublisher.unregister()
+        self.__pub_discover.unregister()
+
+    def __del__(self):
+        self.unregister()
 
     def _getDomainName(self):
         return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
@@ -642,20 +652,26 @@ class Manager(object):
                               create_log_files = self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix)
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
-    
-    def __pause_callback(self, dummy):
-        with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
+
+    def pause(self):
+        with self._step_lock:  # ensures that the manager is really not just doing something and the next step is blocked
             self.pause_counter += 1
             rhbplog.logdebug('Manager Paused')
-            return EmptyResponse()
-    
-    def __resume_callback(self, dummy):
-        with self._step_lock: #ensures that the manager is really not just doing something and the next step is blocked
+
+    def resume(self):
+        with self._step_lock:  # ensures that the manager is really not just doing something and the next step is blocked
             if self.pause_counter > 0:
                 self.pause_counter -= 1
                 rhbplog.logdebug('Manager Resumed')
-            return EmptyResponse()
-    
+
+    def __pause_callback(self, req):
+        self.pause()
+        return EmptyResponse()
+
+    def __resume_callback(self, dummy):
+        self.resume()
+        return EmptyResponse()
+
     def __remove_goal_callback(self, request):
         self.remove_goal(goal_name=request.name)
         return RemoveGoalResponse()

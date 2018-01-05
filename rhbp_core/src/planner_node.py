@@ -8,6 +8,8 @@ import rospy
 from behaviour_components.managers import Manager
 from rhbp_core.srv import SetStepping, SetSteppingResponse, GetStepping, GetSteppingResponse
 from std_srvs.srv import Empty, EmptyResponse
+from rospy.exceptions import ROSInterruptException
+
 
 class ManagerNode(object):
     """
@@ -26,6 +28,18 @@ class ManagerNode(object):
             rospy.logwarn("Started in manual stepping mode")
 
         self._init_services(prefix)
+
+        rospy.on_shutdown(self._unregister)  # cleanup hook
+
+    def _unregister(self):
+        """
+        Unregister all services etc. Instance is not usable anymore afterwards
+        """
+        self._manager.pause()
+        self._set_automatic_stepping_service.shutdown()
+        self._get_automatic_stepping_service.shutdown()
+        self._stepping_service.shutdown()
+        self._manager.unregister()
 
     def _init_services(self, prefix):
         """
@@ -73,14 +87,19 @@ class ManagerNode(object):
         """
         Executing the node after initialization
         """
-        while (not rospy.is_shutdown()):
+        while not rospy.is_shutdown():
             if self.automatic_stepping:
                 self._manager.step()
             else:
                 self._manager.send_discovery()
             self.rate.sleep()
 
-if __name__ == '__main__':
-    node = ManagerNode()
-    node.run()
 
+if __name__ == '__main__':
+
+    node = ManagerNode()
+
+    try:
+        node.run()
+    except ROSInterruptException:
+        rospy.loginfo("Planner node shut down")
