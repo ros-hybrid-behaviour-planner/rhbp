@@ -10,7 +10,7 @@ import unittest
 
 import rospy
 import rostest
-from rhbp_utils.knowledge_sensors import KnowledgeSensor
+from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 
 PKG = 'rhbp_core'
@@ -33,7 +33,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         """
         Tests sensor output, if the fact is added at runtime (and did not exist before)
         """
-        sensor = KnowledgeSensor(pattern=((self.__message_prefix, 'test_basic', 'pos', '*', '*')))
+        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_basic', 'pos', '*', '*'))
         sensor.sync()
         self.assertFalse(sensor.value)
 
@@ -64,6 +64,34 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         sensor.sync()
 
         self.assertFalse(sensor.value)
+
+    def test_knowledge_fact_int_sensor(self):
+        """
+        Test KnowledgeFactIntSensor
+        """
+        initial_value = 1337
+        sensor_pattern = (self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', '*')
+        sensor = KnowledgeFactNumberSensor(pattern=sensor_pattern, initial_value=initial_value)
+        sensor.sync()
+        self.assertFalse(sensor.value)
+
+        test_value = 42
+
+        # regular operation
+        self.__client.push((self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', str(test_value)))
+        rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, test_value)
+
+        # illegal operation with non integer value
+        self.__client.update(pattern=sensor_pattern, new=(self.__message_prefix, 'test_knowledge_fact_int_sensor',
+                                                          'number', "NO_NUMBER"))
+        rospy.sleep(0.1)
+
+        sensor.sync()
+        rospy.loginfo(sensor.value)
+        self.assertEquals(sensor.value, initial_value)
 
 
 if __name__ == '__main__':
