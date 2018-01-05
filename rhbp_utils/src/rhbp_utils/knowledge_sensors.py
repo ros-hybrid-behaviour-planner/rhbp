@@ -46,7 +46,7 @@ class KnowledgeFactSensor(Sensor):
 
 class KnowledgeFactNumberSensor(Sensor):
     """
-    Knowledge Sensor, which converts the last part of the first tuple fact to float()
+    Knowledge Sensor, which converts the last part of the first tuple fact to a number/float()
     """
 
     def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
@@ -67,7 +67,7 @@ class KnowledgeFactNumberSensor(Sensor):
             try:
                 value = float(fact_tuple[-1])
             except Exception:
-                rospy.warn("Couldn't cast tuple element to int: %s", str(fact_tuple[-1]))
+                rhbplog.logwarn("Couldn't cast tuple element to int: %s. Resetting to initial_value", str(fact_tuple[-1]))
 
         self.update(value)
         super(KnowledgeFactNumberSensor, self).sync()

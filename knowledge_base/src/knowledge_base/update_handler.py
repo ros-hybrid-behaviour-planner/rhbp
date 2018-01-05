@@ -4,7 +4,7 @@
 '''
 import rospy
 
-from thread import allocate_lock
+import threading
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
@@ -31,14 +31,15 @@ class KnowledgeBaseFactCache(object):
         self.__contained_facts = []
         self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
         self.__client = KnowledgeBaseClient(knowledge_base_name)
-        self.__value_lock = allocate_lock()
+        self.__value_lock = threading.Lock()
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
             self.__register_for_updates()
         except rospy.ROSException:
             rhbplog.loginfo(
-                'The following knowledge base node is currently not present. Connection will be established later: ' + knowledge_base_name)
+                'The following knowledge base node is currently not present. Connection will be established later: '
+                + knowledge_base_name)
 
     def __register_for_updates(self):
         """
@@ -57,8 +58,8 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
-        with(self.__value_lock):
-            if (not fact_added.content in self.__contained_facts):
+        with self.__value_lock:
+            if fact_added.content not in self.__contained_facts:
                 self.__contained_facts.append(tuple(fact_added.content))
 
     def __handle_remove_update(self, fact_removed):
@@ -66,15 +67,15 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
-        with(self.__value_lock):
+        with self.__value_lock:
             try:
                 self.__contained_facts.remove(tuple(fact_removed.fact))
             except ValueError:
                 pass
 
     def __handle_fact_update(self, fact_updated):
-        with(self.__value_lock):
-            if (not fact_updated.new in self.__contained_facts):
+        with self.__value_lock:
+            if fact_updated.new not in self.__contained_facts:
                 self.__contained_facts.append(tuple(fact_updated.new))
 
             for removed_fact in fact_updated.removed:
@@ -89,7 +90,7 @@ class KnowledgeBaseFactCache(object):
         :return: whether matching fact exists
         """
         new_content = self.__client.all(self.__pattern)
-        with (self.__value_lock):
+        with self.__value_lock:
             self.__contained_facts = new_content
             return not (len(self.__contained_facts) == 0)
 
@@ -104,11 +105,11 @@ class KnowledgeBaseFactCache(object):
         :return: current cached value
         """
         self.__ensure_initialization()
-        with (self.__value_lock):
+        with self.__value_lock:
             return not (len(self.__contained_facts) == 0)
 
     def get_all_matching_facts(self):
         self.__ensure_initialization()
-        with (self.__value_lock):
+        with self.__value_lock:
             #TODO better return copy here? Maybe use deepcopy?!
             return self.__contained_facts

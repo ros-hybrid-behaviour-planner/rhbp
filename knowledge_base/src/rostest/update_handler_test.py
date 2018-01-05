@@ -45,7 +45,8 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         """
         package = 'knowledge_base'
         executable = 'knowledge_base_node.py'
-        node = roslaunch.core.Node(package=package, node_type=executable, name=self.__knowledge_base_address)
+        node = roslaunch.core.Node(package=package, node_type=executable, name=self.__knowledge_base_address,
+                                   output='screen')
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
         self._kb_process = launch.launch(node)

@@ -203,7 +203,7 @@ class KnowledgeBase(object):
         else:
             exluded = self.__subscribed_patterns_space.find_for_fact(dont_inform)
         for pattern in self.__subscribed_patterns_space.find_for_fact(removed_fact):
-            if (pattern in exluded):
+            if pattern in exluded:
                 continue
             another_matching_fact_exists = self.__exists_tuple_as_is(pattern)
             removed_update_topic = self.__fact_update_topics[pattern][1]
