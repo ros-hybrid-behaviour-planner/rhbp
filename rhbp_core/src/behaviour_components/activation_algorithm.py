@@ -102,7 +102,12 @@ class ActivationAlgorithmFactory(object):
 
 class BaseActivationAlgorithm(AbstractActivationAlgorithm):
     """
-    Base activation calculation as presented in paper TODO add reference of ICCAR paper
+    Base activation calculation mostly as presented in
+    Towards Goal-driven Behaviour Control of Multi-Robot Systems
+    Christopher-Eyk Hrabia, Stephan Wypler, Sahin Albayrak
+    In: 2017 IEEE 3nd International Conference on Control, Automation and Robotics (ICCAR); 2017
+
+    Formulas for the inhibition calculations have been changed/improved
     """
 
     def __init__(self, manager, extensive_logging=False, create_log_files = False):
