@@ -310,7 +310,8 @@ class Manager(object):
         self.send_discovery()
 
         with self._step_lock:
-            rhbplog.logdebug("###################################### STEP {0} ######################################".format(self._stepCounter))
+            rhbplog.logdebug("###################################### STEP {0} ######################################"
+                             .format(self._stepCounter))
 
             self.update_activation()
 
@@ -374,7 +375,7 @@ class Manager(object):
 
                 currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interferring_correlations(behaviour, currently_influenced_sensors)
+                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
 
                 if behaviour_is_interferring_others:
                     continue
@@ -511,7 +512,7 @@ class Manager(object):
             rhbplog.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
         rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
 
-    def handle_interferring_correlations(self, behaviour, currently_influenced_sensors):
+    def handle_interfering_correlations(self, behaviour, currently_influenced_sensors):
         """
         Method checks and resolves (if possible) conflicts with other behaviours of a given behaviour
         :param behaviour: the behaviour that is about to be started
@@ -520,35 +521,50 @@ class Manager(object):
         """
         #TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
 
-        interferingCorrelations = currently_influenced_sensors.intersection(
+        interfering_correlations = currently_influenced_sensors.intersection(
             set([item.get_pddl_effect_name() for item in behaviour.correlations]))
+
         # it must not conflict with an already running behaviour ...
-        if len(interferingCorrelations) > 0 and not behaviour.manualStart:
-            alreadyRunningBehavioursRelatedToConflict = filter(
-                lambda x: len(interferingCorrelations.intersection(set([item.get_pddl_effect_name() for item in x.correlations]))) > 0,
-                self.__executedBehaviours)  # but it might be the case that the conflicting running behaviour(s) has/have less priority ...
-            assert len(
-                alreadyRunningBehavioursRelatedToConflict) <= 1  # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict with each other).
-            # This implementation deals with a list although it it clear that there is at most one element.
-            stoppableBehaviours = filter(
-                lambda x: x.priority < behaviour.priority and x.interruptable and not x.manualStart,
-                alreadyRunningBehavioursRelatedToConflict)  # only if the behaviour has less priority and is interruptable it should be stopped. Manually started behaviours also cannot be stopped
+        if len(interfering_correlations) > 0 and not behaviour.manualStart:
+
+            # it might be the case that the conflicting running behaviour(s) has/have less priority/activation ...
+            already_running_behaviours_related_to_conflict = filter(
+                lambda x: len(interfering_correlations.intersection(
+                    set([item.get_pddl_effect_name() for item in x.correlations]))) > 0, self.__executedBehaviours)
+
+            # This is true as long as there are no Aggregators (otherwise those behaviours must have been in conflict
+            # with each other).
+            assert len(already_running_behaviours_related_to_conflict) <= 1
+
+            # This implementation deals with a list although it is clear that there is at most one element.
+            stoppable_behaviours = filter(
+                # only if the behaviour has less priority or same with less activation and is interruptable, it should
+                # be stopped. Manually started behaviours also cannot be stopped
+                lambda x: (x.priority < behaviour.priority or
+                           (x.priority == behaviour.priority and x.activation < behaviour.activation))
+                          and x.interruptable and not x.manualStart, already_running_behaviours_related_to_conflict)
+
             # only continue if we can stop ALL offending behaviours. Otherwise we would kill some of them but that
             # doesn't solve the problem and they died for nothing.
-            if set(stoppableBehaviours) == set(alreadyRunningBehavioursRelatedToConflict):
+            if set(stoppable_behaviours) == set(already_running_behaviours_related_to_conflict):
+
                 rhbplog.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved",
-                              behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
-                for conflictor in stoppableBehaviours: # stop another behaviour in order to resolve the conflict
+                                behaviour.name, already_running_behaviours_related_to_conflict, interfering_correlations)
+
+                for conflictor in stoppable_behaviours: # stop another behaviour in order to resolve the conflict
                     rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s",
-                                  behaviour.name, conflictor.name)
+                                    behaviour.name, conflictor.name)
+
                     self._stop_behaviour(conflictor, True)
-                    # stopping a behaviour here requires to recalulate the currently_influenced_sensors
+
+                    # stopping a behaviour here requires to recalculate the currently_influenced_sensors
                     currently_influenced_sensors = self._get_currently_influenced_sensors()
-                    ### we have now made room for the higher-priority behaviour ###
+                    # As a result, we have now made room for the higher-priority behaviour ###
             else:
                 rhbplog.loginfo(
-                    "%s will not be started because it has conflicting correlations with already running behaviour(s) %s that cannot be solved (%s)",
-                    behaviour.name, alreadyRunningBehavioursRelatedToConflict, interferingCorrelations)
+                    "%s will not be started because it has conflicting correlations with already running behaviour(s) "
+                    "%s that cannot be solved (%s)",
+                    behaviour.name, already_running_behaviours_related_to_conflict, interfering_correlations)
                 return True, currently_influenced_sensors
         return False, currently_influenced_sensors
 

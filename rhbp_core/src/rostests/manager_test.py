@@ -11,10 +11,11 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.activators import ThresholdActivator, BooleanActivator, GreedyActivator
+from behaviour_components.activators import BooleanActivator, GreedyActivator
 from behaviour_components.conditions import Condition
-from behaviour_components.goals import  GoalBase
+from behaviour_components.goals import GoalBase
 from behaviour_components.managers import Manager
+from behaviour_components.condition_elements import Effect
 from behaviour_components.sensors import SimpleTopicSensor, Sensor
 from std_msgs.msg import Bool, Int32
 
@@ -135,6 +136,69 @@ class TestManager(unittest.TestCase):
 
         self.assertTrue(non_interruptable_behaviour._isExecuting, "Non-Interruptable Behaviour is not executed")
         self.assertFalse(interruptable_behaviour._isExecuting, "Interruptable Behaviour is executed")
+
+    def test_handle_interfering_correlations(self):
+        """
+        Test manager interference resolving capabilities
+        """
+
+        method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
+        planner_prefix = method_prefix + "Manager"
+        m = Manager(activationThreshold=7, prefix=planner_prefix, goal_bias=5.0, conflictorBias=5.0)
+
+        topic_name_1 = method_prefix + '/sensor_1'
+        sensor1 = SimpleTopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
+        condition1 = Condition(sensor1, GreedyActivator())
+        condition_function_name = condition1.getFunctionNames()[0]
+        behaviour1 = IncreaserBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
+                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, interruptable=True)
+
+        topic_name_2 = method_prefix + '/sensor_2'
+        sensor2 = SimpleTopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
+        condition2 = Condition(sensor2, GreedyActivator())
+        condition_function_name2 = condition2.getFunctionNames()[0]
+        behaviour2 = IncreaserBehavior(effect_name=condition_function_name2, topic_name=topic_name_2,
+                        name=method_prefix + "TopicIncreaser2", plannerPrefix=planner_prefix, interruptable=True)
+
+        # add a conflict here "-1"
+        behaviour1.add_effect(Effect(sensor_name=condition_function_name2, indicator=-1, sensor_type=int))
+
+        goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix, permanent=True)
+        goal.add_condition(condition1)
+        goal.add_condition(condition2)
+
+        # first one of the behaviours can not be executed due to a conflict
+        for x in range(0, 4, 1):
+            m.step()
+            rospy.sleep(0.1)
+        # behaviour 2 should be executed because it does not conflict
+        self.assertFalse(behaviour1._isExecuting, "Behaviour 1 is executed in spite of a conflict")
+        self.assertTrue(behaviour2._isExecuting, "Behaviour 2 is not executed")
+
+        behaviour1.priority = 1  # increase priority
+
+        for x in range(0, 1, 1):
+            m.step()
+            rospy.sleep(0.1)
+
+        # now behaviour 1 should be executed
+        self.assertTrue(behaviour1._isExecuting, "Behaviour 1 is not executed")
+        self.assertFalse(behaviour2._isExecuting, "Behaviour 2 is executed in spite of lower priority")
+
+        behaviour1.priority = 0  # reset priority
+
+        # Manipulate activation of behaviour 2 with an extra goal, wish is positively influencing
+        goal2 = GoalBase(method_prefix + 'ExtraGoal', plannerPrefix=planner_prefix, permanent=True)
+        goal2.add_condition(condition2)  # this condition is targeted by behaviour 2
+
+        rospy.sleep(0.1)
+
+        for x in range(0, 3, 1):  # it takes some time with configured decay factor to integrate the changed activation
+            m.step()
+            rospy.sleep(0.1)
+
+        self.assertFalse(behaviour1._isExecuting, "Behaviour 1 is executed")
+        self.assertTrue(behaviour2._isExecuting, "Behaviour 2 is not executed")
 
 
 if __name__ == '__main__':
