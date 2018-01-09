@@ -1,11 +1,11 @@
 #! /usr/bin/env python2
-'''
+"""
 Tests manager implementation and integration
 
 Created on 27.03.2017
 
 @author: hrabia
-'''
+"""
 import time
 import unittest
 
@@ -19,7 +19,7 @@ from behaviour_components.condition_elements import Effect
 from behaviour_components.sensors import SimpleTopicSensor, Sensor
 from std_msgs.msg import Bool, Int32
 
-from tests.common import SetTrueBehavior,IncreaserBehavior
+from tests.common import SetTrueBehavior, IncreaserBehavior
 
 PKG = 'rhbp_core'
 
@@ -144,7 +144,7 @@ class TestManager(unittest.TestCase):
 
         method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, prefix=planner_prefix, goal_bias=5.0, conflictorBias=5.0)
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
 
         topic_name_1 = method_prefix + '/sensor_1'
         sensor1 = SimpleTopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
@@ -193,7 +193,7 @@ class TestManager(unittest.TestCase):
 
         rospy.sleep(0.1)
 
-        for x in range(0, 3, 1):  # it takes some time with configured decay factor to integrate the changed activation
+        for x in range(0, 5, 1):  # it takes some time with configured decay factor to integrate the changed activation
             m.step()
             rospy.sleep(0.1)
 
