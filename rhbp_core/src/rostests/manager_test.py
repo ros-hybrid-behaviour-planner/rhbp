@@ -144,7 +144,7 @@ class TestManager(unittest.TestCase):
 
         method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
         planner_prefix = method_prefix + "Manager"
-        m = Manager(activationThreshold=7, prefix=planner_prefix)
+        m = Manager(activationThreshold=7.0, prefix=planner_prefix)
 
         topic_name_1 = method_prefix + '/sensor_1'
         sensor1 = SimpleTopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
@@ -182,7 +182,7 @@ class TestManager(unittest.TestCase):
             rospy.sleep(0.1)
 
         # now behaviour 1 should be executed
-        self.assertTrue(behaviour1._isExecuting, "Behaviour 1 is not executed")
+        self.assertTrue(behaviour1._isExecuting, "Behaviour 1 is not executed in spite of higher priority")
         self.assertFalse(behaviour2._isExecuting, "Behaviour 2 is executed in spite of lower priority")
 
         behaviour1.priority = 0  # reset priority
