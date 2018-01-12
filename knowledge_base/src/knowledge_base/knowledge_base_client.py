@@ -23,6 +23,9 @@ class KnowledgeBaseClient(object):
     The init method waits for the knowledge base for the duration of the timeout parameter.
     After the timeout the constructor returns and the initialisation is done during first usage of this client
     (without timeout).
+    Patterns can contain a placeholder of "*" that matches to any entry, however pattern access does evaluate the pattern
+    length. This means that a pattern of ("*", "*") does only compare/match to tuples with two fields
+    An empty pattern can be used to retain all tuples
     """
 
     def __init__(self, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, timeout=2):

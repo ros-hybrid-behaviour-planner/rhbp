@@ -262,9 +262,10 @@ class Manager(object):
                     for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
                         if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:  # inspect the behaviour at the current index of the plan
                             if self._planExecutionIndex == index: # if it was a planned behaviour and it finished
-                                self._planExecutionIndex += 1 # we are one step ahead in our plan
-                            elif not behaviour.independentFromPlanner: # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
-                                unexpectedBehaviourFinished = True # it was unexpected
+                                self._planExecutionIndex += 1  # we are one step ahead in our plan
+                            # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
+                            elif not behaviour.independentFromPlanner:
+                                unexpectedBehaviourFinished = True  # it was unexpected
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
             rhbplog.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)

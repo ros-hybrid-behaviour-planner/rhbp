@@ -415,6 +415,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
             return (0.0, 0xFF)
         own_pddl_name = create_valid_pddl_name(ref_behaviour.name)
+        # only consider the plan sequence steps >=current planExecutionIndex
         for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(
                 self._manager.plan["actions"].keys())):  # walk along the plan starting at where we are
             if self._manager.plan["actions"][index] == own_pddl_name:  # if we are on the plan
@@ -676,23 +677,6 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                         inhibition_from_conflictors.append((behaviour, effect_name, total_inhibition / amount_behaviours_sharing_conflict))
         return (0.0,) if len(inhibition_from_conflictors) == 0 else \
             (reduce(lambda x, y: x + y, (x[2] for x in inhibition_from_conflictors)), inhibition_from_conflictors)
-
-    def get_activation_from_plan(self, ref_behaviour):
-        """
-        This method computes the activation this behaviour receives because of its place on the plan.
-        Behaviours at the top of the list will be activated most, other not so much.
-        :param ref_behaviour: the behaviour for which the activation is determined
-        :type ref_behaviour: Behaviour
-        """
-        if not self._manager.plan or ("cost" in self._manager.plan and self._manager.plan["cost"] == -1.0):
-            return (0.0, 0xFF)
-        own_pddl_name = create_valid_pddl_name(ref_behaviour.name)
-        # TODO the actiavtion distribution is not optimal
-        for index in filter(lambda x: x >= self._manager.planExecutionIndex, sorted(
-                self._manager.plan["actions"].keys())):  # walk along the plan starting at where we are
-            if self._manager.plan["actions"][index] == own_pddl_name:  # if we are on the plan
-                return (1 / (index - self._manager.planExecutionIndex + 1) * self._plan_bias, index)  # index is zero-based
-        return (0.0, -1)
 
 
 ActivationAlgorithmFactory.register_algorithm("uniform", UniformActivationAlgorithm)

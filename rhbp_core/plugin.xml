@@ -7,9 +7,9 @@
       <group>
         <label>Behaviour Planner</label>
       </group>
-      <label>Behaviour Planner Overview</label>
+      <label>RHBP Overview</label>
       <icon type="theme">system-help</icon>
-      <statustip>View the internals of the behaviour planner and manually override some settings.</statustip>
+      <statustip>Monitor and Debug the current state of the ROS Hybrid Behaviour Planner (RHBP), also  enables configuration and runtime adjustments</statustip>
     </qtgui>
   </class>
 </library>

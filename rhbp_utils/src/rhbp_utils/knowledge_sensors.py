@@ -4,8 +4,6 @@ Created on 25.03.2017
 @author: rieger, hrabia
 """
 
-import rospy
-
 from behaviour_components.sensors import Sensor
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
