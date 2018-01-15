@@ -54,7 +54,7 @@ class FactTableModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             i = index.row()
             j = index.column()
-            if j<len(self.facts[i]):
+            if j < len(self.facts[i]):
                 return '{0}'.format(self.facts[i][j])
             else:
                 return QVariant()
@@ -132,7 +132,6 @@ class KbUi(Plugin):
         self._callback_update_kb()
 
     def _connect_button_callback(self):
-        rospy.loginfo("Connect button pressed")
         self._set_knowledge_base(self._widget.kbNodeComboBox.currentText())
 
     def _callback_update_kb(self):
