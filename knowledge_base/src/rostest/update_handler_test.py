@@ -28,7 +28,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
     def setUp(self):
 
-        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME
+        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME + UpdateHandlerTestSuite
         # prevent influence of previous tests
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
 

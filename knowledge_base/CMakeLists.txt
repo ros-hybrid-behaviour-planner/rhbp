@@ -50,6 +50,7 @@ add_message_files(
   Fact.msg
   FactRemoved.msg
   FactUpdated.msg
+  DiscoverInfo.msg
 )
 
 ## Generate services in the 'srv' folder

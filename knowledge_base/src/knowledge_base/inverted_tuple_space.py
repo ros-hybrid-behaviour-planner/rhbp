@@ -39,3 +39,13 @@ class InvertedTupleSpace(TSpace):
                 return []
 
         return map(lambda id: self.tspace[id], possible)
+
+    def all(self):
+        """
+        Return all tuples
+        :return:
+        """
+        res = []
+        for k, v in self.tspace.iteritems():
+            res.append((k, v))
+        return res

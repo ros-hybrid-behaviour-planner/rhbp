@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Behaviour Planner</string>
+   <string>Behaviour Planner Overview</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <property name="leftMargin">
@@ -41,8 +41,8 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-20</y>
-        <width>495</width>
+        <y>0</y>
+        <width>509</width>
         <height>247</height>
        </rect>
       </property>
@@ -295,7 +295,7 @@
         <x>0</x>
         <y>0</y>
         <width>509</width>
-        <height>362</height>
+        <height>342</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">

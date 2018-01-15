@@ -1,0 +1,15 @@
+<library path="src">
+  <class name="KnowledgeBaseMonitor" type="kb_rqt_plugin.kb_gui.KbUi" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      RHBP Knowledge Base Monitoring
+    </description>
+    <qtgui>
+      <group>
+        <label>Behaviour Planner</label>
+      </group>
+      <label>Knowledge Base Monitor</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Monitor the current state of knowledge base nodes.</statustip>
+    </qtgui>
+  </class>
+</library>

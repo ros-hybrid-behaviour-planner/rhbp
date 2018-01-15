@@ -9,6 +9,8 @@ from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.msg import FactRemoved, Fact, FactUpdated
 
+import copy
+
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.kb')
 
@@ -32,6 +34,7 @@ class KnowledgeBaseFactCache(object):
         self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
         self.__client = KnowledgeBaseClient(knowledge_base_name)
         self.__value_lock = threading.Lock()
+        self.__update_listeners = [] # functions to call on update
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
@@ -61,6 +64,7 @@ class KnowledgeBaseFactCache(object):
         with self.__value_lock:
             if fact_added.content not in self.__contained_facts:
                 self.__contained_facts.append(tuple(fact_added.content))
+        self._notify_listeners()
 
     def __handle_remove_update(self, fact_removed):
         """
@@ -72,6 +76,7 @@ class KnowledgeBaseFactCache(object):
                 self.__contained_facts.remove(tuple(fact_removed.fact))
             except ValueError:
                 pass
+        self._notify_listeners()
 
     def __handle_fact_update(self, fact_updated):
         with self.__value_lock:
@@ -83,10 +88,11 @@ class KnowledgeBaseFactCache(object):
                     self.__contained_facts.remove(tuple(removed_fact.content))
                 except ValueError:
                     pass
+        self._notify_listeners()
 
     def update_state_manually(self):
         """
-        requests in knowledge base, whether a matching state exists
+        requests/polls from knowledge base, whether a matching state exists
         :return: whether matching fact exists
         """
         new_content = self.__client.all(self.__pattern)
@@ -111,5 +117,27 @@ class KnowledgeBaseFactCache(object):
     def get_all_matching_facts(self):
         self.__ensure_initialization()
         with self.__value_lock:
-            #TODO better return copy here? Maybe use deepcopy?!
-            return self.__contained_facts
+            return copy.deepcopy(self.__contained_facts)
+
+    def _notify_listeners(self):
+        """
+        Notify listeners about new fact update
+        """
+        for func in self.__update_listeners:
+            func()
+
+    def add_update_listener(self, func):
+        """
+        Add a function that is going to be called/notified on a fact update
+        :param func: any python function without required parameters
+        """
+        if func not in self.__update_listeners:
+            self.__update_listeners.append(func)
+
+    def remove_update_listener(self, func):
+        """
+        Remove a function from the listener list
+        :param func: function that has been registered before
+        """
+        if func in self.__update_listeners:
+            self.__update_listeners.remove(func)
