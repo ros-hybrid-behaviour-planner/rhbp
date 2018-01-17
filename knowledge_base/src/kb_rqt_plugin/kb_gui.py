@@ -34,6 +34,7 @@ class FactTableModel(QAbstractTableModel):
         Use the method to update the fact/data base
         :param new_facts: new list of fact tuples
         """
+        new_facts.sort()
         self.layoutAboutToBeChanged.emit()
         self.facts = new_facts
         self.layoutChanged.emit()
