@@ -21,20 +21,23 @@ class KnowledgeBaseFactCache(object):
     If the knowledge base does not exists at initialization, than the subscribe is done at first using of the cache.
     """
 
-    def __init__(self, pattern, knowledge_base_name=KnowledgeBase.DEFAULT_NAME):
+    def __init__(self, pattern, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, timeout=None):
         """
         :param pattern: tuple of strings. The update handler caches all facts, matching the pattern.
         :param knowledge_base_name:
+        :param timeout: Timeout for all kb service calls in seconds, default is blocking/endless
         """
 
         self.__knowledge_base_name = knowledge_base_name
+        self.__service_timeout = timeout
         self.__pattern = pattern
         self.__initialized = False
         self.__contained_facts = []
         self.__example_service_name = knowledge_base_name + KnowledgeBase.UPDATE_SERVICE_NAME_POSTFIX
         self.__client = KnowledgeBaseClient(knowledge_base_name)
         self.__value_lock = threading.Lock()
-        self.__update_listeners = [] # functions to call on update
+        self.__update_listeners = []  # functions to call on update
+        self.__update_time = None
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
@@ -64,6 +67,7 @@ class KnowledgeBaseFactCache(object):
         with self.__value_lock:
             if fact_added.content not in self.__contained_facts:
                 self.__contained_facts.append(tuple(fact_added.content))
+                self.__update_time = rospy.get_time()
         self._notify_listeners()
 
     def __handle_remove_update(self, fact_removed):
@@ -76,6 +80,7 @@ class KnowledgeBaseFactCache(object):
                 self.__contained_facts.remove(tuple(fact_removed.fact))
             except ValueError:
                 pass
+        self.__update_time = rospy.get_time()
         self._notify_listeners()
 
     def __handle_fact_update(self, fact_updated):
@@ -88,6 +93,7 @@ class KnowledgeBaseFactCache(object):
                     self.__contained_facts.remove(tuple(removed_fact.content))
                 except ValueError:
                     pass
+        self.__update_time = rospy.get_time()
         self._notify_listeners()
 
     def update_state_manually(self):
@@ -98,13 +104,17 @@ class KnowledgeBaseFactCache(object):
         new_content = self.__client.all(self.__pattern)
         with self.__value_lock:
             self.__contained_facts = new_content
+            self.__update_time = rospy.get_time()
             return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
         if not self.__initialized:
-            rhbplog.loginfo('Wait for knowledge base service: ' + self.__example_service_name)
-            rospy.wait_for_service(self.__example_service_name)
-            self.__register_for_updates()
+            try:
+                rhbplog.loginfo('Wait for knowledge base service: ' + self.__example_service_name)
+                rospy.wait_for_service(self.__example_service_name, timeout=self.__service_timeout)
+                self.__register_for_updates()
+            except rospy.ROSException as e:
+                raise rospy.ROSException("Timeout: Cannot reach service self.__example_service_name:" + str(e))
 
     def does_fact_exists(self):
         """
@@ -141,3 +151,11 @@ class KnowledgeBaseFactCache(object):
         """
         if func in self.__update_listeners:
             self.__update_listeners.remove(func)
+
+    @property
+    def update_time(self):
+        """
+        Get time of last update
+        :return: ROSTime of last fact change
+        """
+        return self.__update_time

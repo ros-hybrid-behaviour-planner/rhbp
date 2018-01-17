@@ -4,15 +4,17 @@
 
 import os
 import time
+import copy
 import rospy
 import rospkg
+import traceback
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
 from PyQt5.QtCore import pyqtSignal, QAbstractTableModel, QModelIndex, Qt, QVariant
-from threading import Lock
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
+from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.msg import DiscoverInfo
 
 
@@ -21,9 +23,11 @@ class FactTableModel(QAbstractTableModel):
     Simple QT table model for Knowledge Base facts
     """
 
-    def __init__(self, parent=None, *args):
-        super(FactTableModel, self).__init__()
+    def __init__(self, kb_name, parent=None, *args):
+        super(FactTableModel, self).__init__(parent)
         self.facts = None
+        self._kb_name = kb_name
+        self._kb_client = KnowledgeBaseClient(knowledge_base_name=self._kb_name, timeout=0.5)
 
     def update(self, new_facts):
         """
@@ -61,13 +65,47 @@ class FactTableModel(QAbstractTableModel):
         else:
             return QVariant()
 
+    def setData(self, index, value, role):
+        """
+        Update remote knowledge base data
+        """
+        try:
+
+            pattern = copy.deepcopy(self.facts[index.row()])
+
+            current_fact = list(pattern)
+
+            if index.column() >= len(current_fact):
+                for i in range(0, index.column()-len(current_fact) + 1):
+                    current_fact.append("")
+            current_fact[index.column()] = str(value)
+
+            rospy.logdebug("Changing knowledge: \n" + str(pattern) + "\n --to-- \n" + str(current_fact))
+
+            return self._kb_client.update(pattern=pattern, new=current_fact)
+        except Exception:
+            rospy.logerr(traceback.format_exc())
+            return False
+
     def flags(self, index):
-        return Qt.ItemIsEnabled
+        return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+    @property
+    def kb_name(self):
+        return self._kb_name
+
+    @kb_name.setter
+    def kb_name(self, value):
+        if self._kb_name != value:
+            self._kb_name = value
+            self._kb_client = KnowledgeBaseClient(knowledge_base_name=value, timeout=0.5)
 
 
 class KbUi(Plugin):
     """
     KnowledgeBase Monitor Plugin main class
+
+    The Plugin allows to connect to a running KB and enables displaying and editing of the current fact base
     """
 
     _update_kb = pyqtSignal()
@@ -91,11 +129,9 @@ class KbUi(Plugin):
         loadUi(ui_file, self._widget)
         # Give QObjects reasonable names
         self._widget.setObjectName('KnowledgeBase GUI')
-        # Show _widget.windowTitle on left-top of each plugin (when 
-        # it's set in _widget). This is useful when you open multiple 
-        # plugins at once. Also if you open multiple instances of your 
-        # plugin at once, these lines add number to make it easy to 
-        # tell from pane to pane.
+        # Show _widget.windowTitle on left-top of each plugin (when it's set in _widget).
+        # This is useful when you open multiple plugins at once. Also if you open multiple instances of your
+        # plugin at once, these lines add number to make it easy to tell from pane to pane.
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
         # Add widget to the user interface
@@ -103,7 +139,7 @@ class KbUi(Plugin):
 
         self._widget.kbConnectPushButton.clicked.connect(self._connect_button_callback)
 
-        self._fact_table_model = FactTableModel(self._widget)
+        self._fact_table_model = FactTableModel(kb_name=self._kb_name, parent=self._widget)
 
         self._widget.kbTableView.setModel(self._fact_table_model)
 
@@ -125,11 +161,15 @@ class KbUi(Plugin):
         if hasattr(self, "_kb_cache") and self._kb_cache:
             self._kb_cache.remove_update_listener(self._update_kb.emit)
         self._kb_name = kb_name
-        self._kb_cache = KnowledgeBaseFactCache(pattern=(), knowledge_base_name=self._kb_name)
+        self._kb_cache = KnowledgeBaseFactCache(pattern=(), knowledge_base_name=self._kb_name, timeout=2)
         self._update_discovery(DiscoverInfo(kb_name=kb_name))
         self._kb_cache.add_update_listener(self._update_kb.emit)
         # manually update once
-        self._callback_update_kb()
+        try:
+            self._callback_update_kb()
+        except rospy.ROSException as e:
+            rospy.logwarn(e)
+            self._widget.kbStatusLabel.setText("Could not connect to {0}".format(kb_name))
 
     def _connect_button_callback(self):
         self._set_knowledge_base(self._widget.kbNodeComboBox.currentText())
@@ -137,6 +177,7 @@ class KbUi(Plugin):
     def _callback_update_kb(self):
         facts = self._kb_cache.get_all_matching_facts()
         self._fact_table_model.update(new_facts=facts)
+        self._fact_table_model.kb_name = self._kb_name
         self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
 
     def _update_discovery(self, kb_discovery):

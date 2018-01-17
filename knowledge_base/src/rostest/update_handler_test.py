@@ -2,7 +2,7 @@
 '''
 Created on 07.12.2016
 
-@author: rieger
+@author: rieger, hrabia
 '''
 import time
 import unittest
@@ -28,7 +28,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
     def setUp(self):
 
-        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME + UpdateHandlerTestSuite
+        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME + "UpdateHandlerTestSuite"
         # prevent influence of previous tests
         self.__message_prefix = 'UpdateHandlerTestSuite' + str(time.time())
 
@@ -60,7 +60,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         """
         test_tuple = (self.__message_prefix, 'test_simple_adding', '0', '0')
 
-        cache = KnowledgeBaseFactCache(pattern=test_tuple)
+        cache = KnowledgeBaseFactCache(pattern=test_tuple, knowledge_base_name=self.__knowledge_base_address)
         self.assertFalse(cache.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
         self.__client.push(test_tuple)
@@ -71,7 +71,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
     def test_remove(self):
         test_tuple = (self.__message_prefix, 'test_remove', '0', '0')
 
-        cache = KnowledgeBaseFactCache(pattern=test_tuple)
+        cache = KnowledgeBaseFactCache(pattern=test_tuple, knowledge_base_name=self.__knowledge_base_address)
         self.assertFalse(cache.does_fact_exists(), 'Tuple is not added, but is indicated as present')
 
         self.__client.push(test_tuple)
@@ -87,8 +87,8 @@ class UpdateHandlerTestSuite(unittest.TestCase):
     def test_multiple_caches_for_same_pattern(self):
         test_tuple = (self.__message_prefix, 'test_multiple_caches_for_same_pattern', '0', '0')
 
-        cache1 = KnowledgeBaseFactCache(pattern=test_tuple)
-        cache2 = KnowledgeBaseFactCache(pattern=test_tuple)
+        cache1 = KnowledgeBaseFactCache(pattern=test_tuple, knowledge_base_name=self.__knowledge_base_address)
+        cache2 = KnowledgeBaseFactCache(pattern=test_tuple, knowledge_base_name=self.__knowledge_base_address)
 
         self.assertFalse(cache1.does_fact_exists(), 'Tuple is not added, but is indicated as present')
         self.assertFalse(cache2.does_fact_exists(), 'Tuple is not added, but is indicated as present')
@@ -111,8 +111,8 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         self.__client.push(first_fact)
         self.__client.push(second_fact)
-
-        cache = KnowledgeBaseFactCache(pattern=(prefix, 'updated', '*', '1'))
+        pattern = (prefix, 'updated', '*', '1')
+        cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=self.__knowledge_base_address)
 
         rospy.sleep(0.1)
 
@@ -132,7 +132,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         self.__client.push(updated_old)
 
-        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
         updated_new = (prefix, 'updated', '1')
 
@@ -151,12 +151,15 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.__client.push(updated_old)
         self.__client.push(not_influenced)
 
-        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
+
+        update_stamp = cache.update_time
 
         updated_new = (prefix, 'updated', '0')
 
         self.__client.update(updated_old, updated_new)
-        rospy.sleep(0.1)
+        while update_stamp == cache.update_time:
+            rospy.sleep(0.1)
 
         current = cache.get_all_matching_facts()
         self.assertEqual(2, len(current))
@@ -170,19 +173,43 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.__client.push(updated_old_1)
         self.__client.push(updated_old_2)
 
-        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
         updated_new_1 = (prefix, 'fact_1', '3')
         self.__client.update(updated_old_1, updated_new_1)
 
+        update_stamp = cache.update_time
+
         updated_new_2 = (prefix, 'fact_2', '4')
         self.__client.update(updated_old_2, updated_new_2)
+
         rospy.sleep(0.1)
+        while update_stamp == cache.update_time:
+            rospy.sleep(0.1)
 
         current = cache.get_all_matching_facts()
         self.assertEqual(2, len(current))
+        self.assertTrue(updated_new_1 in current, 'Update of updated_new_1 not noticed')
+        self.assertTrue(updated_new_2 in current, 'Update of updated_new_2 not noticed')
+
+    def test_all_pattern_with_update(self):
+        prefix = self.__message_prefix + '_test_multiple_updates'
+        updated_old_1 = (prefix, 'fact_1', '1')
+        self.__client.push(updated_old_1)
+
+        all_pattern = ()
+        cache = KnowledgeBaseFactCache(pattern=all_pattern, knowledge_base_name=self.__knowledge_base_address)
+        update_stamp = cache.update_time
+
+        updated_new_1 = (prefix, 'fact_1', '3')
+        self.__client.update(updated_old_1, updated_new_1)
+
+        while update_stamp == cache.update_time:
+            rospy.sleep(0.1)
+
+        current = cache.get_all_matching_facts()
+        self.assertEqual(1, len(current))
         self.assertTrue(updated_new_1 in current, 'Update not noticed')
-        self.assertTrue(updated_new_2 in current, 'Update not noticed')
 
     def __check_content(self,fact_cache, *expected_facts):
 
@@ -201,7 +228,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         updated_old_2 = (prefix, 'toUpdate', '2')
         not_influenced = (prefix, 'not_influenced', '1')
 
-        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'))
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
         rospy.sleep(0.1)
 
