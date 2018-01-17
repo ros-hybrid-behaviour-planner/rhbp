@@ -101,7 +101,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
     def test_middle_placeholder(self):
         """
-        Test updating an existing fact 
+        Test updating an existing fact
         """
         prefix = self.__message_prefix + '_test_middle_placeholder'
 
@@ -124,7 +124,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
     def test_update_existing(self):
         """
-        Test updating an existing fact 
+        Test updating an existing fact
         """
         prefix = self.__message_prefix + '_test_update_empty'
 
@@ -183,7 +183,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         updated_new_2 = (prefix, 'fact_2', '4')
         self.__client.update(updated_old_2, updated_new_2)
 
-        rospy.sleep(0.1)
+        rospy.sleep(0.5)
         while update_stamp == cache.update_time:
             rospy.sleep(0.1)
 
