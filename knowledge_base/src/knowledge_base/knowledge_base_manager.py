@@ -23,7 +23,8 @@ rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DE
 
 class KnowledgeBase(object):
     """
-    Provides a tuple space for ROS. The tuple space is accessible through several ROS services (Peek, Pop, Exists, All, Push).
+    Provides a tuple space for ROS. The tuple space is accessible through several ROS services:
+    (Peek, Pop, Exists, All, Push).
     It allows subscribing for updates (see UpdateSubscribe service).
     Although this class is just a wrapper for accessing the real tuple space
     """
@@ -36,12 +37,13 @@ class KnowledgeBase(object):
     UPDATE_SERVICE_NAME_POSTFIX = '/Update'
     UPDATE_SUBSCRIBE_SERVICE_NAME_POSTFIX = '/UpdateSubscriber'
     PUSH_SERVICE_NAME_POSTFIX = '/Push'
+    DISCOVERY_TOPIC_NAME = '/kb_discover'
 
     def __init__(self, name=DEFAULT_NAME, include_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
         self.__fact_update_topic_counter = 0
         self.__include_patterns_in_update_names = include_patterns_in_update_names
-        self.__tuple_space = TSpace()
+        self.__tuple_space = InvertedTupleSpace()
         self.__subscribed_patterns_space = InvertedTupleSpace()
         self.__fact_update_topics = {}
 
@@ -95,10 +97,10 @@ class KnowledgeBase(object):
         self.__push_internal(request.content, converted, None)
         return PushResponse()
 
-    def __push_internal(self, unconverted_fact, fact, dont_inform):
+    def __push_internal(self, unconverted_fact, fact, dont_inform=None):
         """
-        difference to __push: fact and dont_inform are already converted
-        all patterns, which matches the dont_inform fact, will not informed about push
+        difference to __push: fact and don't_inform are already converted
+        all patterns, which matches the don't_inform fact, will not informed about push
         """
         for part in unconverted_fact:
             # Placeholders are not allowed in facts
@@ -127,6 +129,18 @@ class KnowledgeBase(object):
                 continue
             add_update_topic = self.__fact_update_topics[pattern][0]
             add_update_topic.publish(sendeable_fact)
+        # check for the empty tuple aka all placeholder
+        # only run this without dont_inform (means it is a direct insert
+        if dont_inform is None and self.__has_all_updates_subscriber():
+            add_update_topic = self.__fact_update_topics[()][0]
+            add_update_topic.publish(sendeable_fact)
+
+    def __has_all_updates_subscriber(self):
+        """
+        Checks if there is a subscriber for all updates, using a empty tuple pattern
+        :return: True for such subscriber available
+        """
+        return len(self.__subscribed_patterns_space.many(pattern=(), number=1)) > 0
 
     def __exists_tuple_as_is(self, to_check):
         """
@@ -202,11 +216,19 @@ class KnowledgeBase(object):
             exluded = []
         else:
             exluded = self.__subscribed_patterns_space.find_for_fact(dont_inform)
+
+        another_matching_fact_exists = False
         for pattern in self.__subscribed_patterns_space.find_for_fact(removed_fact):
             if pattern in exluded:
                 continue
             another_matching_fact_exists = self.__exists_tuple_as_is(pattern)
             removed_update_topic = self.__fact_update_topics[pattern][1]
+            removed_update_topic.publish(
+                FactRemoved(fact=removed_fact, another_matching_fact_exists=another_matching_fact_exists))
+        # handle the all placeholder
+        # only run this without dont_inform (means it is a direct insert
+        if dont_inform is None and self.__has_all_updates_subscriber():
+            removed_update_topic = self.__fact_update_topics[()][1]
             removed_update_topic.publish(
                 FactRemoved(fact=removed_fact, another_matching_fact_exists=another_matching_fact_exists))
 
@@ -217,7 +239,10 @@ class KnowledgeBase(object):
         converted = self.__converts_request_to_tuple_space_format(all_request.pattern)
         try:
             self.__tuple_lock.acquire()
-            found_tuples = self.__tuple_space.many(converted, sys.maxint)
+            if len(converted) == 0:
+                found_tuples = self.__tuple_space.all()
+            else:
+                found_tuples = self.__tuple_space.many(converted, sys.maxint)
             result_as_list = []
             for fact in found_tuples:
                 result_as_list.append(Fact(content=fact[1]))
@@ -308,7 +333,7 @@ class KnowledgeBase(object):
     def __fact_updated(self, removed_facts, new_fact, converted_new_fact):
         """
         informs all clients, which are interested about added and at least one removed about update
-        :param old_facts: network compatible version of all removed facts, encapsulated in ROS message class Fact
+        :param removed_facts: network compatible version of all removed facts, encapsulated in ROS message class Fact
         :param new_fact: network compatible version of fact
         """
 
@@ -320,7 +345,7 @@ class KnowledgeBase(object):
             interested_in_old = self.__subscribed_patterns_space.find_for_fact(removed_fact.content)
             to_inform = set(interested_in_old).intersection(interested_in_new)
             for pattern in to_inform:
-                if not pattern in removed_facts_by_interested_pattern:
+                if pattern not in removed_facts_by_interested_pattern:
                     removed_facts_by_interested_pattern[pattern] = []
                 removed_facts_by_interested_pattern[pattern].append(removed_fact.content)
 
@@ -330,6 +355,10 @@ class KnowledgeBase(object):
                 facts.append(Fact(fact))
             update_topic = self.__fact_update_topics[pattern][2]
             update_topic.publish(FactUpdated(removed=tuple(facts), new=new_fact))
+        # handle the all placeholder
+        if self.__has_all_updates_subscriber():
+            update_topic = self.__fact_update_topics[()][2]
+            update_topic.publish(FactUpdated(removed=removed_facts, new=new_fact))
 
     def __update(self, update_request):
         """
@@ -337,18 +366,18 @@ class KnowledgeBase(object):
         :return: true if replacing was successful, false if not because old fact does not exists
         """
         pattern = self.__converts_request_to_tuple_space_format(update_request.pattern)
-        newFact = self.__converts_request_to_tuple_space_format(update_request.newFact)
-        if (self.__exists_tuple_as_is(newFact)):
+        new_fact = self.__converts_request_to_tuple_space_format(update_request.newFact)
+        if self.__exists_tuple_as_is(new_fact):
             self.__pop_internal(pattern)
 
-        removed_facts = self.__pop_internal(pattern, dont_inform=newFact).removed
+        removed_facts = self.__pop_internal(pattern, dont_inform=new_fact).removed
         facts_removed = len(removed_facts) > 0
-        if (not update_request.pushWithoutExisting and not facts_removed):
+        if not update_request.pushWithoutExisting and not facts_removed:
             # If no facts was removed, no clients was informed
             return UpdateResponse(False)
-        if (facts_removed):
-            self.__push_internal(update_request.newFact, newFact, pattern)
-            self.__fact_updated(removed_facts, update_request.newFact, newFact)
+        if facts_removed:
+            self.__push_internal(update_request.newFact, new_fact, dont_inform=pattern)
+            self.__fact_updated(removed_facts, update_request.newFact, new_fact)
         else:
-            self.__push_internal(update_request.newFact, newFact, None)
+            self.__push_internal(update_request.newFact, new_fact, None)
         return UpdateResponse(True)

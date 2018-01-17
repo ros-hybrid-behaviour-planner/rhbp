@@ -1,4 +1,7 @@
 #! /usr/bin/env python2
+
+import sys
+
 import unittest
 
 import rostest
@@ -65,10 +68,13 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
         pattern2 = ('pos', '0', str)
         tuple_space.add(pattern2)
 
-        result = tuple_space.find_for_fact(('pos', '0', '0'))
+    def test_all(self):
+        tuple_space = InvertedTupleSpace()
+
+        InvertedTupleSpaceTestSuite.add_not_relevant_patterns(tuple_space)
+
+        result = tuple_space.all()
         self.assertEqual(2, len(result))
-        self.assertTrue(pattern1 in result)
-        self.assertTrue(pattern2 in result)
 
 
 if __name__ == '__main__':

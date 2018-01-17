@@ -39,3 +39,31 @@ class InvertedTupleSpace(TSpace):
                 return []
 
         return map(lambda id: self.tspace[id], possible)
+
+    def all(self):
+        """
+        Return all tuples
+        :return:
+        """
+        res = []
+        for k, v in self.tspace.iteritems():
+            res.append((k, v))
+        return res
+
+    def get(self, pattern, remove=False):
+        """
+        This is the way to access an item in the tuple space. If the
+        item can't be found, raise KeyError. The item can optionally
+        be directly removed.
+        """
+        res = self.many(pattern, 1)
+        if not res:
+            raise KeyError(pattern)
+
+        resp, res = res[0]
+        if remove:
+            for i, c in enumerate(res):
+                self.colidx[i][c].remove(resp)
+            self.lenidx[len(res)].remove(resp)
+            self.tspace.pop(resp)
+        return res
