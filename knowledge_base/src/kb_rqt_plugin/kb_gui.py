@@ -140,7 +140,7 @@ class KbUi(Plugin):
     def __init__(self, context):
         super(KbUi, self).__init__(context)
 
-        self.__edit_lock = threading.RLock()
+        self.__edit_lock = threading.Lock()
 
         self._kb_name = KnowledgeBase.DEFAULT_NAME
 
@@ -217,11 +217,14 @@ class KbUi(Plugin):
         self.__edit_lock.release()
 
     def _callback_update_kb(self):
-        with self.__edit_lock:
-            facts = self._kb_cache.get_all_matching_facts()
-            self._fact_table_model.update(new_facts=facts)
-            self._fact_table_model.kb_name = self._kb_name
-            self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
+        if self.__edit_lock.acquire(False):
+            try:
+                facts = self._kb_cache.get_all_matching_facts()
+                self._fact_table_model.update(new_facts=facts)
+                self._fact_table_model.kb_name = self._kb_name
+                self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
+            finally:
+                self.__edit_lock.release()
 
     def _update_discovery(self, kb_discovery):
         """
