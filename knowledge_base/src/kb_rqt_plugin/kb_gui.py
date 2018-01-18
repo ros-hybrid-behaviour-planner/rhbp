@@ -4,18 +4,43 @@
 
 import os
 import time
+import threading
 import copy
 import rospy
 import rospkg
 import traceback
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget
+from python_qt_binding.QtWidgets import QWidget, QStyledItemDelegate
 from PyQt5.QtCore import pyqtSignal, QAbstractTableModel, QModelIndex, Qt, QVariant
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 from knowledge_base.update_handler import KnowledgeBaseFactCache
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient
 from knowledge_base.msg import DiscoverInfo
+
+
+class ItemDelegate(QStyledItemDelegate):
+    """
+    Helper Class that allows to get a signal on a start and finish of cell editing
+    """
+    cellEditingStarted = pyqtSignal(int, int)
+    cellEditingFinished = pyqtSignal(int, int)
+
+    def createEditor(self, parent, option, index):
+        """
+        This is triggered when editing starts
+        """
+        result = super(ItemDelegate, self).createEditor(parent, option, index)
+        if result:
+            self.cellEditingStarted.emit(index.row(), index.column())
+        return result
+
+    def setModelData (self, editor, model, index):
+        """
+        This is triggered when editing is finished
+        """
+        super(ItemDelegate, self).setModelData(editor, model, index)
+        self.cellEditingFinished.emit(index.row(), index.column())
 
 
 class FactTableModel(QAbstractTableModel):
@@ -56,7 +81,7 @@ class FactTableModel(QAbstractTableModel):
             return 0
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole or role == Qt.EditRole:
             i = index.row()
             j = index.column()
             if j < len(self.facts[i]):
@@ -114,6 +139,9 @@ class KbUi(Plugin):
 
     def __init__(self, context):
         super(KbUi, self).__init__(context)
+
+        self.__edit_lock = threading.RLock()
+
         self._kb_name = KnowledgeBase.DEFAULT_NAME
 
         # Give QObjects reasonable names
@@ -144,8 +172,15 @@ class KbUi(Plugin):
 
         self._widget.kbTableView.setModel(self._fact_table_model)
 
-        self._update_kb.connect(self._callback_update_kb)
+        # configuring TableView event for item edit
+        self._cell_edit_delegate = ItemDelegate(self._widget)
+        self._cell_edit_delegate.cellEditingStarted.connect(self._callback_kb_editing_started)
+        self._cell_edit_delegate.cellEditingFinished.connect(self._callback_kb_editing_finished)
 
+        self._widget.kbTableView.setItemDelegate(self._cell_edit_delegate)
+
+        # connecting signals
+        self._update_kb.connect(self._callback_update_kb)
         self._update_discover.connect(self._update_discovery)
 
         # subscribe to our information source
@@ -175,11 +210,18 @@ class KbUi(Plugin):
     def _connect_button_callback(self):
         self._set_knowledge_base(self._widget.kbNodeComboBox.currentText())
 
+    def _callback_kb_editing_started(self, row, column):
+        self.__edit_lock.acquire()
+
+    def _callback_kb_editing_finished(self, row, column):
+        self.__edit_lock.release()
+
     def _callback_update_kb(self):
-        facts = self._kb_cache.get_all_matching_facts()
-        self._fact_table_model.update(new_facts=facts)
-        self._fact_table_model.kb_name = self._kb_name
-        self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
+        with self.__edit_lock:
+            facts = self._kb_cache.get_all_matching_facts()
+            self._fact_table_model.update(new_facts=facts)
+            self._fact_table_model.kb_name = self._kb_name
+            self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
 
     def _update_discovery(self, kb_discovery):
         """
