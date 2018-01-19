@@ -140,6 +140,8 @@ class KbUi(Plugin):
     def __init__(self, context):
         super(KbUi, self).__init__(context)
 
+        self.setObjectName('KnowledgeBase UI')
+
         self.__edit_lock = threading.Lock()
 
         self._kb_name = KnowledgeBase.DEFAULT_NAME
@@ -157,7 +159,7 @@ class KbUi(Plugin):
         # Extend the widget with all attributes and children from UI file
         loadUi(ui_file, self._widget)
         # Give QObjects reasonable names
-        self._widget.setObjectName('KnowledgeBase GUI')
+        self._widget.setObjectName('KnowledgeBase Monitor')
         # Show _widget.windowTitle on left-top of each plugin (when it's set in _widget).
         # This is useful when you open multiple plugins at once. Also if you open multiple instances of your
         # plugin at once, these lines add number to make it easy to tell from pane to pane.
@@ -171,6 +173,9 @@ class KbUi(Plugin):
         self._fact_table_model = FactTableModel(kb_name=self._kb_name, parent=self._widget)
 
         self._widget.kbTableView.setModel(self._fact_table_model)
+
+        self._widget.kbPatternlineEdit.setToolTip("Separate tuples with , and use * as placeholder, keep empty to "
+                                                  "match all tuples")
 
         # configuring TableView event for item edit
         self._cell_edit_delegate = ItemDelegate(self._widget)
@@ -187,28 +192,32 @@ class KbUi(Plugin):
         self.__kb_discovery = rospy.Subscriber(KnowledgeBase.DISCOVERY_TOPIC_NAME, DiscoverInfo,
                                                self._update_discover.emit)
 
-        self._set_knowledge_base(kb_name=self._kb_name)
-
-    def _set_knowledge_base(self, kb_name):
+    def _set_knowledge_base(self, kb_name, pattern_text=""):
         """
         set the knowledge base we want to connect to
         :param kb_name: name of the KB
+        :param pattern_text: pattern for the KB update as text, komma separates tuples
         """
         if hasattr(self, "_kb_cache") and self._kb_cache:
             self._kb_cache.remove_update_listener(self._update_kb.emit)
         self._kb_name = kb_name
-        self._kb_cache = KnowledgeBaseFactCache(pattern=(), knowledge_base_name=self._kb_name, timeout=2)
+        if len(pattern_text) > 0:
+            pattern = pattern_text.split(",")
+        else:
+            pattern = ()
+        self._kb_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=self._kb_name, timeout=2)
         self._update_discovery(DiscoverInfo(kb_name=kb_name))
         self._kb_cache.add_update_listener(self._update_kb.emit)
+
         # manually update once
         try:
-            self._callback_update_kb()
+            self._update_kb.emit()
         except rospy.ROSException as e:
             rospy.logwarn(e)
             self._widget.kbStatusLabel.setText("Could not connect to {0}".format(kb_name))
 
     def _connect_button_callback(self):
-        self._set_knowledge_base(self._widget.kbNodeComboBox.currentText())
+        self._set_knowledge_base(self._widget.kbNodeComboBox.currentText(), self._widget.kbPatternlineEdit.text())
 
     def _callback_kb_editing_started(self, row, column):
         self.__edit_lock.acquire()
@@ -223,6 +232,8 @@ class KbUi(Plugin):
                 self._fact_table_model.update(new_facts=facts)
                 self._fact_table_model.kb_name = self._kb_name
                 self._widget.kbStatusLabel.setText("Last Update: {0}".format(time.ctime()))
+            except Exception:
+                rospy.logwarn(traceback.format_exc())
             finally:
                 self.__edit_lock.release()
 
@@ -253,4 +264,17 @@ class KbUi(Plugin):
             stored_kb_name = stored_kb_name.encode('ascii', 'ignore')
         if stored_kb_name:
             rospy.loginfo("Using stored prefix: %s", stored_kb_name)
-            self._set_knowledge_base(stored_kb_name)
+            kb_name = stored_kb_name
+        else:
+            kb_name = KnowledgeBase.DEFAULT_NAME
+
+        # manually update once with local function and thread
+        def initial_update():
+            try:
+                self._set_knowledge_base(kb_name=kb_name)
+            except rospy.ROSException as e:
+                rospy.logwarn(e)
+                self._widget.kbStatusLabel.setText("Error: ".format(str(e)))
+
+        initial_update_thread = threading.Thread(target=initial_update)
+        initial_update_thread.start()
