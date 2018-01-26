@@ -1,0 +1,3 @@
+<launch>
+    <test pkg="rhbp_utils" type="param_utils_test.py" test-name="param_utils_test_node"/>
+</launch>

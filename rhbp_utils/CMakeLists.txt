@@ -186,4 +186,5 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_rostest(launch/knowledge_sensor_test.test)
+add_rostest(test/knowledge_sensor_test.test)
+add_rostest(test/param_test.test)
