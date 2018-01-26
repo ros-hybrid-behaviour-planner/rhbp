@@ -19,6 +19,7 @@ from .pddl import create_valid_pddl_name
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
+
 class Sensor(object):
     '''
     This class represents information necessary to make decisions.
@@ -29,22 +30,23 @@ class Sensor(object):
     _instanceCounter = 0
 
     def __init__(self, name=None, optional=False, initial_value=None):
-        '''
+        """
         Constructor
-        '''
+        """
         self._name = name if name else "Sensor_{0}".format(Sensor._instanceCounter)
         self._name = create_valid_pddl_name(self._name)
         self._optional = optional
         self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
+        self._initial_value = initial_value
 
         Sensor._instanceCounter += 1
 
     def sync(self):
-        '''
+        """
         Keep a explicit copy of the current value
         returns the just stored value
-        '''
+        """
         self._value = self._latestValue
         return self._value
 
@@ -178,6 +180,37 @@ class SimpleTopicSensor(PassThroughTopicSensor):
     def subscription_callback(self, msg):
         msg_value = getattr(msg, self._message_field)
         super(SimpleTopicSensor, self).subscription_callback(msg_value)
+
+
+class ParamSensor(Sensor):
+    """
+    Sensor for retrieving param information from all ROS namespaces (private, global)
+    """
+
+    def __init__(self, name, param,  optional=False, initial_value=None):
+        """
+        :param name: name of the sensor
+        :param param: name of the parameter
+        """
+
+        super(ParamSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
+
+        self._param = param
+
+    def sync(self):
+        try:
+            value = rospy.get_param(self._param)
+        except KeyError:
+            rhbplog.logwarn("Parameter '%s' not available", self._param)
+            value = self._initial_value
+
+        super(ParamSensor, self).update(newValue=value)
+
+        return super(ParamSensor, self).sync()
+
+    @property
+    def param(self):
+        return self._param
 
 
 class DynamicSensor(Sensor):
