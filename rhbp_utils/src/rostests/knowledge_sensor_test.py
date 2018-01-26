@@ -34,7 +34,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         self.start_kb_node()
 
         rospy.init_node('knowledge_sensor_test_node', log_level=rospy.DEBUG)
-        self.__client = KnowledgeBaseClient()
+        self.__client = KnowledgeBaseClient(knowledge_base_name=self.__knowledge_base_address)
 
     def start_kb_node(self):
         """
