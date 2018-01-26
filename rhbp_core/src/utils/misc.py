@@ -9,6 +9,7 @@ import rospy
 
 from abc import ABCMeta, abstractmethod
 
+
 class FinalInitCaller(ABCMeta):
     """
     This decorator allows to implement an after __init__ hook

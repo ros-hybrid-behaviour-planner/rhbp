@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Tests the knowledge sensor.
-Requires a running roscore and a knowledge_base
+Requires a running roscore
 
 @author: rieger, hrabia
 """
@@ -18,7 +18,6 @@ PKG = 'rhbp_core'
 
 """
 Integration test for KnowledgeSensor.
-Requires a running KnowledgeBase
 """
 
 
