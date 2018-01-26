@@ -1,7 +1,7 @@
 #! /usr/bin/env python2
-'''
+"""
 @author: hrabia
-'''
+"""
 
 import unittest
 import rostest
@@ -21,7 +21,7 @@ class SimpleSensorTestSuite(unittest.TestCase):
         super(SimpleSensorTestSuite, self).__init__(*args, **kwargs)
         rospy.init_node('SensorTestSuiteNode', log_level=rospy.WARN)
 
-    def test_attribut_access(self):
+    def test_attribute_access(self):
         """
         Test the access to individual attributes
         """
