@@ -182,37 +182,6 @@ class SimpleTopicSensor(PassThroughTopicSensor):
         super(SimpleTopicSensor, self).subscription_callback(msg_value)
 
 
-class ParamSensor(Sensor):
-    """
-    Sensor for retrieving param information from all ROS namespaces (private, global)
-    """
-
-    def __init__(self, name, param,  optional=False, initial_value=None):
-        """
-        :param name: name of the sensor
-        :param param: name of the parameter
-        """
-
-        super(ParamSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
-
-        self._param = param
-
-    def sync(self):
-        try:
-            value = rospy.get_param(self._param)
-        except KeyError:
-            rhbplog.logwarn("Parameter '%s' not available", self._param)
-            value = self._initial_value
-
-        super(ParamSensor, self).update(newValue=value)
-
-        return super(ParamSensor, self).sync()
-
-    @property
-    def param(self):
-        return self._param
-
-
 class DynamicSensor(Sensor):
     """
     Sensor, which collects values from all topics, matching a pattern.
