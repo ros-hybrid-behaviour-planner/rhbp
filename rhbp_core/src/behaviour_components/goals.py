@@ -379,10 +379,10 @@ class GoalProxy(AbstractGoalRepresentation):
 
 # TODO Rename to RemoteGoal
 class GoalBase(Goal):
-    '''
+    """
     Goal, which is automatically registered at the manager. Therefore the ros messages are used.
     Allows to be on different node than the manager.
-    '''
+    """
 
     __metaclass__ = FinalInitCaller
 
@@ -390,7 +390,7 @@ class GoalBase(Goal):
 
     def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
                  activated=True):
-        '''
+        """
 
         :param name:  a unique name is mandatory
         :param permanent:
@@ -399,7 +399,7 @@ class GoalBase(Goal):
         :param priority:
         :param satisfaction_threshold:
         :param active:
-        '''
+        """
         super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions,
                                        satisfaction_threshold=satisfaction_threshold, priority=priority,
                                        activated=activated)

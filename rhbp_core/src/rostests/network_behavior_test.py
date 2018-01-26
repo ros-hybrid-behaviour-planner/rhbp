@@ -29,6 +29,7 @@ PKG = 'rhbp_core'
 System test for network behavior. Assumes, that a rosmaster is running
 """
 
+
 class TestNetworkBehaviour(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestNetworkBehaviour, self).__init__(*args, **kwargs)
