@@ -14,7 +14,7 @@ import roslaunch
 from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient, KnowledgeBase
 
-PKG = 'rhbp_core'
+PKG = 'rhbp_utils'
 
 """
 Integration test for KnowledgeSensor.

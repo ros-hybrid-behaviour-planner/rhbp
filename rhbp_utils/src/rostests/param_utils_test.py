@@ -10,11 +10,11 @@ import unittest
 import rospy
 import rostest
 import time
+import roslaunch
 from rhbp_utils.param_sensors import ParamSensor
 from rhbp_utils.param_behaviour import ParamSetterBehaviour
-from behaviour_components.managers import Manager
 
-PKG = 'rhbp_core'
+PKG = 'rhbp_utils'
 
 """
 Integration test for ROS param utils.
@@ -22,23 +22,33 @@ Integration test for ROS param utils.
 
 
 class TestParamUtils(unittest.TestCase):
+
+    manager_name = "TestParamUtils_manager"
+
     def __init__(self, *args, **kwargs):
         super(TestParamUtils, self).__init__(*args, **kwargs)
 
-        # Disable planner, since the change from python to C
-        #  disturbs the connection between the test process and the node process
-        rospy.set_param("~planBias", 0.0)
+        self._manager_prefix = "TestParamUtils_manager" + str(time.time()).replace('.', '')
 
-        # dummy manager we need to start the behaviour
-        self.manager_prefix = "TestParamUtils_manager" + str(time.time()).replace('.', '')
-        self.manager = Manager(prefix=self.manager_prefix)
+    def start_manager_node(self, prefix=""):
+        """
+        start the manager node in order to successfully launch behaviours
+        """
+        package = 'rhbp_core'
+        executable = 'planner_node.py'
+        args = "prefix:=" + prefix
+        node = roslaunch.core.Node(package=package, node_type=executable, name=self.manager_name,
+                                   output='screen', args=args)
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+        self._manager_process = launch.launch(node)
 
     def setUp(self):
         self.param_name_int = "/global/test/parameter_int"
         self.param_name_bool = "/global/test/parameter_bool"
         self.param_name_str = "/global/test/parameter_str"
 
-        # reset test
+        # reset test parameters
         if rospy.has_param(self.param_name_int):
             rospy.delete_param(self.param_name_int)
         if rospy.has_param(self.param_name_bool):
@@ -46,7 +56,15 @@ class TestParamUtils(unittest.TestCase):
         if rospy.has_param(self.param_name_str):
             rospy.delete_param(self.param_name_str)
 
+        self.start_manager_node(prefix=self._manager_prefix)
+
+    def tearDown(self):
+        self._manager_process.stop()
+
     def test_param_sensor(self):
+        """
+        Testing parameter sensors
+        """
 
         # Test 1 parameter not available
 
@@ -88,14 +106,17 @@ class TestParamUtils(unittest.TestCase):
         self.assertEquals(sensor_str.value, test_value_str)
 
     def test_param_setter(self):
+        """
+        Testing generic parameter setting behaviour
+        """
 
         test_value = rospy.get_param(self.param_name_bool, False)
 
         self.assertEquals(False, test_value)
 
         behaviour = ParamSetterBehaviour(name="Test", param=self.param_name_bool, new_value=True,
-                                         plannerPrefix=self.manager_prefix)
-
+                                         plannerPrefix=self._manager_prefix)
+        # force manual start
         behaviour.start()
 
         test_value = rospy.get_param(self.param_name_bool)

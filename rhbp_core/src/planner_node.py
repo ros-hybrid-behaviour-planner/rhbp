@@ -4,6 +4,7 @@ Created on 13.04.2015
 
 @author: stephan, hrabia
 """
+import sys
 import rospy
 from behaviour_components.managers import Manager
 from rhbp_core.srv import SetStepping, SetSteppingResponse, GetStepping, GetSteppingResponse
@@ -16,9 +17,11 @@ class ManagerNode(object):
     ROS node wrapper for the rhbp manager/planner
     """
 
-    def __init__(self):
+    def __init__(self, manager_prefix=""):
+
         rospy.init_node('behaviourPlannerManager', log_level=rospy.WARN)
-        prefix = rospy.get_param("~prefix", "")
+
+        prefix = rospy.get_param("~prefix", manager_prefix)
         self._manager = Manager(prefix=prefix)
         self.rate = rospy.Rate(rospy.get_param("~frequency", 1))
 
@@ -97,7 +100,12 @@ class ManagerNode(object):
 
 if __name__ == '__main__':
 
-    node = ManagerNode()
+    for arg in sys.argv:
+        if arg.startswith('prefix:='):
+            prefix = arg[len('prefix:='):]
+            break
+
+    node = ManagerNode(manager_prefix=prefix)
 
     try:
         node.run()
