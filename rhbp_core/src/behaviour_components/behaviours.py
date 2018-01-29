@@ -325,31 +325,32 @@ class Behaviour(object):
 
 
 class BehaviourBase(object):
-    '''
+    """
     This is the base class for behaviour nodes in python
     A common behaviour class would either override do_step() or start() and stop() methods
-    '''
+    """
 
     __metaclass__ = FinalInitCaller
 
     SERVICE_TIMEOUT = 5
 
     def __init__(self, name, requires_execution_steps=False, **kwargs):
-        '''
+        """
         Constructor
-        '''
+        """
         self._name = name # a unique name is mandatory
         # This are the preconditions for the behaviour. They may not be used but the default implementations of
         # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning:
-        #  effect_nameme -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is affected.
-        # 1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does not affect anything.
-        # Optional condition -> a piece of pddl when this effect happens. # Be careful with the effect_name!
-        # It has to actually match something that exists!
+        #  effect_name -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is
+        # affected.1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does
+        # not affect anything. Optional condition -> a piece of PDDL when this effect happens. # Be careful with the
+        # effect_name! It has to actually match something that exists!
         self._correlations = kwargs["correlations"] if "correlations" in kwargs else []
-        # This is the threshold that the preconditions must reach in order for this behaviour to be executable. Range [0,1]
+        # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
+        # Range [0,1]
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
         # if you have multiple planners in the same ROS environment use a prefix to name the right one.
         self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
@@ -359,10 +360,11 @@ class BehaviourBase(object):
         self._actionCost = kwargs["actionCost"] if "actionCost" in kwargs else 1.0
         # The priority indicators are unsigned ints. The higher the more important
         self._priority = kwargs["priority"] if "priority" in kwargs else 0
-        # This determines whether the manager will treat it as an error and re-plan if the behaviour is running but wasn't
-        #  part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
+        # This determines whether the manager will treat it as an error and re-plan if the behaviour is running but
+        # wasn't part of the plan. Set This to true for periodic or fully reactional tasks like collision avoidance.
         self._independentFromPlanner = kwargs["independentFromPlanner"] if "independentFromPlanner" in kwargs else False
-        # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable flag is set (TODO: think about this again)
+        # The maximum allowed execution steps. If set to -1 infinite. Interruption will only happen if interruptable
+        # flag is set (TODO: think about this again)
         self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1
         # if anything in the behaviour is not initialized or working properly this must be set to False and communicated
         # via getStatus service. The value of this variable is set to self._activated at the start of each status poll
@@ -410,7 +412,7 @@ class BehaviourBase(object):
             rhbplog.logwarn("Behaviour '%s' is already registred", self._name)
             return
         try:
-            service_name= self._plannerPrefix + '/' + 'AddBehaviour'
+            service_name = self._plannerPrefix + '/' + 'AddBehaviour'
             rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name)
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)

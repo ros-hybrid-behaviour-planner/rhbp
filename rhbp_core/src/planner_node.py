@@ -1,9 +1,9 @@
 #! /usr/bin/env python2
-'''
+"""
 Created on 13.04.2015
 
 @author: stephan, hrabia
-'''
+"""
 import rospy
 from behaviour_components.managers import Manager
 from rhbp_core.srv import SetStepping, SetSteppingResponse, GetStepping, GetSteppingResponse

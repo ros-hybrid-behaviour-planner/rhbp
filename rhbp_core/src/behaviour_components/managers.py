@@ -44,16 +44,17 @@ class Manager(object):
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
         self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
-        self._activeGoals = [] # pre-computed (in step()) list of operational goals
+        self._activeGoals = []  # pre-computed (in step()) list of operational goals
         self._behaviours = []
-        self._activeBehaviours = [] # pre-computed (in step()) list of operational behaviours
-        self._totalActivation = 0.0 # pre-computed (in step()) sum all activations of active behaviours
+        self._activeBehaviours = []  # pre-computed (in step()) list of operational behaviours
+        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of active behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
-            else rospy.get_param("~activationThreshold", 7.0) # not sure how to set this just yet.
+            else rospy.get_param("~activationThreshold", 7.0)  # not sure how to set this just yet.
         self.__activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else None
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
-        #configures if all contained behaviour or only the executed behaviours are used to determine if the manager is interruptable
+        # configures if all contained behaviour or only the executed behaviours are used to determine if the manager is
+        # interruptable
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
 
         self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
@@ -85,11 +86,11 @@ class Manager(object):
 
         self.planner = MetricFF()
 
-        #create activation algorithm
+        # create activation algorithm
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
-        #trigger update once in order to initialize algorithm properly
+        # trigger update once in order to initialize algorithm properly
         self._update_bias_parameters()
 
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
