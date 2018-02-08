@@ -100,6 +100,8 @@ class ManagerNode(object):
 
 if __name__ == '__main__':
 
+    prefix = ""
+
     for arg in sys.argv:
         if arg.startswith('prefix:='):
             prefix = arg[len('prefix:='):]
