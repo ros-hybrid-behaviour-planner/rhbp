@@ -298,6 +298,7 @@ class LinearActivator(Activator):
         raw_activation = (normalizedValue - self._zeroActivationValue) / value_range
 
         activation = raw_activation * self.activationRange + self._minActivation
+        #print(self.name,activation,self._zeroActivationValue,self._fullActivationValue,self.maxActivation)
         return sorted((self._minActivation, activation, self._maxActivation))[1] # clamp to activation range
     
     def getDirection(self):

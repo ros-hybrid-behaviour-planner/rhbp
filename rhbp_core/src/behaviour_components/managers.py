@@ -18,7 +18,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
-
+from reinforcement_component.rl_component import RLComponent
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
@@ -99,6 +99,17 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
+
+        # TODO register here the rl_component
+        # Note: behaviors, sensor , and goals can change. this would effect the model
+        self.rl_component = RLComponent(self,name=self._prefix)
+        self.rl_component_initialized = False
+
+    def get_behaviors(self):
+        return self._behaviours
+
+    def get_goals(self):
+        return self._goals
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -311,6 +322,10 @@ class Manager(object):
 
         self.send_discovery()
 
+        # initialize the rl model in the first step
+        if not self.rl_component_initialized:
+            self.rl_component.start_learning()
+            self.rl_component_initialized = True
         with self._step_lock:
             rhbplog.logdebug("###################################### STEP {0} ######################################"
                              .format(self._stepCounter))

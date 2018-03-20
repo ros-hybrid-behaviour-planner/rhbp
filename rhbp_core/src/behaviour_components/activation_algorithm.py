@@ -141,6 +141,12 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
         inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
         activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+        # TODO add here the activation from the rl-component
+        # TODO e.g. rl_componenet.model.feed_forward()
+        # TODO needs reference to rl_component
+        # TODO rl-componenet should save old activation . and a converter for behavior to index
+        self._manager.rl_component.get_model_parameters()
+
 
         rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
         rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
