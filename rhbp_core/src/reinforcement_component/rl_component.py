@@ -15,6 +15,8 @@ class RLComponent:
     def start_learning(self):
         time.sleep(1)
         self.model = ModelNeuralNetwork(self.name)
+        self.model.transformer = InputStateTransformer(self.manager)
+
         if not self.is_model_init:
             self.init_model()
 
@@ -25,14 +27,15 @@ class RLComponent:
         self.goals = self.manager.get_goals()
 
         # TODO get dimensions from manager
-        for b in self.behaviors:
-            print(b)
+        #for b in self.behaviors:
+        #    print(b)
 
-        self.model.transformer = InputStateTransformer(self.manager)
+
         start_input = self.model.transformer.get_current_state()
-        self.number_inputs = start_input.shape[0]  # TODO find correct one
+        self.number_inputs = start_input.shape[1]
+
         self.number_behaviors = len(self.manager._behaviours)
-        if self.number_behaviors == 0 or self.number_inputs == 0:
+        if self.number_behaviors <= 1 or self.number_inputs <= 1:
             print("not enough behaviors or inputs")
             return
 
@@ -86,8 +89,9 @@ class RLComponent:
         """
         # TODO  check if behaviors or goals have changed . e.g. by length. if yes reinitialize
         if self.is_model_init:
+            self.model.behaviors = self.manager.get_behaviors()
             self.activations = self.model.feed_forward()
-            activation=self.activations[self.behaviour_to_index(ref_behaviour)]
+            activation=self.activations[self.behaviour_to_index(ref_behaviour.name)]
             return activation
         else:
             self.init_model()

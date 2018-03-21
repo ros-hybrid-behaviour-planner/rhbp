@@ -12,7 +12,7 @@ class ModelNeuralNetwork:
         self.model_path = 'models/rl-model'+name+'-1000.meta'
         self.model_folder = './models'
 
-
+        self.name  = name
         #tf.reset_default_graph()
 
         # input dimensions
@@ -54,7 +54,7 @@ class ModelNeuralNetwork:
         self.output_variables = number_behaviors
 
     def initialize_model(self):
-        print("initialize new model",self.input_variables,self.output_variables)
+        print("initialize new model",self.input_variables,self.output_variables, self.name)
         # These lines establish the feed-forward part of the network used to choose actions
         self.inputs1 = tf.placeholder(shape=[1,self.input_variables],dtype=tf.float32,name="inputs1")
         W1 = tf.Variable(tf.random_uniform([self.input_variables,self.hl1_variables],0,0.01))
@@ -112,15 +112,22 @@ class ModelNeuralNetwork:
 
     def feed_forward(self):
 
-        self.current_state = self.transformer.get_current_state
+        self.current_state = self.transformer.get_current_state()
+        #print("s",self.current_state)
         #Choose an action by greedily (with e chance of random action) from the Q-network
         a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:self.current_state})
         # greedy style for exploration
         if np.random.rand(1) < self.epsilon:
             a = self.transformer.get_random_action()
         self.last_action = a
-        print(a)
-        print(self.behaviors[a])
+
+        if isinstance(a,(int,long)):
+            print(a)
+            index=a
+        else:
+            print(a[0])
+            index=a[0]
+        print(self.behaviors[index])
         return self.allQ
 
     def train_model(self,new_state):

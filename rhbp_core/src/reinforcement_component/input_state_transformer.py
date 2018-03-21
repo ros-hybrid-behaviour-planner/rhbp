@@ -19,14 +19,14 @@ class InputStateTransformer:
         state = np.zeros(len(self.conditions))
         index=0
         for k,v in self.conditions.iteritems():
-            print(k,v)
+            #print(k,v)
             state[index]=v
             index += 1
 
-        print(state,state.shape)
+        #print(state,state.shape)
         state = state.reshape([1,len(self.conditions)])
-        print(state,state.shape)
-        print(np.identity(16)[0:0+1],np.identity(16)[0:0+1].shape)
+        #print(state,state.shape)
+        #print(np.identity(16)[0:0+1],np.identity(16)[0:0+1].shape)
         test=np.identity(4)[0:0 + 1]
         return state
 
