@@ -54,6 +54,8 @@ add_message_files(
   Status.msg
   PlannerStatus.msg
   DiscoverInfo.msg
+  ConditionValue.msg
+  ConditionState.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -62,6 +64,7 @@ add_service_files(
   AddBehaviour.srv
   AddGoal.srv
   GetStatus.srv
+  GetState.srv
   RemoveBehaviour.srv
   RemoveGoal.srv
   ForceStart.srv

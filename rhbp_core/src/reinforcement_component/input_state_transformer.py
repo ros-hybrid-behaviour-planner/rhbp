@@ -5,14 +5,20 @@ class InputStateTransformer:
     def __init__(self,manager):
         self.manager = manager
         print("init transformer")
-
+        self.conditions={}
     def get_current_state(self):
         # TODO implement connection to sensor and conditions
-        # TODO Get Preconditions of behaviors from the BehaviorBase. Needs to be sended.
+        # TODO Get Preconditions of behaviors from the BehaviorBase. Needs to be sent.
         # TODO check then also for double preconditions
         # TODO question: only conditions influencing this network behavior or from all
         example_state = np.identity(16)[0:1]
+        for behaviour in self.manager.behaviours:
+            behaviour.fetchState(0) # 0 is just dummy. Note: delete that a number is needed
+            for cond in behaviour.condition_values:
+                self.conditions[cond.name]=cond.activation
 
+        for k,v in self.conditions.iteritems():
+            print(k,v)
         return example_state
 
     def get_reward_from_state(self):

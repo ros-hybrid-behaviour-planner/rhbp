@@ -11,9 +11,9 @@ import itertools
 
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import Status
-from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, \
-    SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
+from rhbp_core.msg import Status, ConditionState, ConditionValue
+from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse,GetStateResponse, Activate, ActivateResponse, SetInteger, \
+    SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour, GetState
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter
@@ -60,6 +60,8 @@ class Behaviour(object):
         self._independentFromPlanner = independentFromPlanner
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps=requires_execution_steps
+        self._condition_values = []
+        self._justFinished_state = False
         Behaviour._instanceCounter += 1
 
         self._log_file_path_prefix = log_file_path_prefix
@@ -113,6 +115,7 @@ class Behaviour(object):
                     self._activation = 0.0
                 self._executionTime = -1
                 self._justFinished = True
+                self._justFinished_state = True
             self._isExecuting = status.isExecuting
             self._progress = status.progress
             self._active = status.active
@@ -127,6 +130,29 @@ class Behaviour(object):
                              self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchStatus' of behaviour '%s': %s", self._name, traceback.format_exc())
+
+    def fetchState(self, current_step):
+        '''
+        This method fetches the status from the actual behaviour node via GetStatus service call
+        '''
+        self._justFinished_state = False
+        try:
+            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetState')
+            rospy.wait_for_service(self._service_prefix + 'GetState', timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
+        try:
+            getStateRequest = rospy.ServiceProxy(self._service_prefix + 'GetState', GetState)
+            condition_state = getStateRequest(current_step=current_step).condition_state
+            self._condition_values = condition_state.conditions
+            if self._name != condition_state.name:
+                rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
+            rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
+                             self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction,
+                             self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
+        except rospy.ServiceException as e:
+            rhbplog.logerr("ROS service exception in 'fetchState' of behaviour '%s': %s", self._name, traceback.format_exc())
 
     def _handle_service_timeout(self):
         """
@@ -300,7 +326,16 @@ class Behaviour(object):
     @property
     def justFinished(self):
         return self._justFinished
-    
+
+    @property
+    def justFinished_state(self):
+        return self._justFinished_state
+
+    @property
+    def condition_values(self):
+        return self._condition_values
+
+
     @property
     def independentFromPlanner(self):
         return self._independentFromPlanner
@@ -381,6 +416,7 @@ class BehaviourBase(object):
         """
         service_prefix = self._plannerPrefix + '/' + self._name + '/'
         self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self._get_status_callback)
+
         self._startService = rospy.Service(service_prefix + 'Start', Empty, self._start_callback)
         self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self._stop_callback)
         self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activate_callback)
@@ -388,6 +424,8 @@ class BehaviourBase(object):
         self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self._set_priority_callback)
         self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
                                                       self._set_execution_timeout_callback)
+
+        self._getStateService = rospy.Service(service_prefix + 'GetState', GetState, self._get_condition_state_callback )
 
         self._registered = False # keeps track of behaviour registration state
 
@@ -444,6 +482,7 @@ class BehaviourBase(object):
 
         if terminate_services:
             self._getStatusService.shutdown()
+            self._getStateService.shutdown()
             self._startService.shutdown()
             self._stopService.shutdown()
             self._activateService.shutdown()
@@ -657,6 +696,30 @@ class BehaviourBase(object):
                          traceback.format_exc())
             return None
 
+    def _get_condition_state_callback(self, request):
+        try:
+            #update everything before generating the status message
+            self.updateComputation(request.current_step)
+            #self._active = self._activated
+
+            conditions = []
+            for cond in self._preconditions:
+                condition =  ConditionValue(**{
+                               "name"         : cond._name, # this is sent for sanity check and planner status messages only
+                               "activation"   : cond.satisfaction,
+
+                              })
+                conditions.append(condition)
+            status = ConditionState(**{
+                               "name"         : self._name, # this is sent for sanity check and planner status messages only
+                               "conditions"   : conditions,
+
+                              })
+            return GetStateResponse(status)
+        except Exception:
+            rhbplog.logerr("ROS service callback exception in '_get_state_callback' of behaviour '%s': %s", self._name,
+                         traceback.format_exc())
+            return None
     def _is_interruptible(self):
         return self._interruptable
 

@@ -26,13 +26,13 @@ class RLComponent:
         print("num behaviors",number_behaviors,"num inputs",number_inputs,"num goals",len(self.goals))
         for g in self.goals:
             print(g.name,g.activated,g.priority,g.fulfillment,g.active)
-        return
+
 
         self.model.update_dimensions(number_inputs,number_behaviors)
         self.model.transformer = InputStateTransformer(self.manager)
-
+        self.model.transformer.get_current_state()
         model_exists = self.model.check_if_model_exists()
-
+        return
         if model_exists:
             self.model.load_model()
         else:
@@ -41,7 +41,8 @@ class RLComponent:
 
         # TODO get current state and feed forward and then get next state and updat emodel
     def get_model_parameters(self):
-
+        self.model.transformer.get_current_state()
+        return
         self.behaviors = self.manager.get_behaviors()
         self.goals = self.manager.get_goals()
 
