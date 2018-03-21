@@ -145,8 +145,8 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         # TODO e.g. rl_componenet.model.feed_forward()
         # TODO needs reference to rl_component
         # TODO rl-componenet should save old activation . and a converter for behavior to index
-        self._manager.rl_component.get_model_parameters()
-
+        #self._manager.rl_component.get_model_parameters()
+        activation_rl = self._manager.rl_component.get_rl_activation(ref_behaviour)
 
         rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
         rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)

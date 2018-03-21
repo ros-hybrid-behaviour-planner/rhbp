@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 from input_state_transformer import InputStateTransformer
 
 class ModelNeuralNetwork:
-    def __init__(self):
+    def __init__(self,name):
 
         # pathes for saving the models
-        self.model_path = 'models/rl-model-1000.meta'
+        self.model_path = 'models/rl-model'+name+'-1000.meta'
         self.model_folder = './models'
 
 
@@ -45,13 +45,16 @@ class ModelNeuralNetwork:
 
         self.transformer = None
 
+        self.behaviors = None
+
+
     def update_dimensions(self, number_inputs, number_behaviors):
 
         self.input_variables = number_inputs
         self.output_variables = number_behaviors
 
     def initialize_model(self):
-
+        print("initialize new model",self.input_variables,self.output_variables)
         # These lines establish the feed-forward part of the network used to choose actions
         self.inputs1 = tf.placeholder(shape=[1,self.input_variables],dtype=tf.float32,name="inputs1")
         W1 = tf.Variable(tf.random_uniform([self.input_variables,self.hl1_variables],0,0.01))
@@ -86,8 +89,9 @@ class ModelNeuralNetwork:
         return tf.train.checkpoint_exists(self.model_folder)
 
     def load_model(self):
-
+        print("load model")
         # restore the session
+
         self.sess = tf.Session()
 
         self.saver = tf.train.import_meta_graph(self.model_path)
@@ -106,16 +110,18 @@ class ModelNeuralNetwork:
     def init_states(self):
         self.current_state = self.transformer.get_current_state()
 
-    def feed_forward(self,current_state):
+    def feed_forward(self):
 
-        self.current_state = current_state
+        self.current_state = self.transformer.get_current_state
         #Choose an action by greedily (with e chance of random action) from the Q-network
         a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:self.current_state})
         # greedy style for exploration
         if np.random.rand(1) < self.epsilon:
             a = self.transformer.get_random_action()
         self.last_action = a
-        return a
+        print(a)
+        print(self.behaviors[a])
+        return self.allQ
 
     def train_model(self,new_state):
         # Get new state and reward from environment

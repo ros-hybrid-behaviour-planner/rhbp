@@ -22,8 +22,16 @@ class InputStateTransformer:
             print(k,v)
             state[index]=v
             index += 1
-        print(state)
+
+        print(state,state.shape)
+        state = state.reshape([1,len(self.conditions)])
+        print(state,state.shape)
+        print(np.identity(16)[0:0+1],np.identity(16)[0:0+1].shape)
+        test=np.identity(4)[0:0 + 1]
         return state
+
+    def get_last_action(self):
+        return 0
 
     def get_reward_from_state(self):
         """
