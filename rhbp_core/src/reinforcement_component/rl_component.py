@@ -23,8 +23,10 @@ class RLComponent:
         # TODO get current state and feed forward and then get next state and updat emodel
 
     def init_model(self):
+
         self.behaviors = self.manager.get_behaviors()
         self.goals = self.manager.get_goals()
+
 
         # TODO get dimensions from manager
         #for b in self.behaviors:
@@ -44,7 +46,6 @@ class RLComponent:
             print(g.name, g.activated, g.priority, g.fulfillment, g.active)
 
         self.model.behaviors = self.behaviors
-        self.model.update_dimensions(self.number_inputs, self.number_behaviors)
 
         model_exists = self.model.check_if_model_exists()
         # return
@@ -87,10 +88,24 @@ class RLComponent:
         
         :return: 
         """
-        # TODO  check if behaviors or goals have changed . e.g. by length. if yes reinitialize
         if self.is_model_init:
-            self.model.behaviors = self.manager.get_behaviors()
+            # update outputs of model. see if something changed
+            self.behaviors=self.manager.behaviours
+
+            # update active behaviors. these are the ones that got executed in the last step
+            self.model.active_behaviors = map(self.behaviour_to_index,self.manager.executedBehaviours)
+            print("-----------------------")
+            print("1",self.behaviors)
+            print("2",self.manager.executedBehaviours)
+            print("3",self.model.active_behaviors)
+            print("-----------------------")
+
+            self.model.behaviors = self.manager.behaviours
+            # train the model
+            self.model.train_model()
+            # get activation for current state
             self.activations = self.model.feed_forward()
+            # return only activation for asked ref_behavior
             activation=self.activations[self.behaviour_to_index(ref_behaviour.name)]
             return activation
         else:

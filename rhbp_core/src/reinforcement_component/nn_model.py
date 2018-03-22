@@ -45,13 +45,10 @@ class ModelNeuralNetwork:
 
         self.transformer = None
 
-        self.behaviors = None
+        self.behaviors = []
 
-
-    def update_dimensions(self, number_inputs, number_behaviors):
-
-        self.input_variables = number_inputs
-        self.output_variables = number_behaviors
+        self.model_is_set_up=False
+        self.executed_behaviours = []
 
     def initialize_model(self):
         print("initialize new model",self.input_variables,self.output_variables, self.name)
@@ -85,6 +82,8 @@ class ModelNeuralNetwork:
         self.sess = tf.Session()
         self.sess.run(self.init_variables)
 
+        self.model_is_set_up = True
+
     def check_if_model_exists(self):
         return tf.train.checkpoint_exists(self.model_folder)
 
@@ -107,52 +106,85 @@ class ModelNeuralNetwork:
         self.nextQ = graph.get_tensor_by_name("nextQ:0")
         self.updateModel = graph.get_tensor_by_name("updateModel:0")
 
+        self.model_is_set_up=True
     def init_states(self):
         self.current_state = self.transformer.get_current_state()
+
+    def check_if_model_is_valid(self,input):
+
+        model_has_changed = False
+        if( not input.shape[1]==self.input_variables):
+            self.input_variables = input.shape[1]
+            model_has_changed = True
+        if( not len(self.behaviors) == self.output_variables):
+            self.output_variables=len(self.behaviors)
+            model_has_changed = True
+        if model_has_changed:
+            self.initialize_model()
+            return False
+        return True
+
 
     def feed_forward(self):
 
         self.current_state = self.transformer.get_current_state()
+
+        self.check_if_model_is_valid(self.current_state)
         #print("s",self.current_state)
         #Choose an action by greedily (with e chance of random action) from the Q-network
         a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:self.current_state})
         # greedy style for exploration
         if np.random.rand(1) < self.epsilon:
-            a = self.transformer.get_random_action()
+            a = self.transformer.get_random_action()-1
         self.last_action = a
 
         if isinstance(a,(int,long)):
-            print(a)
-            index=a
+            #print(a)
+            index=a-1
         else:
-            print(a[0])
-            index=a[0]
-        print(self.behaviors[index])
+            #print(a[0])
+            index=a[0]-1
+        print("best behavior:",self.behaviors[index])
         return self.allQ
 
-    def train_model(self,new_state):
+    def train_model(self):
+
+        if(not self.model_is_set_up):
+            return
+
         # Get new state and reward from environment
-        self.next_state = new_state
+        self.next_state = self.transformer.get_current_state()
+
+        is_valid = self.check_if_model_is_valid(self.next_state)
+
+        if not is_valid:
+            return
+
         reward = self.transformer.get_reward_from_state()
 
         #Obtain the Q' values by feeding the new state through our network
-        Q1 = self.sess.run(self.Qout,feed_dict={self.inputs1:new_state})
+        Q1 = self.sess.run(self.Qout,feed_dict={self.inputs1:self.next_state})
 
         #Obtain maxQ' and set our target value for chosen action.
         maxQ1 = np.max(Q1)
         targetQ = self.allQ
+        # TODO how to deal with multiple active actions
+        if len(self.executed_behaviours) == 0:
+            print("no active behavior")
+            return
 
+        executed_action_index = self.executed_behaviours[0]
         # q-learning update function for the chosen action
-        targetQ[0,self.last_action] = reward + self.y * maxQ1
+        targetQ[0,executed_action_index] = reward + self.learning_rate_q_learning * maxQ1
 
         # Train our network using target and predicted Q values
         self.sess.run([self.updateModel],feed_dict={self.inputs1:self.current_state,self.nextQ:targetQ})
 
         # make old state to new state and repeat
-        self.current_state = self.new_state
+        self.current_state = self.next_state
 
         # Reduce chance of random action as we train the model.
         self.epsilon = 1./((self.num_updates/50) + 10)
 
         # Save model weights to disk
-        self.saver.save(self.sess, self.model_path)
+        #self.saver.save(self.sess, self.model_path)

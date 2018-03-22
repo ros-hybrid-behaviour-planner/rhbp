@@ -723,7 +723,11 @@ class Manager(object):
     @property
     def activationThreshold(self):
         return self._activationThreshold
-    
+
+    @property
+    def executedBehaviours(self):
+        return self.__executedBehaviours
+
     @activationThreshold.setter
     def activationThreshold(self, threshold):
         self._activationThreshold = threshold

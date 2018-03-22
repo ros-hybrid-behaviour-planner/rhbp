@@ -7,9 +7,8 @@ class InputStateTransformer:
         print("init transformer")
         self.conditions={}
     def get_current_state(self):
-        # TODO implement connection to sensor and conditions
-        # TODO Get Preconditions of behaviors from the BehaviorBase. Needs to be sent.
-        # TODO check then also for double preconditions
+        # TODO implement connection to sensors too
+        # TODO check then also for double preconditions because of negation or conjunction
         # TODO question: only conditions influencing this network behavior or from all
         for behaviour in self.manager.behaviours:
             behaviour.fetchState(0) # 0 is just dummy. Note: delete that a number is needed
