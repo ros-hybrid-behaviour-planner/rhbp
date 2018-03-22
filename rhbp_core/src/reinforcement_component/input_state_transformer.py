@@ -41,7 +41,7 @@ class InputStateTransformer:
         """
         # TODO think about better logic maybe
 
-        reward_value = 0
+        reward_value = 100
         for goal in self.manager.get_goals():
             goal_value = goal.fulfillment * (10 ** goal.priority)
             reward_value += goal_value

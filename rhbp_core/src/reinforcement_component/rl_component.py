@@ -93,13 +93,8 @@ class RLComponent:
             self.behaviors=self.manager.behaviours
 
             # update active behaviors. these are the ones that got executed in the last step
-            self.model.active_behaviors = map(self.behaviour_to_index,self.manager.executedBehaviours)
-            print("-----------------------")
-            print("1",self.behaviors)
-            print("2",self.manager.executedBehaviours)
-            print("3",self.model.active_behaviors)
-            print("-----------------------")
-
+            self.model.executed_behaviours = map(self.behaviour_to_index,self.manager.executedBehaviours)
+            #print("2",self.model.executed_behaviours)
             self.model.behaviors = self.manager.behaviours
             # train the model
             self.model.train_model()

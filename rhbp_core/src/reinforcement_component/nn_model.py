@@ -55,11 +55,11 @@ class ModelNeuralNetwork:
         # These lines establish the feed-forward part of the network used to choose actions
         self.inputs1 = tf.placeholder(shape=[1,self.input_variables],dtype=tf.float32,name="inputs1")
         W1 = tf.Variable(tf.random_uniform([self.input_variables,self.hl1_variables],0,0.01))
-        W2 = tf.Variable(tf.random_uniform([self.hl1_variables,self.output_variables],0,0.01))
+        W2 = tf.Variable(tf.random_uniform([self.input_variables,self.output_variables],0,0.01))
 
         # combine weights with inputs
         layer = tf.matmul(self.inputs1,W1)
-        self.Qout = tf.matmul(layer,W2,name="Qout")
+        self.Qout = tf.matmul(self.inputs1,W2,name="Qout")
 
         # choose action with highest q-value
         self.predict = tf.argmax(self.Qout,1,name="predict")
@@ -134,9 +134,11 @@ class ModelNeuralNetwork:
         #Choose an action by greedily (with e chance of random action) from the Q-network
         a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:self.current_state})
         # greedy style for exploration
-        if np.random.rand(1) < self.epsilon:
-            a = self.transformer.get_random_action()-1
-        self.last_action = a
+
+        #if np.random.rand(1) < self.epsilon:
+        #    a = self.transformer.get_random_action()-1
+        #self.last_action = a
+
 
         if isinstance(a,(int,long)):
             #print(a)
@@ -144,7 +146,8 @@ class ModelNeuralNetwork:
         else:
             #print(a[0])
             index=a[0]-1
-        print("best behavior:",self.behaviors[index])
+        if(self.name[0:2]=="ag"):
+            print("s:",self.current_state," b:",self.behaviors[index])
         return self.allQ
 
     def train_model(self):
@@ -174,6 +177,8 @@ class ModelNeuralNetwork:
             return
 
         executed_action_index = self.executed_behaviours[0]
+        if (self.name[0:2] == "ag"):
+            print("t:",self.next_state,"la:",self.behaviors[executed_action_index],"r:",reward)
         # q-learning update function for the chosen action
         targetQ[0,executed_action_index] = reward + self.learning_rate_q_learning * maxQ1
 
