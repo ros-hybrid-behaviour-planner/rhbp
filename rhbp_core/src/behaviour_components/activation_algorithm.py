@@ -11,9 +11,11 @@ import rospy
 #from .managers import Manager has to be commented because of circular dependency problem
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
-
+import numpy
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
+from rhbp_core.msg import InputState, ActivationState
+from rhbp_core.srv import GetActivation
 
 class AbstractActivationAlgorithm(object):
     """
@@ -686,3 +688,140 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
 
 
 ActivationAlgorithmFactory.register_algorithm("uniform", UniformActivationAlgorithm)
+
+
+
+class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
+    """
+    This activation algorithm changes the activation calculation formulas in respect to the base algorithm with
+    the goal of creating a more uniformly distributed activation result depending on the input values(wish, effect).
+    It is also not favouring certain conditions as the base algorithm, e.g. favouring a fulfilled wish over others.
+    """
+
+    def __init__(self, manager, extensive_logging=False, create_log_files = False):
+        super(ReinforcementLearningActivationAlgorithm, self).__init__(manager, extensive_logging=extensive_logging)
+        self.activation_rl = []
+
+    def behaviour_to_index(self,name):
+        num = 0
+        for b in self._manager.behaviors:
+            if b == name:
+                return num
+            num += 1
+        return None
+    def get_activation_from_rl_node(self):
+        """
+        
+        :return:num_inputs
+                num_outputs
+                input_state
+                reward
+                last_action
+        """
+
+        num_outputs = len(self._manager.behaviors)
+        input_state = self.transform_input_values()
+        num_inputs = input_state.shape[1]
+        reward = self.calculate_reward()
+        last_action = self._manager.executedBehaviours
+
+        self._manager.rl_component.fetchActivation(num_outputs,input_state,
+                                              num_inputs,reward,last_action)
+
+
+    def fetchActivation(self, num_outputs,input_state,
+                                              num_inputs,reward,last_action):
+        '''
+        This method fetches the status from the actual behaviour node via GetStatus service call
+        '''
+        self._justFinished_state = False
+        try:
+            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetActivation')
+            rospy.wait_for_service(self._service_prefix + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
+        try:
+            getActivationRequest = rospy.ServiceProxy(self._service_prefix + 'GetActivation', GetActivation)
+            activation_result = getActivationRequest(num_outputs,input_state,num_inputs,reward,last_action)
+            self.activations = activation_result.activations
+            #if self._name != condition_state.name:
+            #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
+            #rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
+            #                 self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction,
+            #                 self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
+        except rospy.ServiceException as e:
+            rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self._name)
+
+    def calculate_reward(self):
+        """
+                this function calculates regarding the fulfillment and priorities of the active goals
+                a reward value. it prioritizes the goals in  a way that a higher priority is always more important
+                than a smaller one (power of 10)
+                :return: 
+                """
+        # TODO think about better logic maybe
+
+        reward_value = 0
+        for goal in self._manager.activeGoals:
+            goal_value = goal.fulfillment * (10 ** goal.priority)
+            reward_value += goal_value
+        return reward_value
+
+    def transform_input_values(self):
+        """
+        this function uses the wishes and sensors to create the input vectors
+        :return: 
+        """
+        # input vector from wishes
+        wishes_array = numpy.zeros([1,1])
+        for goal in self._manager.activeGoals:
+            # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
+            for wish in goal.wishes:
+                print(wish)
+                wish_row = numpy.array([wish.indicator])
+                numpy.concatenate(wishes_array,wish_row)
+        wishes_array = wishes_array[1:]
+        return wishes_array
+        #TODO get here the sensor values
+
+    def compute_behaviour_activation_step(self, ref_behaviour):
+
+        activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
+        activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
+        inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
+        activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
+        activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
+        inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
+        activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+        # TODO add here the activation from the rl-component
+        # TODO e.g. rl_componenet.model.feed_forward()
+        # TODO needs reference to rl_component
+        # TODO rl-componenet should save old activation . and a converter for behavior to index
+        #self._manager.rl_component.get_model_parameters()
+
+        self.activation_rl = self.get_activation_from_rl_node()
+        self.activation_rl[self.behaviour_to_index(ref_behaviour)]
+
+        rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
+        rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
+        rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
+        rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
+        rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
+        rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
+        rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
+
+        current_activation_step = activation_precondition \
+                                  + activation_goals \
+                                  + inhibition_goals \
+                                  + activation_predecessors \
+                                  + activation_successors \
+                                  + inhibition_conflictors \
+                                  + activation_plan
+
+        ref_behaviour.current_activation_step = current_activation_step
+
+        return current_activation_step
+
+
+ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)

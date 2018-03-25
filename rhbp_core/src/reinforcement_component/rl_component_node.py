@@ -1,6 +1,10 @@
 from nn_model import ModelNeuralNetwork
 from input_state_transformer import InputStateTransformer
 import time
+import rospy
+from rhbp_core.msg import InputState, ActivationState
+from rhbp_core.srv import  GetActivation,GetActivationResponse
+
 class RLComponent:
 
     def __init__(self, manager,name="rl_component"):
@@ -12,8 +16,8 @@ class RLComponent:
         self.name = name
         self.is_model_init = False
         time.sleep(2)
-        service_prefix = self.manager._plannerPrefix + '/' + self._name + '/'
-        self._getStateService = rospy.Service(service_prefix + 'GetState', GetState, self._get_condition_state_callback)
+        service_prefix = self.manager._plannerPrefix + '/' # TODO might need to be team specific
+        self._getStateService = rospy.Service(service_prefix + 'GetActivation', GetActivation, self._get_activation_state_callback)
 
     def start_learning(self):
         time.sleep(1)
@@ -24,6 +28,21 @@ class RLComponent:
             self.init_model()
 
         # TODO get current state and feed forward and then get next state and updat emodel
+    def _get_activation_state_callback(self,request ):
+        try:
+            # setup model TODO
+            activations = self.get_rl_activation(request.input_state)
+
+            activation_state = ActivationState(**{
+                "name": self.name,  # this is sent for sanity check and planner status messages only
+                "activation": activations,
+
+            })
+
+            return GetActivationResponse(activation_state)
+        except Exception:
+
+            return None
 
     def init_model(self):
 
@@ -111,3 +130,12 @@ class RLComponent:
             self.init_model()
 
 
+if __name__ == '__main__':
+    try:
+        rospy.init_node('agent_node', anonymous=True)
+        rhbp_agent = RhbpAgent()
+
+        rospy.spin()
+
+    except rospy.ROSInterruptException:
+        rospy.logerr("program interrupted before completion")
