@@ -56,6 +56,8 @@ add_message_files(
   DiscoverInfo.msg
   ConditionValue.msg
   ConditionState.msg
+  InputState.msg
+  ActivationState.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -74,6 +76,7 @@ add_service_files(
   TopicUpdateSubscribe.srv
   SetStepping.srv
   GetStepping.srv
+  GetActivation.srv
 )
 
 ## Generate actions in the 'action' folder

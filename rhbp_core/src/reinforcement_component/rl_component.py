@@ -1,113 +1,92 @@
 from nn_model import ModelNeuralNetwork
 from input_state_transformer import InputStateTransformer
 import time
+import rospy
+from rhbp_core.msg import InputState, ActivationState
+from rhbp_core.srv import  GetActivation,GetActivationResponse
+import numpy
+
 class RLComponent:
 
-    def __init__(self, manager,name="rl_component"):
+    def __init__(self, name="rl_component"):
 
-        print("started rl component",name)
-        self.manager = manager
-        self.model = None
-        self.behaviors = None
+        print("started rl component node",name)
+
         self.name = name
         self.is_model_init = False
-        time.sleep(2)
-        service_prefix = self.manager._plannerPrefix + '/' + self._name + '/'
-        self._getStateService = rospy.Service(service_prefix + 'GetState', GetState, self._get_condition_state_callback)
-
-    def start_learning(self):
-        time.sleep(1)
+        self.reward_list=[]
+        self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
         self.model = ModelNeuralNetwork(self.name)
-        self.model.transformer = InputStateTransformer(self.manager)
+        self.last_state = None
 
-        if not self.is_model_init:
-            self.init_model()
+        self.number_outputs = -1
+        self.number_inputs = -1
 
-        # TODO get current state and feed forward and then get next state and updat emodel
+    def _get_activation_state_callback(self,request):
+        try:
+            request=request.input_state
 
-    def init_model(self):
+            self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
+            #print(request.input_state)
+            #print(numpy.array(request.input_state))
+            #print(numpy.array(request.input_state).reshape(([1,len(request.input_state)])))
+            transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
+            activations = self.model.feed_forward(transformed_input)
+            activations=activations.tolist()[0]
+            #print(transformed_input,activations,type(activations))
+            activation_state = ActivationState(**{
+                "name": self.name,  # this is sent for sanity check and planner status messages only
+                "activations": activations,
 
-        self.behaviors = self.manager.get_behaviors()
-        self.goals = self.manager.get_goals()
+            })
 
+            self.save_request(request)
+            self.last_state = request.input_state
 
-        # TODO get dimensions from manager
-        #for b in self.behaviors:
-        #    print(b)
+            return GetActivationResponse(activation_state)
+        except Exception as e:
+            print(e.message)
+            return None
 
-
-        start_input = self.model.transformer.get_current_state()
-        self.number_inputs = start_input.shape[1]
-
-        self.number_behaviors = len(self.manager._behaviours)
-        if self.number_behaviors <= 1 or self.number_inputs <= 1:
-            print("not enough behaviors or inputs")
-            return
-
-        print("num behaviors", self.number_behaviors, "num inputs", self.number_inputs, "num goals", len(self.goals))
-        for g in self.goals:
-            print(g.name, g.activated, g.priority, g.fulfillment, g.active)
-
-        self.model.behaviors = self.behaviors
-
-        model_exists = self.model.check_if_model_exists()
-        # return
-        if model_exists:
-            self.model.load_model()
-        else:
-            self.model.initialize_model()
-        self.is_model_init = True
-
-    def get_model_parameters(self):
-        #self.model.transformer.get_current_state()
-        return
-        self.behaviors = self.manager.get_behaviors()
-        self.goals = self.manager.get_goals()
-
-        # TODO get dimensions from manager
-        number_inputs = 16  # TODO find correct one. use transformer class for that?
-        number_behaviors = len(self.manager._behaviours)
-
-        for g in self.goals:
-            print(g.name,g.activated,g.priority,g.fulfillment,g.active)
-        print(self.model.transformer.get_reward_from_state())
-        return
-        print("num behaviors", number_behaviors, "num inputs", number_inputs, "num goals", len(self.goals))
-
-        for b in self.behaviors:
-            print(b,self.behaviour_to_index(b),b.name,b.activation,b.isExecuting,b._activationFromPreconditions)
-
-    def behaviour_to_index(self,name):
-        num = 0
-        for b in self.behaviors:
-            if b == name:
-                return num
-            num += 1
-        return None
-
-    def get_rl_activation(self,input_state):
+    def save_request(self,request):
         """
-        load regarding the current state the activations.
-        
+        save the old_state,new_state,action,reward tuple in a list for batch updating of the model
+        :param request: 
         :return: 
         """
+        if self.last_state is not None:
+            reward_tuple = (self.last_state,request.input_state,request.last_action,request.reward)
+            self.reward_list.append(reward_tuple)
 
-        if self.is_model_init:
-            # update outputs of model. see if something changed
-            self.behaviors=self.manager.behaviours
-            # update active behaviors. these are the ones that got executed in the last step
-            self.model.executed_behaviours = map(self.behaviour_to_index,self.manager.executedBehaviours)
-            #print("2",self.model.executed_behaviours)
-            self.model.behaviors = self.manager.behaviours
-            # train the model
-            self.model.train_model()
-            # get activation for current state
-            self.activations = self.model.feed_forward(input_state)
-            # return only activation for asked ref_behavior
-            activation=self.activations
-
-            return activation
+    def check_if_model_is_valid(self,num_inputs,num_outputs):
+        if not self.is_model_init:
+            self.init_model(num_inputs,num_outputs)
         else:
-            self.init_model()
+            if (not self.number_outputs == num_outputs) or (not self.number_inputs == num_inputs):
+                self.init_model(num_inputs,num_outputs)
+
+
+    def update_model(self):
+        for element in self.reward_list:
+            self.model.train_model(element)
+        self.reward_list=[]
+    def init_model(self,num_inputs,num_outputs):
+
+        self.number_inputs = num_inputs
+
+        self.number_outputs = num_outputs
+
+        # check this in activation algo
+        #if self.number_inputs < 1 or self.number_inputs < 1:
+        #    print("not enough behaviors or inputs")
+        #    return
+
+        #print("num behaviors", self.number_behaviors, "num inputs", self.number_inputs, "num goals", len(self.goals))
+
+        self.model.start_nn(num_inputs,num_outputs)
+
+        self.reward_list=[]
+
+        self.is_model_init = True
 
 

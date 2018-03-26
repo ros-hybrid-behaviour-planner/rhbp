@@ -88,6 +88,7 @@ class Manager(object):
 
         # create activation algorithm
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
+        algorithm_name = "reinforcement" # TODO TODO change to make it with reinforcement
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
         # trigger update once in order to initialize algorithm properly
@@ -100,16 +101,7 @@ class Manager(object):
 
         self.__executedBehaviours = []
 
-        # TODO register here the rl_component
-        # Note: behaviors, sensor , and goals can change. this would effect the model
-        self.rl_component = RLComponent(self,name=self._prefix)
-        self.rl_component_initialized = False
 
-    def get_behaviors(self):
-        return self._behaviours
-
-    def get_goals(self):
-        return self._goals
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -323,9 +315,9 @@ class Manager(object):
         self.send_discovery()
 
         # initialize the rl model in the first step
-        if not self.rl_component_initialized:
-            self.rl_component.start_learning()
-            self.rl_component_initialized = True
+        #if not self.rl_component_initialized:
+        #    self.rl_component.start_learning()
+        #    self.rl_component_initialized = True
         with self._step_lock:
             rhbplog.logdebug("###################################### STEP {0} ######################################"
                              .format(self._stepCounter))

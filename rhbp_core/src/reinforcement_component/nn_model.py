@@ -15,10 +15,7 @@ class ModelNeuralNetwork:
         self.name  = name
         #tf.reset_default_graph()
 
-        # input dimensions
-        self.input_variables = 16
-        self.output_variables = 10
-
+        # number of hidden layers
         self.num_hl = 1
 
         self.hl1_variables = 14
@@ -50,12 +47,23 @@ class ModelNeuralNetwork:
         self.model_is_set_up=False
         self.executed_behaviours = []
 
-    def initialize_model(self):
-        print("initialize new model",self.input_variables,self.output_variables, self.name)
+    def start_nn(self,num_inputs, num_outputs):
+        model_exists = self.check_if_model_exists()
+
+        if model_exists:
+            self.load_model(num_inputs,num_outputs) # TODO check if loaded model is still valid for in and output
+                                                # todo CHECK THAT IN THE BEGINNING MIGHT NOT ALL BEHAVIORS AND INPUTS
+                                                #todo DIRECTLY INITIALIZED. DONT PUT MODEL AWAY
+                                                # todo maybe save one model for each input/output number
+        else:
+            self.initialize_model(num_inputs,num_outputs)
+
+    def initialize_model(self, num_inputs, num_outputs):
+        print("initialize new model",num_inputs,num_outputs, self.name)
         # These lines establish the feed-forward part of the network used to choose actions
-        self.inputs1 = tf.placeholder(shape=[1,self.input_variables],dtype=tf.float32,name="inputs1")
-        W1 = tf.Variable(tf.random_uniform([self.input_variables,self.hl1_variables],0,0.01))
-        W2 = tf.Variable(tf.random_uniform([self.input_variables,self.output_variables],0,0.01))
+        self.inputs1 = tf.placeholder(shape=[1,num_inputs],dtype=tf.float32,name="inputs1")
+        W1 = tf.Variable(tf.random_uniform([num_inputs,self.hl1_variables],0,0.01))
+        W2 = tf.Variable(tf.random_uniform([num_inputs,num_outputs],0,0.01))
 
         # combine weights with inputs
         layer = tf.matmul(self.inputs1,W1)
@@ -65,7 +73,7 @@ class ModelNeuralNetwork:
         self.predict = tf.argmax(self.Qout,1,name="predict")
 
         # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
-        self.nextQ = tf.placeholder(shape=[1,self.output_variables],dtype=tf.float32,name="nextQ")
+        self.nextQ = tf.placeholder(shape=[1,num_outputs],dtype=tf.float32,name="nextQ")
         self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout),name="loss")
         #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
         #    logits=Qout, labels=nextQ))
@@ -87,13 +95,15 @@ class ModelNeuralNetwork:
     def check_if_model_exists(self):
         return tf.train.checkpoint_exists(self.model_folder)
 
-    def load_model(self):
+    def load_model(self,num_inputs, num_outputs):
         print("load model")
         # restore the session
 
         self.sess = tf.Session()
 
-        self.saver = tf.train.import_meta_graph(self.model_path)
+        # check for model with this dimensions
+        self.saver = tf.train.import_meta_graph(self.model_path+"_"+num_inputs+"_"+num_outputs)
+
 
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_folder))
 
@@ -107,89 +117,53 @@ class ModelNeuralNetwork:
         self.updateModel = graph.get_tensor_by_name("updateModel:0")
 
         self.model_is_set_up=True
-    def init_states(self):
-        self.current_state = self.transformer.get_current_state()
-
-    def check_if_model_is_valid(self,input):
-
-        model_has_changed = False
-        if( not input.shape[1]==self.input_variables):
-            self.input_variables = input.shape[1]
-            model_has_changed = True
-        if( not len(self.behaviors) == self.output_variables):
-            self.output_variables=len(self.behaviors)
-            model_has_changed = True
-        if model_has_changed:
-            self.initialize_model()
-            return False
-        return True
 
 
-    def feed_forward(self):
+    def feed_forward(self, input_state):
+        #print("feed forward")
 
-        self.current_state = self.transformer.get_current_state()
-
-        self.check_if_model_is_valid(self.current_state)
         #print("s",self.current_state)
         #Choose an action by greedily (with e chance of random action) from the Q-network
-        a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:self.current_state})
-        # greedy style for exploration
+        a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:input_state})
 
-        #if np.random.rand(1) < self.epsilon:
+        # TODO choosing random action maybe not here. how to deal with exlporation in general
         #    a = self.transformer.get_random_action()-1
-        #self.last_action = a
+        #self.last_action = a[0]
 
-
-        if isinstance(a,(int,long)):
-            #print(a)
-            index=a-1
-        else:
-            #print(a[0])
-            index=a[0]-1
-        if(self.name[0:2]=="ag"):
-            print("s:",self.current_state," b:",self.behaviors[index])
         return self.allQ
 
-    def train_model(self):
+    def train_model(self,tuple):
 
-        if(not self.model_is_set_up):
-            return
+        # get fields from the input tuple
+        last_state = tuple[0]
+        next_state = tuple[1]
+        last_action = tuple[2]
+        reward = tuple[3]
 
-        # Get new state and reward from environment
-        self.next_state = self.transformer.get_current_state()
-
-        is_valid = self.check_if_model_is_valid(self.next_state)
-
-        if not is_valid:
-            return
-
-        reward = self.transformer.get_reward_from_state()
+        #if(not self.model_is_set_up):
+        #    return
 
         #Obtain the Q' values by feeding the new state through our network
-        Q1 = self.sess.run(self.Qout,feed_dict={self.inputs1:self.next_state})
+        Q1 = self.sess.run(self.Qout,feed_dict={self.inputs1:next_state})
 
         #Obtain maxQ' and set our target value for chosen action.
         maxQ1 = np.max(Q1)
         targetQ = self.allQ
-        # TODO how to deal with multiple active actions
-        if len(self.executed_behaviours) == 0:
-            print("no active behavior")
-            return
 
-        executed_action_index = self.executed_behaviours[0]
-        if (self.name[0:2] == "ag"):
-            print("t:",self.next_state,"la:",self.behaviors[executed_action_index],"r:",reward)
+        # TODO how to deal with multiple active actions
+
+
         # q-learning update function for the chosen action
-        targetQ[0,executed_action_index] = reward + self.learning_rate_q_learning * maxQ1
+        targetQ[0,last_action] = reward + self.learning_rate_q_learning * maxQ1
 
         # Train our network using target and predicted Q values
-        self.sess.run([self.updateModel],feed_dict={self.inputs1:self.current_state,self.nextQ:targetQ})
+        self.sess.run([self.updateModel],feed_dict={self.inputs1:last_state,self.nextQ:targetQ})
 
-        # make old state to new state and repeat
-        self.current_state = self.next_state
 
         # Reduce chance of random action as we train the model.
         self.epsilon = 1./((self.num_updates/50) + 10)
 
+    def save_model(self,num_inputs,num_outputs):
+
         # Save model weights to disk
-        #self.saver.save(self.sess, self.model_path)
+        self.saver.save(self.sess, self.model_path) #TODO save model with dim in end of name

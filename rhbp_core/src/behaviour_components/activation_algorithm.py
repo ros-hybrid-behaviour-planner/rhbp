@@ -16,6 +16,8 @@ import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 from rhbp_core.msg import InputState, ActivationState
 from rhbp_core.srv import GetActivation
+import roslaunch
+from reinforcement_component.rl_component import RLComponent
 
 class AbstractActivationAlgorithm(object):
     """
@@ -148,7 +150,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         # TODO needs reference to rl_component
         # TODO rl-componenet should save old activation . and a converter for behavior to index
         #self._manager.rl_component.get_model_parameters()
-        activation_rl = self._manager.rl_component.get_rl_activation(ref_behaviour)
+        #activation_rl = self._manager.rl_component.get_rl_activation(ref_behaviour)
 
         rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
         rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
@@ -701,17 +703,39 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     def __init__(self, manager, extensive_logging=False, create_log_files = False):
         super(ReinforcementLearningActivationAlgorithm, self).__init__(manager, extensive_logging=extensive_logging)
         self.activation_rl = []
+        #self.start_rl_node()
+        self.start_rl_class()
+        self.SERVICE_TIMEOUT = 5
+    def start_rl_class(self):
+        self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
+        rl_component = RLComponent(name=self.rl_address )
+
+    def start_rl_node(self):
+        """
+        start the knowledge base node
+        """
+        package = 'reinforcement_component'
+        executable = 'rl_component_node.py'
+        self.rl_address=self._manager._prefix.replace("/Manager","_rl_node")
+        print(self.rl_address)
+        node = roslaunch.core.Node(package=package, node_type=executable, name=self.rl_address,
+                                   output='screen')
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+
+        self._rl_process = launch.launch(node)
+
 
     def behaviour_to_index(self,name):
         num = 0
-        for b in self._manager.behaviors:
+        for b in self._manager.behaviours:
             if b == name:
                 return num
             num += 1
         return None
+
     def get_activation_from_rl_node(self):
         """
-        
         :return:num_inputs
                 num_outputs
                 input_state
@@ -719,39 +743,61 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 last_action
         """
 
-        num_outputs = len(self._manager.behaviors)
+        num_outputs = len(self._manager.behaviours)
+        if num_outputs == 0:
+            print("num outputs cannot be 0")
+            return
         input_state = self.transform_input_values()
-        num_inputs = input_state.shape[1]
+        num_inputs = input_state.shape[0]
+        if num_inputs == 0:
+            print("num inputs cannot be 0", input_state)
+            return
         reward = self.calculate_reward()
         last_action = self._manager.executedBehaviours
+        if len(last_action) == 0:
+            print("last action cannot be None")
+            return
+        last_action_index = self.behaviour_to_index(last_action[0])
 
-        self._manager.rl_component.fetchActivation(num_outputs,input_state,
-                                              num_inputs,reward,last_action)
+        if last_action_index is None:
+            print("last action not found")
+            return
+        # TODO if invalid dim dont send anything just return
+        #print(num_inputs,num_outputs,input_state,reward,last_action_index)
+
+        input_state_msg = InputState()
+        input_state_msg.input_state = input_state
+        input_state_msg.num_outputs = num_outputs
+        input_state_msg.num_inputs = num_inputs
+        input_state_msg.reward = reward
+        input_state_msg.last_action = last_action_index
+
+        self.fetchActivation(input_state_msg)
 
 
-    def fetchActivation(self, num_outputs,input_state,
-                                              num_inputs,reward,last_action):
+    def fetchActivation(self, msg):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
         self._justFinished_state = False
         try:
-            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetActivation')
-            rospy.wait_for_service(self._service_prefix + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
+            rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
+            rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
             return
         try:
-            getActivationRequest = rospy.ServiceProxy(self._service_prefix + 'GetActivation', GetActivation)
-            activation_result = getActivationRequest(num_outputs,input_state,num_inputs,reward,last_action)
-            self.activations = activation_result.activations
+            getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
+            activation_result = getActivationRequest(msg)
+            self.activation_rl = activation_result.activation_state.activations
             #if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             #rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
             #                 self._name, self._activationFromPreconditions, self._correlations, self._preconditionSatisfaction,
             #                 self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
-            rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self._name)
+            rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
+            print(e.message)
 
     def calculate_reward(self):
         """
@@ -761,7 +807,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 :return: 
                 """
         # TODO think about better logic maybe
-
+        # active goals or wishes is empty todo fix
         reward_value = 0
         for goal in self._manager.activeGoals:
             goal_value = goal.fulfillment * (10 ** goal.priority)
@@ -774,13 +820,16 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         :return: 
         """
         # input vector from wishes
+
         wishes_array = numpy.zeros([1,1])
-        for goal in self._manager.activeGoals:
+        for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
-            for wish in goal.wishes:
-                print(wish)
-                wish_row = numpy.array([wish.indicator])
-                numpy.concatenate(wishes_array,wish_row)
+            for wish in behaviour.wishes:
+                #print(wish)
+                wish_row = numpy.array([wish.indicator]).reshape([1,1])
+                #print(wishes_array,wishes_array.shape)
+                #print(wish_row,wish_row.shape)
+                wishes_array = numpy.concatenate([wishes_array,wish_row])
         wishes_array = wishes_array[1:]
         return wishes_array
         #TODO get here the sensor values
@@ -797,11 +846,13 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO add here the activation from the rl-component
         # TODO e.g. rl_componenet.model.feed_forward()
         # TODO needs reference to rl_component
-        # TODO rl-componenet should save old activation . and a converter for behavior to index
+        # TODO rl-component should save old activation . and a converter for behavior to index
         #self._manager.rl_component.get_model_parameters()
 
-        self.activation_rl = self.get_activation_from_rl_node()
-        self.activation_rl[self.behaviour_to_index(ref_behaviour)]
+        self.get_activation_from_rl_node()
+        print(self.activation_rl)
+        #self.activation_rl[self.behaviour_to_index(ref_behaviour)]
+        # TODO implement here logic for random execution of behaviors in greedely manner for exploration.
 
         rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
         rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
