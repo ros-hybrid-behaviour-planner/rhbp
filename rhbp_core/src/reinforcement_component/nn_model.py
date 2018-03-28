@@ -16,10 +16,10 @@ class ModelNeuralNetwork:
         #tf.reset_default_graph()
 
         # number of hidden layers
-        self.num_hl = 1
+        self.num_hl = 0
 
-        self.hl1_variables = 14
-
+        self.hl1_variables = 19
+        self.hl2_variables = 10
         # Set learning parameters
         self.learning_rate_optimizer = 0.1
 
@@ -47,6 +47,9 @@ class ModelNeuralNetwork:
         self.model_is_set_up=False
         self.executed_behaviours = []
 
+    def get_value_of_weight(self):
+        return self.sess.run(self.W2)
+
     def start_nn(self,num_inputs, num_outputs):
         model_exists = self.check_if_model_exists()
 
@@ -61,13 +64,34 @@ class ModelNeuralNetwork:
     def initialize_model(self, num_inputs, num_outputs):
         print("initialize new model",num_inputs,num_outputs, self.name)
         # These lines establish the feed-forward part of the network used to choose actions
-        self.inputs1 = tf.placeholder(shape=[1,num_inputs],dtype=tf.float32,name="inputs1")
-        W1 = tf.Variable(tf.random_uniform([num_inputs,self.hl1_variables],0,0.01))
-        W2 = tf.Variable(tf.random_uniform([num_inputs,num_outputs],0,0.01))
+        self.inputs1 = tf.placeholder(shape=[1, num_inputs], dtype=tf.float32, name="inputs1")
+        W1 = tf.Variable(tf.random_uniform([num_inputs, self.hl1_variables], 0, 0.01))
+        if self.num_hl==0:
+            self.W2 = tf.Variable(tf.random_uniform([num_inputs,num_outputs],0,0.01))
+            self.Qout = tf.matmul(self.inputs1, self.W2, name="Qout")
+        elif self.num_hl==1:
+            self.W2 = tf.Variable(tf.random_uniform([self.hl1_variables, num_outputs], 0, 0.01))
+            b1 = tf.Variable(tf.random_normal([self.hl1_variables]))
+            b2 = tf.Variable(tf.random_normal([num_outputs]))
+            layer = tf.add(tf.matmul(self.inputs1, W1),b1)
+            self.Qout = tf.add(tf.matmul(layer, self.W2, name="Qout"),b2)
+        else:
+            self.W2 = tf.Variable(tf.random_uniform([self.hl1_variables, self.hl2_variables], 0, 0.01))
+            b1 = tf.Variable(tf.random_normal([self.hl1_variables]))
+            b2 = tf.Variable(tf.random_normal([self.hl2_variables]))
+
+            self.W3 = tf.Variable(tf.random_uniform([self.hl2_variables, num_outputs], 0, 0.01))
+            b3 = tf.Variable(tf.random_normal([num_outputs]))
+
+            layer = tf.add(tf.matmul(self.inputs1, W1), b1)
+
+            layer2 = tf.add(tf.matmul(layer, self.W2), b2)
+            self.Qout = tf.add(tf.matmul(layer2, self.W3, name="Qout"), b3)
 
         # combine weights with inputs
-        layer = tf.matmul(self.inputs1,W1)
-        self.Qout = tf.matmul(self.inputs1,W2,name="Qout")
+
+
+
 
         # choose action with highest q-value
         self.predict = tf.argmax(self.Qout,1,name="predict")
