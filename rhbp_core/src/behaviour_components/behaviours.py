@@ -11,7 +11,7 @@ import itertools
 
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import Status, ConditionState, ConditionValue
+from rhbp_core.msg import Status, ConditionState, ConditionValue, SensorValue
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse,GetStateResponse, Activate, ActivateResponse, SetInteger, \
     SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour, GetState
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
@@ -61,6 +61,7 @@ class Behaviour(object):
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps=requires_execution_steps
         self._condition_values = []
+        self._sensor_values = []
         self._justFinished_state = False
         Behaviour._instanceCounter += 1
 
@@ -108,6 +109,7 @@ class Behaviour(object):
             self._correlations = [Effect.from_msg(correlation) for correlation in status.correlations]
             self._preconditionSatisfaction = status.satisfaction
             self._readyThreshold = status.threshold
+            self._sensor_values = status.sensor_values # for rl
             self._wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
             if self._isExecuting is True and status.isExecuting is False:
                 rhbplog.loginfo("%s finished. resetting activation", self._name)
@@ -261,6 +263,9 @@ class Behaviour(object):
         return self._activationFromPreconditions
 
     @property
+    def sensor_values(self):
+        return self._sensor_values
+    @property
     def activation(self):
         return self._activation
 
@@ -410,6 +415,8 @@ class BehaviourBase(object):
 
         self._init_services()
 
+    def get_preconditions(self):
+        return self._preconditions
     def _init_services(self):
         """
         Init all required ROS services that are provided by the behaviour
@@ -667,12 +674,67 @@ class BehaviourBase(object):
             rhbplog.logerr("ROS service callback exception in '_pddl_callback' of behaviour '%s': %s", self._name,
                          traceback.format_exc())
             return None
-    
+
+    def get_value_of_condition(self,cond):
+        value = None
+        try:
+            value = float(cond._sensor.value)
+            sensor_value = SensorValue()
+            sensor_value.name = cond._sensor._name
+            sensor_value.value = value
+            return sensor_value
+        except Exception :
+            value = None
+        try:
+            value = float(cond._condition._sensor.value)
+
+            sensor_value = SensorValue()
+            sensor_value.name = cond._condition._sensor._name
+            sensor_value.value = value
+            return sensor_value
+        except Exception :
+            value = None
+        try:
+            list = []
+            for c in cond._conditions:
+                list.append(self.get_value_of_condition(c))
+            return list
+        except Exception :
+            value = None
+        print("no value found")
+
+
+
+    def get_values_of_list(self,full_list):
+        # gets all values in list. the list can contain multiple lists
+        new_list = []
+        for ele in full_list:
+            if isinstance(ele, (list,)):
+                new_list.extend( self.get_values_of_list(ele))
+            else:
+                new_list.append(ele)
+        return new_list
+
+    def get_sensor_values(self):
+        list_of_sensor_values = []
+        #print("sensor", self.name,len(self.get_preconditions()  ))
+        for p in self.get_preconditions():
+            value = self.get_value_of_condition(p)
+            if isinstance(value,(list,)):
+                list_of_sensor_values.extend(self.get_values_of_list(value))
+
+            else:
+                if(value is not None):
+                    list_of_sensor_values.append(value)
+        return list_of_sensor_values
+
     def _get_status_callback(self, request):
         try:
+            print("ssfe",self.name,int(False),int(True))
             #update everything before generating the status message
             self.updateComputation(request.current_step)
             self._active = self._activated
+            self.sensor_values=self.get_sensor_values()
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             # this would eliminate the doubled calculation of it
             status = Status(**{
@@ -688,7 +750,8 @@ class BehaviourBase(object):
                                "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                                "priority"     : self._priority,
                                "interruptable": self._is_interruptible(),
-                               "activated"    : self._activated
+                               "activated"    : self._activated,
+                               "sensor_values": self.sensor_values# include the actual values of the sensors. Used for RL
                               })
             return GetStatusResponse(status)
         except Exception:
@@ -857,6 +920,10 @@ class BehaviourBase(object):
     @interruptable.setter
     def interruptable(self, interruptable):
         self._interruptable = interruptable
+
+    @property
+    def preconditons(self):
+        return self._preconditions
 
     @property
     def name(self):

@@ -58,6 +58,7 @@ add_message_files(
   ConditionState.msg
   InputState.msg
   ActivationState.msg
+  SensorValue.msg
 )
 
 ## Generate services in the 'srv' folder

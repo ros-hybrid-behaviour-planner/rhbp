@@ -831,8 +831,16 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 #print(wish_row,wish_row.shape)
                 wishes_array = numpy.concatenate([wishes_array,wish_row])
         wishes_array = wishes_array[1:]
-        return wishes_array
+
+        sensor_input = {}
+        for behaviour in self._manager.behaviours:
+            print(behaviour.name)
+            for sensor_value in behaviour.sensor_values:
+                sensor_input[sensor_value.name] = sensor_value.value
+                print(sensor_value.name,sensor_value.value)
         #TODO get here the sensor values
+        print(sensor_input)
+        return wishes_array
 
     def compute_behaviour_activation_step(self, ref_behaviour):
 
