@@ -697,13 +697,14 @@ class BehaviourBase(object):
         try:
             list = []
             for c in cond._conditions:
-                list.append(self.get_value_of_condition(c))
+                value = self.get_value_of_condition(c)
+                if value is not None:
+                    list.append(self.get_value_of_condition(c))
             return list
         except Exception :
             value = None
-        print("no value found")
-
-
+        #print("no value found",cond)
+        return None
 
     def get_values_of_list(self,full_list):
         # gets all values in list. the list can contain multiple lists
@@ -730,7 +731,7 @@ class BehaviourBase(object):
 
     def _get_status_callback(self, request):
         try:
-            print("ssfe",self.name,int(False),int(True))
+            #print("ssfe",self.name,int(False),int(True))
             #update everything before generating the status message
             self.updateComputation(request.current_step)
             self._active = self._activated

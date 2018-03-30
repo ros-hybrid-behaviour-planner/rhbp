@@ -1,0 +1,45 @@
+<launch>
+
+    <arg name="only_agent_specific"    default="true"/>
+    <arg name="teamname"  default="Gatow"/>
+
+    <!-- Enable custom logger configuration-->
+    <env name="ROS_PYTHON_LOG_CONFIG_FILE" value="$(find rcs_contest)/launch/python_logging.conf"/>
+
+    <!--env name="ROS_MASTER_URI" value="http://localhost:11313/"/-->
+
+
+
+    <node pkg="knowledge_base" type="knowledge_base_node.py" name ="knowledgeBase_tub_contest" />
+
+
+    <!--Agent nodes-->
+
+    <include file="$(find rcs_ros_bridge)/launch/rcs_ros_bridge.launch">
+        <arg name="agent_name" value="agentA1_$(arg teamname)" />
+        <arg name="teamname" value="$(arg teamname)" />
+        <arg name="goalie" value="False" />
+        <!--The first bridge will always publish all general topics anyhow-->
+        <arg name="only_agent_specific" value="false" />
+    </include>
+    <include file="$(find rcs_contest)/launch/rhbp_agent.launch">
+        <arg name="agent_name" value="agentA1_$(arg teamname)" />
+    </include>
+
+    <include file="$(find rcs_ros_bridge)/launch/rcs_ros_bridge.launch">
+        <arg name="agent_name" value="agentA2_$(arg teamname)" />
+        <arg name="teamname" value="$(arg teamname)" />
+        <arg name="goalie" value="True" />
+        <!--The first bridge will always publish all general topics anyhow-->
+        <arg name="only_agent_specific" value="false" />
+    </include>
+    <include file="$(find rcs_contest)/launch/rhbp_agent.launch">
+        <arg name="agent_name" value="agentA2_$(arg teamname)" />
+    </include>
+
+
+
+
+
+
+</launch>

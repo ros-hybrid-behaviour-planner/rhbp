@@ -808,6 +808,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 """
         # TODO think about better logic maybe
         # active goals or wishes is empty todo fix
+        # todo use wishes instead of fulfillment
         reward_value = 0
         for goal in self._manager.activeGoals:
             goal_value = goal.fulfillment * (10 ** goal.priority)
@@ -817,30 +818,39 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     def transform_input_values(self):
         """
         this function uses the wishes and sensors to create the input vectors
-        :return: 
+        :return: input vector
         """
-        # input vector from wishes
-
-        wishes_array = numpy.zeros([1,1])
+        # init input array with first row of zeros
+        input_array = numpy.zeros([1,1])
+        # extend array with input vector from wishes
         for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in behaviour.wishes:
-                #print(wish)
                 wish_row = numpy.array([wish.indicator]).reshape([1,1])
-                #print(wishes_array,wishes_array.shape)
-                #print(wish_row,wish_row.shape)
-                wishes_array = numpy.concatenate([wishes_array,wish_row])
-        wishes_array = wishes_array[1:]
-
+                input_array = numpy.concatenate([input_array,wish_row])
+        # extend array with input vector from sensors
         sensor_input = {}
         for behaviour in self._manager.behaviours:
-            print(behaviour.name)
+            #print(behaviour)
             for sensor_value in behaviour.sensor_values:
-                sensor_input[sensor_value.name] = sensor_value.value
-                print(sensor_value.name,sensor_value.value)
-        #TODO get here the sensor values
-        print(sensor_input)
-        return wishes_array
+                if not sensor_input.has_key(sensor_value.name):
+                    sensor_input[sensor_value.name] = sensor_value.value
+                    wish_row = numpy.array([[sensor_value.value]])
+                    input_array = numpy.concatenate([input_array, wish_row])
+        # cut out first row and return
+        for goal in self._manager._goals:
+            #print(goal.name,goal.active)
+            #print(goal.wishes)
+            #print(goal.fulfillment)
+            wish_row = numpy.array([[goal.fulfillment]])
+            input_array = numpy.concatenate([input_array, wish_row])
+            #for wish in goal.wishes:
+            #    print(wish)
+            #    wish_row = numpy.array([[wish.indicator]])
+            #    input_array = numpy.concatenate([input_array, wish_row])
+
+        input_array = input_array[1:]
+        return input_array
 
     def compute_behaviour_activation_step(self, ref_behaviour):
 
@@ -858,7 +868,15 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         #self._manager.rl_component.get_model_parameters()
 
         self.get_activation_from_rl_node()
-        print(self.activation_rl)
+        #print(self.activation_rl)
+        try:
+            this_index=self.behaviour_to_index(ref_behaviour)
+            current_activation_step = self.activation_rl[this_index] + 20
+            ref_behaviour.current_activation_step = current_activation_step
+            print(this_index,current_activation_step-20)
+            return current_activation_step
+        except Exception as e:
+            print(e.message)
         #self.activation_rl[self.behaviour_to_index(ref_behaviour)]
         # TODO implement here logic for random execution of behaviors in greedely manner for exploration.
 

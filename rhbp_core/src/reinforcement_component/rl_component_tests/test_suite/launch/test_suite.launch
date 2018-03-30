@@ -1,0 +1,33 @@
+<launch>
+
+    <arg name="only_agent_specific"    default="true"/>
+    <arg name="teamname"  default="Gatow"/>
+
+    <!-- Enable custom logger configuration-->
+    <env name="ROS_PYTHON_LOG_CONFIG_FILE" value="$(find rcs_contest)/launch/python_logging.conf"/>
+
+    <!--env name="ROS_MASTER_URI" value="http://localhost:11313/"/-->
+
+
+
+
+
+
+    <!--Agent nodes
+-->
+
+    <include file="$(find rhbp_core)/src/reinforcement_component/rl_component_tests/test_suite/launch/rhbp_agent_test.launch">
+        <arg name="agent_name" value="test_agent" />
+    </include>
+    <include file="$(find rhbp_core)/src/reinforcement_component/rl_component_tests/test_suite/launch/manager_node.launch">
+        <arg name="agent_name" value="test_agent" />
+    </include>
+
+
+
+
+
+
+
+
+</launch>
