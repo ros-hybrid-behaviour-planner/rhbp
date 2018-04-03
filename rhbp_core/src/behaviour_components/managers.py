@@ -241,7 +241,9 @@ class Manager(object):
             changeWasExpected = False
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
-                    if item.get_pddl_effect_name() == sensorName and item.indicator * indicator > 0: # the observed change happened because of the running behaviour (at least the behaviour is correlated to the changed sensor in the correct way)
+                    # the observed change happened because of the running behaviour (at least the behaviour is
+                    # correlated to the changed sensor in the correct way)
+                    if item.get_pddl_effect_name() == sensorName and item.indicator * indicator > 0:
                         changeWasExpected = True
                         break
                 if changeWasExpected:
@@ -256,7 +258,7 @@ class Manager(object):
         if self._plan:
             for behaviour in self.__executedBehaviours:
                 if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
-                    unexpectedBehaviourFinished = True # it was unexpected
+                    unexpectedBehaviourFinished = True  # it was unexpected
                     break
             if not unexpectedBehaviourFinished: # if we found a behaviour that executed that was not part of the plan (and not flagged independentromPlan) we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
                 for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())): # walk along the remaining plan
