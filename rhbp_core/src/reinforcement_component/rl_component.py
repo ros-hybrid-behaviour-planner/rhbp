@@ -30,6 +30,7 @@ class RLComponent:
 
         try:
             request=request.input_state
+
             self.save_request(request)
             self.last_state = request.input_state
 
@@ -83,19 +84,6 @@ class RLComponent:
         except Exception as e:
             print(e.message)
             return None
-
-    def is_terminal(self, number):
-        if number == 5 or number == 7 or number == 11 or number == 12 or number == 15:
-            self.this_run +=1.0
-            if number == 15:
-                self.successfull +=1.0
-                if self.this_run%100 ==0:
-                    self.last_100 = 0
-                self.last_100+=1.0
-
-
-            return True
-        return False
 
 
     def get_array(self,s):

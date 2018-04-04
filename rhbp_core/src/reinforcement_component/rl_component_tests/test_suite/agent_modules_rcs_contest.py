@@ -25,7 +25,7 @@ class MakeActionBehavior(BehaviourBase):
     A simple behaviour for triggering generic MAPC actions that just need a type and static parameters
     """
 
-    def __init__(self,state_sensor, action_index, environment, name, params=[], **kwargs):
+    def __init__(self,state_sensor, reward_sensor,action_index, environment, name, params=[], **kwargs):
         """
         :param name: name of the behaviour
         :param agent_name: name of the agent for determining the correct topic prefix
@@ -34,7 +34,7 @@ class MakeActionBehavior(BehaviourBase):
         :param kwargs: more optional parameter that are passed to the bas class
         """
         super(MakeActionBehavior, self).__init__(name=name, requires_execution_steps=True, **kwargs)
-
+        self.reward_sensor = reward_sensor
         self.sensor = state_sensor
         self.environment = environment
         self.index = action_index
@@ -50,8 +50,11 @@ class MakeActionBehavior(BehaviourBase):
             last_state = self.sensor.value
             state,reward,self.isEnded, _ = self.environment.step(self.index)
 
-            print("ex: ", self.index, "last state",last_state,
-                  "new state",state,"with reward:",reward)
+            if self.isEnded and reward ==0:
+                reward=-1
+            self.reward_sensor.update(reward)
+            #print("ex: ", self.index, "last state",last_state,
+            #      "new state",state,"with reward:",reward)
 
             if self.isEnded:
                 state = self.environment.reset()

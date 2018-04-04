@@ -52,7 +52,7 @@ class FrozenLakeTestSuite():
 
     def start_env(self):
 
-        num_prints = 200
+        num_prints = 100
 
         for i in range(1,3500):
             s = self.env.reset()
@@ -127,8 +127,11 @@ class FrozenLakeTestSuite():
         #    r = -0.5
         #if r == 0:
         #    r = 10
+        #if (s1 == 0):
+        #    self.last_r=-10
         if (d == True) and not self.last_r == 10:
             self.last_r = -10
+        self.last_r=self.last_r/10
         #if (d == True) and  r == 1:
         #    r = 10
         #if self.last_r == 0:
