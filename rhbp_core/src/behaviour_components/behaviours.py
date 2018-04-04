@@ -9,6 +9,7 @@ import rospy
 import operator
 import itertools
 
+from reinforcement_component.input_state_transformer import InputStateTransformer
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Status, ConditionState, ConditionValue, SensorValue
@@ -412,7 +413,8 @@ class BehaviourBase(object):
         self._active = True
         self._activated = True # The activate Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
-
+        # transforms the conditions into the sensor values of them
+        self._sensor_transformer = InputStateTransformer()
         self._init_services()
 
     def get_preconditions(self):
@@ -675,59 +677,6 @@ class BehaviourBase(object):
                          traceback.format_exc())
             return None
 
-    def get_value_of_condition(self,cond):
-        value = None
-        try:
-            value = float(cond._sensor.value)
-            sensor_value = SensorValue()
-            sensor_value.name = cond._sensor._name
-            sensor_value.value = value
-            return sensor_value
-        except Exception :
-            value = None
-        try:
-            value = float(cond._condition._sensor.value)
-
-            sensor_value = SensorValue()
-            sensor_value.name = cond._condition._sensor._name
-            sensor_value.value = value
-            return sensor_value
-        except Exception :
-            value = None
-        try:
-            list = []
-            for c in cond._conditions:
-                value = self.get_value_of_condition(c)
-                if value is not None:
-                    list.append(self.get_value_of_condition(c))
-            return list
-        except Exception :
-            value = None
-        #print("no value found",cond)
-        return None
-
-    def get_values_of_list(self,full_list):
-        # gets all values in list. the list can contain multiple lists
-        new_list = []
-        for ele in full_list:
-            if isinstance(ele, (list,)):
-                new_list.extend( self.get_values_of_list(ele))
-            else:
-                new_list.append(ele)
-        return new_list
-
-    def get_sensor_values(self):
-        list_of_sensor_values = []
-        #print("sensor", self.name,len(self.get_preconditions()  ))
-        for p in self.get_preconditions():
-            value = self.get_value_of_condition(p)
-            if isinstance(value,(list,)):
-                list_of_sensor_values.extend(self.get_values_of_list(value))
-
-            else:
-                if(value is not None):
-                    list_of_sensor_values.append(value)
-        return list_of_sensor_values
 
     def _get_status_callback(self, request):
         try:
@@ -735,7 +684,8 @@ class BehaviourBase(object):
             #update everything before generating the status message
             self.updateComputation(request.current_step)
             self._active = self._activated
-            self.sensor_values=self.get_sensor_values()
+            #self.sensor_values=self.get_sensor_values(self.get_preconditions())
+            self.sensor_values=self._sensor_transformer.get_sensor_values(self.get_preconditions())
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             # this would eliminate the doubled calculation of it
             status = Status(**{

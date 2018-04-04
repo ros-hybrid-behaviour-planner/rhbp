@@ -1,22 +1,17 @@
 <launch>
     <arg name="agent_name" default="a1" />
 
-
-    <node pkg="rhbp_core" type="planner_node.py"
-        name="test_agent"  output="screen"
-
+    <node pkg="rhbp_core" type="rl_component_node.py"
+        name="rhbp_agent_$(arg agent_name)" output="screen"
         >
-            <param name="agent_name" value="test_agent" />
-            <param name="prefix" value="$(arg agent_name)" />
-            <param name="frequency" value="10.0" />
-            <param name="automatic_stepping" value="true" />
+            <param name="agent_name" value="$(arg agent_name)" />
             <param name="situationBias" type="double" value="1.0" />
             <param name="predecessorBias" type="double" value="1.0" />
             <param name="successorBias" type="double" value="2.0" />
             <param name="conflictorBias" type="double" value="0.0" />
             <param name="goalBias" type="double" value="0.5" />
             <param name="planBias" type="double" value="14.0" />
-            <param name="activationThreshold" type="double" value="-1000.0" />
+            <param name="activationThreshold" type="double" value="1.0" />
             <param name="createLogFiles" type="bool" value="false"/>
             <param name="activation_algorithm" type="string" value="default"/>
             <param name="max_parallel_behaviours" type="int" value="1"/> <!--Comment or negative for unlimited-->

@@ -8,7 +8,7 @@ import numpy
 
 class RLComponent:
 
-    def __init__(self, name="rl_component"):
+    def __init__(self, name):
 
         print("started rl component node",name)
 
@@ -21,10 +21,17 @@ class RLComponent:
 
         self.number_outputs = -1
         self.number_inputs = -1
-
+        self.this_run =1
+        self.successfull =0.0
+        self.counter = 0.0
+        self.last_100 = 0.0
     def _get_activation_state_callback(self,request):
+        self.counter +=1
+
         try:
             request=request.input_state
+            self.save_request(request)
+            self.last_state = request.input_state
 
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
             #print(request.input_state)
@@ -37,16 +44,62 @@ class RLComponent:
             activation_state = ActivationState(**{
                 "name": self.name,  # this is sent for sanity check and planner status messages only
                 "activations": activations,
-
             })
 
-            self.save_request(request)
-            self.last_state = request.input_state
 
+            #print(numpy.argmax(request.input_state),numpy.argmax(activations),numpy.round(activations,5),
+            #      self.this_run,self.successfull/self.this_run,self.last_100/100.0)
             return GetActivationResponse(activation_state)
         except Exception as e:
             print(e.message)
             return None
+
+
+    def get_activation_state_test(self,request):
+        self.counter +=1
+        #if self.counter % 4 == 0:
+        #self.update_model()
+        try:
+            self.save_request(request)
+            self.last_state = request.input_state
+            #request=request.input_state
+            self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
+            #print(request.input_state)
+            #print(numpy.array(request.input_state))
+            #print(numpy.array(request.input_state).reshape(([1,len(request.input_state)])))
+            transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
+            activations = self.model.feed_forward(transformed_input)
+            activations=activations.tolist()[0]
+            #print(transformed_input,activations,type(activations))
+            activation_state = ActivationState(**{
+                "name": self.name,  # this is sent for sanity check and planner status messages only
+                "activations": activations,
+            })
+
+
+            #print(numpy.argmax(request.input_state),numpy.argmax(activations),numpy.round(activations,5),
+            #      self.this_run,self.successfull/self.this_run,self.last_100/100.0)
+            return activation_state
+        except Exception as e:
+            print(e.message)
+            return None
+
+    def is_terminal(self, number):
+        if number == 5 or number == 7 or number == 11 or number == 12 or number == 15:
+            self.this_run +=1.0
+            if number == 15:
+                self.successfull +=1.0
+                if self.this_run%100 ==0:
+                    self.last_100 = 0
+                self.last_100+=1.0
+
+
+            return True
+        return False
+
+
+    def get_array(self,s):
+        return numpy.identity(16)[s:s + 1]
 
     def save_request(self,request):
         """
@@ -54,10 +107,24 @@ class RLComponent:
         :param request: 
         :return: 
         """
+        #if self.is_terminal(numpy.argmax(self.last_state)) :
+        #    return
         if self.last_state is not None:
-            reward_tuple = (self.last_state,request.input_state,request.last_action,request.reward)
-            self.reward_list.append(reward_tuple)
 
+            last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
+            if int(request.reward) == 10:
+                #print("------------------------------------------")
+                 new = [self.get_array(15).tolist()[0]]
+            else:
+                new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+            new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+            #new = numpy.array(request.resulting_state).reshape(([1, len(request.resulting_state)]))
+
+            reward_tuple = (last,new,request.last_action,request.reward)
+            #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
+            self.reward_list.append(reward_tuple)
+            self.update_model()
+            #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
             self.init_model(num_inputs,num_outputs)
@@ -70,6 +137,7 @@ class RLComponent:
         for element in self.reward_list:
             self.model.train_model(element)
         self.reward_list=[]
+
     def init_model(self,num_inputs,num_outputs):
 
         self.number_inputs = num_inputs

@@ -706,9 +706,12 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         #self.start_rl_node()
         self.start_rl_class()
         self.SERVICE_TIMEOUT = 5
+        self.i = 0
+        self.rl_component=None
+        self.counter=0
     def start_rl_class(self):
         self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
-        rl_component = RLComponent(name=self.rl_address )
+        self.rl_component = RLComponent(name=self.rl_address )
 
     def start_rl_node(self):
         """
@@ -733,6 +736,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 return num
             num += 1
         return None
+
+
 
     def get_activation_from_rl_node(self):
         """
@@ -763,7 +768,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             print("last action not found")
             return
         # TODO if invalid dim dont send anything just return
-        #print(num_inputs,num_outputs,input_state,reward,last_action_index)
+        #print(num_inputs,num_outputs,numpy.argmax(input_state),reward,last_action_index)
 
         input_state_msg = InputState()
         input_state_msg.input_state = input_state
@@ -813,13 +818,21 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         for goal in self._manager.activeGoals:
             goal_value = goal.fulfillment * (10 ** goal.priority)
             reward_value += goal_value
+        #print("goal",reward_value)
         return reward_value
+
+    def make_hot_state_encoding(self,state,num_state_space):
+        state = int(state)
+        #print(state,num_state_space)
+        array = numpy.identity(num_state_space)[state:state + 1]
+        return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
 
     def transform_input_values(self):
         """
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
         """
+        # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
         # init input array with first row of zeros
         input_array = numpy.zeros([1,1])
         # extend array with input vector from wishes
@@ -829,28 +842,41 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 wish_row = numpy.array([wish.indicator]).reshape([1,1])
                 input_array = numpy.concatenate([input_array,wish_row])
         # extend array with input vector from sensors
+        # save which sensor were already included
+        #TODO behavior get input called twice. getstatus
         sensor_input = {}
         for behaviour in self._manager.behaviours:
-            #print(behaviour)
             for sensor_value in behaviour.sensor_values:
                 if not sensor_input.has_key(sensor_value.name):
                     sensor_input[sensor_value.name] = sensor_value.value
                     wish_row = numpy.array([[sensor_value.value]])
                     input_array = numpy.concatenate([input_array, wish_row])
         # cut out first row and return
+        # TODO get values of sensors of goal
         for goal in self._manager._goals:
-            #print(goal.name,goal.active)
             #print(goal.wishes)
             #print(goal.fulfillment)
-            wish_row = numpy.array([[goal.fulfillment]])
-            input_array = numpy.concatenate([input_array, wish_row])
-            #for wish in goal.wishes:
-            #    print(wish)
-            #    wish_row = numpy.array([[wish.indicator]])
-            #    input_array = numpy.concatenate([input_array, wish_row])
-
+            for sensor_value in goal.sensor_values:
+                if not sensor_input.has_key(sensor_value.name):
+                    #print("sensor vlaue input",sensor_value)
+                    value = self.make_hot_state_encoding(sensor_value.value,16)
+                    #wish_row = numpy.array([[sensor_value.value]])
+                    #value=wish_row
+                    sensor_input[sensor_value.name] = value
+                    #wish_row = numpy.array([[value]])
+                    #print(numpy.array([[5]]))
+                    input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
+        #print("input:",numpy.argmax(input_array))
         return input_array
+
+    def is_terminal(self, number):
+        if number == 5 or number == 7 or number == 11 or number == 12 or number == 15:
+            return True
+        return False
+
+    def check_if_activation_exists(self,ref_behaviour):
+
 
     def compute_behaviour_activation_step(self, ref_behaviour):
 
@@ -866,14 +892,25 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO needs reference to rl_component
         # TODO rl-component should save old activation . and a converter for behavior to index
         #self._manager.rl_component.get_model_parameters()
-
-        self.get_activation_from_rl_node()
-        #print(self.activation_rl)
+        if self.i % 4 == 0:
+            self.get_activation_from_rl_node()
+            input = self.transform_input_values()
+            if len(input)>0:
+                if self.is_terminal(numpy.argmax(input)):
+                    self.counter +=1
+        self.i+=1
         try:
             this_index=self.behaviour_to_index(ref_behaviour)
-            current_activation_step = self.activation_rl[this_index] + 20
-            ref_behaviour.current_activation_step = current_activation_step
-            print(this_index,current_activation_step-20)
+            current_activation_step = self.activation_rl[this_index]*10000
+
+            self.epsilon = 1. / ((self.counter / 50) + 10)
+            if numpy.random.rand(1) < self.epsilon:
+                print("choose random action",ref_behaviour)
+                current_activation_step = 1000000.0
+            ref_behaviour.current_activation_step = 0
+            ref_behaviour.activation = current_activation_step
+            #print(ref_behaviour,this_index, current_activation_step ,ref_behaviour.activation)
+            #self.rl_component.update_model()
             return current_activation_step
         except Exception as e:
             print(e.message)

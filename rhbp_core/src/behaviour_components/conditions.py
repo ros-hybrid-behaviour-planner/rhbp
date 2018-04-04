@@ -425,7 +425,6 @@ class Condition(Conditonal):
 
         self._normalizedSensorValue = 0
         self._satisfaction = 0
-
         Condition._instanceCounter += 1
 
     def sync(self):

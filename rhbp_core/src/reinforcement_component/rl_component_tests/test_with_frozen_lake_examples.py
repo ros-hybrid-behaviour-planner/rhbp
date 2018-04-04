@@ -15,6 +15,10 @@ import gym
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+
+from rhbp_core.msg import InputState
+from rhbp_core.srv import GetActivation
+
 PKG = 'knowledge_base'
 
 """
@@ -33,7 +37,7 @@ class FrozenLakeTestSuite():
         self.cycles_last = 0
         self.weights = []
     def set_up_environment(self):
-        self.rl_component=RLComponent()
+        self.rl_component=RLComponent("test_agent")
         self.env = gym.make('FrozenLake-v0')
 
     def get_array(self,s):
@@ -105,16 +109,22 @@ class FrozenLakeTestSuite():
         #if (s == s1):
             #print"same state" , s,s1,best_action
         #    r = -0.5
-        if (d == True) and not r == 1:
-            r = -1
-        if r == 0:
-            r = -0.01
+        #if r == 0:
+        #    r = 10
+        #if (d == True) and not r == 1:
+        #    r = 0
+        if (d == True) and  r == 1:
+            r = 10
+        #if r == 0:
+        #    r = -0.01
         output=self.get_array(s1)
-
+        #print((numpy.argmax(input),numpy.argmax(output),best_action,r))
         self.rl_component.reward_list.append((input,output,best_action,r))
 
         self.rl_component.update_model()
         return s1, d
+
+
 
 if __name__ == '__main__':
     #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)

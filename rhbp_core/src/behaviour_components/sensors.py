@@ -57,7 +57,6 @@ class Sensor(object):
         :return:
         """
         self._latestValue = newValue
-
     @property
     def value(self):
         return self._value

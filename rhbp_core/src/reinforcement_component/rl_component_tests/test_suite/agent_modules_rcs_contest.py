@@ -39,16 +39,27 @@ class MakeActionBehavior(BehaviourBase):
         self.environment = environment
         self.index = action_index
         self._params = params
-
-
+        self.last_state = 0
+        print("init behavior",self.index)
+        self.isEnded = False
     def do_step(self):
 
-        state,reward,isEnded, _ = self.environment.step(self.index)
-        print("execute behavior index: ", self.index, "with reward:",reward)
-        if isEnded:
-            state = self.environment.reset()
-        self.sensor.update(state)
 
+
+        try:
+            last_state = self.sensor.value
+            state,reward,self.isEnded, _ = self.environment.step(self.index)
+
+            print("ex: ", self.index, "last state",last_state,
+                  "new state",state,"with reward:",reward)
+
+            if self.isEnded:
+                state = self.environment.reset()
+                self.sensor.update(state)
+
+            self.sensor.update(state)
+        except Exception:
+            return
 
     def unregister(self, terminate_services=True):
         super(MakeActionBehavior, self).unregister(terminate_services=terminate_services)

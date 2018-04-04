@@ -141,7 +141,40 @@ class BooleanActivator(Activator):
     
     def __repr__(self):
         return "Boolean Activator"
-    
+
+
+class EqualActivator(BooleanActivator):
+    '''
+    This class is an activator that compares a boolean value to a desired value
+    '''
+
+    def __init__(self, desiredValue=True, minActivation=0, maxActivation=1, name=None):
+        '''
+        Constructor
+        '''
+        super(EqualActivator, self).__init__(desiredValue,minActivation, maxActivation, name)
+        self._desired = desiredValue  # this is the threshold Value
+
+    def computeActivation(self, normalizedValue):
+        #assert isinstance(normalizedValue, bool)
+        return self._maxActivation if normalizedValue == self._desired else self._minActivation
+
+    def getDirection(self):
+        return 1 if self._desired else -1
+
+    def getSensorWish(self, normalizedValue):
+        #assert isinstance(normalizedValue, bool)
+        if normalizedValue == self._desired:
+            return 0.0
+        if self._desired == True:
+            return 1.0
+        return -1.0
+
+    def __str__(self):
+        return "Equal Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
+
+    def __repr__(self):
+        return "Equal Activator"
 
 class ThresholdActivator(Activator):
     '''
