@@ -1,13 +1,14 @@
-'''
+"""
 Created on 13.04.2015
 
 @author: wypler, hrabia, rieger
-'''
+"""
 
 import time
 from threading import Lock
 
 import rospy
+import re
 from std_msgs.msg import String
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
@@ -157,29 +158,81 @@ class PassThroughTopicSensor(Sensor):
 
 class SimpleTopicSensor(PassThroughTopicSensor):
     """
-    ROS topic sensor that subscribes to the given topic and provides defined primitive (for this reason simple)
-    attributes (parameter message_attr) from the message,
-    default is 'data' that is valid for simple ROS messages of type Bool, Float and Int32 ...
+    ROS topic sensor that subscribes to the given topic and selects defined attributes (parameter message_attr) from the
+    message, default is 'data' that is valid for simple ROS messages of type Bool, Float and Int32 ...
+    Name Simple is outdated, and has historical reasons, better use the alias TopicSensor
     """
 
-    def __init__(self, topic, name=None, message_type=None, initial_value=None, message_attr='data', create_log=False, print_updates=False):
+    ATTRIBUTE_SEPARATOR = '.'
+    ATTRIBUTE_INDEX_BEGIN = '['
+    ATTRIBUTE_INDEX_END = ']'
+    ATTRIBUTE_INDEX_PATTERN = '\\' + ATTRIBUTE_INDEX_BEGIN + '.*\\' + ATTRIBUTE_INDEX_END + '$'
+
+    def __init__(self, topic, name=None, message_type=None, initial_value=None, message_attr='data', create_log=False,
+                 print_updates=False):
         """
         :param topic: see :class:PassThroughTopicSensor
         :param name: see :class:PassThroughTopicSensor
         :param message_type: see :class:PassThroughTopicSensor
         :param initial_value: see :class:PassThroughTopicSensor
-        :param message_attr: the message attribute of the msg to use
+        :param message_attr: the message attribute of the msg to use, to access nested attributes, separate attributes
+         by SimpleTopicSensor.ATTRIBUTE_SEPARATOR; access tuple/list/dict attribute elements with e.g. 'data[0]'
         :param create_log: see :class:PassThroughTopicSensor
         :param print_updates: see :class:PassThroughTopicSensor
         """
         super(SimpleTopicSensor, self).__init__(name=name, topic=topic, message_type=message_type,
                                                 initial_value=initial_value, create_log=create_log,
                                                 print_updates=print_updates)
-        self._message_field = message_attr
+        self._message_attr = message_attr
+        if SimpleTopicSensor.ATTRIBUTE_INDEX_BEGIN in message_attr:
+            self._has_index_attr = True
+        else:
+            self._has_index_attr = False
+
+        if SimpleTopicSensor.ATTRIBUTE_SEPARATOR in message_attr:
+            self._message_attr = self._message_attr.split(SimpleTopicSensor.ATTRIBUTE_SEPARATOR)
+            self._is_nested_attr = True
+        else:
+            self._is_nested_attr = False
+
+    def _get_index_attribute(self, value, attr):
+        """
+        advanced version of getattr that allows to access interated attributes, like value[index]
+        index is recognized with the opening [, if the attr does not contain [ we fallback to normal getattr
+        :param value: the object
+        :param attr: the attribute with index to access
+        :return: the selected attribute
+        """
+        if SimpleTopicSensor.ATTRIBUTE_INDEX_BEGIN in attr:
+            index_elem = re.search(SimpleTopicSensor.ATTRIBUTE_INDEX_PATTERN, attr).group()
+            attr = attr.replace(index_elem, '')
+            index = index_elem[1:-1]
+            if index.isdigit():
+                index = int(index)
+            return getattr(value, attr)[index]
+        else:  # fallback
+            return getattr(value, attr)
 
     def subscription_callback(self, msg):
-        msg_value = getattr(msg, self._message_field)
+        if self._is_nested_attr:
+            msg_value = msg
+            for nested_attr in self._message_attr:
+                if self._has_index_attr:  # we use this to avoid complex parsing if not necessary
+                    msg_value = self._get_index_attribute(msg_value, nested_attr)
+                else:
+                    msg_value = getattr(msg_value, nested_attr)
+        else:
+            if self._has_index_attr:
+                msg_value = self._get_index_attribute(msg, self._message_attr)
+            else:
+                msg_value = getattr(msg, self._message_attr)
         super(SimpleTopicSensor, self).subscription_callback(msg_value)
+
+
+"""
+Create an alias for the class that is more adequate and allows to keep backward compatibility
+"""
+TopicSensor = SimpleTopicSensor
 
 
 class DynamicSensor(Sensor):
