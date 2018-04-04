@@ -203,9 +203,9 @@ class DynamicSensor(Sensor):
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
         :param sensor_name: see name parameter of constructor from class Sensor
-        :param expiration_time_values_of_active_topics: time in secconds,
+        :param expiration_time_values_of_active_topics: time in seconds,
                                                         after a value of a still existing topic is outdated
-        :param expiration_time_values_of_removed_topics: time in secconds, after a value of a removed topic is outdated
+        :param expiration_time_values_of_removed_topics: time in seconds, after a value of a removed topic is outdated
         :param subscribe_only_first: whether this sensor only subscribe to the first matching topic (and no other)
         :param topic_type: (Type) Type of subscribed topics. The sensor will only subscribe to a topics, 
                 if the type matches. If topic_type is None, no type check is done
