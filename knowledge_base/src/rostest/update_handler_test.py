@@ -163,7 +163,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         self.__client.update(updated_old, updated_new)
         while update_stamp == cache.update_time:
-            rospy.sleep(0.1)
+            rospy.sleep(0.5)
 
         current = cache.get_all_matching_facts()
         self.assertEqual(2, len(current))
@@ -182,14 +182,14 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         updated_new_1 = (prefix, 'fact_1', '3')
         self.__client.update(updated_old_1, updated_new_1)
 
-        update_stamp = cache.update_time
-
         updated_new_2 = (prefix, 'fact_2', '4')
+
+        update_stamp = cache.update_time
         self.__client.update(updated_old_2, updated_new_2)
 
         rospy.sleep(0.5)
         while update_stamp == cache.update_time:
-            rospy.sleep(0.1)
+            rospy.sleep(0.5)
 
         current = cache.get_all_matching_facts()
         self.assertEqual(2, len(current))
