@@ -18,7 +18,7 @@ from behaviour_components.activators import BooleanActivator
 from behaviour_components.conditions import Condition
 from behaviour_components.goals import OfflineGoal, GoalBase, PublisherGoal
 from behaviour_components.managers import Manager
-from behaviour_components.sensors import SimpleTopicSensor
+from behaviour_components.sensors import TopicSensor
 
 from tests.common import SetTrueBehavior
 
@@ -47,7 +47,7 @@ class TestGoals(unittest.TestCase):
 
         topic_name = method_prefix + '/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
+        sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
@@ -72,7 +72,7 @@ class TestGoals(unittest.TestCase):
 
         topic_name = method_prefix + '/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
+        sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]
@@ -99,7 +99,7 @@ class TestGoals(unittest.TestCase):
 
         topic_name = method_prefix + '/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
+        sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         pddl_function_name = condition.getFunctionNames()[0]

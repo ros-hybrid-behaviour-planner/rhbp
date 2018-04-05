@@ -94,9 +94,9 @@ class Sensor(object):
         self._name = newName
 
 
-class PassThroughTopicSensor(Sensor):
+class RawTopicSensor(Sensor):
     """
-    "PassThrough" because the sensor just forwards the received ROS msg
+    This sensor just provides access to the raw ROS message content received on a topic
     """
 
     __metaclass__ = FinalInitCaller
@@ -115,7 +115,7 @@ class PassThroughTopicSensor(Sensor):
             else:
                 name = create_valid_pddl_name(topic)
 
-        super(PassThroughTopicSensor, self).__init__(name=name, initial_value=initial_value)
+        super(RawTopicSensor, self).__init__(name=name, initial_value=initial_value)
 
         self.__print_updates = print_updates
         self._topic_name = topic
@@ -155,13 +155,7 @@ class PassThroughTopicSensor(Sensor):
         self._sub.unregister()
 
 
-"""
-Alternative, yet more intuitive name for the PassThroughTopicSensor
-"""
-RawTopicSensor = PassThroughTopicSensor
-
-
-class SimpleTopicSensor(PassThroughTopicSensor):
+class TopicSensor(RawTopicSensor):
     """
     ROS topic sensor that subscribes to the given topic and selects defined attributes (parameter message_attr) from the
     message, default is 'data' that is valid for simple ROS messages of type Bool, Float and Int32 ...
@@ -176,26 +170,26 @@ class SimpleTopicSensor(PassThroughTopicSensor):
     def __init__(self, topic, name=None, message_type=None, initial_value=None, message_attr='data', create_log=False,
                  print_updates=False):
         """
-        :param topic: see :class:PassThroughTopicSensor
-        :param name: see :class:PassThroughTopicSensor
-        :param message_type: see :class:PassThroughTopicSensor
-        :param initial_value: see :class:PassThroughTopicSensor
+        :param topic: see :class:RawTopicSensor
+        :param name: see :class:RawTopicSensor
+        :param message_type: see :class:RawTopicSensor
+        :param initial_value: see :class:RawTopicSensor
         :param message_attr: the message attribute of the msg to use, to access nested attributes, separate attributes
-         by SimpleTopicSensor.ATTRIBUTE_SEPARATOR; access tuple/list/dict attribute elements with e.g. 'data[0]'
-        :param create_log: see :class:PassThroughTopicSensor
-        :param print_updates: see :class:PassThroughTopicSensor
+         by TopicSensor.ATTRIBUTE_SEPARATOR; access tuple/list/dict attribute elements with e.g. 'data[0]'
+        :param create_log: see :class:RawTopicSensor
+        :param print_updates: see :class:RawTopicSensor
         """
-        super(SimpleTopicSensor, self).__init__(name=name, topic=topic, message_type=message_type,
-                                                initial_value=initial_value, create_log=create_log,
-                                                print_updates=print_updates)
+        super(TopicSensor, self).__init__(name=name, topic=topic, message_type=message_type,
+                                          initial_value=initial_value, create_log=create_log,
+                                          print_updates=print_updates)
         self._message_attr = message_attr
-        if SimpleTopicSensor.ATTRIBUTE_INDEX_BEGIN in message_attr:
+        if TopicSensor.ATTRIBUTE_INDEX_BEGIN in message_attr:
             self._has_index_attr = True
         else:
             self._has_index_attr = False
 
-        if SimpleTopicSensor.ATTRIBUTE_SEPARATOR in message_attr:
-            self._message_attr = self._message_attr.split(SimpleTopicSensor.ATTRIBUTE_SEPARATOR)
+        if TopicSensor.ATTRIBUTE_SEPARATOR in message_attr:
+            self._message_attr = self._message_attr.split(TopicSensor.ATTRIBUTE_SEPARATOR)
             self._is_nested_attr = True
         else:
             self._is_nested_attr = False
@@ -208,8 +202,8 @@ class SimpleTopicSensor(PassThroughTopicSensor):
         :param attr: the attribute with index to access
         :return: the selected attribute
         """
-        if SimpleTopicSensor.ATTRIBUTE_INDEX_BEGIN in attr:
-            index_elem = re.search(SimpleTopicSensor.ATTRIBUTE_INDEX_PATTERN, attr).group()
+        if TopicSensor.ATTRIBUTE_INDEX_BEGIN in attr:
+            index_elem = re.search(TopicSensor.ATTRIBUTE_INDEX_PATTERN, attr).group()
             attr = attr.replace(index_elem, '')
             index = index_elem[1:-1]  # remove [] from result
             if index.isdigit():
@@ -231,13 +225,15 @@ class SimpleTopicSensor(PassThroughTopicSensor):
                 msg_value = self._get_index_attribute(msg, self._message_attr)
             else:
                 msg_value = getattr(msg, self._message_attr)
-        super(SimpleTopicSensor, self).subscription_callback(msg_value)
+        super(TopicSensor, self).subscription_callback(msg_value)
 
 
 """
-Create an alias for the SimpleTopicSensor class that is more adequate and allows to keep backward compatibility
+Aliases to keep backward compatibility to class old names
 """
-TopicSensor = SimpleTopicSensor
+PassThroughTopicSensor = RawTopicSensor
+
+SimpleTopicSensor = TopicSensor
 
 
 class DynamicSensor(Sensor):

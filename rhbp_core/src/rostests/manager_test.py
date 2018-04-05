@@ -16,7 +16,7 @@ from behaviour_components.conditions import Condition
 from behaviour_components.goals import GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.condition_elements import Effect
-from behaviour_components.sensors import SimpleTopicSensor, Sensor
+from behaviour_components.sensors import TopicSensor, Sensor
 from std_msgs.msg import Bool, Int32
 
 from tests.common import SetTrueBehavior, IncreaserBehavior
@@ -46,7 +46,7 @@ class TestManager(unittest.TestCase):
 
         topic_name_1 = method_prefix + '/sensor_1'
 
-        sensor = SimpleTopicSensor(topic=topic_name_1, message_type=Bool, initial_value=False)
+        sensor = TopicSensor(topic=topic_name_1, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
         condition_function_name = condition.getFunctionNames()[0]
@@ -88,14 +88,14 @@ class TestManager(unittest.TestCase):
         m = Manager(activationThreshold=7, prefix=planner_prefix)
 
         topic_name_1 = method_prefix + '/sensor_1'
-        non_interruptable_sensor = SimpleTopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
+        non_interruptable_sensor = TopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
         non_interruptable_condition = Condition(non_interruptable_sensor, GreedyActivator())
         condition_function_name = non_interruptable_condition.getFunctionNames()[0]
         non_interruptable_behaviour = IncreaserBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
                         name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, interruptable=False)
 
         topic_name_2 = method_prefix + '/sensor_2'
-        interruptable_sensor = SimpleTopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
+        interruptable_sensor = TopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
         interruptable_condition = Condition(interruptable_sensor, GreedyActivator())
         condition_function_name2 = interruptable_condition.getFunctionNames()[0]
         interruptable_behaviour = IncreaserBehavior(effect_name=condition_function_name2, topic_name=topic_name_2,
@@ -147,14 +147,14 @@ class TestManager(unittest.TestCase):
         m = Manager(activationThreshold=7.0, prefix=planner_prefix)
 
         topic_name_1 = method_prefix + '/sensor_1'
-        sensor1 = SimpleTopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
+        sensor1 = TopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
         condition1 = Condition(sensor1, GreedyActivator())
         condition_function_name = condition1.getFunctionNames()[0]
         behaviour1 = IncreaserBehavior(effect_name=condition_function_name, topic_name=topic_name_1,
                         name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, interruptable=True)
 
         topic_name_2 = method_prefix + '/sensor_2'
-        sensor2 = SimpleTopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
+        sensor2 = TopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
         condition2 = Condition(sensor2, GreedyActivator())
         condition_function_name2 = condition2.getFunctionNames()[0]
         behaviour2 = IncreaserBehavior(effect_name=condition_function_name2, topic_name=topic_name_2,

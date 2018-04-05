@@ -10,7 +10,7 @@ import rospy
 from std_msgs.msg import Int32, ColorRGBA
 from rhbp_core.msg import PlannerStatus, Status
 
-from behaviour_components.sensors import SimpleTopicSensor, AggregationSensor
+from behaviour_components.sensors import TopicSensor, AggregationSensor
 
 PKG = 'rhbp_core'
 
@@ -41,9 +41,9 @@ class SimpleSensorTestSuite(unittest.TestCase):
         pub_primitive.publish(test_value)
         pub_complex.publish(ColorRGBA(g=test_value))
 
-        primitive_sensor = SimpleTopicSensor(topic=primitive_topic)
+        primitive_sensor = TopicSensor(topic=primitive_topic)
 
-        complex_sensor = SimpleTopicSensor(topic=complex_topic, message_attr='g')
+        complex_sensor = TopicSensor(topic=complex_topic, message_attr='g')
 
         rospy.sleep(0.1)
 
@@ -76,9 +76,9 @@ class SimpleSensorTestSuite(unittest.TestCase):
 
         pub_complex.publish(msg)
 
-        complex_sensor = SimpleTopicSensor(topic=complex_topic, message_attr='plan[1]')
+        complex_sensor = TopicSensor(topic=complex_topic, message_attr='plan[1]')
 
-        very_complex_sensor = SimpleTopicSensor(topic=complex_topic, message_attr='goals[0].activation')
+        very_complex_sensor = TopicSensor(topic=complex_topic, message_attr='goals[0].activation')
 
         rospy.sleep(0.1)
 
@@ -107,8 +107,8 @@ class SimpleSensorTestSuite(unittest.TestCase):
         pub_primitive_1.publish(test_value_1)
         pub_primitive_2.publish(test_value_2)
 
-        primitive_sensor_1 = SimpleTopicSensor(topic=primitive_topic_1)
-        primitive_sensor_2 = SimpleTopicSensor(topic=primitive_topic_2)
+        primitive_sensor_1 = TopicSensor(topic=primitive_topic_1)
+        primitive_sensor_2 = TopicSensor(topic=primitive_topic_2)
 
         def aggregation_function(values):
             return sum(values)
