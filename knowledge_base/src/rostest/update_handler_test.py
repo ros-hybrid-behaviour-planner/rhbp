@@ -134,10 +134,14 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
+        update_stamp = cache.update_time
+
         updated_new = (prefix, 'updated', '1')
 
-        self.__client.update((prefix, '*','*'), updated_new)
-        rospy.sleep(0.1)
+        self.__client.update((prefix, '*', '*'), updated_new)
+
+        while update_stamp == cache.update_time:
+            rospy.sleep(0.1)
 
         current = cache.get_all_matching_facts()
 

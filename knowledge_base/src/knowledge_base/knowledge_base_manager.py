@@ -2,7 +2,7 @@
 """
 Created on 07.12.2016
 
-@author: rieger
+@author: rieger, hrabia
 """
 
 import re
@@ -13,7 +13,6 @@ import rospy
 from knowledge_base.msg import Fact, FactRemoved, FactUpdated
 from knowledge_base.srv import Exists, Peek, PeekResponse, Pop, PopResponse, All, AllResponse, UpdateSubscribe, \
     UpdateSubscribeResponse, Update, UpdateResponse, Push, PushResponse
-from lindypy.TupleSpace import TSpace
 
 from inverted_tuple_space import InvertedTupleSpace
 
