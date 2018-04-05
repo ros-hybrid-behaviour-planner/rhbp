@@ -22,11 +22,11 @@ rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DE
 
 
 class Sensor(object):
-    '''
+    """
     This class represents information necessary to make decisions.
     Although it is not abstract it will be barely useful and should be used as base class for actual
     implementations
-    '''
+    """
 
     _instanceCounter = 0
 
@@ -96,14 +96,13 @@ class Sensor(object):
 
 class PassThroughTopicSensor(Sensor):
     """
-    "PassThrough" because the sensor just forwards the received msg
+    "PassThrough" because the sensor just forwards the received ROS msg
     """
 
     __metaclass__ = FinalInitCaller
 
     def __init__(self, name, topic, message_type=None, initial_value=None, create_log=False, print_updates=False):
         """
-        "simple" because apparently only primitive message types like Bool and Float have their actual value in a "data" attribute.
         :param topic: topic name to subscribe to
         :param name: name of the sensor, if None a name is generated from the topic
         :param message_type: if not determined an automatic type determination is attempted, requires the topic already be registered on the ROS master
@@ -156,6 +155,12 @@ class PassThroughTopicSensor(Sensor):
         self._sub.unregister()
 
 
+"""
+Alternative, yet more intuitive name for the PassThroughTopicSensor
+"""
+RawTopicSensor = PassThroughTopicSensor
+
+
 class SimpleTopicSensor(PassThroughTopicSensor):
     """
     ROS topic sensor that subscribes to the given topic and selects defined attributes (parameter message_attr) from the
@@ -206,7 +211,7 @@ class SimpleTopicSensor(PassThroughTopicSensor):
         if SimpleTopicSensor.ATTRIBUTE_INDEX_BEGIN in attr:
             index_elem = re.search(SimpleTopicSensor.ATTRIBUTE_INDEX_PATTERN, attr).group()
             attr = attr.replace(index_elem, '')
-            index = index_elem[1:-1]
+            index = index_elem[1:-1]  # remove [] from result
             if index.isdigit():
                 index = int(index)
             return getattr(value, attr)[index]
@@ -230,7 +235,7 @@ class SimpleTopicSensor(PassThroughTopicSensor):
 
 
 """
-Create an alias for the class that is more adequate and allows to keep backward compatibility
+Create an alias for the SimpleTopicSensor class that is more adequate and allows to keep backward compatibility
 """
 TopicSensor = SimpleTopicSensor
 
@@ -243,7 +248,7 @@ class DynamicSensor(Sensor):
 
     __metaclass__ = FinalInitCaller
 
-    def __init__(self, pattern, default_value=None, optional=False,
+    def __init__(self, pattern, initial_value=None, optional=False,
                  topic_listener_name=TopicListener.DEFAULT_NAME, name=None,
                  expiration_time_values_of_active_topics=-1., expiration_time_values_of_removed_topics=10.0,
                  subscribe_only_first=False, topic_type=None):
@@ -252,7 +257,7 @@ class DynamicSensor(Sensor):
                         Additionally the pattern must be a valid regular expression,
                         which is full compatible to the python regex.
                         Example: "/myFamousPrefix/[0-9]*"
-        :param default_value: value, which will be used if no topic exists
+        :param initial_value: value, which will be used if no topic exists
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
         :param sensor_name: see name parameter of constructor from class Sensor
@@ -263,11 +268,11 @@ class DynamicSensor(Sensor):
         :param topic_type: (Type) Type of subscribed topics. The sensor will only subscribe to a topics, 
                 if the type matches. If topic_type is None, no type check is done
         """
-        super(DynamicSensor, self).__init__(name=name, optional=optional, initial_value=default_value)
+        super(DynamicSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
 
         self._last_value = None
         self.__time_of_latest_value = None
-        self._default_value = default_value
+        self._default_value = initial_value
         self._min_value = None
         self._max_value = None
         self.__valid_values = {}
@@ -299,7 +304,7 @@ class DynamicSensor(Sensor):
         :return: whether the topic type is valid
         """
         if (self.__topic_type is None):
-            return True;
+            return True
         return self.__topic_type == topic_type
 
     def __subscribe_to_topic(self, topic_name):
@@ -445,3 +450,27 @@ class DynamicSensor(Sensor):
         aggregated_value = self._aggregate_values(values)
         self.update(aggregated_value)
         super(DynamicSensor, self).sync()
+
+
+class AggregationSensor(Sensor):
+    """
+    sensor class that allows to specify an aggregation function for multiple other sensors
+    """
+
+    def __init__(self, name, sensors, func, optional=False, initial_value=None):
+        """
+        :param sensors: list of other sensors to aggregate
+        :param func: function that will be used to aggregate the sensor values, sensor values will be passed as a list
+            return should be an aggregated and normalised function value
+        """
+        super(AggregationSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
+        self._sensors = sensors
+        self._func = func
+
+    def sync(self):
+
+        sensor_values = [sensor.sync() for sensor in self._sensors]
+
+        self._latestValue = self._func(sensor_values)
+
+        self._value = self._latestValue

@@ -10,7 +10,7 @@ import rospy
 from std_msgs.msg import Int32, ColorRGBA
 from rhbp_core.msg import PlannerStatus, Status
 
-from behaviour_components.sensors import SimpleTopicSensor
+from behaviour_components.sensors import SimpleTopicSensor, AggregationSensor
 
 PKG = 'rhbp_core'
 
@@ -88,6 +88,39 @@ class SimpleSensorTestSuite(unittest.TestCase):
         self.assertEquals(test_value2, complex_sensor.value, "Complex test value does not match")
 
         self.assertEquals(test_value, very_complex_sensor.value, "Complex iterated nested test value does not match")
+
+    def test_simple_sensor_aggregation(self):
+        """
+        Test an aggregation of simple topics with the AggregationSensor
+        """
+
+        primitive_topic_1 = '/primitive_topic1'
+        pub_primitive_1 = rospy.Publisher(primitive_topic_1, Int32, queue_size=1, latch=True)
+        primitive_topic_2 = '/primitive_topic2'
+        pub_primitive_2 = rospy.Publisher(primitive_topic_2, Int32, queue_size=1, latch=True)
+
+        rospy.sleep(0.1)
+
+        test_value_1 = 3
+        test_value_2 = 7
+
+        pub_primitive_1.publish(test_value_1)
+        pub_primitive_2.publish(test_value_2)
+
+        primitive_sensor_1 = SimpleTopicSensor(topic=primitive_topic_1)
+        primitive_sensor_2 = SimpleTopicSensor(topic=primitive_topic_2)
+
+        def aggregation_function(values):
+            return sum(values)
+
+        aggregation_sensor = AggregationSensor(name="aggr", sensors=[primitive_sensor_1, primitive_sensor_2],
+                                               func=aggregation_function)
+
+        rospy.sleep(0.1)
+
+        aggregation_sensor.sync()
+
+        self.assertEquals(test_value_1 + test_value_2, aggregation_sensor.value, "Aggregation value does not match")
 
 
 if __name__ == '__main__':
