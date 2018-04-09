@@ -110,7 +110,7 @@ class RLComponent:
             #new = numpy.array(request.resulting_state).reshape(([1, len(request.resulting_state)]))
 
             reward_tuple = (last,new,request.last_action,request.reward)
-            print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
+            #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
             self.reward_list.append(reward_tuple)
             self.update_model()
             #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)

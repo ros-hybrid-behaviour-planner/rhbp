@@ -29,7 +29,7 @@ class Sensor(object):
 
     _instanceCounter = 0
 
-    def __init__(self, name=None, optional=False, initial_value=None):
+    def __init__(self, name=None, optional=False, initial_value=None,encoding="hot_state",state_space=16):
         """
         Constructor
         """
@@ -39,7 +39,8 @@ class Sensor(object):
         self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
         self._latestValue = initial_value
         self._initial_value = initial_value
-
+        self.encoding=encoding
+        self.state_space=state_space
         Sensor._instanceCounter += 1
 
     def sync(self):

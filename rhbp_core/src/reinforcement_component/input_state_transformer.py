@@ -18,6 +18,8 @@ class InputStateTransformer:
             sensor_value = SensorValue()
             sensor_value.name = cond._sensor._name
             sensor_value.value = value
+            sensor_value.encoding = cond._sensor.encoding
+            sensor_value.state_space = cond._sensor.state_space
             return sensor_value
         except Exception :
             value = None
@@ -27,6 +29,8 @@ class InputStateTransformer:
             sensor_value = SensorValue()
             sensor_value.name = cond._condition._sensor._name
             sensor_value.value = value
+            sensor_value.encoding = cond._condition.encoding
+            sensor_value.state_space = cond._condition.state_space
             return sensor_value
         except Exception :
             value = None

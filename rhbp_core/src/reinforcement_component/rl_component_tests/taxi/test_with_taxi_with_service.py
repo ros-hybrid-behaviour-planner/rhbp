@@ -40,7 +40,9 @@ class FrozenLakeTestSuite():
         self.last_action=0
         self.rl_address="test_agent"
         self.set_up_environment()
-
+        self.counter = 0
+        self.rewards_all = 0
+        self.counter_last=0
     def set_up_environment(self):
         self.rl_component=RLComponent(self.rl_address)
         self.env = gym.make('Taxi-v2')
@@ -61,9 +63,11 @@ class FrozenLakeTestSuite():
                 s1,d = self.make_cycle(s,i)
                 s = s1
             if i%num_prints == 1:
-                print(self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
+                print(self.counter,self.rewards_all/float(self.counter_last),self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
                 self.rewards_last = 0
                 self.cycles_last = 0
+                self.counter_last=0
+                self.rewards_all=0
                 weight=self.rl_component.model.get_value_of_weight()
 
                 self.weights.append(weight)
@@ -101,7 +105,8 @@ class FrozenLakeTestSuite():
 
         #best_action = numpy.argmax(activations)
         best_action=self.get_best_action(input,self.last_r,self.last_action)
-
+        i = self.counter
+        self.counter +=1
         # choose randomly best action
         self.epsilon = 1. / ((i / 50) + 10)
         if numpy.random.rand(1)<self.epsilon:
@@ -109,14 +114,13 @@ class FrozenLakeTestSuite():
 
         #execute best action
         s1, r, d, _ = self.env.step(best_action)
-
         self.last_r = r
         self.last_action=best_action
-
+        self.rewards_all += r
         #print(s1,r,d)
         self.rewards+=r
         self.cycles+=1
-
+        self.counter_last+=1
         self.rewards_last += r
         self.cycles_last += 1
 

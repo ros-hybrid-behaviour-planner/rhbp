@@ -714,6 +714,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.count=1
         self.count_last = 0
         self.successfull_last = 0
+        self.episode_reward = 0
+        self.episode_steps = 0
         self.ref_activations ={}
         self.last_ref_activations = []
         self.start_rl_class()
@@ -809,7 +811,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             activation_result = getActivationRequest(msg)
             self.activation_rl = activation_result.activation_state.activations
             self.last_ref_activations = activation_result.activation_state.activations
-            print(self.count, numpy.round(self.activation_rl,5))
+            #print(self.count, numpy.round(self.activation_rl,5))
             #if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             #rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
@@ -836,15 +838,24 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
         #print("goal",reward_value)
-        if reward_value == 1:
-            self.successfull +=1
-            self.successfull_last += 1
-        if not reward_value == 0:
+        #if reward_value == 1:
+        #    self.successfull +=1
+        #    self.successfull_last += 1
+        self.episode_reward += reward_value
+        self.episode_steps +=1
+        if reward_value == 20 or self.episode_steps%200 == 199:
+            #episode end
+
+            self.successfull +=self.episode_reward
+            self.successfull_last += self.episode_reward
             self.count +=1
             self.count_last += 1
+            self.successfull_last+=self.episode_reward
             self._manager.counter +=1
-            if self.count % 100 == 0:
-                print("steps",self.count,"success rate:",self.successfull/self.count,"last",self.count_last,"rate",self.successfull_last/self.count_last)
+            self.episode_reward = 0
+            self.episode_steps =0
+            if (self.count) % (50) == 0:
+                print("steps",self.count,"success rate:",self.successfull/float(self.count),"last",self.count_last,"rate",self.successfull_last/float(self.count_last))
                 self.count_last=0
                 self.successfull_last =0
         return reward_value
@@ -889,7 +900,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                     #print("sensor vlaue input",sensor_value)
                     if sensor_value.name=="RewardSensor":
                         continue
-                    value = self.make_hot_state_encoding(sensor_value.value,16)
+                    if sensor_value.encoding=="hot_state":
+                        value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
+                    else:
+                        value = numpy.array([[sensor_value.value]])
                     #wish_row = numpy.array([[sensor_value.value]])
                     #value=wish_row
                     sensor_input[sensor_value.name] = value
@@ -897,6 +911,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                     #print(numpy.array([[5]]))
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
+        #print(input_array)
         #print("input:",numpy.argmax(input_array))
         # TODO get wishes from sensors
         return input_array

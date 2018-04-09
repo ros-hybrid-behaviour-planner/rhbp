@@ -118,7 +118,7 @@ class ModelNeuralNetwork:
 
         self.model_is_set_up = True
 
-        print("weights",self.get_value_of_weight())
+        #print("weights",self.get_value_of_weight())
     def check_if_model_exists(self):
         return tf.train.checkpoint_exists(self.model_folder)
 

@@ -23,6 +23,7 @@ import re
 import rospy
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lake import FrozenLakeAgent
 #from src.rhbp.rhbp_core.src.behaviour_components.sensors import Sensor
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi import TaxiAgent
 
 
 class RhbpAgentBaseOld():
@@ -55,7 +56,8 @@ if __name__ == '__main__':
     try:
         rospy.init_node('agent_node', anonymous=True)
 
-        rhbp_agent = FrozenLakeAgent()
+        #rhbp_agent = FrozenLakeAgent()
+        rhbp_agent = TaxiAgent()
         rhbp_agent.start_simulation()
         print("init agent_node")
         rospy.spin()
