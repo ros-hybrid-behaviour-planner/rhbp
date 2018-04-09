@@ -715,8 +715,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.count_last = 0
         self.successfull_last = 0
         self.ref_activations ={}
+        self.last_ref_activations = []
         self.start_rl_class()
-
+        #numpy.random.seed(0) #TODO delete later. only for test purposes
     def start_rl_class(self):
         self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
         self.rl_component = RLComponent(name=self.rl_address )
@@ -768,6 +769,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         reward = self.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
+            print("acti",self.last_ref_activations)
             print("last action cannot be None")
             return
         last_action_index = self.behaviour_to_index(last_action[0])
@@ -806,6 +808,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
             activation_result = getActivationRequest(msg)
             self.activation_rl = activation_result.activation_state.activations
+            self.last_ref_activations = activation_result.activation_state.activations
+            print(self.count, numpy.round(self.activation_rl,5))
             #if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             #rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
@@ -838,6 +842,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         if not reward_value == 0:
             self.count +=1
             self.count_last += 1
+            self._manager.counter +=1
             if self.count % 100 == 0:
                 print("steps",self.count,"success rate:",self.successfull/self.count,"last",self.count_last,"rate",self.successfull_last/self.count_last)
                 self.count_last=0
@@ -893,6 +898,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
         #print("input:",numpy.argmax(input_array))
+        # TODO get wishes from sensors
         return input_array
 
     def is_terminal(self, number):
@@ -907,8 +913,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
             #print("best_action",numpy.argmax(self.activation_rl),numpy.round(self.activation_rl,5))
             for i in range(0,len(self.activation_rl)):
-                self.ref_activations[i]=self.activation_rl[i]
-
+                self.ref_activations[i]=self.activation_rl[i]+10
+        #print(ref_behaviour,self.ref_activations.get(index))
         value = self.ref_activations.get(index)
         self.ref_activations.pop(index)
         return value
@@ -943,10 +949,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             current_activation_step=self.get_rl_activation_for_ref(ref_behaviour)*10000
             #this_index=self.behaviour_to_index(ref_behaviour)
             #current_activation_step = self.activation_rl[this_index]*10000
-            self.epsilon = 1. / ((self.count / 50) + 10)
-            if numpy.random.rand(1) < self.epsilon:
-                #print("choose random action",ref_behaviour)
-                current_activation_step = 1000000.0
+            #self.epsilon = 1. / ((self.count / 50) + 10)
+            #if numpy.random.rand(1) < self.epsilon:
+            #    print("choose random action",ref_behaviour)
+            #    current_activation_step = 1000000.0
             ref_behaviour.current_activation_step = 0
             ref_behaviour.activation = current_activation_step
             #print(ref_behaviour,this_index, current_activation_step ,ref_behaviour.activation)

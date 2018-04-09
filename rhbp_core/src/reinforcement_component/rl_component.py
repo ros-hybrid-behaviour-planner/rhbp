@@ -22,9 +22,10 @@ class RLComponent:
         self.number_outputs = -1
         self.number_inputs = -1
         self.this_run =1
-        self.successfull =0.0
+        self.successfull = 0.0
         self.counter = 0.0
         self.last_100 = 0.0
+
     def _get_activation_state_callback(self,request):
         self.counter +=1
 
@@ -109,7 +110,7 @@ class RLComponent:
             #new = numpy.array(request.resulting_state).reshape(([1, len(request.resulting_state)]))
 
             reward_tuple = (last,new,request.last_action,request.reward)
-            #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
+            print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
             self.reward_list.append(reward_tuple)
             self.update_model()
             #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)

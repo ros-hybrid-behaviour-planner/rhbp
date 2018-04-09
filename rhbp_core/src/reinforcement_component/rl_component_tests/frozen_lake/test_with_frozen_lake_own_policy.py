@@ -43,12 +43,11 @@ class FrozenLakeTestSuite():
 
     def start_env(self):
 
-
-        for i in range(1,4):
+        for i in range(1,1000):
             s = self.env.reset()
             d = 0
             while not d:
-                self.env.render()
+                #self.env.render()
                 s1,d = self.make_cycle(s,i)
                 s = s1
             if i%200 == 1:

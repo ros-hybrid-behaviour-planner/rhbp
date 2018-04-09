@@ -36,10 +36,12 @@ class FrozenLakeTestSuite():
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
+        self.new_count=0
+        numpy.random.seed(0)
     def set_up_environment(self):
         self.rl_component=RLComponent("test_agent")
         self.env = gym.make('FrozenLake-v0')
-
+        self.env.seed(0)
     def get_array(self,s):
         return numpy.identity(16)[s:s + 1]
 
@@ -118,7 +120,8 @@ class FrozenLakeTestSuite():
         #if r == 0:
         #    r = -0.01
         output=self.get_array(s1)
-        #print((numpy.argmax(input),numpy.argmax(output),best_action,r))
+        print((self.new_count,numpy.argmax(input),numpy.argmax(output),best_action,r))
+        self.new_count+=1
         self.rl_component.reward_list.append((input,output,best_action,r))
 
         self.rl_component.update_model()

@@ -39,11 +39,14 @@ class FrozenLakeTestSuite():
         self.last_r=0
         self.last_action=0
         self.rl_address="test_agent"
+        numpy.random.seed(0)
         self.set_up_environment()
-
+        self.new_count = 0
+        self.steps = 0
     def set_up_environment(self):
         self.rl_component=RLComponent(self.rl_address)
         self.env = gym.make('FrozenLake-v0')
+        self.env.seed(0)
         self.num_inputs = 16
         self.num_outputs = 4
 
@@ -58,7 +61,9 @@ class FrozenLakeTestSuite():
             s = self.env.reset()
             d = 0
             while not d:
+
                 s1,d = self.make_cycle(s,i)
+                print(i, numpy.round(self.activation_rl,5))
                 s = s1
             if i%num_prints == 1:
                 print(self.rewards,i,(self.rewards/i)*100,self.rewards_last/num_prints)
@@ -73,7 +78,7 @@ class FrozenLakeTestSuite():
             activations = self.rl_component.model.feed_forward(input)
 
             best_action = numpy.argmax(activations)
-            print(i,best_action)
+            #print(i,best_action)
 
     def print_weights(self,state):
         #print(self.weights[0][0].reshape([1,4]))
@@ -103,10 +108,15 @@ class FrozenLakeTestSuite():
         best_action=self.get_best_action(input,self.last_r,self.last_action)
 
         # choose randomly best action
+        #if i < 1000:
+        #print(i)
+        #i = self.steps
+        self.steps +=1
         self.epsilon = 1. / ((i / 50) + 10)
         if numpy.random.rand(1)<self.epsilon:
-            best_action= self.env.action_space.sample()
-
+            #best_action= self.env.action_space.sample()
+            best_action  = numpy.random.randint(4)
+            #print(i,"random action",best_action)
         #execute best action
         s1, r, d, _ = self.env.step(best_action)
 
@@ -138,12 +148,46 @@ class FrozenLakeTestSuite():
         #    self.last_r = -0.1
         output=self.get_array(s1)
         #print("-----------------")
-        #print((numpy.argmax(input),numpy.argmax(output),best_action,r*10))
+        #print((self.new_count,numpy.argmax(input),numpy.argmax(output),best_action,r))
+        self.new_count+=1
         #self.rl_component.reward_list.append((input,output,best_action,r))
 
         #self.rl_component.update_model()
         return s1, d
 
+    """
+ 
+, array([0.00162, 0.00616, 0.00071, 0.00031]))
+(1, array([0.00049, 0.00094, 0.00426, 0.00285]))
+(1, array([0.00415, 0.00456, 0.0013 , 0.00174]))
+(1, array([0.00049, 0.00094, 0.00431, 0.00285]))
+(0.0, 1, 0.0, 0.0)
+(2, array([0.00162, 0.00577, 0.00071, 0.00031]))
+(2, array([0.00769, 0.00069, 0.00797, 0.00122]))
+(2, array([0.00162, 0.00619, 0.00071, 0.00031]))
+(2, array([0.00162, 0.00618, 0.00071, 0.00031]))
+(2, array([0.00769, 0.00069, 0.00761, 0.00122]))
+(2, array([0.00162, 0.00647, 0.00071, 0.00031]))
+
+(1, array([0.00162, 0.00616, 0.00071, 0.00031]))
+(1, array([0.00769, 0.00069, 0.00797, 0.00122]))
+(1, array([0.00162, 0.0065 , 0.00071, 0.00031]))
+(1, array([0.00769, 0.00069, 0.00767, 0.00122]))
+(1, array([0.00162, 0.00673, 0.00071, 0.00031]))
+(1, array([0.00748, 0.00069, 0.00767, 0.00122]))
+(2, array([0.00162, 0.0069 , 0.00071, 0.00031]))
+(2, array([0.00162, 0.00688, 0.00071, 0.00031]))
+(2, array([0.00049, 0.00094, 0.00426, 0.00285]))
+(2, array([0.00049, 0.00094, 0.00425, 0.00285]))
+(3, array([0.00162, 0.00635, 0.00071, 0.00031]))
+(3, array([ 0.00049,  0.00094, -0.19535,  0.00285]))
+(3, array([0.00162, 0.00564, 0.00071, 0.00031]))
+(3, array([0.00162, 0.00563, 0.00071, 0.00031]))
+(3, array([ 0.00049,  0.00094, -0.19535,  0.0034 ]))
+(3, array([0.00162, 0.00518, 0.00071, 0.00031]))
+
+
+    """
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()
         input_state_msg.input_state = input_state.tolist()[0]
@@ -172,6 +216,7 @@ class FrozenLakeTestSuite():
             #activation_result = getActivationRequest(msg)
             activation_result = self.rl_component.get_activation_state_test(msg)
             self.activation_rl = activation_result.activations
+
             # if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             # rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",

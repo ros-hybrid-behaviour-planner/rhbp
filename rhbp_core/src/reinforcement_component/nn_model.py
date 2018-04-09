@@ -1,4 +1,5 @@
 import gym
+import numpy
 import numpy as np
 import random
 import tensorflow as tf
@@ -7,7 +8,7 @@ from input_state_transformer import InputStateTransformer
 
 class ModelNeuralNetwork:
     def __init__(self,name):
-
+        print("init class mnn")
         # pathes for saving the models
         self.model_path = 'models/rl-model'+name+'-1000.meta'
         self.model_folder = './models'
@@ -46,7 +47,7 @@ class ModelNeuralNetwork:
 
         self.model_is_set_up=False
         self.executed_behaviours = []
-
+        tf.set_random_seed(0)
     def get_value_of_weight(self):
         return self.sess.run(self.W2)
 
@@ -62,6 +63,7 @@ class ModelNeuralNetwork:
             self.initialize_model(num_inputs,num_outputs)
 
     def initialize_model(self, num_inputs, num_outputs):
+        tf.set_random_seed(0)
         print("initialize new model",num_inputs,num_outputs, self.name)
         # These lines establish the feed-forward part of the network used to choose actions
         self.inputs1 = tf.placeholder(shape=[1, num_inputs], dtype=tf.float32, name="inputs1")
@@ -116,6 +118,7 @@ class ModelNeuralNetwork:
 
         self.model_is_set_up = True
 
+        print("weights",self.get_value_of_weight())
     def check_if_model_exists(self):
         return tf.train.checkpoint_exists(self.model_folder)
 
@@ -146,18 +149,19 @@ class ModelNeuralNetwork:
     def feed_forward(self, input_state):
         #print("feed forward")
 
-        #print("s",self.current_state)
+        #print("s",input_state)
+        #print("weights", numpy.round(self.get_value_of_weight(),5))
         #Choose an action by greedily (with e chance of random action) from the Q-network
         a,self.allQ = self.sess.run([self.predict,self.Qout],feed_dict={self.inputs1:input_state})
 
         # TODO choosing random action maybe not here. how to deal with exlporation in general
         #    a = self.transformer.get_random_action()-1
         #self.last_action = a[0]
-
+        #print(numpy.round(self.allQ,5))
         return self.allQ
 
     def train_model(self,tuple):
-
+        #print("tttttttttttttttttttttrrrrrrrrrrrrrrrrraaaaaaaaaaaaainnnn")
         # get fields from the input tuple
         last_state = tuple[0]
         next_state = tuple[1]

@@ -7,8 +7,11 @@ Created on 23.04.2015
 import sys
 import threading
 
+import numpy
 import rospy
 import itertools
+
+import time
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
@@ -100,8 +103,8 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
-
-
+        self.counter = 1
+        numpy.random.seed(0)
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -305,6 +308,13 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
+    def behaviour_to_index(self,name):
+        num = 0
+        for b in self._behaviours:
+            if b.name == name:
+                return num
+            num += 1
+        return None
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
             return
@@ -336,8 +346,25 @@ class Manager(object):
 
             currently_influenced_sensors = set()
 
-            # perform the decision making based on the calculated activations
+            # random selection for exploration
+            random_chosen = False
+            #print(self.counter)
+            self.epsilon = 1. / ((self.counter / 50) + 10)
+            #print(self._stepCounter)
+            if numpy.random.rand(1) < self.epsilon:
+                best_action = numpy.random.randint(4)
+                #print(self._stepCounter,"chose random action ",best_action)
+                random_chosen=True
+
+
             for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
+                # skip not randomly chosen actions
+                if random_chosen:
+                    if not best_action == self.behaviour_to_index(behaviour.name):
+                        if behaviour.isExecuting:
+                            self._stop_behaviour(behaviour, True)
+                        continue
+
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
                 if not behaviour.active and not behaviour.manualStart: # it must be active
                     rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
@@ -348,7 +375,7 @@ class Manager(object):
                     if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
                             and behaviour.interruptable and not behaviour.manualStart:
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
-                        self._stop_behaviour(behaviour, True)
+
                         self.__replanningNeeded = True  # this is unusual so we trigger replanning
                     elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
