@@ -9,6 +9,8 @@ from abc import ABCMeta, abstractmethod
 import rospy
 
 #from .managers import Manager has to be commented because of circular dependency problem
+import time
+
 from reinforcement_component.input_state_transformer import InputStateTransformer
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
@@ -721,6 +723,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.last_ref_activations = []
         self.input_transformer = InputStateTransformer(manager)
         self.start_rl_class()
+        self.first_fetching=False
         #numpy.random.seed(0) #TODO delete later. only for test purposes
     def start_rl_class(self):
         self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
@@ -741,7 +744,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         self._rl_process = launch.launch(node)
 
-    """
     def behaviour_to_index(self,name):
         num = 0
         for b in self._manager.behaviours:
@@ -749,7 +751,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 return num
             num += 1
         return None
-    """
 
 
     def get_activation_from_rl_node(self):
@@ -760,27 +761,36 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 reward
                 last_action
         """
-        self.input_transformer
         num_outputs = len(self._manager.behaviours)
         if num_outputs == 0:
             print("num outputs cannot be 0")
+            #self._manager.step()
             return
-        #input_state = self.transform_input_values()
-        input_state = self.input_transformer.transform_input_values()
+        input_state = self.transform_input_values()
+        #input_state = self.input_transformer.transform_input_values()
         num_inputs = input_state.shape[0]
         if num_inputs == 0:
             print("num inputs cannot be 0", input_state)
+            #self._manager.step()
             return
-        reward = self.input_transformer.calculate_reward()
+        #reward = self.input_transformer.calculate_reward()
+        reward = self.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
-            print("acti",self.last_ref_activations)
+            #print("acti",self.last_ref_activations)
             print("last action cannot be None")
+            #time.sleep(5)
+            #self._manager.step()
+            last_action=[0]
             return
-        last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
-
+        #last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
+        last_action_index = self.behaviour_to_index(
+            last_action[0])  # TODO deal here with multiple executed actions
         if last_action_index is None:
             print("last action not found")
+            #time.sleep(2)
+            #self._manager.step()
+            last_action_index=0
             return
         # TODO if invalid dim dont send anything just return
         #print(num_inputs,num_outputs,numpy.argmax(input_state),reward,last_action_index)
@@ -803,6 +813,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
         self._justFinished_state = False
+        if not self.first_fetching:
+            self._manager.reset_step_counter()
+        self.first_fetching = True
         try:
             rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
             rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
@@ -823,14 +836,14 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
-    """
+
     def calculate_reward(self):
-        """"""
-                this function calculates regarding the fulfillment and priorities of the active goals
-                a reward value. it prioritizes the goals in  a way that a higher priority is always more important
-                than a smaller one (power of 10)
-                :return: 
-                """"""
+        """
+        this function calculates regarding the fulfillment and priorities of the active goals
+        a reward value. it prioritizes the goals in  a way that a higher priority is always more important
+        than a smaller one (power of 10)
+        :return: 
+        """
         # TODO think about better logic maybe
         # active goals or wishes is empty todo fix
         # todo use wishes instead of fulfillment
@@ -860,7 +873,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             self.episode_reward = 0
             self.episode_steps =0
             if (self.count) % (50) == 0:
-                print("steps",self.count,"success rate:",self.successfull/float(self.count),"last",self.count_last,"rate",self.successfull_last/float(self.count_last))
+                #print("steps",self.count,"success rate:",self.successfull/float(self.count),"last",self.count_last,"rate",self.successfull_last/float(self.count_last))
                 self.count_last=0
                 self.successfull_last =0
         return reward_value
@@ -872,10 +885,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
 
     def transform_input_values(self):
-        """"""
+        """
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
-        """"""
+        """
         # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
         # init input array with first row of zeros
         input_array = numpy.zeros([1,1])
@@ -921,9 +934,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO get wishes from sensors
         return input_array
 
-    """
+
     def get_rl_activation_for_ref(self,ref_behaviour):
         index = self.behaviour_to_index(ref_behaviour)
+        #index = self.input_transformer.behaviour_to_index(ref_behaviour)
         if not self.ref_activations.has_key(index):
             self.get_activation_from_rl_node()
 
@@ -997,6 +1011,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         ref_behaviour.current_activation_step = current_activation_step
         """
+        current_activation_step=10
         return current_activation_step
 
 

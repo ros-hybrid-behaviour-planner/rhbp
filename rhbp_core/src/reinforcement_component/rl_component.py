@@ -113,7 +113,7 @@ class RLComponent:
             #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
             self.reward_list.append(reward_tuple)
             self.update_model()
-            #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)
+            print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
             self.init_model(num_inputs,num_outputs)

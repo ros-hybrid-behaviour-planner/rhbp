@@ -8,6 +8,8 @@ import re
 import rospy
 
 #from src.rhbp.rhbp_core.src.behaviour_components.sensors import Sensor
+import time
+
 from behaviour_components.managers import Manager
 
 
@@ -24,7 +26,14 @@ class RhbpAgentBase(object):
     def set_manager(self):
         self.manager = Manager(prefix=self.prefix,
                                max_parallel_behaviours=1)  # ensure also max_parallel_behaviours during debugging
-
+    def make_step(self):
+        while True:
+            time.sleep(5)
+            print("make step")
+            try:
+                self.manager.step()
+            except Exception:
+                print("failed")
     def init_environment(self,name):
 
         self.env = gym.make(name)
@@ -35,7 +44,7 @@ class RhbpAgentBase(object):
         self.env.seed(0)
         state = self.env.reset()
         self.state_sensor.update(state)
-
+        #self.manager.step()
         print("init env in state",state)
 
     def init_behaviors(self):

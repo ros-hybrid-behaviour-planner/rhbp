@@ -56,22 +56,23 @@ class FrozenLakeTestSuite():
     def start_env(self):
 
         num_prints = 100
-
+        self.cycles_last = 0
         for i in range(1,3500):
             s = self.env.reset()
             d = 0
             while not d:
 
                 s1,d = self.make_cycle(s,i)
-                print(i, numpy.round(self.activation_rl,5))
+                #print(i, numpy.round(self.activation_rl,5))
                 s = s1
-            if i%num_prints == 1:
-                print(self.rewards,i,(self.rewards/i)*100,self.rewards_last/num_prints)
+            self.cycles_last += 1
+            if self.cycles_last == num_prints:
+                print(self.steps,self.rewards,i,numpy.round((self.rewards/i)*100,3),self.rewards_last/num_prints)
                 self.rewards_last = 0
                 self.cycles_last = 0
                 weight=self.rl_component.model.get_value_of_weight()
 
-                self.weights.append(weight)
+                #self.weights.append(weight)
 
         for i in range(self.num_inputs):
             input = self.get_array(i)
@@ -110,10 +111,13 @@ class FrozenLakeTestSuite():
         # choose randomly best action
         #if i < 1000:
         #print(i)
-        #i = self.steps
+        i = self.steps
         self.steps +=1
         self.epsilon = 1. / ((i / 50) + 10)
-        if numpy.random.rand(1)<self.epsilon:
+        random_value = numpy.random.rand(1)
+        #print(i, self.epsilon, random_value,random_value<self.epsilon)
+        if random_value < self.epsilon:
+        #if numpy.random.rand(1)<self.epsilon:
             #best_action= self.env.action_space.sample()
             best_action  = numpy.random.randint(4)
             #print(i,"random action",best_action)
@@ -128,7 +132,8 @@ class FrozenLakeTestSuite():
         self.cycles+=1
 
         self.rewards_last += r
-        self.cycles_last += 1
+        #
+        # self.cycles_last += 1
 
         self.resulting_state = self.get_array(s1)
         #print(s,s1,best_action)

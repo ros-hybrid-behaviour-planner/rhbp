@@ -36,7 +36,7 @@ class FrozenLakeAgent(RhbpAgentBase):
 
 
         self.state_sensor = Sensor(name="StateSensor")
-        reward_sensor = RewardSensor(name="RewardSensor")
+        reward_sensor = RewardSensor(name="RewardSensor",intervall=100)
         reward_sensor.update(0)
         #self.state_sensor2 = Sensor(name="StateSensor2")
         #self.state_sensor2.update(4)

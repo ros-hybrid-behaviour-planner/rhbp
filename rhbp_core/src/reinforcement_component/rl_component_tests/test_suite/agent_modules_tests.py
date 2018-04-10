@@ -1,4 +1,6 @@
 from __future__ import division  # force floating point division when using plain /
+
+import numpy
 import rospy
 import math
 import threading
@@ -42,6 +44,7 @@ class MakeActionBehavior(BehaviourBase):
         self.last_state = 0
         print("init behavior",self.index)
         self.isEnded = False
+
     def do_step(self):
 
 
@@ -54,7 +57,8 @@ class MakeActionBehavior(BehaviourBase):
             #    reward=-1
 
             self.reward_sensor.update(reward)
-            self.reward_sensor.updates_evaluation(reward,self.isEnded)
+            self.reward_sensor.updates_evaluation(reward, self.isEnded)
+            #self.reward_sensor.updates_evaluation(reward,self.isEnded,reward==-1)
             #print("ex: ", self.index, "last state",last_state,
             #      "new state",state,"with reward:",reward)
 
@@ -84,7 +88,7 @@ class MakeActionBehaviorManager(BehaviourBase):
         :param params: optional parameters for the MAC action
         :param kwargs: more optional parameter that are passed to the bas class
         """
-        super(MakeActionBehavior, self).__init__(name=name, requires_execution_steps=True, **kwargs)
+        super(MakeActionBehaviorManager, self).__init__(name=name, requires_execution_steps=True, **kwargs)
         self.reward_sensor = reward_sensor
         self.sensor = state_sensor
         self.environment = environment
@@ -120,7 +124,7 @@ class MakeActionBehaviorManager(BehaviourBase):
             return
 
     def unregister(self, terminate_services=True):
-        super(MakeActionBehavior, self).unregister(terminate_services=terminate_services)
+        super(MakeActionBehaviorManager, self).unregister(terminate_services=terminate_services)
         self._pub_generic_action.unregister()
 
 
@@ -139,7 +143,7 @@ class MakeActionBehaviorTaxi(BehaviourBase):
         :param params: optional parameters for the MAC action
         :param kwargs: more optional parameter that are passed to the bas class
         """
-        super(MakeActionBehavior, self).__init__(name=name, requires_execution_steps=True, **kwargs)
+        super(MakeActionBehaviorTaxi, self).__init__(name=name, requires_execution_steps=True, **kwargs)
         self.reward_sensor = reward_sensor
         self.sensor_row = state_sensor[0]
         self.sensor_col = state_sensor[1]
@@ -204,7 +208,7 @@ class MakeActionBehaviorTaxi(BehaviourBase):
             return
 
     def unregister(self, terminate_services=True):
-        super(MakeActionBehavior, self).unregister(terminate_services=terminate_services)
+        super(MakeActionBehaviorTaxi, self).unregister(terminate_services=terminate_services)
         self._pub_generic_action.unregister()
 
 
@@ -214,21 +218,23 @@ class RewardSensor(Sensor):
     A simple behaviour for triggering generic MAPC actions that just need a type and static parameters
     """
 
-    def __init__(self,name, **kwargs):
+    def __init__(self,name,intervall=50, **kwargs):
         super(RewardSensor, self).__init__(name=name, **kwargs)
         self.step =0
         self.step_last=0
         self.reward = 0
         self.reward_last = 0
         self.updates=0
-    def updates_evaluation(self,reward,bool):
+        self.intervall=intervall
+    def updates_evaluation(self,reward,bool,ignore=False):
         self.updates +=1
-        self.reward += reward
-        self.reward_last += reward
+        if not ignore:
+            self.reward += reward
+            self.reward_last += reward
         if bool:
             self.step += 1
             self.step_last += 1
-            if self.step_last == 50:
-                print(self.updates,"average_rate:",self.reward/float(self.step),"last_rate:",self.reward_last/float(self.step_last))
+            if self.step_last == self.intervall:
+                print(self.updates,"average_rate:",numpy.round(self.reward/float(self.step),3),"last_rate:",self.reward_last/float(self.step_last))
                 self.reward_last=0
                 self.step_last=0

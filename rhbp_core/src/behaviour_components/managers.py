@@ -103,7 +103,7 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
-        self.counter = 1
+        self.counter = 0
         numpy.random.seed(0)
 
     def init_services_topics(self):
@@ -315,6 +315,10 @@ class Manager(object):
                 return num
             num += 1
         return None
+
+    def reset_step_counter(self):
+        self._stepCounter=0
+        numpy.random.seed(0)
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
             return
@@ -349,9 +353,11 @@ class Manager(object):
             # random selection for exploration
             random_chosen = False
             #print(self.counter)
-            self.epsilon = 1. / ((self.counter / 50) + 10)
-            #print(self._stepCounter)
-            if numpy.random.rand(1) < self.epsilon:
+            self.epsilon = 1. / ((self._stepCounter / 50) + 10)
+
+            random_value = numpy.random.rand(1)
+            print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
+            if  random_value < self.epsilon:
                 best_action = numpy.random.randint(4)
                 #print(self._stepCounter,"chose random action ",best_action)
                 random_chosen=True

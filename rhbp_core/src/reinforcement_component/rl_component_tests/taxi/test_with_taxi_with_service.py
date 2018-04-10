@@ -26,7 +26,7 @@ System test for knowledge base fact cache.
 """
 
 
-class FrozenLakeTestSuite():
+class TaxiTestSuite():
     def __init__(self, *args, **kwargs):
         #super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
         self.resulting_state=numpy.array([[]])
@@ -56,7 +56,7 @@ class FrozenLakeTestSuite():
 
     def start_env(self):
 
-        num_prints = 100
+        num_prints = 50
 
         for i in range(1,13500):
             s = self.env.reset()
@@ -64,7 +64,8 @@ class FrozenLakeTestSuite():
             while not d:
                 s1,d = self.make_cycle(s,i)
                 s = s1
-            if i%num_prints == 1:
+            self.cycles_last+=1
+            if self.cycles_last == num_prints:
                 print(self.counter,self.rewards_all/float(self.counter_last),self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
                 self.rewards_last = 0
                 self.cycles_last = 0
@@ -111,7 +112,10 @@ class FrozenLakeTestSuite():
         self.counter +=1
         # choose randomly best action
         self.epsilon = 1. / ((i / 50) + 10)
-        if numpy.random.rand(1)<self.epsilon:
+        random_value = numpy.random.rand(1)
+        print(self.counter,i, self.epsilon, random_value, random_value < self.epsilon)
+        if random_value < self.epsilon:
+        #if numpy.random.rand(1)<self.epsilon:
             best_action= self.env.action_space.sample()
 
         #execute best action
@@ -124,7 +128,6 @@ class FrozenLakeTestSuite():
         self.cycles+=1
         self.counter_last+=1
         self.rewards_last += r
-        self.cycles_last += 1
 
         self.resulting_state = self.get_array(s1)
         #print(s,s1,best_action)
@@ -188,5 +191,5 @@ class FrozenLakeTestSuite():
 
 if __name__ == '__main__':
     #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)
-    fl_test = FrozenLakeTestSuite()
+    fl_test = TaxiTestSuite()
     fl_test.start_env()

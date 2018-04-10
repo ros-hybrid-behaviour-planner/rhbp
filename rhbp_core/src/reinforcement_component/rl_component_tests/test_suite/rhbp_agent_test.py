@@ -65,6 +65,7 @@ if __name__ == '__main__':
             print("start envionment frozen lake with included manager")
             rhbp_agent = FrozenLakeAgentManager()
             rhbp_agent.set_manager()
+
         elif sim == 2:
             print("start envionment taxi ")
             rhbp_agent = TaxiAgent()
@@ -73,8 +74,12 @@ if __name__ == '__main__':
             rhbp_agent = TaxiAgentRhbp()
         #rhbp_agent = TaxiAgent()
         rhbp_agent.start_simulation()
-        print("init agent_node")
-        rospy.spin()
 
+        print("init agent_node")
+
+        #if sim == 1:
+        #    t = threading.Thread(target=rhbp_agent.make_step,args=())
+        #    t.start()
+        rospy.spin()
     except rospy.ROSInterruptException:
         rospy.logerr("program interrupted before completion")

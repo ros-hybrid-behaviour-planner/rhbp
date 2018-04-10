@@ -73,7 +73,7 @@ class SensorValueTransformer:
 class InputStateTransformer:
 
     def __init__(self,manager):
-        self.manager = manager
+        self._manager = manager
 
     def calculate_reward(self):
         """
