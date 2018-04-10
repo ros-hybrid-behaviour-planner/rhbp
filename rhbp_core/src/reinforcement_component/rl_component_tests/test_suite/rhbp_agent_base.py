@@ -8,6 +8,7 @@ import re
 import rospy
 
 #from src.rhbp.rhbp_core.src.behaviour_components.sensors import Sensor
+from behaviour_components.managers import Manager
 
 
 class RhbpAgentBase(object):
@@ -18,6 +19,11 @@ class RhbpAgentBase(object):
 
         self.env = None
 
+        self.manager = None
+
+    def set_manager(self):
+        self.manager = Manager(prefix=self.prefix,
+                               max_parallel_behaviours=1)  # ensure also max_parallel_behaviours during debugging
 
     def init_environment(self,name):
 
@@ -26,11 +32,11 @@ class RhbpAgentBase(object):
 
     def start_simulation(self):
         self.init_behaviors()
-
+        self.env.seed(0)
         state = self.env.reset()
         self.state_sensor.update(state)
 
-
+        print("init env in state",state)
 
     def init_behaviors(self):
         raise NotImplementedError()

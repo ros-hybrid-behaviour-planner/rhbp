@@ -3,7 +3,7 @@
 # it contains the agents variables, topics subscriber and publisher, as well as the regarding callback function
 # Although the job_execution process is start in this file
 from __future__ import division # force floating point division when using plain /
-from agent_modules_rcs_contest import *
+from agent_modules_tests import *
 from behaviour_components.activators import BooleanActivator, StringActivator, ThresholdActivator, GreedyActivator, \
     LinearActivator, EqualActivator
 from behaviour_components.condition_elements import Effect
@@ -23,7 +23,9 @@ import re
 import rospy
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lake import FrozenLakeAgent
 #from src.rhbp.rhbp_core.src.behaviour_components.sensors import Sensor
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lake_manager import FrozenLakeAgentManager
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi import TaxiAgent
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_with_rhbp import TaxiAgentRhbp
 
 
 class RhbpAgentBaseOld():
@@ -55,9 +57,21 @@ class RhbpAgentBaseOld():
 if __name__ == '__main__':
     try:
         rospy.init_node('agent_node', anonymous=True)
-
-        #rhbp_agent = FrozenLakeAgent()
-        rhbp_agent = TaxiAgent()
+        sim = rospy.get_param('~sim', '0')  # default for debugging 'agentA1'
+        if sim == 0:
+            print("start envionment frozen lake")
+            rhbp_agent = FrozenLakeAgent()
+        elif sim == 1:
+            print("start envionment frozen lake with included manager")
+            rhbp_agent = FrozenLakeAgentManager()
+            rhbp_agent.set_manager()
+        elif sim == 2:
+            print("start envionment taxi ")
+            rhbp_agent = TaxiAgent()
+        elif sim == 3:
+            print("start envionment taxi with rhbp")
+            rhbp_agent = TaxiAgentRhbp()
+        #rhbp_agent = TaxiAgent()
         rhbp_agent.start_simulation()
         print("init agent_node")
         rospy.spin()

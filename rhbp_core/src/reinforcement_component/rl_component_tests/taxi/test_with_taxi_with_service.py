@@ -32,7 +32,7 @@ class FrozenLakeTestSuite():
         self.resulting_state=numpy.array([[]])
         self.rewards = 0
         self.cycles = 0
-
+        numpy.random.seed(0)
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
@@ -46,6 +46,8 @@ class FrozenLakeTestSuite():
     def set_up_environment(self):
         self.rl_component=RLComponent(self.rl_address)
         self.env = gym.make('Taxi-v2')
+
+        self.env.seed(0)
         self.num_inputs = 500
         self.num_outputs = 6
 

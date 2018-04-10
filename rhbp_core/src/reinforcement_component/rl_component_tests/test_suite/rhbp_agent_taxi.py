@@ -3,7 +3,7 @@
 # it contains the agents variables, topics subscriber and publisher, as well as the regarding callback function
 # Although the job_execution process is start in this file
 from __future__ import division # force floating point division when using plain /
-from agent_modules_rcs_contest import *
+from agent_modules_tests import *
 from behaviour_components.activators import BooleanActivator, StringActivator, ThresholdActivator, GreedyActivator, \
     LinearActivator, EqualActivator
 from behaviour_components.condition_elements import Effect
@@ -38,7 +38,7 @@ class TaxiAgent(RhbpAgentBase):
 
 
         self.state_sensor = Sensor(name="StateSensor",state_space=500)
-        reward_sensor = Sensor(name="RewardSensor")
+        reward_sensor = RewardSensor(name="RewardSensor")
         reward_sensor.update(0)
 
         action_one_behavior = MakeActionBehavior(plannerPrefix=self.prefix,name="ActionZero",reward_sensor=reward_sensor,
@@ -81,9 +81,9 @@ class TaxiAgent(RhbpAgentBase):
         the_goal3 = GoalBase(name="illegal_goal", permanent=True,
                              conditions=[illegal_action], priority=-10,
                              plannerPrefix=self.prefix)
-        #the_goal4 = GoalBase(name="timestep_goal", permanent=True,
-        #                     conditions=[timestep_action], priority=-1,
-        #                     plannerPrefix=self.prefix)
+        the_goal4 = GoalBase(name="timestep_goal", permanent=True,
+                             conditions=[timestep_action], priority=-1,
+                             plannerPrefix=self.prefix)
         #no_hole = GoalBase(name="no_hole_goal", permanent=True,
         #                    conditions=[Negation(start_state_cond)], priority=1,
         #                    plannerPrefix=self.prefix)

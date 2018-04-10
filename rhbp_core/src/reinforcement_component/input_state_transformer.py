@@ -1,14 +1,14 @@
 import tensorflow as tf
-import numpy as np
+import numpy
 
 from rhbp_core.msg import SensorValue
 
 
-class InputStateTransformer:
+class SensorValueTransformer:
 
     def __init__(self):
         #self.manager = manager
-        print("init transformer")
+        #print("init transformer")
         self.conditions={}
 
     def get_value_of_condition(self,cond):
@@ -70,47 +70,88 @@ class InputStateTransformer:
         return list_of_sensor_values
 
 
-    def get_current_state(self):
-        # TODO implement connection to sensors too
-        # TODO check then also for double preconditions because of negation or conjunction
-        # TODO question: only conditions influencing this network behavior or from all
-        for behaviour in self.manager.behaviours:
-            behaviour.fetchState(0) # 0 is just dummy. Note: delete that a number is needed
-            for cond in behaviour.condition_values:
-                self.conditions[cond.name]=cond.activation
+class InputStateTransformer:
 
-        state = np.zeros(len(self.conditions))
-        index=0
-        for k,v in self.conditions.iteritems():
-            #print(k,v)
-            state[index]=v
-            index += 1
+    def __init__(self,manager):
+        self.manager = manager
 
-        #print(state,state.shape)
-        state = state.reshape([1,len(self.conditions)])
-        #print(state,state.shape)
-        #print(np.identity(16)[0:0+1],np.identity(16)[0:0+1].shape)
-        test=np.identity(4)[0:0 + 1]
-        return state
-
-    def get_last_action(self):
-        return 0
-
-    def get_reward_from_state(self):
+    def calculate_reward(self):
         """
-        this function calculates regarding the fulfillment and priorities of the active goals
-        a reward value. it prioritizes the goals in  a way that a higher priority is always more important
-        than a smaller one (power of 10)
-        :return: 
-        """
+                this function calculates regarding the fulfillment and priorities of the active goals
+                a reward value. 
+                :return: 
+                """
         # TODO think about better logic maybe
-
-        reward_value = 100
-        for goal in self.manager.get_goals():
-            goal_value = goal.fulfillment * (10 ** goal.priority)
+        # todo use wishes instead of fulfillment
+        reward_value = 0
+        for goal in self._manager.activeGoals:
+            # print(goal,goal.fulfillment,goal.priority)
+            # goal_value = goal.fulfillment * (10 ** goal.priority)
+            goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
+
         return reward_value
 
-    def get_random_action(self):
+    def behaviour_to_index(self,name):
+        num = 0
+        for b in self._manager.behaviours:
+            if b == name:
+                return num
+            num += 1
+        return None
 
-        return np.random.randint(len(self.manager.get_behaviors())+1)
+    def make_hot_state_encoding(self,state,num_state_space):
+        state = int(state)
+        #print(state,num_state_space)
+        array = numpy.identity(num_state_space)[state:state + 1]
+        return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
+
+    def transform_input_values(self):
+        """
+        this function uses the wishes and sensors to create the input vectors
+        :return: input vector
+        """
+        # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
+        # init input array with first row of zeros
+        input_array = numpy.zeros([1,1])
+        # extend array with input vector from wishes
+        for behaviour in self._manager.behaviours:
+            # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
+            for wish in behaviour.wishes:
+                wish_row = numpy.array([wish.indicator]).reshape([1,1])
+                input_array = numpy.concatenate([input_array,wish_row])
+        # extend array with input vector from sensors
+        # save which sensor were already included
+        #TODO behavior get input called twice. getstatus
+        sensor_input = {}
+        for behaviour in self._manager.behaviours:
+            for sensor_value in behaviour.sensor_values:
+                if not sensor_input.has_key(sensor_value.name):
+                    sensor_input[sensor_value.name] = sensor_value.value
+                    wish_row = numpy.array([[sensor_value.value]])
+                    input_array = numpy.concatenate([input_array, wish_row])
+        # cut out first row and return
+
+        for goal in self._manager._goals:
+            #print(goal.wishes)
+            #print(goal.fulfillment)
+            for sensor_value in goal.sensor_values:
+                if not sensor_input.has_key(sensor_value.name):
+                    #print("sensor vlaue input",sensor_value)
+                    if sensor_value.name=="RewardSensor":
+                        continue
+                    if sensor_value.encoding=="hot_state":
+                        value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
+                    else:
+                        value = numpy.array([[sensor_value.value]])
+                    #wish_row = numpy.array([[sensor_value.value]])
+                    #value=wish_row
+                    sensor_input[sensor_value.name] = value
+                    #wish_row = numpy.array([[value]])
+                    #print(numpy.array([[5]]))
+                    input_array = numpy.concatenate([input_array, value])
+        input_array = input_array[1:]
+        #print(input_array)
+        #print("input:",numpy.argmax(input_array))
+        # TODO get wishes from sensors
+        return input_array

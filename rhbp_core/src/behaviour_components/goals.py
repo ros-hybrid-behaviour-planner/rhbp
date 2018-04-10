@@ -14,7 +14,7 @@ from abc import ABCMeta, abstractmethod
 import rospy
 from std_msgs.msg import Bool
 
-from reinforcement_component.input_state_transformer import InputStateTransformer
+from reinforcement_component.input_state_transformer import SensorValueTransformer
 from rhbp_core.msg import Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse, RemoveGoal
@@ -411,7 +411,7 @@ class GoalBase(Goal):
         self._planner_prefix = plannerPrefix
         self._registered = False  # keeps track of goal registration state
         self.preconditions = conditions
-        self._sensor_transformer = InputStateTransformer()
+        self._sensor_transformer = SensorValueTransformer()
 
     def _init_services(self):
         super(GoalBase, self)._init_services()

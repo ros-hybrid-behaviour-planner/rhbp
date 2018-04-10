@@ -9,7 +9,7 @@ import rospy
 import operator
 import itertools
 
-from reinforcement_component.input_state_transformer import InputStateTransformer
+from reinforcement_component.input_state_transformer import SensorValueTransformer
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Status, ConditionState, ConditionValue, SensorValue
@@ -414,7 +414,7 @@ class BehaviourBase(object):
         self._activated = True # The activate Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
         # transforms the conditions into the sensor values of them
-        self._sensor_transformer = InputStateTransformer()
+        self._sensor_transformer = SensorValueTransformer()
         self._init_services()
 
     def get_preconditions(self):

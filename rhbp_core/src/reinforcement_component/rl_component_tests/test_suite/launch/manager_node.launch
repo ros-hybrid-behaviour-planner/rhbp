@@ -8,7 +8,7 @@
         >
             <param name="agent_name" value="test_agent" />
             <param name="prefix" value="$(arg agent_name)" />
-            <param name="frequency" value="20.0" />
+            <param name="frequency" value="100.0" />
             <param name="automatic_stepping" value="true" />
             <param name="situationBias" type="double" value="1.0" />
             <param name="predecessorBias" type="double" value="1.0" />

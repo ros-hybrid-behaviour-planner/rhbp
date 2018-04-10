@@ -3,7 +3,7 @@
 # it contains the agents variables, topics subscriber and publisher, as well as the regarding callback function
 # Although the job_execution process is start in this file
 from __future__ import division # force floating point division when using plain /
-from agent_modules_rcs_contest import *
+from agent_modules_tests import *
 from behaviour_components.activators import BooleanActivator, StringActivator, ThresholdActivator, GreedyActivator, \
     LinearActivator, EqualActivator
 from behaviour_components.condition_elements import Effect
@@ -17,9 +17,9 @@ import rospy
 
 
 
-class TaxiAgent(RhbpAgentBase):
+class TaxiAgentRhbp(RhbpAgentBase):
     def __init__(self):
-        super(TaxiAgent, self).__init__()
+        super(TaxiAgentRhbp, self).__init__()
         rospy.logdebug("RhbpAgent::init")
 
 
@@ -47,10 +47,11 @@ class TaxiAgent(RhbpAgentBase):
         self.col_state_sensor = Sensor(name="ColStateSensor",state_space=5)
         self.passenger_state_sensor = Sensor(name="PassengerStateSensor",state_space=5)
         self.destination_state_sensor = Sensor(name="DestinationStateSensor",state_space=4)
+        # TODO update state of behaviours
 
         state_list = [self.row_state_sensor,self.col_state_sensor,self.passenger_state_sensor,self.destination_state_sensor]
 
-        reward_sensor = Sensor(name="RewardSensor")
+        reward_sensor = RewardSensor(name="RewardSensor")
         reward_sensor.update(0)
 
         # down

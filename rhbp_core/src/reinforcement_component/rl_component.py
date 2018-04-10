@@ -1,5 +1,5 @@
 from nn_model import ModelNeuralNetwork
-from input_state_transformer import InputStateTransformer
+from input_state_transformer import SensorValueTransformer
 import time
 import rospy
 from rhbp_core.msg import InputState, ActivationState

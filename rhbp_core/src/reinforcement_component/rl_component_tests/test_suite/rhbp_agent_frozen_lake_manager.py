@@ -17,9 +17,9 @@ import rospy
 
 
 
-class FrozenLakeAgent(RhbpAgentBase):
+class FrozenLakeAgentManager(RhbpAgentBase):
     def __init__(self):
-        super(FrozenLakeAgent, self).__init__()
+        super(FrozenLakeAgentManager, self).__init__()
         rospy.logdebug("RhbpAgent::init")
 
 
@@ -33,23 +33,23 @@ class FrozenLakeAgent(RhbpAgentBase):
         #self.environment_name = 'Taxi-v2'
         self.init_environment(self.environment_name)
 
-
+        manager = self.manager
 
         self.state_sensor = Sensor(name="StateSensor")
         reward_sensor = RewardSensor(name="RewardSensor")
         reward_sensor.update(0)
         #self.state_sensor2 = Sensor(name="StateSensor2")
         #self.state_sensor2.update(4)
-        action_one_behavior = MakeActionBehavior(plannerPrefix=self.prefix,name="ActionOne",reward_sensor=reward_sensor,
+        action_one_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix,name="ActionOne",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=0,state_sensor=self.state_sensor,environment=self.env)
 
-        action_two_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,
+        action_two_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=1,state_sensor=self.state_sensor, environment=self.env)
 
-        action_three_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,
+        action_three_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=2,state_sensor=self.state_sensor, environment=self.env)
 
-        action_four_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,
+        action_four_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=3,state_sensor=self.state_sensor, environment=self.env)
 
         #action_five_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFive",
