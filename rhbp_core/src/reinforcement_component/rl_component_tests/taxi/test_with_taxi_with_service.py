@@ -56,7 +56,7 @@ class TaxiTestSuite():
 
     def start_env(self):
 
-        num_prints = 50
+        num_prints = 10
 
         for i in range(1,13500):
             s = self.env.reset()
@@ -113,11 +113,11 @@ class TaxiTestSuite():
         # choose randomly best action
         self.epsilon = 1. / ((i / 50) + 10)
         random_value = numpy.random.rand(1)
-        print(self.counter,i, self.epsilon, random_value, random_value < self.epsilon)
+        #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
         if random_value < self.epsilon:
         #if numpy.random.rand(1)<self.epsilon:
-            best_action= self.env.action_space.sample()
-
+            #best_action= self.env.action_space.sample()
+            best_action = numpy.random.randint(6)
         #execute best action
         s1, r, d, _ = self.env.step(best_action)
         self.last_r = r

@@ -354,11 +354,10 @@ class Manager(object):
             random_chosen = False
             #print(self.counter)
             self.epsilon = 1. / ((self._stepCounter / 50) + 10)
-
             random_value = numpy.random.rand(1)
-            print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
+            #print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
             if  random_value < self.epsilon:
-                best_action = numpy.random.randint(4)
+                best_action = numpy.random.randint(len(self._behaviours))
                 #print(self._stepCounter,"chose random action ",best_action)
                 random_chosen=True
 

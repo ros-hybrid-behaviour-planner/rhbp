@@ -53,12 +53,13 @@ class MakeActionBehavior(BehaviourBase):
             last_state = self.sensor.value
             state,reward,self.isEnded, _ = self.environment.step(self.index)
 
-            #if self.isEnded and reward ==0:
-            #    reward=-1
+            if self.isEnded and reward ==0:
+                reward=-1
 
             self.reward_sensor.update(reward)
-            self.reward_sensor.updates_evaluation(reward, self.isEnded)
-            #self.reward_sensor.updates_evaluation(reward,self.isEnded,reward==-1)
+            #self.reward_sensor.updates_evaluation(reward, self.isEnded)
+            self.reward_sensor.updates_evaluation(reward,self.isEnded,reward==-1)
+
             #print("ex: ", self.index, "last state",last_state,
             #      "new state",state,"with reward:",reward)
 

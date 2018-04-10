@@ -38,7 +38,7 @@ class TaxiAgent(RhbpAgentBase):
 
 
         self.state_sensor = Sensor(name="StateSensor",state_space=500)
-        reward_sensor = RewardSensor(name="RewardSensor")
+        reward_sensor = RewardSensor(name="RewardSensor",intervall=10)
         reward_sensor.update(0)
 
         action_one_behavior = MakeActionBehavior(plannerPrefix=self.prefix,name="ActionZero",reward_sensor=reward_sensor,
