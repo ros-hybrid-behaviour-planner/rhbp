@@ -70,14 +70,17 @@ class TaxiTestSuite():
         locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
         row,col,passenger,dest=self.decode(s)
         if a==4:
-            for ele in locs:
-                if row == ele[0] and col ==ele[1]:
-                    return True
+            if passenger ==4:
+                return False
+            if locs[passenger][0] == row and locs[passenger][1] == col:
+                return True
             return False
         if a==5:
             if not passenger==4:
                 return False
-
+            if locs[dest][0] == row and locs[dest][1] == col:
+                return True
+            return False
         return True
 
     def start_env(self):
@@ -153,7 +156,7 @@ class TaxiTestSuite():
         #while False:
             minus_value=-100
 
-            #self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
+            self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
 
             self.activation_rl[best_action]= minus_value
             best_action = numpy.argmax(self.activation_rl)
