@@ -76,6 +76,7 @@ class MakeActionBehavior(BehaviourBase):
         self._pub_generic_action.unregister()
 
 
+
 class MakeActionBehaviorManager(BehaviourBase):
     """
     A simple behaviour for triggering generic MAPC actions that just need a type and static parameters
@@ -150,6 +151,7 @@ class MakeActionBehaviorTaxi(BehaviourBase):
         self.sensor_col = state_sensor[1]
         self.sensor_passenger = state_sensor[2]
         self.sensor_destination = state_sensor[3]
+        self.state_sensor = state_sensor[4]
         self.environment = environment
         self.index = action_index
         self._params = params
@@ -176,22 +178,24 @@ class MakeActionBehaviorTaxi(BehaviourBase):
         i = i // 5
         out.append(i % 5)  # passloc
         i = i // 5
-        out.append(i)
-        assert 0 <= i < 5  # destination
+        out.append(i)       # destination
+        assert 0 <= i < 5
         return reversed(out)
 
     def do_step(self):
 
         try:
-            last_state = self.sensor.value
+            #last_state = self.sensor.value
             state,reward,self.isEnded, _ = self.environment.step(self.index)
 
             row,col,passenger,destination = self.decode(state)
+            #print(state,"=",row,col,passenger,destination)
 
             self.sensor_row.update(row)
             self.sensor_col.update(col)
             self.sensor_passenger.update(passenger)
             self.sensor_destination.update(destination)
+            self.state_sensor.update(state)
             #if self.isEnded and reward ==0:
             #    reward=-1
 
@@ -202,10 +206,15 @@ class MakeActionBehaviorTaxi(BehaviourBase):
 
             if self.isEnded:
                 state = self.environment.reset()
-                self.sensor.update(state)
-
-            self.sensor.update(state)
-        except Exception:
+                row, col, passenger, destination = self.decode(state)
+                self.sensor_row.update(row)
+                self.sensor_col.update(col)
+                self.sensor_passenger.update(passenger)
+                self.sensor_destination.update(destination)
+                self.state_sensor.update(state)
+            #self.sensor.update(state)
+        except Exception as e:
+            print(e)
             return
 
     def unregister(self, terminate_services=True):
@@ -220,7 +229,7 @@ class RewardSensor(Sensor):
     """
 
     def __init__(self,name,intervall=50, **kwargs):
-        super(RewardSensor, self).__init__(name=name, **kwargs)
+        super(RewardSensor, self).__init__(name=name,include_in_rl=False, **kwargs)
         self.step =0
         self.step_last=0
         self.reward = 0

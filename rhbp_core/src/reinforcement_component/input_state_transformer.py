@@ -20,8 +20,9 @@ class SensorValueTransformer:
             sensor_value.value = value
             sensor_value.encoding = cond._sensor.encoding
             sensor_value.state_space = cond._sensor.state_space
+            sensor_value.include_in_rl = cond._sensor.include_in_rl
             return sensor_value
-        except Exception :
+        except Exception as e:
             value = None
         try:
             value = float(cond._condition._sensor.value)
@@ -31,6 +32,7 @@ class SensorValueTransformer:
             sensor_value.value = value
             sensor_value.encoding = cond._condition.encoding
             sensor_value.state_space = cond._condition.state_space
+            sensor_value.include_in_rl = cond._condition._sensor.include_in_rl
             return sensor_value
         except Exception :
             value = None
@@ -118,32 +120,42 @@ class InputStateTransformer:
         for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in behaviour.wishes:
-                wish_row = numpy.array([wish.indicator]).reshape([1,1])
-                input_array = numpy.concatenate([input_array,wish_row])
+                r=3#TODO include later again
+                #wish_row = numpy.array([wish.indicator]).reshape([1,1])
+                #input_array = numpy.concatenate([input_array,wish_row])
         # extend array with input vector from sensors
         # save which sensor were already included
         #TODO behavior get input called twice. getstatus
         sensor_input = {}
         for behaviour in self._manager.behaviours:
+            # TODO include here wishes
+            #print(behaviour)
             for sensor_value in behaviour.sensor_values:
                 if not sensor_input.has_key(sensor_value.name):
-                    sensor_input[sensor_value.name] = sensor_value.value
-                    wish_row = numpy.array([[sensor_value.value]])
-                    input_array = numpy.concatenate([input_array, wish_row])
-        # cut out first row and return
-
-        for goal in self._manager._goals:
-            #print(goal.wishes)
-            #print(goal.fulfillment)
-            for sensor_value in goal.sensor_values:
-                if not sensor_input.has_key(sensor_value.name):
-                    #print("sensor vlaue input",sensor_value)
-                    if sensor_value.name=="RewardSensor":
+                    #print("sensor vlaue input1", sensor_value)
+                    if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding=="hot_state":
                         value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
                     else:
                         value = numpy.array([[sensor_value.value]])
+                    sensor_input[sensor_value.name] = value
+                    #print(sensor_value.name,sensor_value.value,value)
+                    input_array = numpy.concatenate([input_array, value])
+        # cut out first row and return
+        for goal in self._manager._goals:
+            #print(goal.wishes)
+            #print(goal,goal.fulfillment)
+            for sensor_value in goal.sensor_values:
+                if not sensor_input.has_key(sensor_value.name):
+                    #print("sensor vlaue input",sensor_value)
+                    if not sensor_value.include_in_rl:
+                        continue
+                    if sensor_value.encoding=="hot_state":
+                        value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
+                    else:
+                        value = numpy.array([[sensor_value.value]])
+                    #print(sensor_value.name,sensor_value.value,value)
                     #wish_row = numpy.array([[sensor_value.value]])
                     #value=wish_row
                     sensor_input[sensor_value.name] = value
@@ -151,7 +163,7 @@ class InputStateTransformer:
                     #print(numpy.array([[5]]))
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
-        #print(input_array)
+        #print(len(input_array),input_array)
         #print("input:",numpy.argmax(input_array))
         # TODO get wishes from sensors
         return input_array

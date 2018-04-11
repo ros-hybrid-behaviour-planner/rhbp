@@ -744,6 +744,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         self._rl_process = launch.launch(node)
 
+    """
     def behaviour_to_index(self,name):
         num = 0
         for b in self._manager.behaviours:
@@ -751,7 +752,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 return num
             num += 1
         return None
-
+    """
 
     def get_activation_from_rl_node(self):
         """
@@ -766,26 +767,26 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             print("num outputs cannot be 0")
             #self._manager.step()
             return
-        input_state = self.transform_input_values()
-        #input_state = self.input_transformer.transform_input_values()
+        #input_state = self.transform_input_values()
+        input_state = self.input_transformer.transform_input_values()
         num_inputs = input_state.shape[0]
         if num_inputs == 0:
             print("num inputs cannot be 0", input_state)
             #self._manager.step()
             return
-        #reward = self.input_transformer.calculate_reward()
-        reward = self.calculate_reward()
+        reward = self.input_transformer.calculate_reward()
+        #reward = self.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
             #print("acti",self.last_ref_activations)
-            print("last action cannot be None")
+            print(self.counter,self.count,"last action cannot be None")
             #time.sleep(5)
             #self._manager.step()
             last_action=[0]
             return
-        #last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
-        last_action_index = self.behaviour_to_index(
-            last_action[0])  # TODO deal here with multiple executed actions
+        last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
+        #last_action_index = self.behaviour_to_index(
+        #    last_action[0])  # TODO deal here with multiple executed actions
         if last_action_index is None:
             print("last action not found")
             #time.sleep(2)
@@ -816,6 +817,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         if not self.first_fetching:
             self._manager.reset_step_counter()
         self.first_fetching = True
+        self.count+=1
         try:
             rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
             rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
@@ -827,7 +829,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             activation_result = getActivationRequest(msg)
             self.activation_rl = activation_result.activation_state.activations
             self.last_ref_activations = activation_result.activation_state.activations
-            #print(self.count, numpy.round(self.activation_rl,5))
             #if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             #rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
@@ -836,14 +837,14 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
-
+    """
     def calculate_reward(self):
-        """
+        """"""
         this function calculates regarding the fulfillment and priorities of the active goals
         a reward value. it prioritizes the goals in  a way that a higher priority is always more important
         than a smaller one (power of 10)
         :return: 
-        """
+        """"""
         # TODO think about better logic maybe
         # active goals or wishes is empty todo fix
         # todo use wishes instead of fulfillment
@@ -885,10 +886,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
 
     def transform_input_values(self):
-        """
+        """"""
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
-        """
+        """"""
         # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
         # init input array with first row of zeros
         input_array = numpy.zeros([1,1])
@@ -934,16 +935,16 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO get wishes from sensors
         return input_array
 
-
+    """
     def get_rl_activation_for_ref(self,ref_behaviour):
-        index = self.behaviour_to_index(ref_behaviour)
-        #index = self.input_transformer.behaviour_to_index(ref_behaviour)
+        #index = self.behaviour_to_index(ref_behaviour)
+        index = self.input_transformer.behaviour_to_index(ref_behaviour)
         if not self.ref_activations.has_key(index):
             self.get_activation_from_rl_node()
 
             #print("best_action",numpy.argmax(self.activation_rl),numpy.round(self.activation_rl,5))
             for i in range(0,len(self.activation_rl)):
-                self.ref_activations[i]=self.activation_rl[i]+10
+                self.ref_activations[i]=self.activation_rl[i]+100 # plus 100 so incase all reawrds are negative still something gets chosen
         #print(ref_behaviour,self.ref_activations.get(index))
         value = self.ref_activations.get(index)
         self.ref_activations.pop(index)
@@ -1011,7 +1012,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         ref_behaviour.current_activation_step = current_activation_step
         """
-        current_activation_step=10
+        current_activation_step=10 #TODO necessary?
         return current_activation_step
 
 

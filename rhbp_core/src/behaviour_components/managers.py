@@ -357,12 +357,20 @@ class Manager(object):
             random_value = numpy.random.rand(1)
             #print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
             if  random_value < self.epsilon:
-                best_action = numpy.random.randint(len(self._behaviours))
+                num=len(self._behaviours)
+                if num == 0:
+                    return
+                else:
+                    best_action = numpy.random.randint(len(self._behaviours))
                 #print(self._stepCounter,"chose random action ",best_action)
                 random_chosen=True
+                # if random chosen number is not executalbe, dont choose is
+                if not self._behaviours[best_action].executable:
+                    random_chosen = False
 
+            sorted_behaviour_list = sorted(self._behaviours, key = lambda x: x.activation, reverse = True)
 
-            for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
+            for behaviour in sorted_behaviour_list:
                 # skip not randomly chosen actions
                 if random_chosen:
                     if not best_action == self.behaviour_to_index(behaviour.name):

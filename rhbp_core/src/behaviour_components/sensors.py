@@ -29,7 +29,7 @@ class Sensor(object):
 
     _instanceCounter = 0
 
-    def __init__(self, name=None, optional=False, initial_value=None,encoding="hot_state",state_space=16):
+    def __init__(self, name=None, optional=False, initial_value=None,encoding="hot_state",state_space=16,include_in_rl=True):
         """
         Constructor
         """
@@ -41,6 +41,7 @@ class Sensor(object):
         self._initial_value = initial_value
         self.encoding=encoding
         self.state_space=state_space
+        self.include_in_rl=include_in_rl
         Sensor._instanceCounter += 1
 
     def sync(self):

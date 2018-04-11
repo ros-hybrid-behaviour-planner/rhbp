@@ -17,9 +17,9 @@ import rospy
 
 
 
-class TaxiAgentRhbp(RhbpAgentBase):
+class TaxiAgentRhbpUndecoded(RhbpAgentBase):
     def __init__(self):
-        super(TaxiAgentRhbp, self).__init__()
+        super(TaxiAgentRhbpUndecoded, self).__init__()
         rospy.logdebug("RhbpAgent::init")
 
 
@@ -43,21 +43,22 @@ class TaxiAgentRhbp(RhbpAgentBase):
 
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
 
-        self.state_sensor = Sensor("state")
-        self.row_state_sensor = Sensor(name="RowStateSensor",state_space=5)
-        self.col_state_sensor = Sensor(name="ColStateSensor",state_space=5)
-        self.passenger_state_sensor = Sensor(name="PassengerStateSensor",state_space=5)
-        self.destination_state_sensor = Sensor(name="DestinationStateSensor",state_space=4)
+        self.state_sensor = Sensor("state",state_space=500)
+        self.row_state_sensor = Sensor(name="RowStateSensor",state_space=5,include_in_rl=False)
+        self.col_state_sensor = Sensor(name="ColStateSensor",state_space=5,include_in_rl=False)
+        self.passenger_state_sensor = Sensor(name="PassengerStateSensor",state_space=5,include_in_rl=False)
+        self.destination_state_sensor = Sensor(name="DestinationStateSensor",state_space=4,include_in_rl=False)
 
+        # init sensor with variables for state 26
         self.row_state_sensor.update(0)
         self.col_state_sensor.update(1)
         self.passenger_state_sensor.update(1)
         self.destination_state_sensor.update(2)
-        # TODO update state of behaviours
 
-        state_list = [self.row_state_sensor,self.col_state_sensor,self.passenger_state_sensor,self.destination_state_sensor]
-
-        reward_sensor = RewardSensor(name="RewardSensor",intervall=1)
+        state_list = [self.row_state_sensor,self.col_state_sensor,
+                      self.passenger_state_sensor,self.destination_state_sensor,self.state_sensor]
+        #state_list = self.state_sensor
+        reward_sensor = RewardSensor(name="RewardSensor",intervall=10)
         reward_sensor.update(0)
 
         # down
@@ -100,12 +101,17 @@ class TaxiAgentRhbp(RhbpAgentBase):
 
         dest_one_cond = Condition(self.destination_state_sensor,ThresholdActivator(0)) # to get the dest in the input
 
-        action_one_behavior.addPrecondition(dest_one_cond)# to get the dest in the input
-
+        action_one_behavior.addPrecondition(dest_one_cond)
         action_six_behavior.addPrecondition(at_location)
         action_six_behavior.addPrecondition(has_passenger_condition)
 
         action_five_behavior.addPrecondition(at_location)
+
+
+        state_cond = Condition(self.state_sensor,ThresholdActivator(0))
+        state_goal = GoalBase(name="state_goal", permanent=True,
+                             conditions=[state_cond], priority=0,
+                             plannerPrefix=self.prefix)
 
 
         # rewards and goals

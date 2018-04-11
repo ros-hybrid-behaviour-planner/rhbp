@@ -90,7 +90,7 @@ class RLComponent:
     def get_array(self,s):
         return numpy.identity(16)[s:s + 1]
 
-    def save_request(self,request):
+    def save_request(self,request,is_invalid=False):
         """
         save the old_state,new_state,action,reward tuple in a list for batch updating of the model
         :param request: 
@@ -101,19 +101,27 @@ class RLComponent:
         if self.last_state is not None:
 
             last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
-            if int(request.reward) == 10:
+            #if int(request.reward) == 10:
                 #print("------------------------------------------")
-                 new = [self.get_array(15).tolist()[0]]
-            else:
-                new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+            #     new = [self.get_array(15).tolist()[0]]
+            #else:
+            #    new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
             new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
             #new = numpy.array(request.resulting_state).reshape(([1, len(request.resulting_state)]))
 
             reward_tuple = (last,new,request.last_action,request.reward)
             #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
-            self.reward_list.append(reward_tuple)
-            self.update_model()
+            if not is_invalid:
+                self.reward_list.append(reward_tuple)
+                self.update_model()
+            else:
+                for s in range(500):
+                    new = numpy.array(numpy.identity(500)[s:s + 1]).reshape(([1, len(request.input_state)]))
+                    reward_tuple = (last, new, request.last_action, request.reward)
+                    self.reward_list.append(reward_tuple)
+                    self.update_model()
             #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)
+            #print(last, new, request.last_action, request.reward)
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
             self.init_model(num_inputs,num_outputs)
