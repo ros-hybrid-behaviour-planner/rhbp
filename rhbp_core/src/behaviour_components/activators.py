@@ -30,7 +30,7 @@ class Activator(object):
 
     @staticmethod
     def restore_condition_name_from_pddl_function_name(pddl_function_name, sensor_name):
-        return pddl_function_name[:(len(pddl_function_name) - len(sensor_name) - 1)]
+        return pddl_function_name.replace(sensor_name + '_', "")  # just remove the sensor name
 
     @property
     def minActivation(self):
@@ -116,7 +116,7 @@ class BooleanActivator(Activator):
 
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
-        return self._maxActivation if normalizedValue == self._desired else self._minActivation
+        return self._maxActivation if normalizedValue is self._desired else self._minActivation
 
     def getDirection(self):
         return 1 if self._desired else -1
@@ -125,17 +125,17 @@ class BooleanActivator(Activator):
         assert isinstance(normalizedValue, bool)
         if normalizedValue == self._desired:
             return 0.0
-        if self._desired == True:
+        if self._desired is True:
             return 1.0
         return -1.0
 
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "(" + functionName + ")" if self._desired == True else "(not (" + functionName + "))", predicates=functionName)
+        return PDDL(statement="(" + functionName + ")" if self._desired is True else "(not (" + functionName + "))", predicates=functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="(" + functionName + ")" if normalizedValue == True else "(not (" + functionName + "))", predicates=functionName)
+        return PDDL(statement="(" + functionName + ")" if normalizedValue is True else "(not (" + functionName + "))", predicates=functionName)
 
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -211,7 +211,7 @@ class ThresholdActivator(Activator):
 
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
+        return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
@@ -332,11 +332,11 @@ class LinearActivator(Activator):
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         satisfaction_bound = self._calculate_satisfaction_bound(satisfaction_threshold)
-        return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
+        return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement = "( = (" + functionName + ") {0:f} )".format(normalizedValue), functions = functionName)
+        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
 
     @property
     def valueRange(self):
@@ -371,32 +371,81 @@ class LinearActivator(Activator):
         return "Linear Activator"
 
 
-class StringActivator(BooleanActivator):
+class EqualActivator(Activator):
     """
-    This class is an activator that compares a String to a desired value
+    This class is an activator that compares an arbitrary number sensor to a desired value
     """
 
     def __init__(self, desiredValue, minActivation=0, maxActivation=1, name=None):
         """
         Constructor
         """
-        super(StringActivator, self).__init__(desiredValue=desiredValue, minActivation=minActivation, maxActivation=maxActivation, name=name)
+        super(EqualActivator, self).__init__(minActivation=minActivation, maxActivation=maxActivation, name=name)
+
+        self._desired = desiredValue
 
     def computeActivation(self, normalizedValue):
-        value = str(normalizedValue)
-        assert isinstance(value, str)
-        return self._maxActivation if value == self._desired else self._minActivation
+        return self._maxActivation if normalizedValue == self._desired else self._minActivation
 
     def getDirection(self):
         return 1.0
 
     def getSensorWish(self, normalizedValue):
-        value = str(normalizedValue)
-        assert isinstance(value, str)
-        if value == self._desired:
+        if normalizedValue == self._desired:
             return 0.0
         else:
             return 1.0
+
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+        functionName = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="( = (" + functionName + ") {0} )".format(self._desired),  functions=functionName)
+
+    def getSensorStatePDDL(self, sensorName, normalizedValue):
+        functionName = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="( = (" + functionName + ") {0} )".format(normalizedValue), functions=functionName)
+
+    def __str__(self):
+        return "Equal Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
+
+    def __repr__(self):
+        return "Equal Activator"
+
+
+class StringActivator(EqualActivator):
+    """
+    This class is an activator that compares a String to a desired value. Respectively it handles all input values
+    as strings
+
+    In PDDL it is used like a boolean fact, hence a related effect would have to be defined in the same way,
+    indicator +1 changes the sensor to the desired value -1 changes to another arbitrary value
+
+    The implementation is a mix of the EqualActivator and the BooleanActivator
+
+    """
+
+    def __init__(self, desiredValue, minActivation=0, maxActivation=1, name=None):
+        """
+        Constructor
+        """
+        super(StringActivator, self).__init__(minActivation=minActivation, maxActivation=maxActivation, name=name,
+                                              desiredValue=str(desiredValue))
+
+    def computeActivation(self, normalizedValue):
+        value = str(normalizedValue)
+        return super(StringActivator, self).computeActivation(normalizedValue=value)
+
+    def getSensorWish(self, normalizedValue):
+        value = str(normalizedValue)
+        return super(StringActivator, self).getSensorWish(normalizedValue=value)
+
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+        functionName = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="(" + functionName + ")", predicates=functionName)
+
+    def getSensorStatePDDL(self, sensorName, normalizedValue):
+        functionName = self.getPDDLFunctionName(sensorName)
+        return PDDL(statement="(" + functionName + ")" if normalizedValue == self._desired else "(not (" + functionName
+                                                                                        + "))", predicates=functionName)
 
     def __str__(self):
         return "String Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)

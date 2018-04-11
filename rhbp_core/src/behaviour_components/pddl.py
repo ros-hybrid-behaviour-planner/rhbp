@@ -53,7 +53,7 @@ def get_pddl_effect_name(sensor_name, activator_name):
     :return: str pddl effect name
     """
     if activator_name:
-        return sensor_name  + '_' + activator_name
+        return sensor_name + '_' + activator_name
     else:
         return sensor_name
 
