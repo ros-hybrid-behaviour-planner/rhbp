@@ -451,9 +451,11 @@ class DynamicSensor(Sensor):
 class AggregationSensor(Sensor):
     """
     sensor class that allows to specify an aggregation function for multiple other sensors
+    The function can either be passed as a function reference or implemented by inheriting from the class and
+    overwriting self._aggregate()
     """
 
-    def __init__(self, name, sensors, func, optional=False, initial_value=None):
+    def __init__(self, name, sensors, func=None, optional=False, initial_value=None):
         """
         :param sensors: list of other sensors to aggregate
         :param func: function that will be used to aggregate the sensor values, sensor values will be passed as a list
@@ -461,7 +463,13 @@ class AggregationSensor(Sensor):
         """
         super(AggregationSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
         self._sensors = sensors
-        self._func = func
+        if func is None:
+            self._func = self._aggregate
+        else:
+            self._func = func
+
+    def _aggregate(self, sensor_values):
+        raise NotImplementedError()
 
     def sync(self):
 

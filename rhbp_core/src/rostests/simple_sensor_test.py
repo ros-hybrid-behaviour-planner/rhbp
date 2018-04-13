@@ -110,13 +110,36 @@ class SimpleSensorTestSuite(unittest.TestCase):
         primitive_sensor_1 = TopicSensor(topic=primitive_topic_1)
         primitive_sensor_2 = TopicSensor(topic=primitive_topic_2)
 
-        def aggregation_function(values):
-            return sum(values)
+        # wait until the topic callbacks have been processed
+        while primitive_sensor_1.latestValue is None or primitive_sensor_2.latestValue is None:
+            rospy.sleep(0.1)
+
+        def aggregation_function(sensor_values):
+            return sum(sensor_values)
 
         aggregation_sensor = AggregationSensor(name="aggr", sensors=[primitive_sensor_1, primitive_sensor_2],
                                                func=aggregation_function)
 
-        rospy.sleep(0.1)
+        aggregation_sensor.sync()
+
+        self.assertEquals(test_value_1 + test_value_2, aggregation_sensor.value, "Aggregation value does not match")
+
+        # Testing alternative way of using the AggregationSensor with Inheritance
+
+        aggregation_sensor = AggregationSensor(name="aggr", sensors=[primitive_sensor_1, primitive_sensor_2],
+                                               func=None)
+
+        self.assertRaises(NotImplementedError, aggregation_sensor.sync)
+
+        class MyAggregationSensor(AggregationSensor):
+            def __init__(self, name, sensors, optional=False, initial_value=None):
+                super(MyAggregationSensor, self).__init__(name=name, sensors=sensors, optional=optional,
+                                                          initial_value=initial_value)
+
+            def _aggregate(self, sensor_values):
+                return sum(sensor_values)
+
+        aggregation_sensor = MyAggregationSensor(name="aggr", sensors=[primitive_sensor_1, primitive_sensor_2])
 
         aggregation_sensor.sync()
 
