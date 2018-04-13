@@ -121,6 +121,7 @@ class MakeActionBehaviorManager(BehaviourBase):
                 self.sensor.update(state)
 
             self.sensor.update(state)
+
             self.manager.step()
         except Exception:
             return

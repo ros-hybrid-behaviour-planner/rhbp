@@ -43,13 +43,13 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         action_one_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix,name="ActionOne",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=0,state_sensor=self.state_sensor,environment=self.env)
 
-        action_two_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,manager=manager,
+        action_two_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=1,state_sensor=self.state_sensor, environment=self.env)
 
-        action_three_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,manager=manager,
+        action_three_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=2,state_sensor=self.state_sensor, environment=self.env)
 
-        action_four_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,manager=manager,
+        action_four_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,manager=manager,
                                                  action_index=3,state_sensor=self.state_sensor, environment=self.env)
 
         #action_five_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFive",

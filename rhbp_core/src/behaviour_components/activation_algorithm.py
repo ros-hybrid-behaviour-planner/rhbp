@@ -1015,5 +1015,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         current_activation_step=10 #TODO necessary?
         return current_activation_step
 
+    def update_config(self,**kwargs):
+        super(ReinforcementLearningActivationAlgorithm, self).update_config(kwargs)
+        #TODO override . get here ref_activation . only one time choose here random behavior with max-activation(or 1)
 
+        return
 ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)

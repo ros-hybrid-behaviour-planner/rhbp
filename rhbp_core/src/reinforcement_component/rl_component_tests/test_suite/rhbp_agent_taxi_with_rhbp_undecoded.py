@@ -44,6 +44,8 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
 
         self.state_sensor = Sensor("state",state_space=500)
+        self.state_sensor.
+        set
         self.row_state_sensor = Sensor(name="RowStateSensor",state_space=5,include_in_rl=False)
         self.col_state_sensor = Sensor(name="ColStateSensor",state_space=5,include_in_rl=False)
         self.passenger_state_sensor = Sensor(name="PassengerStateSensor",state_space=5,include_in_rl=False)
