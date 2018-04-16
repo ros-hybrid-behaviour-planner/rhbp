@@ -21,6 +21,7 @@ from .condition_elements import Wish
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
 
+
 class Conditonal(object):
     '''
     This is the base class for conditions or anything that spreads activations.

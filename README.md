@@ -78,5 +78,4 @@ In: Robot Operating System (ROS) - The Complete Reference (Volume 2); 2017
   Year                     = {2017},
   Doi                      = {10.1007/978-3-319-54927-9},
 }
-
 ```
