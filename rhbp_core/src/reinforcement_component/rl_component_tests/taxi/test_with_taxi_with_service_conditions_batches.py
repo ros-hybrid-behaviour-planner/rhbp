@@ -26,60 +26,91 @@ System test for knowledge base fact cache.
 """
 
 
-class FrozenLakeTestSuite():
+class TaxiTestSuite():
     def __init__(self, *args, **kwargs):
         #super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
         self.resulting_state=numpy.array([[]])
         self.rewards = 0
         self.cycles = 0
-
+        numpy.random.seed(0)
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
         self.last_r=0
         self.last_action=0
         self.rl_address="test_agent"
-        numpy.random.seed(0)
         self.set_up_environment()
-        self.new_count = 0
-        self.steps = 0
+        self.counter = 0
+        self.rewards_all = 0
+        self.counter_last=0
     def set_up_environment(self):
         self.rl_component=RLComponent(self.rl_address)
-        self.env = gym.make('FrozenLake-v0')
+        self.env = gym.make('Taxi-v2')
+
         self.env.seed(0)
-        self.num_inputs = 16
-        self.num_outputs = 4
+        self.num_inputs = 500
+        self.num_outputs = 6
 
     def get_array(self,s):
         return numpy.identity(self.num_inputs)[s:s + 1]
 
+    def decode(self, i):
+        out = []
+        out.append(i % 4)  # row
+        i = i // 4
+        out.append(i % 5)  # col
+        i = i // 5
+        out.append(i % 5)  # passloc
+        i = i // 5
+        out.append(i)  # destination
+        assert 0 <= i < 5
+        return reversed(out)
+
+    def is_action_valid(self,s,a):
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        row,col,passenger,dest=self.decode(s)
+        if a==4:
+            if passenger ==4:
+                return False
+            if locs[passenger][0] == row and locs[passenger][1] == col:
+                return True
+            return False
+        if a==5:
+            if not passenger==4:
+                return False
+            if locs[dest][0] == row and locs[dest][1] == col:
+                return True
+            return False
+        return True
+
     def start_env(self):
 
         num_prints = 10
-        self.cycles_last = 0
-        for i in range(1,3500):
+
+        for i in range(1,13500):
             s = self.env.reset()
             d = 0
             while not d:
-
                 s1,d = self.make_cycle(s,i)
-                #print(i, numpy.round(self.activation_rl,5))
                 s = s1
-            self.cycles_last += 1
+            self.cycles_last+=1
             if self.cycles_last == num_prints:
-                print(self.steps,self.rewards,i,numpy.round((self.rewards/i)*100,3),self.rewards_last/num_prints)
+                print(self.counter,self.rewards_all/float(self.counter_last),self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
+                if self.rewards_last/float(num_prints)>0:
+                    print("finished ")
+                    return
                 self.rewards_last = 0
                 self.cycles_last = 0
-                weight=self.rl_component.model.get_value_of_weight()
+                self.counter_last=0
+                self.rewards_all=0
 
-                #self.weights.append(weight)
 
         for i in range(self.num_inputs):
             input = self.get_array(i)
             activations = self.rl_component.model.feed_forward(input)
 
             best_action = numpy.argmax(activations)
-            #print(i,best_action)
+            print(i,best_action)
 
     def print_weights(self,state):
         #print(self.weights[0][0].reshape([1,4]))
@@ -107,92 +138,56 @@ class FrozenLakeTestSuite():
 
         #best_action = numpy.argmax(activations)
         best_action=self.get_best_action(input,self.last_r,self.last_action)
-
+        i = self.counter
+        self.counter +=1
         # choose randomly best action
-        #if i < 1000:
-        #print(i)
-        i = self.steps
-        self.steps +=1
         self.epsilon = 1. / ((i / 50) + 10)
         random_value = numpy.random.rand(1)
-        #print(i, self.epsilon, random_value,random_value<self.epsilon)
+        #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
         if random_value < self.epsilon:
         #if numpy.random.rand(1)<self.epsilon:
             #best_action= self.env.action_space.sample()
-            best_action  = numpy.random.randint(4)
-            #print(i,"random action",best_action)
+            #random_action = numpy.random.randint(6)
+            #if self.is_action_valid(s,random_action):
+            #        best_action = random_action
+            best_action=numpy.random.randint(self.num_outputs)
         #execute best action
+        while not self.is_action_valid(s,best_action):
+        #while False:
+            minus_value=-100
+
+            self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
+
+            self.activation_rl[best_action]= minus_value
+            best_action = numpy.argmax(self.activation_rl)
+
         s1, r, d, _ = self.env.step(best_action)
-
-        self.last_r = r*10
+        self.last_r = r
         self.last_action=best_action
-
+        self.rewards_all += r
         #print(s1,r,d)
         self.rewards+=r
         self.cycles+=1
-
+        self.counter_last+=1
         self.rewards_last += r
-        #
-        # self.cycles_last += 1
 
         self.resulting_state = self.get_array(s1)
-        #print(s,s1,best_action)
-        #if (s == s1):
-            #print"same state" , s,s1,best_action
-        #    r = -0.5
-        #if r == 0:
-        #    r = 10
-        #if (s1 == 0):
-        #    self.last_r=-10
-        if (d == True) and not self.last_r == 10:
-            self.last_r = -10
-        self.last_r=self.last_r/10
-        #if (d == True) and  r == 1:
-        #    r = 10
-        #if self.last_r == 0:
-        #    self.last_r = -0.1
-        output=self.get_array(s1)
-        #print("-----------------")
-        #print((self.new_count,numpy.argmax(input),numpy.argmax(output),best_action,r))
-        self.new_count+=1
-        #self.rl_component.reward_list.append((input,output,best_action,r))
 
-        #self.rl_component.update_model()
+        output=self.get_array(s1)
+
         return s1, d
 
-    """
- 
-, array([0.00162, 0.00616, 0.00071, 0.00031]))
-(1, array([0.00049, 0.00094, 0.00426, 0.00285]))
-(1, array([0.00415, 0.00456, 0.0013 , 0.00174]))
-(1, array([0.00049, 0.00094, 0.00431, 0.00285]))
-(0.0, 1, 0.0, 0.0)
-(2, array([0.00162, 0.00577, 0.00071, 0.00031]))
-(2, array([0.00769, 0.00069, 0.00797, 0.00122]))
-(2, array([0.00162, 0.00619, 0.00071, 0.00031]))
-(2, array([0.00162, 0.00618, 0.00071, 0.00031]))
-(2, array([0.00769, 0.00069, 0.00761, 0.00122]))
-(2, array([0.00162, 0.00647, 0.00071, 0.00031]))
+    def send_invalid_action_to_rl(self,input_state,reward,last_action_index):
+        input_state_msg = InputState()
+        input_state_msg.input_state = input_state.tolist()[0]
+        input_state_msg.num_outputs = self.num_outputs
+        input_state_msg.num_inputs = self.num_inputs
+        input_state_msg.reward = reward
+        input_state_msg.last_action = last_action_index
+        input_state_msg.resulting_state = self.resulting_state.tolist()[0]
 
-(1, array([0.00162, 0.00616, 0.00071, 0.00031]))
-(1, array([0.00769, 0.00069, 0.00797, 0.00122]))
-(1, array([0.00162, 0.0065 , 0.00071, 0.00031]))
-(1, array([0.00769, 0.00069, 0.00767, 0.00122]))
-(1, array([0.00162, 0.00673, 0.00071, 0.00031]))
-(1, array([0.00748, 0.00069, 0.00767, 0.00122]))
-(2, array([0.00162, 0.0069 , 0.00071, 0.00031]))
-(2, array([0.00162, 0.00688, 0.00071, 0.00031]))
-(2, array([0.00049, 0.00094, 0.00426, 0.00285]))
-(2, array([0.00049, 0.00094, 0.00425, 0.00285]))
-(3, array([0.00162, 0.00635, 0.00071, 0.00031]))
-(3, array([ 0.00049,  0.00094, -0.19535,  0.00285]))
-(3, array([0.00162, 0.00564, 0.00071, 0.00031]))
-(3, array([0.00162, 0.00563, 0.00071, 0.00031]))
-(3, array([ 0.00049,  0.00094, -0.19535,  0.0034 ]))
-(3, array([0.00162, 0.00518, 0.00071, 0.00031]))
+        self.rl_component.save_request(input_state_msg,False)
 
-
-    """
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()
         input_state_msg.input_state = input_state.tolist()[0]
@@ -204,6 +199,8 @@ class FrozenLakeTestSuite():
 
         self.fetchActivation(input_state_msg)
         return numpy.argmax(self.activation_rl)
+
+
 
     def fetchActivation(self, msg):
         '''
@@ -221,7 +218,6 @@ class FrozenLakeTestSuite():
             #activation_result = getActivationRequest(msg)
             activation_result = self.rl_component.get_activation_state_test(msg)
             self.activation_rl = activation_result.activations
-
             # if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
             # rhbplog.logdebug("%s reports the following status:\nactivation %s\ncorrelations %s\nprecondition satisfaction %s\n ready threshold %s\nwishes %s\nactive %s\npriority %d\ninterruptable %s",
@@ -232,5 +228,5 @@ class FrozenLakeTestSuite():
 
 if __name__ == '__main__':
     #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)
-    fl_test = FrozenLakeTestSuite()
+    fl_test = TaxiTestSuite()
     fl_test.start_env()

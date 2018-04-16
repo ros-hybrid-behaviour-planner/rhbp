@@ -15,6 +15,7 @@ from rcs_ros_bridge.msg import SimStart,  GenericAction,PlayMode, Goals,Flags,Li
 
 import rospy
 
+from reinforcement_component.rl_component_tests.test_suite.test_environment import RewardSensor
 
 
 class FrozenLakeAgent(RhbpAgentBase):
@@ -37,6 +38,7 @@ class FrozenLakeAgent(RhbpAgentBase):
 
         self.state_sensor = Sensor(name="StateSensor")
         reward_sensor = RewardSensor(name="RewardSensor",intervall=100)
+        reward_sensor.rl_extension = RlExtension(include_in_rl=False)
         reward_sensor.update(0)
         #self.state_sensor2 = Sensor(name="StateSensor2")
         #self.state_sensor2.update(4)

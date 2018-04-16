@@ -13,26 +13,31 @@ class SensorValueTransformer:
 
     def get_value_of_condition(self,cond):
         value = None
+        #print("get_value")
         try:
+            #print("value1:",cond._sensor.value,cond._sensor._name)
             value = float(cond._sensor.value)
             sensor_value = SensorValue()
             sensor_value.name = cond._sensor._name
             sensor_value.value = value
-            sensor_value.encoding = cond._sensor.encoding
-            sensor_value.state_space = cond._sensor.state_space
-            sensor_value.include_in_rl = cond._sensor.include_in_rl
+            sensor_value.encoding = cond._sensor.rl_extension.encoding
+            sensor_value.state_space = cond._sensor.rl_extension.state_space
+            sensor_value.include_in_rl = cond._sensor.rl_extension.include_in_rl
+            #print(sensor_value)
             return sensor_value
         except Exception as e:
+            #print(e)
             value = None
         try:
-            value = float(cond._condition._sensor.value)
 
+            value = float(cond._condition._sensor.value)
+            #print("value2:", value,cond._condition._sensor._name)
             sensor_value = SensorValue()
             sensor_value.name = cond._condition._sensor._name
             sensor_value.value = value
-            sensor_value.encoding = cond._condition.encoding
-            sensor_value.state_space = cond._condition.state_space
-            sensor_value.include_in_rl = cond._condition._sensor.include_in_rl
+            sensor_value.encoding = cond._condition._sensor.rl_extension.encoding
+            sensor_value.state_space = cond._condition._sensor.rl_extension.state_space
+            sensor_value.include_in_rl = cond._condition._sensor.rl_extension.include_in_rl
             return sensor_value
         except Exception :
             value = None
@@ -147,6 +152,7 @@ class InputStateTransformer:
             #print(goal.wishes)
             #print(goal,goal.fulfillment)
             for sensor_value in goal.sensor_values:
+                #print("sensor_value",sensor_value)
                 if not sensor_input.has_key(sensor_value.name):
                     #print("sensor vlaue input",sensor_value)
                     if not sensor_value.include_in_rl:

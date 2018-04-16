@@ -39,6 +39,7 @@ class RhbpAgentBase(object):
         self.env = gym.make(name)
 
 
+
     def start_simulation(self):
         self.init_behaviors()
         self.env.seed(0)

@@ -43,13 +43,26 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
 
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
 
+        # decoded state sensor
         self.state_sensor = Sensor("state",state_space=500)
-        self.state_sensor.
-        set
-        self.row_state_sensor = Sensor(name="RowStateSensor",state_space=5,include_in_rl=False)
-        self.col_state_sensor = Sensor(name="ColStateSensor",state_space=5,include_in_rl=False)
-        self.passenger_state_sensor = Sensor(name="PassengerStateSensor",state_space=5,include_in_rl=False)
-        self.destination_state_sensor = Sensor(name="DestinationStateSensor",state_space=4,include_in_rl=False)
+        self.state_sensor.rl_extension = RlExtension(state_space=500)
+
+        # undecoded state sensors
+        self.row_state_sensor = Sensor(name="RowStateSensor")
+        row_state_rl_extension = RlExtension(state_space=5,include_in_rl=False)
+        self.row_state_sensor.rl_extension=row_state_rl_extension
+
+        self.col_state_sensor = Sensor(name="ColStateSensor")
+        col_state_rl_extension = RlExtension(state_space=5, include_in_rl=False)
+        self.col_state_sensor.rl_extension = col_state_rl_extension
+
+        self.passenger_state_sensor = Sensor(name="PassengerStateSensor")
+        passenger_state_rl_extension = RlExtension(state_space=5, include_in_rl=False)
+        self.passenger_state_sensor.rl_extension = passenger_state_rl_extension
+
+        self.destination_state_sensor = Sensor(name="DestinationStateSensor")
+        destination_state_rl_extension = RlExtension(state_space=4, include_in_rl=False)
+        self.destination_state_sensor.rl_extension = destination_state_rl_extension
 
         # init sensor with variables for state 26
         self.row_state_sensor.update(0)
@@ -59,6 +72,7 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
 
         state_list = [self.row_state_sensor,self.col_state_sensor,
                       self.passenger_state_sensor,self.destination_state_sensor,self.state_sensor]
+
         #state_list = self.state_sensor
         reward_sensor = RewardSensor(name="RewardSensor",intervall=10)
         reward_sensor.update(0)

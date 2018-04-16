@@ -105,7 +105,6 @@ class ModelNeuralNetwork:
         #    logits=Qout, labels=nextQ))
         self.trainer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate_optimizer,name="trainer")
         self.updateModel = self.trainer.minimize(self.loss,name="updateModel")
-
         # initializes all variables so the operations can be executed
         self.init_variables = tf.global_variables_initializer()
 
@@ -190,6 +189,36 @@ class ModelNeuralNetwork:
 
         # Reduce chance of random action as we train the model.
         self.epsilon = 1./((self.num_updates/50) + 10)
+
+    def train_model_batch(self, tuple):
+        # print("tttttttttttttttttttttrrrrrrrrrrrrrrrrraaaaaaaaaaaaainnnn")
+        # get fields from the input tuple
+        last_state = tuple[0]
+        next_state = tuple[1]
+        last_action = tuple[2]
+        reward = tuple[3]
+
+        # if(not self.model_is_set_up):
+        #    return
+
+        # Obtain the Q' values by feeding the new state through our network
+        Q1 = self.sess.run(self.Qout, feed_dict={self.inputs1: next_state})
+
+        # Obtain maxQ' and set our target value for chosen action.
+        maxQ1 = np.max(Q1)
+        targetQ = self.allQ
+
+        # TODO how to deal with multiple active actions
+
+
+        # q-learning update function for the chosen action
+        targetQ[0, last_action] = reward + self.learning_rate_q_learning * maxQ1
+
+        # Train our network using target and predicted Q values
+        self.sess.run([self.updateModel], feed_dict={self.inputs1: last_state, self.nextQ: targetQ})
+
+        # Reduce chance of random action as we train the model.
+        self.epsilon = 1. / ((self.num_updates / 50) + 10)
 
     def save_model(self,num_inputs,num_outputs):
 

@@ -15,6 +15,8 @@ from rcs_ros_bridge.msg import SimStart,  GenericAction,PlayMode, Goals,Flags,Li
 
 import rospy
 
+from reinforcement_component.rl_component_tests.test_suite.test_environment import BehaviorShell, TestFrozenLakeEnv, \
+    RewardSensor
 
 
 class FrozenLakeAgentManager(RhbpAgentBase):
@@ -22,6 +24,14 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         super(FrozenLakeAgentManager, self).__init__()
         rospy.logdebug("RhbpAgent::init")
 
+    def start_simulation(self):
+        self.init_behaviors()
+        self.env.seed(0)
+        state = self.env.reset()
+        self.state_sensor.update(state)
+        #self.manager.step()
+        print("init env in state",state)
+        self.test_env.start_simulation()
 
     def init_behaviors(self):
         """
@@ -33,31 +43,28 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         #self.environment_name = 'Taxi-v2'
         self.init_environment(self.environment_name)
 
-        manager = self.manager
+
 
         self.state_sensor = Sensor(name="StateSensor")
+        #self.state_sensor.update(0)
+
         reward_sensor = RewardSensor(name="RewardSensor")
+        reward_sensor.rl_extension = RlExtension(include_in_rl=False)
+
         reward_sensor.update(0)
+
+        sensor_list = [self.state_sensor,reward_sensor]
         #self.state_sensor2 = Sensor(name="StateSensor2")
         #self.state_sensor2.update(4)
-        action_one_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix,name="ActionOne",reward_sensor=reward_sensor,manager=manager,
-                                                 action_index=0,state_sensor=self.state_sensor,environment=self.env)
+        action_zero_behavior = BehaviorShell(plannerPrefix=self.prefix,name="ActionZero",index=0)
 
-        action_two_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,manager=manager,
-                                                 action_index=1,state_sensor=self.state_sensor, environment=self.env)
+        action_one_behavior = BehaviorShell(plannerPrefix=self.prefix, name="ActionOne", index=1)
 
-        action_three_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,manager=manager,
-                                                 action_index=2,state_sensor=self.state_sensor, environment=self.env)
+        action_two_behavior = BehaviorShell(plannerPrefix=self.prefix, name="ActionTwo", index=2)
 
-        action_four_behavior = MakeActionBehaviorManager(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,manager=manager,
-                                                 action_index=3,state_sensor=self.state_sensor, environment=self.env)
+        action_three_behavior = BehaviorShell(plannerPrefix=self.prefix, name="ActionThree", index=3)
 
-        #action_five_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionFive",
-        #                                         action_index=0,state_sensor=self.state_sensor, environment=self.env)
-        #action_six_behavior = MakeActionBehavior(plannerPrefix=self.prefix, name="ActionSix",
-        #                                         action_index=0,state_sensor=self.state_sensor, environment=self.env)
 
-        #is_in_goal_state = Condition(self.state_sensor,EqualActivator(desiredValue=15))
         is_in_goal_state = Condition(self.state_sensor, ThresholdActivator(thresholdValue=15))
         is_in_good_state = Condition(reward_sensor,
                                      ThresholdActivator(thresholdValue=1))
@@ -91,7 +98,7 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         action_two_behavior.correlations.append(direct_to_goal_effect)
         action_one_behavior.correlations.append(direct_to_goal_effect)
         action_three_behavior.correlations.append(direct_to_goal_effect)
-        action_four_behavior.correlations.append(direct_to_goal_effect)
+        action_zero_behavior.correlations.append(direct_to_goal_effect)
 
         direct_to_goal_effect2 = Effect(sensor_name=is_in_bad_state.getFunctionNames()[0], indicator=-1.0,
                                        sensor_type=float)  #
@@ -99,7 +106,7 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         action_two_behavior.correlations.append(direct_to_goal_effect2)
         action_one_behavior.correlations.append(direct_to_goal_effect2)
         action_three_behavior.correlations.append(direct_to_goal_effect2)
-        action_four_behavior.correlations.append(direct_to_goal_effect2 )
+        action_zero_behavior.correlations.append(direct_to_goal_effect2 )
 
         direct_to_goal_effect3 = Effect(sensor_name=is_in_good_state.getFunctionNames()[0], indicator=1.0,
                                         sensor_type=float)  #
@@ -107,6 +114,7 @@ class FrozenLakeAgentManager(RhbpAgentBase):
         action_two_behavior.correlations.append(direct_to_goal_effect3)
         action_one_behavior.correlations.append(direct_to_goal_effect3)
         action_three_behavior.correlations.append(direct_to_goal_effect3)
-        action_four_behavior.correlations.append(direct_to_goal_effect3)
+        action_zero_behavior.correlations.append(direct_to_goal_effect3)
 
+        self.test_env = TestFrozenLakeEnv(self.env,self.manager,sensor_list)
 

@@ -719,6 +719,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.successfull_last = 0
         self.episode_reward = 0
         self.episode_steps = 0
+        self.max_activation = 100
+        self.max_activation = -100
+        self._step_counter = 0
         self.ref_activations ={}
         self.last_ref_activations = []
         self.input_transformer = InputStateTransformer(manager)
@@ -744,15 +747,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         self._rl_process = launch.launch(node)
 
-    """
-    def behaviour_to_index(self,name):
-        num = 0
-        for b in self._manager.behaviours:
-            if b == name:
-                return num
-            num += 1
-        return None
-    """
 
     def get_activation_from_rl_node(self):
         """
@@ -782,7 +776,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             print(self.counter,self.count,"last action cannot be None")
             #time.sleep(5)
             #self._manager.step()
-            last_action=[0]
+            #last_action=[0]
             return
         last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
         #last_action_index = self.behaviour_to_index(
@@ -816,6 +810,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self._justFinished_state = False
         if not self.first_fetching:
             self._manager.reset_step_counter()
+            self._step_counter = 0
         self.first_fetching = True
         self.count+=1
         try:
@@ -827,7 +822,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         try:
             getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
             activation_result = getActivationRequest(msg)
-            self.activation_rl = activation_result.activation_state.activations
+            self.activation_rl = list(activation_result.activation_state.activations)
             self.last_ref_activations = activation_result.activation_state.activations
             #if self._name != condition_state.name:
             #    rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
@@ -837,105 +832,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
-    """
-    def calculate_reward(self):
-        """"""
-        this function calculates regarding the fulfillment and priorities of the active goals
-        a reward value. it prioritizes the goals in  a way that a higher priority is always more important
-        than a smaller one (power of 10)
-        :return: 
-        """"""
-        # TODO think about better logic maybe
-        # active goals or wishes is empty todo fix
-        # todo use wishes instead of fulfillment
-        reward_value = 0
-        for goal in self._manager.activeGoals:
-            #print(goal,goal.fulfillment,goal.priority)
-            #goal_value = goal.fulfillment * (10 ** goal.priority)
-            goal_value = goal.fulfillment * goal.priority
-            reward_value += goal_value
-        #print("goal",reward_value)
-        #if reward_value == 1:
-        #    self.successfull +=1
-        #    self.successfull_last += 1
-        self.episode_reward += reward_value
-        self.episode_steps +=1
 
-        #print(reward_value)
-        if reward_value == 20 or self.episode_steps%200 == 199:
-            #episode end
-
-            self.successfull +=self.episode_reward
-            self.successfull_last += self.episode_reward
-            self.count +=1
-            self.count_last += 1
-            self.successfull_last+=self.episode_reward
-            self._manager.counter +=1
-            self.episode_reward = 0
-            self.episode_steps =0
-            if (self.count) % (50) == 0:
-                #print("steps",self.count,"success rate:",self.successfull/float(self.count),"last",self.count_last,"rate",self.successfull_last/float(self.count_last))
-                self.count_last=0
-                self.successfull_last =0
-        return reward_value
-
-    def make_hot_state_encoding(self,state,num_state_space):
-        state = int(state)
-        #print(state,num_state_space)
-        array = numpy.identity(num_state_space)[state:state + 1]
-        return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
-
-    def transform_input_values(self):
-        """"""
-        this function uses the wishes and sensors to create the input vectors
-        :return: input vector
-        """"""
-        # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
-        # init input array with first row of zeros
-        input_array = numpy.zeros([1,1])
-        # extend array with input vector from wishes
-        for behaviour in self._manager.behaviours:
-            # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
-            for wish in behaviour.wishes:
-                wish_row = numpy.array([wish.indicator]).reshape([1,1])
-                input_array = numpy.concatenate([input_array,wish_row])
-        # extend array with input vector from sensors
-        # save which sensor were already included
-        #TODO behavior get input called twice. getstatus
-        sensor_input = {}
-        for behaviour in self._manager.behaviours:
-            for sensor_value in behaviour.sensor_values:
-                if not sensor_input.has_key(sensor_value.name):
-                    sensor_input[sensor_value.name] = sensor_value.value
-                    wish_row = numpy.array([[sensor_value.value]])
-                    input_array = numpy.concatenate([input_array, wish_row])
-        # cut out first row and return
-
-        for goal in self._manager._goals:
-            #print(goal.wishes)
-            #print(goal.fulfillment)
-            for sensor_value in goal.sensor_values:
-                if not sensor_input.has_key(sensor_value.name):
-                    #print("sensor vlaue input",sensor_value)
-                    if sensor_value.name=="RewardSensor":
-                        continue
-                    if sensor_value.encoding=="hot_state":
-                        value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
-                    else:
-                        value = numpy.array([[sensor_value.value]])
-                    #wish_row = numpy.array([[sensor_value.value]])
-                    #value=wish_row
-                    sensor_input[sensor_value.name] = value
-                    #wish_row = numpy.array([[value]])
-                    #print(numpy.array([[5]]))
-                    input_array = numpy.concatenate([input_array, value])
-        input_array = input_array[1:]
-        #print(input_array)
-        #print("input:",numpy.argmax(input_array))
-        # TODO get wishes from sensors
-        return input_array
-
-    """
     def get_rl_activation_for_ref(self,ref_behaviour):
         #index = self.behaviour_to_index(ref_behaviour)
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
@@ -952,6 +849,21 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO make dictionary with ref_behaviors or their indecies
         # TODo if used the value delete it
         # TODO check first if value is there. if not make new get_activation
+    """
+
+    def get_rl_activation_for_ref(self,ref_behaviour):
+        #index = self.behaviour_to_index(ref_behaviour)
+        index = self.input_transformer.behaviour_to_index(ref_behaviour)
+        if len(self.activation_rl)==0:
+            value=100
+        else:
+            value=self.activation_rl[index]+100 # plus 100 so incase all reawrds are negative still something gets chosen
+        return value
+        # TODO make dictionary with ref_behaviors or their indecies
+        # TODo if used the value delete it
+        # TODO check first if value is there. if not make new get_activation
+    """
+
 
     def compute_behaviour_activation_step(self, ref_behaviour):
         """
@@ -1009,15 +921,42 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                                   + activation_successors \
                                   + inhibition_conflictors \
                                   + activation_plan
-
+w
         ref_behaviour.current_activation_step = current_activation_step
         """
-        current_activation_step=10 #TODO necessary?
+        current_activation_step=self.max_activation #TODO necessary?
         return current_activation_step
 
     def update_config(self,**kwargs):
-        super(ReinforcementLearningActivationAlgorithm, self).update_config(kwargs)
+        super(ReinforcementLearningActivationAlgorithm, self).update_config(**kwargs)
         #TODO override . get here ref_activation . only one time choose here random behavior with max-activation(or 1)
-
         return
+        self.get_activation_from_rl_node()
+        if len(self.activation_rl)==0:
+            print("no activation found")
+            return
+        self._step_counter +=1
+
+        # random selection for exploration
+        epsilon = 1. / ((self._step_counter / 50) + 10)
+
+        random_value = numpy.random.rand(1)
+
+        num_actions = len(self._manager._behaviours)
+        # print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
+        if random_value < epsilon:
+
+            if num_actions > 0:
+                best_action = numpy.random.randint(num_actions)
+                #print(num_actions,best_action,self.activation_rl)
+                self.activation_rl[best_action]=self.max_activation
+            random_chosen = True
+
+            # check for not executable actions
+        for index in range(num_actions):
+            # if random chosen number is not executalbe, give minus reward and sent it to rl component
+            if not self._manager._behaviours[index].executable:
+                self.activation_rl[index] = self.min_activation
+                # TODO sent new reward to rl component
+
 ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)
