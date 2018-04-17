@@ -113,7 +113,7 @@ class FrozenLakeTestSuite():
         #print(i)
         i = self.steps
         self.steps +=1
-        self.epsilon = 1. / ((i / 50) + 10)
+        self.epsilon = 1. / ((i / 50.0) + 10)
         random_value = numpy.random.rand(1)
         #print(i, self.epsilon, random_value,random_value<self.epsilon)
         if random_value < self.epsilon:

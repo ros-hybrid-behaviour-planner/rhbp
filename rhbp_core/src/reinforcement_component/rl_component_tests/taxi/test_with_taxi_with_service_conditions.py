@@ -141,7 +141,7 @@ class TaxiTestSuite():
         i = self.counter
         self.counter +=1
         # choose randomly best action
-        self.epsilon = 1. / ((i / 50) + 10)
+        self.epsilon = 1. / ((i / 50.0) + 10)
         random_value = numpy.random.rand(1)
         #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
         if random_value < self.epsilon:

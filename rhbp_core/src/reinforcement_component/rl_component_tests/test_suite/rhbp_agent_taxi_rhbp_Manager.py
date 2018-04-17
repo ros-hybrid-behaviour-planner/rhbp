@@ -15,22 +15,32 @@ from rcs_ros_bridge.msg import SimStart,  GenericAction,PlayMode, Goals,Flags,Li
 
 import rospy
 
-from reinforcement_component.rl_component_tests.test_suite.test_environment import RewardSensor
+from reinforcement_component.rl_component_tests.test_suite.test_environment import RewardSensor, BehaviorShell, \
+    TestTaxiEnv
 
 
-class TaxiAgentRhbpUndecoded(RhbpAgentBase):
+class TaxiAgentManagerRHBP(RhbpAgentBase):
     def __init__(self):
-        super(TaxiAgentRhbpUndecoded, self).__init__()
+        super(TaxiAgentManagerRHBP, self).__init__()
         rospy.logdebug("RhbpAgent::init")
 
+    def start_simulation(self):
+        self.init_behaviors()
+        self.env.seed(0)
+        state = self.env.reset()
+        self.state_sensor.update(state)
+        # self.manager.step()
+        print("init env in state", state)
+        self.test_env.start_simulation()
 
-    def get_equal_condition(self,sensor,value):
+    def get_equal_condition(self, sensor, value):
         above = Condition(sensor,
-                                  ThresholdActivator(thresholdValue=value,name="aboveactiv"))
+                          ThresholdActivator(thresholdValue=value, name="aboveactiv"))
         below = Condition(sensor,
-                                  ThresholdActivator(thresholdValue=value, isMinimum=False,name="belowactiv"))
+                          ThresholdActivator(thresholdValue=value, isMinimum=False, name="belowactiv"))
         equal = Conjunction(above, below)  # everything else
         return equal
+
 
     def init_behaviors(self):
         """
@@ -42,16 +52,18 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         #self.environment_name = 'Taxi-v2'
         self.init_environment(self.environment_name)
 
-        self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
 
-        # decoded state sensor
-        self.state_sensor = Sensor("state",state_space=500)
+
+        self.state_sensor = Sensor(name="StateSensor")
         self.state_sensor.rl_extension = RlExtension(state_space=500)
+        reward_sensor = RewardSensor(name="RewardSensor")
+        reward_sensor.rl_extension = RlExtension(include_in_rl=False)
+        reward_sensor.update(0)
 
         # undecoded state sensors
         self.row_state_sensor = Sensor(name="RowStateSensor")
-        row_state_rl_extension = RlExtension(state_space=5,include_in_rl=False)
-        self.row_state_sensor.rl_extension=row_state_rl_extension
+        row_state_rl_extension = RlExtension(state_space=5, include_in_rl=False)
+        self.row_state_sensor.rl_extension = row_state_rl_extension
 
         self.col_state_sensor = Sensor(name="ColStateSensor")
         col_state_rl_extension = RlExtension(state_space=5, include_in_rl=False)
@@ -71,78 +83,72 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         self.passenger_state_sensor.update(1)
         self.destination_state_sensor.update(2)
 
-        state_list = [self.row_state_sensor,self.col_state_sensor,
-                      self.passenger_state_sensor,self.destination_state_sensor,self.state_sensor]
+        state_list = [self.row_state_sensor, self.col_state_sensor,
+                      self.passenger_state_sensor, self.destination_state_sensor, self.state_sensor,reward_sensor]
 
-        #state_list = self.state_sensor
-        reward_sensor = RewardSensor(name="RewardSensor",intervall=10)
-        reward_sensor.update(0)
 
-        # down
-        action_one_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix,name="ActionZero",reward_sensor=reward_sensor,
-                                                 action_index=0,state_sensor=state_list,environment=self.env)
-        # up
-        action_two_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix, name="ActionOne",reward_sensor=reward_sensor,
-                                                 action_index=1,state_sensor=state_list, environment=self.env)
-        # right
-        action_three_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix, name="ActionTwo",reward_sensor=reward_sensor,
-                                                 action_index=2,state_sensor=state_list, environment=self.env)
-        # left
-        action_four_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix, name="ActionThree",reward_sensor=reward_sensor,
-                                                 action_index=3,state_sensor=state_list, environment=self.env)
 
-        # pickup
-        action_five_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix, name="ActionFour",reward_sensor=reward_sensor,
-                                                 action_index=4,state_sensor=state_list, environment=self.env)
-        # dropoff
-        action_six_behavior = MakeActionBehaviorTaxi(plannerPrefix=self.prefix, name="ActionFive",reward_sensor=reward_sensor,
-                                                 action_index=5,state_sensor=state_list, environment=self.env)
+
+        action_one_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action0",index=0)
+
+        action_two_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action1",index=1)
+
+        action_three_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action2",index=2)
+
+        action_four_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action3",index=3)
+
+        action_five_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action4",index=4)
+
+        action_six_behavior = BehaviorShell(plannerPrefix=self.prefix,name="Action5",index=5)
 
         # conditions
 
-        has_passenger_condition = Condition(self.passenger_state_sensor,ThresholdActivator(4))
+        has_passenger_condition = Condition(self.passenger_state_sensor, ThresholdActivator(4))
 
-        at_pos_one_condition = Conjunction(self.get_equal_condition(self.row_state_sensor,0)
-                                           ,self.get_equal_condition(self.col_state_sensor,0))
+        at_pos_one_condition = Conjunction(self.get_equal_condition(self.row_state_sensor, 0)
+                                           , self.get_equal_condition(self.col_state_sensor, 0))
 
         at_pos_two_condition = Conjunction(self.get_equal_condition(self.row_state_sensor, 0)
                                            , self.get_equal_condition(self.col_state_sensor, 4))
 
         at_pos_three_condition = Conjunction(self.get_equal_condition(self.row_state_sensor, 4)
-                                           , self.get_equal_condition(self.col_state_sensor, 0))
+                                             , self.get_equal_condition(self.col_state_sensor, 0))
 
         at_pos_four_condition = Conjunction(self.get_equal_condition(self.row_state_sensor, 4)
-                                           , self.get_equal_condition(self.col_state_sensor, 3))
+                                            , self.get_equal_condition(self.col_state_sensor, 3))
 
-        at_location = Disjunction(at_pos_four_condition,at_pos_one_condition,at_pos_three_condition,at_pos_two_condition)
+        at_location = Disjunction(at_pos_four_condition, at_pos_one_condition, at_pos_three_condition,
+                                  at_pos_two_condition)
 
-        dest_one_cond = Condition(self.destination_state_sensor,ThresholdActivator(0)) # to get the dest in the input
+        dest_one_cond = Condition(self.destination_state_sensor, ThresholdActivator(0))  # to get the dest in the input
 
-        action_one_behavior.addPrecondition(dest_one_cond)
+        action_one_behavior.addPrecondition(dest_one_cond)  # to get the dest in the input
+
         action_six_behavior.addPrecondition(at_location)
         action_six_behavior.addPrecondition(has_passenger_condition)
 
         action_five_behavior.addPrecondition(at_location)
 
 
-        state_cond = Condition(self.state_sensor,ThresholdActivator(0))
-        state_goal = GoalBase(name="state_goal", permanent=True,
-                             conditions=[state_cond], priority=0,
-                             plannerPrefix=self.prefix)
+        is_in_goal_state = Condition(self.state_sensor, ThresholdActivator(thresholdValue=15,name="state"))  # for getting the state of the game
 
-
-        # rewards and goals
         good_pick_off = Condition(reward_sensor,
-                                  ThresholdActivator(thresholdValue=20))  # successful dropoff
-        illegal_action = Condition(reward_sensor, ThresholdActivator(thresholdValue=-10, isMinimum=False)) # wrong action
+                                  ThresholdActivator(thresholdValue=20,name="good"))  # successful dropoff
+        illegal_action = Condition(reward_sensor, ThresholdActivator(thresholdValue=-10, isMinimum=False,name="illegal")) # wrong action
 
         #timestep_action = Conjunction(Negation(good_pick_off),Negation(illegal_action)) #everything else
         aboveminusone = Condition(reward_sensor,
-                                  ThresholdActivator(thresholdValue=-1))
+                                  ThresholdActivator(thresholdValue=-1,name="above"))
         belowminusone = Condition(reward_sensor,
-                                  ThresholdActivator(thresholdValue=-1,isMinimum=False))
+                                  ThresholdActivator(thresholdValue=-1,isMinimum=False,name="belo"))
         timestep_action = Conjunction(aboveminusone, belowminusone)  # everything else
 
+
+
+
+        the_goal = GoalBase(name="goal_the", permanent=True,
+                                          conditions=[is_in_goal_state], priority=0,
+                                          plannerPrefix=self.prefix)
 
         the_goal2 = GoalBase(name="dropoff_goal", permanent=True,
                             conditions=[good_pick_off], priority=20,
@@ -156,7 +162,13 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         #no_hole = GoalBase(name="no_hole_goal", permanent=True,
         #                    conditions=[Negation(start_state_cond)], priority=1,
         #                    plannerPrefix=self.prefix)
+        direct_to_goal_effect = Effect(sensor_name=is_in_goal_state.getFunctionNames()[0], indicator=1.0,
+                               sensor_type=float)#
 
+        action_two_behavior.correlations.append(direct_to_goal_effect)
+        action_one_behavior.correlations.append(direct_to_goal_effect)
+        action_three_behavior.correlations.append(direct_to_goal_effect)
+        action_four_behavior.correlations.append(direct_to_goal_effect)
 
         direct_to_goal_effect2 = Effect(sensor_name=good_pick_off.getFunctionNames()[0], indicator=1.0,
                                        sensor_type=float)  #
@@ -193,3 +205,5 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         action_four_behavior.correlations.append(direct_to_goal_effect5)
         action_six_behavior.correlations.append(direct_to_goal_effect5)
         action_five_behavior.correlations.append(direct_to_goal_effect5)
+
+        self.test_env = TestTaxiEnv(self.env, self.manager, state_list)

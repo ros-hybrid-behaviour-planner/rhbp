@@ -25,6 +25,8 @@ from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lak
 #from src.rhbp.rhbp_core.src.behaviour_components.sensors import Sensor
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lake_manager import FrozenLakeAgentManager
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi import TaxiAgent
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_Manager import TaxiAgentManager
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_rhbp_Manager import TaxiAgentManagerRHBP
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_with_rhbp import TaxiAgentRhbp
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_with_rhbp_undecoded import \
     TaxiAgentRhbpUndecoded
@@ -77,7 +79,16 @@ if __name__ == '__main__':
         elif sim == 4:
             print("start envionment taxi with rhbp undecoded")
             rhbp_agent = TaxiAgentRhbpUndecoded()
+        elif sim == 5:
+            print("start envionment taxi with rhbp manager")
+            rhbp_agent = TaxiAgentManager()
+            rhbp_agent.set_manager()
+        elif sim == 6:
+            print("start envionment taxi with rhbp manager")
+            rhbp_agent = TaxiAgentManagerRHBP()
+            rhbp_agent.set_manager()
         #rhbp_agent = TaxiAgent()
+
         rhbp_agent.start_simulation()
 
         print("init agent_node")

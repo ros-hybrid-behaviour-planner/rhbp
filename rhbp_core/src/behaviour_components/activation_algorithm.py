@@ -720,14 +720,14 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.episode_reward = 0
         self.episode_steps = 0
         self.max_activation = 100
-        self.max_activation = -100
+        self.min_activation = -100
         self._step_counter = 0
         self.ref_activations ={}
         self.last_ref_activations = []
         self.input_transformer = InputStateTransformer(manager)
         self.start_rl_class()
         self.first_fetching=False
-        #numpy.random.seed(0) #TODO delete later. only for test purposes
+        numpy.random.seed(0) #TODO delete later. only for test purposes
     def start_rl_class(self):
         self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
         self.rl_component = RLComponent(name=self.rl_address )
@@ -749,6 +749,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
 
     def get_activation_from_rl_node(self):
+        #if len(self._manager.executedBehaviours)>0:
+        #    print("get acti11", len(self._manager.executedBehaviours), self._manager.executedBehaviours[0])
+        #else:
+        #    print("get acti",len(self._manager.executedBehaviours))
         """
         :return:num_inputs
                 num_outputs
@@ -773,7 +777,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
             #print("acti",self.last_ref_activations)
-            print(self.counter,self.count,"last action cannot be None")
+            print(self._step_counter,self.count,"last action cannot be None",self.activation_rl)
             #time.sleep(5)
             #self._manager.step()
             #last_action=[0]
@@ -789,14 +793,14 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             return
         # TODO if invalid dim dont send anything just return
         #print(num_inputs,num_outputs,numpy.argmax(input_state),reward,last_action_index)
-
+        #print("get acti222", len(self._manager.executedBehaviours), self._manager.executedBehaviours[0])
         input_state_msg = InputState()
         input_state_msg.input_state = input_state
         input_state_msg.num_outputs = num_outputs
         input_state_msg.num_inputs = num_inputs
         input_state_msg.reward = reward
         input_state_msg.last_action = last_action_index
-
+        #print(input_state_msg)
         #activation=self.rl_component.get_activation_state_test(input_state_msg)
         #self.activation_rl=activation.activations
 
@@ -809,7 +813,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         '''
         self._justFinished_state = False
         if not self.first_fetching:
-            self._manager.reset_step_counter()
+            #self._manager.reset_step_counter()
             self._step_counter = 0
         self.first_fetching = True
         self.count+=1
@@ -833,6 +837,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
 
+    """
     def get_rl_activation_for_ref(self,ref_behaviour):
         #index = self.behaviour_to_index(ref_behaviour)
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
@@ -862,7 +867,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO make dictionary with ref_behaviors or their indecies
         # TODo if used the value delete it
         # TODO check first if value is there. if not make new get_activation
-    """
+
 
 
     def compute_behaviour_activation_step(self, ref_behaviour):
@@ -930,32 +935,34 @@ w
     def update_config(self,**kwargs):
         super(ReinforcementLearningActivationAlgorithm, self).update_config(**kwargs)
         #TODO override . get here ref_activation . only one time choose here random behavior with max-activation(or 1)
-        return
+        #return
         self.get_activation_from_rl_node()
         if len(self.activation_rl)==0:
             print("no activation found")
             return
-        self._step_counter +=1
 
         # random selection for exploration
-        epsilon = 1. / ((self._step_counter / 50) + 10)
+        epsilon = 1. / ((self._step_counter / 50.0) + 10)
 
         random_value = numpy.random.rand(1)
 
         num_actions = len(self._manager._behaviours)
-        # print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
+        #print(self._step_counter, epsilon,random_value,random_value<epsilon)
+        self._step_counter += 1
         if random_value < epsilon:
 
             if num_actions > 0:
                 best_action = numpy.random.randint(num_actions)
                 #print(num_actions,best_action,self.activation_rl)
                 self.activation_rl[best_action]=self.max_activation
+                #print(num_actions,best_action,self.activation_rl)
             random_chosen = True
 
             # check for not executable actions
         for index in range(num_actions):
             # if random chosen number is not executalbe, give minus reward and sent it to rl component
             if not self._manager._behaviours[index].executable:
+                #print(index,self.min_activation)
                 self.activation_rl[index] = self.min_activation
                 # TODO sent new reward to rl component
 

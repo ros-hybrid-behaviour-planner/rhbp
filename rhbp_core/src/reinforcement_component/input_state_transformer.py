@@ -67,6 +67,7 @@ class SensorValueTransformer:
         list_of_sensor_values = []
         #print("sensor", self.name,len(self.get_preconditions()  ))
         for p in conditions:
+            #print(p)
             value = self.get_value_of_condition(p)
             if isinstance(value,(list,)):
                 list_of_sensor_values.extend(self.get_values_of_list(value))
@@ -92,11 +93,11 @@ class InputStateTransformer:
         # todo use wishes instead of fulfillment
         reward_value = 0
         for goal in self._manager.activeGoals:
-            # print(goal,goal.fulfillment,goal.priority)
+            #print(goal,goal.fulfillment,goal.priority)
             # goal_value = goal.fulfillment * (10 ** goal.priority)
             goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
-
+        #print("reward",reward_value)
         return reward_value
 
     def behaviour_to_index(self,name):
@@ -154,7 +155,7 @@ class InputStateTransformer:
             for sensor_value in goal.sensor_values:
                 #print("sensor_value",sensor_value)
                 if not sensor_input.has_key(sensor_value.name):
-                    #print("sensor vlaue input",sensor_value)
+                    #print("sensor vlaue input",sensor_value.value,sensor_value.name)
                     if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding=="hot_state":

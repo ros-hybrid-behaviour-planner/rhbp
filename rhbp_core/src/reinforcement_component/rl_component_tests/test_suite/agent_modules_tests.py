@@ -48,7 +48,6 @@ class MakeActionBehavior(BehaviourBase):
     def do_step(self):
 
 
-
         try:
             last_state = self.sensor.value
             state,reward,self.isEnded, _ = self.environment.step(self.index)
@@ -68,7 +67,8 @@ class MakeActionBehavior(BehaviourBase):
                 self.sensor.update(state)
 
             self.sensor.update(state)
-        except Exception:
+        except Exception as e:
+            print(e)
             return
 
     def unregister(self, terminate_services=True):

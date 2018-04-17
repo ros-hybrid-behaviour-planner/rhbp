@@ -15,6 +15,7 @@ from rcs_ros_bridge.msg import SimStart,  GenericAction,PlayMode, Goals,Flags,Li
 
 import rospy
 
+from reinforcement_component.rl_component_tests.test_suite.test_environment import RewardSensor
 
 
 class TaxiAgentRhbp(RhbpAgentBase):
@@ -106,6 +107,9 @@ class TaxiAgentRhbp(RhbpAgentBase):
         action_six_behavior.addPrecondition(has_passenger_condition)
 
         action_five_behavior.addPrecondition(at_location)
+
+
+
 
 
         # rewards and goals

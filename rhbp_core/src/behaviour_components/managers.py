@@ -349,7 +349,7 @@ class Manager(object):
             rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
             currently_influenced_sensors = set()
-
+            """
             # random selection for exploration
             random_chosen = False
             #print(self.counter)
@@ -367,17 +367,18 @@ class Manager(object):
                 # if random chosen number is not executalbe, dont choose is
                 if not self._behaviours[best_action].executable:
                     random_chosen = False
-
+            """
             sorted_behaviour_list = sorted(self._behaviours, key = lambda x: x.activation, reverse = True)
 
             for behaviour in sorted_behaviour_list:
                 # skip not randomly chosen actions
+                """
                 if random_chosen:
                     if not best_action == self.behaviour_to_index(behaviour.name):
                         if behaviour.isExecuting:
                             self._stop_behaviour(behaviour, True)
                         continue
-
+                """
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
                 if not behaviour.active and not behaviour.manualStart: # it must be active
                     rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
@@ -450,7 +451,7 @@ class Manager(object):
                 rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
             activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
-
+            activation_threshold_decay = 1.0 # TODO delete or include in rospy param
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
             # Reduce or increase the activation threshold based on executed and started behaviours

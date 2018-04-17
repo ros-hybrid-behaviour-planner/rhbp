@@ -13,10 +13,10 @@ class TestBaseEnvironment(object):
         numpy.random.seed(0)
         self.manager = manager
         self.sensors = sensors
-        self.frequency = 0.01
+        self.frequency = 0.005
         self.count = 0
         self.last_none=True
-
+        self.manager.__activationDecay = 1.0
     def behaviour_to_index(self,name):
         num = 0
         for b in self.manager.behaviours:
@@ -28,6 +28,7 @@ class TestBaseEnvironment(object):
     def start_simulation(self):
         while(True):
             time.sleep(self.frequency)
+            #print("dadadada")
             self.count +=1
 
             #if self.count % 100 == 0:
@@ -64,8 +65,8 @@ class TestFrozenLakeEnv(TestBaseEnvironment):
         if isEnded and reward ==0:
             reward=-1
 
-        print("ex: ", index, "last state", self.last_state,
-              "new state",state,"with reward:",reward)
+        #print("ex1: ", index, "last state", self.last_state,
+        #      "new state",state,"with reward:",reward)
 
         self.reward_sensor.update(reward)
         if reward == -1:
@@ -77,10 +78,89 @@ class TestFrozenLakeEnv(TestBaseEnvironment):
 
         if isEnded:
             state = self.env.reset()
-
+        #print("update sensor with state",state)
         self.sensor.update(state)
+        self.sensor.sync()
 
         self.last_state = state
+
+class TestTaxiEnv(TestBaseEnvironment):
+    def __init__(self,env,manager,sensors):
+        super(TestTaxiEnv, self).__init__(env,manager,sensors)
+        self.reward_sensor = sensors[5]
+        self.sensor_row = sensors[0]
+        self.sensor_col = sensors[1]
+        self.sensor_passenger = sensors[2]
+        self.sensor_destination = sensors[3]
+        self.state_sensor = sensors[4]
+        self.environment = env
+        self.last_state = 0
+
+    def encode(self, taxirow, taxicol, passloc, destidx):
+        # (5) 5, 5, 4
+        i = taxirow
+        i *= 5
+        i += taxicol
+        i *= 5
+        i += passloc
+        i *= 4
+        i += destidx
+        return i
+
+    def decode(self, i):
+        out = []
+        out.append(i % 4)  # row
+        i = i // 4
+        out.append(i % 5)  # col
+        i = i // 5
+        out.append(i % 5)  # passloc
+        i = i // 5
+        out.append(i)  # destination
+        assert 0 <= i < 5
+        return reversed(out)
+
+    def execute_step(self,index):
+
+        try:
+            # last_state = self.sensor.value
+            state, reward, isEnded, _ = self.environment.step(index)
+
+            row, col, passenger, destination = self.decode(state)
+            # print(state,"=",row,col,passenger,destination)
+
+            self.sensor_row.update(row)
+            self.sensor_col.update(col)
+            self.sensor_passenger.update(passenger)
+            self.sensor_destination.update(destination)
+            self.state_sensor.update(state)
+            # if self.isEnded and reward ==0:
+            #    reward=-1
+
+            self.reward_sensor.update(reward)
+            self.reward_sensor.updates_evaluation(reward, isEnded)
+            # print("ex: ", index, "last state",last_state,
+            #      "new state",state,"with reward:",reward)
+
+            if isEnded:
+                state = self.environment.reset()
+                row, col, passenger, destination = self.decode(state)
+                self.sensor_row.update(row)
+                self.sensor_col.update(col)
+                self.sensor_passenger.update(passenger)
+                self.sensor_destination.update(destination)
+                self.state_sensor.update(state)
+                # self.sensor.update(state)
+            """self.state_sensor.sync()
+            self.sensor_col.sync()
+            self.sensor_row.sync()
+            self.sensor_destination.sync()
+            self.sensor_passenger.sync()
+            self.reward_sensor.sync()"""
+        except Exception as e:
+            print(e)
+            return
+
+
 
 class BehaviorShell(BehaviourBase):
     """
