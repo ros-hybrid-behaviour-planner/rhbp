@@ -191,7 +191,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         for goal in self._manager.activeGoals:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in goal.wishes:
-                wish_name = wish.get_pddl_effect_name() #TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours will get activation from the goal).
                 behavioursActivatedBySameGoal = [b for b in self._manager.activeBehaviours if any(
@@ -222,7 +222,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         inhibitedByGoals = []
         for goal in self._manager.activeGoals:
             for wish in goal.wishes:
-                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all active behaviours that inhibit this goal.
                 # Such behaviours are either negatively correlated to the goals wish (would prevent us from reaching the goal)
@@ -280,7 +280,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
             if behaviour == ref_behaviour or not behaviour.executable:  # ignore ourselves and non-executable predecessors
                 continue
             for wish in ref_behaviour.wishes:  # this is what we wish from a predecessor
-                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if
@@ -316,7 +316,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
             if behaviour == ref_behaviour or behaviour.executable:  # ignore ourselves and successors that are already executable
                 continue
             for effect in ref_behaviour.correlations:  # this is what can give to a successor
-                effect_name = effect.get_pddl_effect_name() # TODO this has to be reconsidered
+                effect_name = effect.get_pddl_effect_name()
                 effect_indicator = effect.indicator
                 # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
                 behavioursThatShareOurCorrelation = [b for b in self._manager.activeBehaviours if any(
@@ -350,7 +350,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
             if behaviour == ref_behaviour:  # ignore ourselves
                 continue
             for effect in ref_behaviour.correlations:  # this is what we do to sensors
-                effect_name = effect.get_pddl_effect_name()  # TODO this has to be reconsidered
+                effect_name = effect.get_pddl_effect_name()
                 effect_indicator = effect.indicator
                 for wish_indicator in self._matching_wishes_indicators(ref_behaviour=behaviour, effect_name=effect_name):
                     # Make a list of all behaviours that have the same bad influence on other behaviours as we have.
@@ -472,7 +472,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
         for goal in self._manager.activeGoals:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in goal.wishes:
-                wish_name = wish.get_pddl_effect_name() #TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all behaviours that are positively correlated to a wish of a goal (those behaviours
                 # will get activation from the goal).
@@ -506,7 +506,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
         inhibitedByGoals = []
         for goal in self._manager.activeGoals:
             for wish in goal.wishes:
-                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all active behaviours that inhibit this goal.
                 # Such behaviours are either negatively correlated to the goals wish (would prevent us from reaching the
@@ -559,7 +559,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
             if behaviour == ref_behaviour or not behaviour.executable:  # ignore ourselves and non-executable predecessors
                 continue
             for wish in ref_behaviour.wishes:  # this is what we wish from a predecessor
-                wish_name = wish.get_pddl_effect_name()  # TODO this has to be reconsidered
+                wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
                 # Make a list of all behaviours that share my wish (those will also get activated by the same predecessor). TODO could be improved by just counting --> less memory
                 behavioursThatShareThisWish = [b for b in self._manager.activeBehaviours if
@@ -595,7 +595,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
             if behaviour == ref_behaviour or behaviour.executable:  # ignore ourselves and successors that are already executable
                 continue
             for effect in ref_behaviour.correlations:  # this is what can give to a successor
-                effect_name = effect.get_pddl_effect_name() # TODO this has to be reconsidered
+                effect_name = effect.get_pddl_effect_name()
                 effect_indicator = effect.indicator
                 # Make a list of all behaviours that are correlated to the same same sensor in the same way as we are. Those are also predecessors like us an get credit from the same successor.
                 behaviours_with_same_correlation = [b for b in self._manager.activeBehaviours if any(
@@ -629,7 +629,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
             if behaviour == ref_behaviour:  # ignore ourselves
                 continue
             for effect in ref_behaviour.correlations:  # this is what we do to sensors
-                effect_name = effect.get_pddl_effect_name()  # TODO this has to be reconsidered
+                effect_name = effect.get_pddl_effect_name()
                 effect_indicator = effect.indicator
                 for wish_indicator in self._matching_wishes_indicators(ref_behaviour=behaviour, effect_name=effect_name):
                     # Make a list of all behaviours that have the same bad influence on other behaviours as we have.

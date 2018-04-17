@@ -13,6 +13,7 @@ predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
+
 class PDDL(object):
     """
     This class wraps PDDL fragments while building statements. It is used to collect predicates that are used in the statement for easier domain description generation.
@@ -42,20 +43,19 @@ class PDDL(object):
         return not self.statement.strip() and len(self.predicates) == 0 and len(self.predicates) == 0
     
     def __repr__(self):
-        return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement
+        return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + \
+               " statement: " + self.statement
 
 
 def get_pddl_effect_name(sensor_name, activator_name):
     """
-    generate an effect name that uniquely identifies a particular effect on a activator/sensor combination
+    generate an effect name that uniquely identifies a particular effect in PDDL
     :param sensor_name: name of the sensor
     :param activator_name: name of the activator
     :return: str pddl effect name
     """
-    if activator_name:
-        return sensor_name + '_' + activator_name
-    else:
-        return sensor_name
+    return sensor_name
+
 
 def tokenizePDDL(pddlString):
     '''
@@ -79,6 +79,7 @@ def tokenizePDDL(pddlString):
     if obr != 0:
         rospy.logwarn("incorrect PDDL (not matching brackets) passed to tokenizePDDL(): %s", pddlString)
     return tokens
+
 
 def mergeStatePDDL(PDDLone, PDDLtwo):
     '''
@@ -134,6 +135,7 @@ def init_missing_functions(domain_pddl, state_pddl):
 
     return state_pddl
 
+
 def parseStatePDDL(pddl):
     '''
     This function creates a {sensor name <string> : value} dictionary of a state PDDL object.
@@ -171,6 +173,7 @@ def getStatePDDLchanges(oldPDDL, newPDDL):
                 if value != oldState[sensorName]:
                     changes[sensorName] = value - oldState[sensorName]
     return changes
+
 
 def create_valid_pddl_name(str):
     """

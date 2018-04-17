@@ -126,7 +126,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         """
         Test updating an existing fact
         """
-        prefix = self.__message_prefix + '_test_update_empty'
+        prefix = self.__message_prefix + '_test_update_existing'
 
         updated_old = (prefix, 'updated', '1')
 

@@ -9,7 +9,7 @@ from threading import Lock
 
 import rospy
 import re
-from std_msgs.msg import String
+from std_msgs.msg import String, Float64
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
 from utils.misc import FinalInitCaller, LogFileWriter
@@ -455,11 +455,13 @@ class AggregationSensor(Sensor):
     overwriting self._aggregate()
     """
 
-    def __init__(self, name, sensors, func=None, optional=False, initial_value=None):
+    def __init__(self, name, sensors, func=None, publish_aggregate=False, optional=False, initial_value=None):
         """
         :param sensors: list of other sensors to aggregate
         :param func: function that will be used to aggregate the sensor values, sensor values will be passed as a list
-            return should be an aggregated and normalised function value
+        :param publish_aggregate: if set to true the aggregated value will be published on a ROS topic, which name can
+               be retrieved with topic_name property
+        :return should be an aggregated and normalised function value
         """
         super(AggregationSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
         self._sensors = sensors
@@ -467,6 +469,13 @@ class AggregationSensor(Sensor):
             self._func = self._aggregate
         else:
             self._func = func
+
+        self._topic_name = self._name + "/aggregate"
+
+        if publish_aggregate:
+            self.__pub = rospy.Publisher(self._topic_name, Float64, queue_size=10)
+        else:
+            self.__pub = None
 
     def _aggregate(self, sensor_values):
         raise NotImplementedError()
@@ -478,3 +487,10 @@ class AggregationSensor(Sensor):
         self._latestValue = self._func(sensor_values)
 
         self._value = self._latestValue
+
+        if self.__pub:
+            self.__pub.publish(self._value )
+
+    @property
+    def topic_name(self):
+        return self._topic_name

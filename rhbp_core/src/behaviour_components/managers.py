@@ -237,13 +237,13 @@ class Manager(object):
         domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
-        for sensorName, indicator in self.__sensorChanges.iteritems():
+        for sensor_name, indicator in self.__sensorChanges.iteritems():
             changeWasExpected = False
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
                     # the observed change happened because of the running behaviour (at least the behaviour is
                     # correlated to the changed sensor in the correct way)
-                    if item.get_pddl_effect_name() == sensorName and item.indicator * indicator > 0:
+                    if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
                         changeWasExpected = True
                         break
                 if changeWasExpected:

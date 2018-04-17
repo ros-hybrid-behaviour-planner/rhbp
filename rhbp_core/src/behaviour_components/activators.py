@@ -28,10 +28,6 @@ class Activator(object):
     def getPDDLFunctionName(self, sensorName):
         return get_pddl_effect_name(sensorName, self._name)
 
-    @staticmethod
-    def restore_condition_name_from_pddl_function_name(pddl_function_name, sensor_name):
-        return pddl_function_name.replace(sensor_name + '_', "")  # just remove the sensor name
-
     @property
     def minActivation(self):
         return self._minActivation
@@ -69,19 +65,12 @@ class Activator(object):
         """
         raise NotImplementedError()
 
-    def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_sensor_value):
-        """
-        see getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold)
-        :param current_sensor_value: current value of the sensor
-               (in default condition implementations the normalized value)
-        """
-        return self.getSensorPreconditionPDDL(sensorName=sensor_name, satisfaction_threshold=satisfaction_threshold)
-
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         """
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         :param sensorName: name of the considered sensor
         :param satisfaction_threshold: threshold value when the conditions becomes valid(true), this hint is not necessarily used, it depends on the activator function, range [0,1]
+        :param current_sensor_value: current value of the sensor, this is not necessarily used
         """
         raise NotImplementedError()
 
@@ -129,7 +118,7 @@ class BooleanActivator(Activator):
             return 1.0
         return -1.0
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")" if self._desired is True else "(not (" + functionName + "))", predicates=functionName)
 
@@ -209,7 +198,7 @@ class ThresholdActivator(Activator):
         else:
             return float(self.getDirection())
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
 
@@ -258,14 +247,11 @@ class GreedyActivator(Activator):
     def getSensorWish(self, normalizedValue):
         return self.getDirection()
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
-        raise RuntimeError('use get_sensor_precondition_pddl_using_current_value')
-
-    def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_value):
+    def getSensorPreconditionPDDL(self, sensor_name, satisfaction_threshold, current_value):
         function_name = self.getPDDLFunctionName(sensor_name)
         next_threshold = current_value + self.__step_size * self.getDirection()
         operator = '>=' if self.getDirection() > 0 else '<='
-        statement = '( {0} ({1}) {2:f})'.format(operator,function_name,next_threshold)
+        statement = '( {0} ({1}) {2:f})'.format(operator, function_name, next_threshold)
         return PDDL(statement=statement, functions=function_name)
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
@@ -329,7 +315,7 @@ class LinearActivator(Activator):
 
         return self._zeroActivationValue + (self.valueRange * satisfaction_threshold)
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         functionName = self.getPDDLFunctionName(sensorName)
         satisfaction_bound = self._calculate_satisfaction_bound(satisfaction_threshold)
         return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
@@ -396,7 +382,7 @@ class EqualActivator(Activator):
         else:
             return 1.0
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="( = (" + functionName + ") {0} )".format(self._desired),  functions=functionName)
 
@@ -438,7 +424,7 @@ class StringActivator(EqualActivator):
         value = str(normalizedValue)
         return super(StringActivator, self).getSensorWish(normalizedValue=value)
 
-    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
+    def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold, current_sensor_value):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")", predicates=functionName)
 

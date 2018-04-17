@@ -4,7 +4,6 @@ Created on 22.08.2017
 @author: hrabia
 '''
 from __future__ import division # force floating point division when using plain /
-import rospy
 from .pddl import PDDL, get_pddl_effect_name
 from rhbp_core.msg import Wish as WishMsg
 from rhbp_core.msg import Correlation as CorrelationMsg
@@ -101,8 +100,8 @@ class Wish(object):
         :return: WishMsg()
         """
         msg = WishMsg()
-        msg.indicator=self.indicator
-        msg.sensorName=self.sensor_name
+        msg.indicator = self.indicator
+        msg.sensorName = self.sensor_name
         msg.activatorName = self.activator_name
         return msg
 
