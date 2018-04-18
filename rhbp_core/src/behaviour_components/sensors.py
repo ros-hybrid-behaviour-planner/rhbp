@@ -494,3 +494,7 @@ class AggregationSensor(Sensor):
     @property
     def topic_name(self):
         return self._topic_name
+
+    @property
+    def sensors(self):
+        return self._sensors

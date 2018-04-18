@@ -1,13 +1,8 @@
 #! /usr/bin/env python2
 
-import sys
-
 import unittest
 
-import rostest
 from knowledge_base.inverted_tuple_space import InvertedTupleSpace
-
-PKG = 'knowledge_base'
 
 
 class InvertedTupleSpaceTestSuite(unittest.TestCase):
@@ -78,4 +73,4 @@ class InvertedTupleSpaceTestSuite(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun(PKG, 'inverted_tuple_space_test', InvertedTupleSpaceTestSuite)
+    unittest.main()

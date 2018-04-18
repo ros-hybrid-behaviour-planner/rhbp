@@ -4,8 +4,6 @@ import unittest
 import rostest
 from knowledge_base.knowledge_base_manager import KnowledgeBase
 
-PKG = 'knowledge_base'
-
 
 class KnowledgeBaseManagerTopicNameGenerationTestSuite(unittest.TestCase):
     """
@@ -54,5 +52,4 @@ class KnowledgeBaseManagerTopicNameGenerationTestSuite(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun(PKG, 'knowledge_base_manager_topic_name_generation_test',
-                   KnowledgeBaseManagerTopicNameGenerationTestSuite)
+    unittest.main()
