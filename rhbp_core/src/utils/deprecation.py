@@ -26,7 +26,7 @@ class DeprecatedClass(type):
         """Called when you call MyNewClass() """
         obj = type.__call__(cls, *args, **kwargs)
 
-        msg = "Call to deprecated class {}. {}".format(cls.__name__, traceback.format_exc())
+        msg = "Call to deprecated class {}. {}".format(cls.__name__, traceback.format_stack())
 
         rhbplog.logwarn(msg)
 
@@ -57,7 +57,7 @@ def deprecated(func):
     """
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-        msg = "Call to deprecated function {}. {}".format(func.__name__,traceback.format_exc())
+        msg = "Call to deprecated function {}. {}".format(func.__name__, traceback.format_stack())
         rhbplog.logwarn(msg)
 
         warnings.warn_explicit(
