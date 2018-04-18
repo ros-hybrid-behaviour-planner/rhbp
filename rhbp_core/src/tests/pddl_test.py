@@ -6,6 +6,7 @@ import unittest
 
 from behaviour_components.pddl import create_valid_pddl_name, PDDL
 
+
 class PDDLTestSuite(unittest.TestCase):
     """Testing pddl"""
 

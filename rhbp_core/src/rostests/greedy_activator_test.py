@@ -27,6 +27,7 @@ PKG = 'rhbp_core'
 System test for the GreedyActivator
 """
 
+
 class TestGreedyActivator(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestGreedyActivator, self).__init__(*args, **kwargs)

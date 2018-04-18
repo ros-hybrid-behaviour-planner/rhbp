@@ -4,7 +4,8 @@
 
 import unittest
 
-from behaviour_components.planner import MetricFF,MetricFFSearchMode
+from behaviour_components.planner import MetricFF, MetricFFSearchMode
+
 
 class PlannerTestSuite(unittest.TestCase):
     """Testing the planner class"""
@@ -77,6 +78,7 @@ class PlannerTestSuite(unittest.TestCase):
 
         self.assertEquals(6,plan['cost'])
         self.assertTrue(plan['actions'])
+
 
 if __name__ == '__main__':
     unittest.main()

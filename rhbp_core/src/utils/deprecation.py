@@ -2,6 +2,7 @@
 import warnings
 import functools
 import inspect
+import traceback
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager()
@@ -25,10 +26,11 @@ class DeprecatedClass(type):
         """Called when you call MyNewClass() """
         obj = type.__call__(cls, *args, **kwargs)
 
-        rhbplog.logwarn("Call to deprecated class {}.".format(cls.__name__))
+        msg = "Call to deprecated class {}. {}".format(cls.__name__, traceback.format_exc())
 
-        warnings.warn_explicit(
-            "Call to deprecated class {}.".format(cls.__name__),
+        rhbplog.logwarn(msg)
+
+        warnings.warn_explicit(msg,
             category=DeprecationWarning,
             filename=inspect.getfile(cls.__class__),
             lineno=int(inspect.getsourcelines(cls.__class__)[1])
@@ -55,10 +57,11 @@ def deprecated(func):
     """
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-        rhbplog.logwarn("Call to deprecated function {}.".format(func.__name__))
+        msg = "Call to deprecated function {}. {}".format(func.__name__,traceback.format_exc())
+        rhbplog.logwarn(msg)
 
         warnings.warn_explicit(
-            "Call to deprecated function {}.".format(func.__name__),
+            msg,
             category=DeprecationWarning,
             filename=func.func_code.co_filename,
             lineno=func.func_code.co_firstlineno + 1
