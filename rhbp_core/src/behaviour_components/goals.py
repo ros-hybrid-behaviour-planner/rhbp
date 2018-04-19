@@ -23,7 +23,7 @@ from behaviour_components.conditions import Condition
 from .conditions import Conditonal
 from .condition_elements import Wish
 from .pddl import PDDL, mergeStatePDDL
-from .sensors import SimpleTopicSensor
+from .sensors import TopicSensor
 from utils.misc import FinalInitCaller
 from utils.deprecation import deprecated
 
@@ -601,8 +601,8 @@ class PublisherGoal(GoalBase):
         if not self.__condition:
             condition_name = self._name + "_condition"
             sensor_name = self._name + "_sensor"
-            sensor = SimpleTopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
-                                       initial_value=self._activated)
+            sensor = TopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
+                                 initial_value=self._activated)
             activator = BooleanActivator(desiredValue=True)
             self.__condition = Condition(name=condition_name, sensor=sensor, activator=activator)
         return self.__condition

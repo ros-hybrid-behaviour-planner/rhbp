@@ -1,30 +1,25 @@
 #! /usr/bin/env python2
-'''
+"""
 Tests condition elements
 
 Created on 23.08.2017
 
 @author: hrabia
-'''
-from __future__ import division # force floating point division when using plain /
+"""
 
-import time
+from __future__ import division  # force floating point division when using plain /
+
 import unittest
 
 import rospy
 import rostest
 
-from std_msgs.msg import Bool
-
 from behaviour_components.activators import LinearActivator
 from behaviour_components.conditions import Condition, MultiSensorCondition
-from behaviour_components.goals import OfflineGoal, GoalBase
 from behaviour_components.managers import Manager
-from behaviour_components.sensors import SimpleTopicSensor, Sensor
+from behaviour_components.sensors import Sensor
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.condition_elements import Effect
-
-from tests.common import SetTrueBehavior
 
 PKG = 'rhbp_core'
 

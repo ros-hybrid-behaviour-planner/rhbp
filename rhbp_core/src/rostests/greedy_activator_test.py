@@ -16,7 +16,7 @@ from behaviour_components.activators import GreedyActivator
 from behaviour_components.conditions import Condition
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
-from behaviour_components.sensors import SimpleTopicSensor
+from behaviour_components.sensors import TopicSensor
 from std_msgs.msg import Int32
 
 from tests.common import IncreaserBehavior
@@ -44,8 +44,8 @@ class TestGreedyActivator(unittest.TestCase):
 
         topic_name = 'IncreaseTopicTest/Topic'
 
-        sensor = SimpleTopicSensor(topic=topic_name, name='IncreaseTopicTestSensor', message_type=Int32,
-                                   initial_value=0)
+        sensor = TopicSensor(topic=topic_name, name='IncreaseTopicTestSensor', message_type=Int32,
+                             initial_value=0)
         activator = GreedyActivator()
         condition = Condition(sensor=sensor, activator=activator)
 
