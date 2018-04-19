@@ -3,6 +3,7 @@ import time
 import numpy
 
 from behaviour_components.behaviours import BehaviourBase
+from behaviour_components.conditions import Condition
 from behaviour_components.sensors import Sensor
 
 
@@ -185,6 +186,63 @@ class BehaviorShell(BehaviourBase):
     def unregister(self, terminate_services=True):
         super(BehaviorShell, self).unregister(terminate_services=terminate_services)
 
+class LocationCondition(Condition):
+    '''
+    This is the basic Condition class it brings together the sensor and the activation function and takes care
+    of the processing and caching of calculated data
+    '''
+    _instanceCounter = 0 # static _instanceCounter to get distinguishable names
+
+    def __init__(self, sensor, activator, sensors,is_pick_up,name = None, optional = False):
+        super(LocationCondition, self).__init__( sensor, activator, name, optional )
+        self.sensor_row = sensors[0]
+        self.sensor_col = sensors[1]
+        self.sensor_passenger = sensors[2]
+        self.sensor_destination = sensors[3]
+        self.state_sensor = sensors[4]
+        self.is_pick_up=is_pick_up
+
+    def sync(self):
+        self.sensor.sync()
+        self.sensor_row.sync()
+        self.sensor_col.sync()
+        self.sensor_passenger.sync()
+        self.sensor_destination.sync()
+        self.state_sensor.sync()
+
+    def updateComputation(self):
+        '''
+        This method needs to be executed at first on every decision cycle before accessing all other values/results/methods
+        '''
+        if self.sensor_passenger._value is None:
+            self._satisfaction = 0.0
+            return
+        if self.sensor_col._value is None:
+            self._satisfaction = 0.0
+            return
+        if self.sensor_destination._value is None:
+            self._satisfaction = 0.0
+            return
+        if self.sensor_row._value is None:
+            self._satisfaction = 0.0
+            return
+        #print(self.sensor_row._value,self.sensor_col._value ,self.sensor_passenger._value,self.sensor_destination._value)
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        if self.is_pick_up:
+
+            location = self.sensor_passenger.value
+            if location == 4:
+                self._satisfaction = 0.0
+                return
+
+        else:
+            location = self.sensor_destination.value
+        dest = locs[location]
+        if self.sensor_row.value == dest[0] and self.sensor_col.value == dest[1]:
+            #print("Valid")
+            self._satisfaction = 1.0
+        else:
+            self._satisfaction = 0.0
 
 class RewardSensor(Sensor):
     """

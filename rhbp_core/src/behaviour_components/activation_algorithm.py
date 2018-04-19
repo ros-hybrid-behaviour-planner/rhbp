@@ -806,7 +806,30 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         self.fetchActivation(input_state_msg)
 
+    def send_negative_reward(self,index):
+        input_state_msg = InputState()
+        input_state = self.input_transformer.transform_input_values()
+        num_outputs = len(self._manager.behaviours)
+        num_inputs = input_state.shape[0]
 
+        input_state_msg.input_state = input_state
+        input_state_msg.num_outputs = num_outputs
+        input_state_msg.num_inputs = num_inputs
+        input_state_msg.reward = self.min_activation
+        input_state_msg.last_action = index
+
+        try:
+            rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
+            rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
+        try:
+            getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
+            activation_result = getActivationRequest(input_state_msg)
+        except rospy.ServiceException as e:
+            rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
+            print(e.message)
     def fetchActivation(self, msg):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
@@ -965,5 +988,6 @@ w
                 #print(index,self.min_activation)
                 self.activation_rl[index] = self.min_activation
                 # TODO sent new reward to rl component
+                self.send_negative_reward(index)
 
 ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)

@@ -26,6 +26,8 @@ from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lak
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_frozen_lake_manager import FrozenLakeAgentManager
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi import TaxiAgent
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_Manager import TaxiAgentManager
+from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_all_cond_rhbp_Manager import \
+    TaxiAgentManagerAllRHBP
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_rhbp_Manager import TaxiAgentManagerRHBP
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_with_rhbp import TaxiAgentRhbp
 from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_taxi_with_rhbp_undecoded import \
@@ -86,6 +88,10 @@ if __name__ == '__main__':
         elif sim == 6:
             print("start envionment taxi with rhbp manager")
             rhbp_agent = TaxiAgentManagerRHBP()
+            rhbp_agent.set_manager()
+        elif sim == 7:
+            print("start envionment taxi with rhbp all cond manager")
+            rhbp_agent = TaxiAgentManagerAllRHBP()
             rhbp_agent.set_manager()
         #rhbp_agent = TaxiAgent()
 

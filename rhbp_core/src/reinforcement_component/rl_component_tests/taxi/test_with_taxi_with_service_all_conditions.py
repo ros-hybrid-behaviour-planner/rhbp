@@ -32,7 +32,7 @@ class TaxiTestSuite():
         self.resulting_state=numpy.array([[]])
         self.rewards = 0
         self.cycles = 0
-        numpy.random.seed(5)
+        numpy.random.seed(0)
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
@@ -143,6 +143,7 @@ class TaxiTestSuite():
         # choose randomly best action
         self.epsilon = 1. / ((i / 50) + 10)
         random_value = numpy.random.rand(1)
+        #
         #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
         if random_value < self.epsilon:
             best_action=numpy.random.randint(self.num_outputs)

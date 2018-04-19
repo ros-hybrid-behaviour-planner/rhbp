@@ -65,7 +65,7 @@ class TaxiTestSuite():
         out.append(i)  # destination
         assert 0 <= i < 5
         return reversed(out)
-
+    """
     def is_action_valid(self,s,a):
         locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
         row,col,passenger,dest=self.decode(s)
@@ -80,6 +80,25 @@ class TaxiTestSuite():
                 return False
             if locs[dest][0] == row and locs[dest][1] == col:
                 return True
+            return False
+        return True
+    """
+    def is_action_valid(self,s,a):
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        row,col,passenger,dest=self.decode(s)
+        if a==4:
+            #if passenger ==4:
+            #    return False
+            for i in range(4):
+                if locs[i][0] == row and locs[i][1] == col:
+                    return True
+            return False
+        if a==5:
+            if not passenger==4:
+                return False
+            for i in range(4):
+                if locs[i][0] == row and locs[i][1] == col:
+                    return True
             return False
         return True
 
