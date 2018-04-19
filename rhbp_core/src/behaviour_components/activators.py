@@ -9,16 +9,17 @@ from behaviour_components.pddl import PDDL, get_pddl_effect_name
 
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
 
+
 class Activator(object):
-    '''
+    """
     This is the abstract base class for an activator which reacts to a value according to the activation scheme implemented in it
-    '''
+    """
     _instanceCounter = 0  # static _instanceCounter to get distinguishable names
 
     def __init__(self, minActivation=0, maxActivation=1, name=None):
-        '''
+        """
         Constructor
-        '''
+        """
         self._name = name if name else "Activator{0}".format(Activator._instanceCounter)
         self._minActivation = float(minActivation)
         self._maxActivation = float(maxActivation)
@@ -48,10 +49,10 @@ class Activator(object):
         self._maxActivation = float(maxActivationLevel)
 
     def computeActivation(self, normalizedValue):
-        '''
+        """
         This method should return an activation level.
         The actual implementation obviously depends on the type of activation so that there is no useful default here.
-        '''
+        """
         raise NotImplementedError()
 
     def getDirection(self):
@@ -62,32 +63,32 @@ class Activator(object):
         raise NotImplementedError()
 
     def getSensorWish(self, normalizedValue):
-        '''
+        """
         This method should return an indicator (float in range [-1, 1]) how much and in what direction the value should change in order to reach more activation.
         1 means the value should become true or increase, 0 it should stay the same and -1 it should decrease or become false.
-        '''
+        """
         raise NotImplementedError()
 
     def get_sensor_precondition_pddl_using_current_value(self, sensor_name, satisfaction_threshold, current_sensor_value):
-        '''
+        """
         see getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold)
         :param current_sensor_value: current value of the sensor
                (in default condition implementations the normalized value)
-        '''
+        """
         return self.getSensorPreconditionPDDL(sensorName=sensor_name, satisfaction_threshold=satisfaction_threshold)
 
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
-        '''
+        """
         This method should produce valid PDDL condition expressions suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         :param sensorName: name of the considered sensor
         :param satisfaction_threshold: threshold value when the conditions becomes valid(true), this hint is not necessarily used, it depends on the activator function, range [0,1]
-        '''
+        """
         raise NotImplementedError()
 
     def getSensorStatePDDL(self, sensorName, normalizedValue):
-        '''
+        """
         This method should produce a valid PDDL statement describing the current state (the (normalized) value) of sensor sensorName in a form suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
-        '''
+        """
         raise NotImplementedError()
 
     def __str__(self):
@@ -99,20 +100,20 @@ class Activator(object):
     @property
     def name(self):
         return self._name
-    
+
 
 class BooleanActivator(Activator):
-    '''
+    """
     This class is an activator that compares a boolean value to a desired value
-    '''
-    
-    def __init__(self, desiredValue = True, minActivation = 0, maxActivation = 1, name = None):
-        '''
+    """
+
+    def __init__(self, desiredValue=True, minActivation=0, maxActivation=1, name=None):
+        """
         Constructor
-        '''
+        """
         super(BooleanActivator, self).__init__(minActivation, maxActivation, name)
         self._desired = desiredValue   # this is the threshold Value
-    
+
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, bool)
         return self._maxActivation if normalizedValue == self._desired else self._minActivation
@@ -127,7 +128,7 @@ class BooleanActivator(Activator):
         if self._desired == True:
             return 1.0
         return -1.0
-    
+
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement = "(" + functionName + ")" if self._desired == True else "(not (" + functionName + "))", predicates=functionName)
@@ -135,56 +136,23 @@ class BooleanActivator(Activator):
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")" if normalizedValue == True else "(not (" + functionName + "))", predicates=functionName)
-        
+
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
-    
+
     def __repr__(self):
         return "Boolean Activator"
 
 
-class EqualActivator(BooleanActivator):
-    '''
-    This class is an activator that compares a boolean value to a desired value
-    '''
-
-    def __init__(self, desiredValue=True, minActivation=0, maxActivation=1, name=None):
-        '''
-        Constructor
-        '''
-        super(EqualActivator, self).__init__(desiredValue,minActivation, maxActivation, name)
-        self._desired = desiredValue  # this is the threshold Value
-
-    def computeActivation(self, normalizedValue):
-        #assert isinstance(normalizedValue, bool)
-        return self._maxActivation if normalizedValue == self._desired else self._minActivation
-
-    def getDirection(self):
-        return 1 if self._desired else -1
-
-    def getSensorWish(self, normalizedValue):
-        #assert isinstance(normalizedValue, bool)
-        if normalizedValue == self._desired:
-            return 0.0
-        if self._desired == True:
-            return 1.0
-        return -1.0
-
-    def __str__(self):
-        return "Equal Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
-
-    def __repr__(self):
-        return "Equal Activator"
-
 class ThresholdActivator(Activator):
-    '''
+    """
     This class is an activator that compares a sensor's value (expected to be int or float) to a threshold.
-    '''
-    def __init__(self, thresholdValue, isMinimum = True, valueRange = None, minActivation = 0, maxActivation = 1, name = None):
+    """
+    def __init__(self, thresholdValue, isMinimum=True, valueRange=None, minActivation=0, maxActivation=1, name=None):
         """
-        :param thresholdValue: This is the threshold Value above/below we get full activation depending on isMinimum
-        :param isMinimum: isMinimum=True -> full activation above threshold, isMinimum=False -> full activation below threshold
-                          isMinimum defines the direction in which the threshold must be passed in order to be activated: 
+        :param thresholdValue: This is the threshold Value above/below and equal we get full activation depending on isMinimum
+        :param isMinimum: isMinimum=True -> full activation above and equal to threshold, isMinimum=False -> full activation below and equal to threshold
+                          isMinimum defines the direction in which the threshold must be passed in order to be activated:
         :param valueRange: This is used to assess value deviation (wish calculation). When the range is known it can be estimated how much a given value differs from a satisfactory one (assumed linear relation)
         :param minActivation: see :class:Activator
         :param maxActivation: see :class:Activator
@@ -194,41 +162,41 @@ class ThresholdActivator(Activator):
         self._threshold = float(thresholdValue)
         self._isMinimum = isMinimum
         self._valueRange = valueRange
-        
+
     @property
     def threshold(self):
         return self._threshold
-    
+
     @threshold.setter
     def threshold(self, thresholdValue):
         assert isinstance(thresholdValue, int) or isinstance(thresholdValue, float)
         self._threshold = float(thresholdValue);
-    
+
     @property
     def minimum(self):
         return self._isMinimum
-    
+
     @minimum.setter
     def minimum(self, mini):
         assert isinstance(mini, bool)
         self._isMinimum = mini
-    
+
     @property
     def valueRange(self):
         return self._valueRange
-    
+
     @valueRange.setter
     def valueRange(self, valueRange):
         assert isinstance(valueRange, int) or isinstance(valueRange, float)
         self._valueRange = valueRange
-    
+
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
         if self._isMinimum:
             return self._maxActivation if normalizedValue >= self._threshold else self._minActivation
         else:
             return self._maxActivation if normalizedValue <= self._threshold else self._minActivation
-    
+
     def getDirection(self):
         return 1 if self._isMinimum else -1
 
@@ -244,14 +212,14 @@ class ThresholdActivator(Activator):
     def getSensorPreconditionPDDL(self, sensorName, satisfaction_threshold):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement = "( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
-    
+
     def getSensorStatePDDL(self, sensorName, normalizedValue):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
-    
+
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
-    
+
     def __repr__(self):
         return "Threshold Activator"
 
@@ -312,17 +280,17 @@ class GreedyActivator(Activator):
 
 
 class LinearActivator(Activator):
-    '''
+    """
     This class is an activator that takes a value (expected to be int or float) and computes a linear slope of activation within a value range.
-    '''
-    def __init__(self, zeroActivationValue, fullActivationValue, minActivation = 0, maxActivation = 1, name = None):
-        '''
+    """
+    def __init__(self, zeroActivationValue, fullActivationValue, minActivation=0, maxActivation=1, name=None):
+        """
         Constructor
-        '''
+        """
         super(LinearActivator, self).__init__(minActivation, maxActivation, name)
         self._zeroActivationValue = float(zeroActivationValue) # Activation raises linearly between this value and _fullActivationValue (it remains 0 until here))
         self._fullActivationValue = float(fullActivationValue) # This value (and other values further away from _threshold in this direction) means total activation
-    
+
     def computeActivation(self, normalizedValue):
         assert isinstance(normalizedValue, int) or isinstance(normalizedValue, float)
         value_range = self.valueRange
@@ -331,9 +299,8 @@ class LinearActivator(Activator):
         raw_activation = (normalizedValue - self._zeroActivationValue) / value_range
 
         activation = raw_activation * self.activationRange + self._minActivation
-        #print(self.name,activation,self._zeroActivationValue,self._fullActivationValue,self.maxActivation)
         return sorted((self._minActivation, activation, self._maxActivation))[1] # clamp to activation range
-    
+
     def getDirection(self):
         return 1 if self._fullActivationValue > self._zeroActivationValue else -1
 
@@ -352,11 +319,11 @@ class LinearActivator(Activator):
         return wish_value
 
     def _calculate_satisfaction_bound(self, satisfaction_threshold):
-        '''
+        """
         Calculates the activator specific activation threshold
         :param behaviour satisfaction_threshold, range [0,1]
         :return: a satisfaction bound in relation to the activator bounds
-        '''
+        """
         if satisfaction_threshold < 0 or satisfaction_threshold > 1:
             raise ValueError("satisfaction_threshold is " + str(satisfaction_threshold) + " and not in [0,1]")
 
@@ -374,44 +341,45 @@ class LinearActivator(Activator):
     @property
     def valueRange(self):
         return self._fullActivationValue - self._zeroActivationValue
-    
+
     @property
     def activationRange(self):
         return self._maxActivation - self._minActivation
-    
+
     @property
     def zeroActivationValue(self):
         return self._zeroActivationValue
-    
+
     @zeroActivationValue.setter
     def zeroActivationValue(self, value):
         assert isinstance(value, int) or isinstance(value, float)
         self._zeroActivationValue = float(value);
-    
+
     @property
     def fullActivationValue(self):
         return self._fullActivationValue
-    
+
     @fullActivationValue.setter
     def fullActivationValue(self, value):
         assert isinstance(value, int) or isinstance(value, float)
         self._fullActivationValue = float(value);
-    
+
     def __str__(self):
         return "Linear Activator [{0} - {1}] ({2} - {3})".format(self._minActivation, self._maxActivation, self._zeroActivationValue, self._fullActivationValue)
-    
+
     def __repr__(self):
         return "Linear Activator"
 
+
 class StringActivator(BooleanActivator):
-    '''
+    """
     This class is an activator that compares a String to a desired value
-    '''
+    """
 
     def __init__(self, desiredValue, minActivation=0, maxActivation=1, name=None):
-        '''
+        """
         Constructor
-        '''
+        """
         super(StringActivator, self).__init__(desiredValue=desiredValue, minActivation=minActivation, maxActivation=maxActivation, name=name)
 
     def computeActivation(self, normalizedValue):
@@ -435,4 +403,3 @@ class StringActivator(BooleanActivator):
 
     def __repr__(self):
         return "String Activator"
-
