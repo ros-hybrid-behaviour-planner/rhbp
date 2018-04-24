@@ -38,7 +38,9 @@ class Sensor(object):
         self._name = create_valid_pddl_name(self._name)
         self._optional = optional
         self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._value_update_time = rospy.Time.now()
         self._latestValue = initial_value
+        self._latest_value_update_time = self._value_update_time
         self._initial_value = initial_value
 
         Sensor._instanceCounter += 1
@@ -49,6 +51,7 @@ class Sensor(object):
         returns the just stored value
         """
         self._value = self._latestValue
+        self._value_update_time = self._latest_value_update_time
         return self._value
 
     def update(self, newValue):
@@ -58,10 +61,19 @@ class Sensor(object):
         :return:
         """
         self._latestValue = newValue
+        self._latest_value_update_time = rospy.Time.now()
 
     @property
     def value(self):
         return self._value
+
+    @property
+    def value_update_time(self):
+        """
+        Time stamp when the current value was fetched
+        :return: ROS time stamp
+        """
+        return self._value_update_time
 
     @property
     def latestValue(self):
@@ -141,7 +153,7 @@ class RawTopicSensor(Sensor):
 
     def subscription_callback(self, msg):
         self.update(msg)
-        if (self.__print_updates):
+        if self.__print_updates:
             rhbplog.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
                            type(self._latestValue))
         if self._iShouldCreateLog:
@@ -256,7 +268,7 @@ class DynamicSensor(Sensor):
         :param initial_value: value, which will be used if no topic exists
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
-        :param sensor_name: see name parameter of constructor from class Sensor
+        :param name: see name parameter of constructor from class Sensor
         :param expiration_time_values_of_active_topics: time in seconds,
                                                         after a value of a still existing topic is outdated
         :param expiration_time_values_of_removed_topics: time in seconds, after a value of a removed topic is outdated
@@ -484,12 +496,14 @@ class AggregationSensor(Sensor):
 
         sensor_values = [sensor.sync() for sensor in self._sensors]
 
-        self._latestValue = self._func(sensor_values)
+        self.update(newValue=self._func(sensor_values))
 
-        self._value = self._latestValue
+        res = super(AggregationSensor, self).sync()
 
         if self.__pub:
-            self.__pub.publish(self._value )
+            self.__pub.publish(self._value)
+
+        return res
 
     @property
     def topic_name(self):

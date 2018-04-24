@@ -3,7 +3,7 @@ Created on 13.04.2015
 
 @author: wypler,hrabia
 ''' 
-from __future__ import division # force floating point division when using plain /
+from __future__ import division  # force floating point division when using plain /
 import traceback
 import rospy
 import operator
@@ -175,7 +175,7 @@ class Behaviour(object):
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'start' of behaviour '%s': %s", self._name, traceback.format_exc())
 
-    def stop(self, reset_activation = True):
+    def stop(self, reset_activation=True):
         '''
         This method calls the stop service of the actual behaviour.
         It is expected that this service does not block.
@@ -617,12 +617,12 @@ class BehaviourBase(object):
             else:
                 state = PDDL()
 
-            return GetPDDLResponse(**{"actionStatement" : actions.statement,
-                                      "actionPredicates" : list(actions.predicates),
-                                      "actionFunctions" : list(actions.functions),
-                                      "stateStatement" : state.statement,
-                                      "statePredicates" : list(state.predicates),
-                                      "stateFunctions" : list(state.functions)
+            return GetPDDLResponse(**{"actionStatement": actions.statement,
+                                      "actionPredicates": list(actions.predicates),
+                                      "actionFunctions": list(actions.functions),
+                                      "stateStatement": state.statement,
+                                      "statePredicates": list(state.predicates),
+                                      "stateFunctions": list(state.functions)
                                      })
         except Exception:
             rhbplog.logerr("ROS service callback exception in '_pddl_callback' of behaviour '%s': %s", self._name,
@@ -679,7 +679,6 @@ class BehaviourBase(object):
         else:
             rhbplog.logerr("Passed wrong object, requires Conditional")
 
-
     def add_effect(self, effect):
         '''
         This method adds an effect/correlation to the behaviour.
@@ -692,7 +691,6 @@ class BehaviourBase(object):
         else:
             rhbplog.logwarn("Passed wrong object, requires Effect")
 
-
     def set_activated(self, activated):
         """
         Set behaviour to activated or deactivated
@@ -703,7 +701,7 @@ class BehaviourBase(object):
         :return:
         """
         self._activated = activated
-        if self._activated == False:
+        if self._activated is False and self._isExecuting:
             self.stop()
             self._isExecuting = False
     

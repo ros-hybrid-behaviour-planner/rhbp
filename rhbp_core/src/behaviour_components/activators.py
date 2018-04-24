@@ -74,7 +74,7 @@ class Activator(object):
         """
         raise NotImplementedError()
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         """
         This method should produce a valid PDDL statement describing the current state (the (normalized) value) of sensor sensorName in a form suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
         """
@@ -122,9 +122,10 @@ class BooleanActivator(Activator):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")" if self._desired is True else "(not (" + functionName + "))", predicates=functionName)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="(" + functionName + ")" if normalizedValue is True else "(not (" + functionName + "))", predicates=functionName)
+        return PDDL(statement="(" + functionName + ")" if normalizedValue is True else "(not (" + functionName + "))",
+                    predicates=functionName, time_stamp=sensor_update_time)
 
     def __str__(self):
         return "Boolean Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -202,9 +203,10 @@ class ThresholdActivator(Activator):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(self._threshold) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(self._threshold), functions = functionName)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
+        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName,
+                    time_stamp=sensor_update_time)
 
     def __str__(self):
         return "Threshold Activator [{0} - {1}] ({2} or {3})".format(self._minActivation, self._maxActivation, self._threshold, "above" if self._isMinimum else "below")
@@ -254,9 +256,10 @@ class GreedyActivator(Activator):
         statement = '( {0} ({1}) {2:f})'.format(operator, function_name, next_threshold)
         return PDDL(statement=statement, functions=function_name)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         function_name = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="( = (" + function_name + ") {0:f} )".format(normalizedValue), functions=function_name)
+        return PDDL(statement="( = (" + function_name + ") {0:f} )".format(normalizedValue), functions=function_name,
+                    time_stamp=sensor_update_time)
 
     def __str__(self):
         return "Greedy Activator{0}".format("+" if self.__maximize else "-")
@@ -320,9 +323,10 @@ class LinearActivator(Activator):
         satisfaction_bound = self._calculate_satisfaction_bound(satisfaction_threshold)
         return PDDL(statement="( >= (" + functionName + ") {0:f} )".format(satisfaction_bound) if self.getDirection() == 1 else "( <= (" + functionName + ") {0:f} )".format(satisfaction_bound), functions = functionName)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName)
+        return PDDL(statement="( = (" + functionName + ") {0:f} )".format(normalizedValue), functions=functionName,
+                    time_stamp=sensor_update_time)
 
     @property
     def valueRange(self):
@@ -386,9 +390,10 @@ class EqualActivator(Activator):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="( = (" + functionName + ") {0} )".format(self._desired),  functions=functionName)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         functionName = self.getPDDLFunctionName(sensorName)
-        return PDDL(statement="( = (" + functionName + ") {0} )".format(normalizedValue), functions=functionName)
+        return PDDL(statement="( = (" + functionName + ") {0} )".format(normalizedValue), functions=functionName,
+                    time_stamp=sensor_update_time)
 
     def __str__(self):
         return "Equal Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
@@ -428,10 +433,10 @@ class StringActivator(EqualActivator):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")", predicates=functionName)
 
-    def getSensorStatePDDL(self, sensorName, normalizedValue):
+    def getSensorStatePDDL(self, sensorName, normalizedValue, sensor_update_time):
         functionName = self.getPDDLFunctionName(sensorName)
         return PDDL(statement="(" + functionName + ")" if normalizedValue == self._desired else "(not (" + functionName
-                                                                                        + "))", predicates=functionName)
+                    + "))", predicates=functionName, time_stamp=sensor_update_time)
 
     def __str__(self):
         return "String Activator [{0} - {1}] ({2})".format(self._minActivation, self._maxActivation, self._desired)
