@@ -87,6 +87,7 @@ class Effect(object):
     def __str__(self):
         return "Effect(s:{},i:{},s_t:{},a:{},c:{})".format(str(self.sensor_name), str(self.indicator), self.sensor_type, str(self.activator_name), self.condition)
 
+
 class Wish(object):
 
     def __init__(self, sensor_name, indicator, activator_name=''):
