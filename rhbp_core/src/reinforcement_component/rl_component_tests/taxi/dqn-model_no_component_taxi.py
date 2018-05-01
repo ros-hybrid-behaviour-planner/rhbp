@@ -8,7 +8,7 @@ import tensorflow as tf
 
 from tensorflow.contrib import slim
 
-env = gym.make('CartPole-v0')
+env = gym.make('Taxi-v2')
 
 
 # class for revisiting experiences
@@ -57,14 +57,17 @@ class Q_Network():
     def __init__(self):
 
         # defining_parameters
-        number_outputs = 2
+        number_outputs = 6
+        number_inputs = 500
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
-        self.inputs = tf.placeholder(shape=[None, 4], dtype=tf.float32)
+        self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
+        #self.inputs = tf.cast(self.inputs,tf.float32)
         self.Temp = tf.placeholder(shape=None, dtype=tf.float32)
         self.keep_per = tf.placeholder(shape=None, dtype=tf.float32)
 
         # the layers that define the nn
+        #one_hot_inputs = tf.one_hot(self.inputs,number_inputs,dtype=tf.float32)
         hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
         # drop tensors out and scales others by probability of self.keep_per
         hidden = slim.dropout(hidden, self.keep_per)
@@ -79,15 +82,37 @@ class Q_Network():
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
         self.actions_onehot = tf.one_hot(self.actions, number_outputs, dtype=tf.float32)
 
-        self.Q = tf.reduce_sum(tf.mul(self.Q_out, self.actions_onehot), reduction_indices=1)
-
+        self.Q = tf.reduce_sum(tf.multiply(self.Q_out, self.actions_onehot), reduction_indices=1)
+        #tf.mul
         self.nextQ = tf.placeholder(shape=[None], dtype=tf.float32)
         loss = tf.reduce_sum(tf.square(self.nextQ - self.Q))
         # updating the weights of the model to minimize the loss function
         trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
         self.updateModel = trainer.minimize(loss)
 
+def one_hot(s,size):
+    return np.identity(size)[s:s + 1][0].tolist()
 
+def decode(i):
+    out = []
+    out.append(i % 4)  # row
+    i = i // 4
+    out.append(i % 5)  # col
+    i = i // 5
+    out.append(i % 5)  # passloc
+    i = i // 5
+    out.append(i)  # destination
+    assert 0 <= i < 5
+    return reversed(out)
+
+def get_array(s):
+    return one_hot(s,500)
+    row, col, passenger, dest = decode(s)
+    array = one_hot(row,5)
+    array.extend(one_hot(col,5))
+    array.extend(one_hot(passenger,5))
+    array.extend(one_hot(dest,4))
+    return array
 # Train the model
 
 # Set learning parameters
@@ -107,7 +132,7 @@ tf.reset_default_graph()
 q_net = Q_Network()
 target_net = Q_Network()
 
-init = tf.initialize_all_variables()
+init = tf.global_variables_initializer()
 #returns all variables created with trainable=True
 trainables = tf.trainable_variables()
 # create target operations
@@ -132,6 +157,16 @@ with tf.Session() as sess:
     for i in range(num_episodes):
         # reset environment in beginning of each step
         s = env.reset()
+        #print(get_array(s))
+        #s = [s,0]
+        #s = s
+        #s=tf.one_hot(s,500,dtype=tf.int32)
+        #s = get_array(s)
+        #print(s)
+        s = get_array(s)
+        #s = get_array(s)
+        #print("s",sess.run(s))
+        #print(s)
         rAll = 0
         d = False
         j = 0
@@ -168,7 +203,9 @@ with tf.Session() as sess:
 
             # Get new state and reward from environment
             s1, r, d, _ = env.step(a)
-
+            s1 = get_array(s1)
+            #s1 = tf.one_hot(s1,500,dtype=tf.int32)
+            #s1 = s1
             # add train_tuple into buffer
             myBuffer.add(np.reshape(np.array([s, a, r, s1, d]), [1, 5]))
 
@@ -183,12 +220,14 @@ with tf.Session() as sess:
                 trainBatch = myBuffer.sample(batch_size)
                 # feed resulting state and keep prob of 1 to predict action
                 Q1 = sess.run(q_net.predict, feed_dict={q_net.inputs: np.vstack(trainBatch[:, 3]), q_net.keep_per: 1.0})
+
                 # get q-values of target network with the resulting state
                 Q2 = sess.run(target_net.Q_out,
                               feed_dict={target_net.inputs: np.vstack(trainBatch[:, 3]), target_net.keep_per: 1.0})
                 # multiplier to add if the episode ended
                 end_multiplier = -(trainBatch[:, 4] - 1)
                 # target-q-values of batch for choosing prediction of q-network
+                #print(Q1,Q2)
                 doubleQ = Q2[range(batch_size), Q1]
                 # target q value calculation according to q-learning
                 targetQ = trainBatch[:, 2] + (y * doubleQ * end_multiplier)
