@@ -7,11 +7,14 @@ from rhbp_core.msg import SensorValue
 class SensorValueTransformer:
 
     def __init__(self):
-        #self.manager = manager
-        #print("init transformer")
         self.conditions={}
 
     def get_value_of_condition(self,cond):
+        """
+        gets the sensor values of a given condition 
+        :param cond: the condition
+        :return: SensorValue: a object containing necessary parameter from the sensor
+        """
         value = None
         #print("get_value")
         try:
@@ -54,7 +57,12 @@ class SensorValueTransformer:
         return None
 
     def get_values_of_list(self,full_list):
-        # gets all values in list. the list can contain multiple lists
+        """
+        gets all values in list. the list can contain multiple lists
+        :param full_list: 
+        :return: 
+        """
+
         new_list = []
         for ele in full_list:
             if isinstance(ele, (list,)):
@@ -64,6 +72,11 @@ class SensorValueTransformer:
         return new_list
 
     def get_sensor_values(self,conditions):
+        """
+        gets the sensor values of a list containing multiple conditions
+        :param conditions: list of conditions
+        :return: list of sensorvalues
+        """
         list_of_sensor_values = []
         #print("sensor", self.name,len(self.get_preconditions()  ))
         for p in conditions:
@@ -85,10 +98,10 @@ class InputStateTransformer:
 
     def calculate_reward(self):
         """
-                this function calculates regarding the fulfillment and priorities of the active goals
-                a reward value. 
-                :return: 
-                """
+        this function calculates regarding the fulfillment and priorities of the active goals
+        a reward value. 
+        :return: 
+        """
         # TODO think about better logic maybe
         # todo use wishes instead of fulfillment
         reward_value = 0
@@ -101,6 +114,11 @@ class InputStateTransformer:
         return reward_value
 
     def behaviour_to_index(self,name):
+        """
+        gives for a given name of a behavior name the index in the behavior list
+        :param name: 
+        :return: 
+        """
         num = 0
         for b in self._manager.behaviours:
             if b == name:
@@ -109,6 +127,12 @@ class InputStateTransformer:
         return None
 
     def make_hot_state_encoding(self,state,num_state_space):
+        """
+        encodes the variables into a hot state format.
+        :param state: 
+        :param num_state_space: 
+        :return: 
+        """
         state = int(state)
         #print(state,num_state_space)
         array = numpy.identity(num_state_space)[state:state + 1]
@@ -119,19 +143,15 @@ class InputStateTransformer:
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
         """
-        # TODO transform like strings or similar to other values . e.g. hot-state-encoding (give sensor choice of encoding)
         # init input array with first row of zeros
         input_array = numpy.zeros([1,1])
         # extend array with input vector from wishes
         for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in behaviour.wishes:
-                r=3#TODO include later again
+                continue #TODO remove later
                 #wish_row = numpy.array([wish.indicator]).reshape([1,1])
                 #input_array = numpy.concatenate([input_array,wish_row])
-        # extend array with input vector from sensors
-        # save which sensor were already included
-        #TODO behavior get input called twice. getstatus
         sensor_input = {}
         for behaviour in self._manager.behaviours:
             # TODO include here wishes
@@ -150,27 +170,16 @@ class InputStateTransformer:
                     input_array = numpy.concatenate([input_array, value])
         # cut out first row and return
         for goal in self._manager._goals:
-            #print(goal.wishes)
-            #print(goal,goal.fulfillment)
             for sensor_value in goal.sensor_values:
-                #print("sensor_value",sensor_value)
                 if not sensor_input.has_key(sensor_value.name):
-                    #print("sensor vlaue input",sensor_value.value,sensor_value.name)
                     if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding=="hot_state":
                         value = self.make_hot_state_encoding(sensor_value.value,sensor_value.state_space)
                     else:
                         value = numpy.array([[sensor_value.value]])
-                    #print(sensor_value.name,sensor_value.value,value)
-                    #wish_row = numpy.array([[sensor_value.value]])
-                    #value=wish_row
                     sensor_input[sensor_value.name] = value
-                    #wish_row = numpy.array([[value]])
-                    #print(numpy.array([[5]]))
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
-        #print(len(input_array),input_array)
-        #print("input:",numpy.argmax(input_array))
         # TODO get wishes from sensors
         return input_array
