@@ -78,6 +78,7 @@ add_service_files(
   SetStepping.srv
   GetStepping.srv
   GetActivation.srv
+  TrainBatches.srv
 )
 
 ## Generate actions in the 'action' folder

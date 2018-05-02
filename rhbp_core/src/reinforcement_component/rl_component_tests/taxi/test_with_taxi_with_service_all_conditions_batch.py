@@ -32,7 +32,7 @@ class TaxiTestSuite():
         self.resulting_state=numpy.array([[]])
         self.rewards = 0
         self.cycles = 0
-        numpy.random.seed(5)
+        numpy.random.seed(0)
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
@@ -43,6 +43,8 @@ class TaxiTestSuite():
         self.counter = 0
         self.rewards_all = 0
         self.counter_last=0
+        self.invalid_states = []
+
     def set_up_environment(self):
         self.rl_component=RLComponent(self.rl_address)
         self.env = gym.make('Taxi-v2')
@@ -153,18 +155,14 @@ class TaxiTestSuite():
             if not self.is_action_valid(s,a):
                 minus_value = -100
                 self.activation_rl[a] = minus_value
-                self.send_invalid_action_to_rl(self.get_array(s), minus_value, a)
+                self.save_invalid_action_to_rl(self.get_array(s), minus_value, a)
+        self.send_invalid_action_to_rl()
 
+        # get valid action with highest activation
         while not self.is_action_valid(s,best_action):
-        #while False:
-            #self.activation_rl[best_action]= minus_value
-            #minus_value = -100
-            #self.activation_rl[best_action] = minus_value
-            #self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
             best_action = numpy.argmax(self.activation_rl)
 
-
-
+        # execute the step
         s1, r, d, _ = self.env.step(best_action)
         self.last_r = r
         self.last_action=best_action
@@ -175,17 +173,10 @@ class TaxiTestSuite():
         self.counter_last+=1
         self.rewards_last += r
 
-        #if self.counter%1 == 0 or self.counter%1==1:
-        #if d:
-        #    self.rl_component.update_model()
-
         self.resulting_state = self.get_array(s1)
-
-        output=self.get_array(s1)
-
         return s1, d
 
-    def send_invalid_action_to_rl(self,input_state,reward,last_action_index):
+    def save_invalid_action_to_rl(self,input_state,reward,last_action_index):
         input_state_msg = InputState()
         input_state_msg.input_state = input_state.tolist()[0]
         input_state_msg.num_outputs = self.num_outputs
@@ -193,8 +184,12 @@ class TaxiTestSuite():
         input_state_msg.reward = reward
         input_state_msg.last_action = last_action_index
         input_state_msg.resulting_state = self.resulting_state.tolist()[0]
+        self.invalid_states.append(input_state_msg)
+        #self.rl_component.save_request(input_state_msg,False)
 
-        self.rl_component.save_request(input_state_msg,False)
+    def send_invalid_action_to_rl(self):
+        for input_state in self.invalid_states:
+            self.rl_component.save_request(input_state, False)
 
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()

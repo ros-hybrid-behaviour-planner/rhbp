@@ -122,7 +122,7 @@ num_episodes = 20000 #Total number of episodes to train network for.
 tau = 0.001 #Amount to update target network at each step.
 batch_size = 32 #Size of training batch
 startE = 1 #Starting chance of random action
-endE = 0.1 #Final chance of random action
+endE = 0.0 #Final chance of random action
 anneling_steps = 200000 #How many steps of training to reduce startE to endE.
 pre_train_steps = 50000 #Number of steps used before training updates begin.
 
@@ -213,7 +213,7 @@ with tf.Session() as sess:
                 e -= stepDrop
 
             # train the model . key of algorithm. using Double DQN
-            # train only if the steps are greater than the pre_train_steps and only every 5 steps
+            # train only if the steps are greater than the pre_train_steps and only every 5 episodes
             if total_steps > pre_train_steps and total_steps % 5 == 0:
                 # We use Double-DQN training algorithm
                 # get sample of buffer for training
@@ -225,12 +225,14 @@ with tf.Session() as sess:
                 Q2 = sess.run(target_net.Q_out,
                               feed_dict={target_net.inputs: np.vstack(trainBatch[:, 3]), target_net.keep_per: 1.0})
                 # multiplier to add if the episode ended
+                # makes reward 0 if episode ended. simulation specific
                 end_multiplier = -(trainBatch[:, 4] - 1)
+                #print(trainBatch[:,4],end_multiplier)
                 # target-q-values of batch for choosing prediction of q-network
                 #print(Q1,Q2)
-                doubleQ = Q2[range(batch_size), Q1]
+                doubleQ = Q2[range(batch_size), Q1] # target_q-values for the q-net predicted action
                 # target q value calculation according to q-learning
-                targetQ = trainBatch[:, 2] + (y * doubleQ * end_multiplier)
+                targetQ = trainBatch[:, 2] + (y * doubleQ )#TODO add maybe here again doubleQ * endmultiplier
                 # update the q-network model by giving the target-q-values, the input states and the chosen actions
                 _ = sess.run(q_net.updateModel,
                              feed_dict={q_net.inputs: np.vstack(trainBatch[:, 0]), q_net.nextQ: targetQ,

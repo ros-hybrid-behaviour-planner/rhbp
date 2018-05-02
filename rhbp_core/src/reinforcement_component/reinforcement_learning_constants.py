@@ -1,13 +1,18 @@
 class RLConstants:
-    def __init__(self):
+        #todo umbenenen config.
+        #todo init als casse
+        # todo get values from rospy param
         # path to model
-        self.model_path=""
-        self.model_directory=""
+        model_path=""
+        model_directory=""
         # setting for the nn
-        self.number_hidden_layer=1
-        self.number_variables=16
-        self.auto_number_variables=True
+        number_hidden_layer=1
+        number_variables=16
+        auto_number_variables=True
         # Set learning parameters
-        self.learning_rate_optimizer = 0.1
-        self.epsilon = 0.1
-        self.learning_rate_q_learning = 0.99
+        learning_rate_optimizer = 0.1
+        epsilon = 0.1
+        learning_rate_q_learning = 0.99
+        interval_prints = 100
+        microbatch_size = 20
+

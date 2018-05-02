@@ -18,13 +18,7 @@ import matplotlib.pyplot as plt
 
 from rhbp_core.msg import InputState
 from rhbp_core.srv import GetActivation
-
-PKG = 'knowledge_base'
-
-"""
-System test for knowledge base fact cache.
-"""
-
+from reinforcement_component.reinforcement_learning_constants import RLConstants
 
 class TaxiTestSuite():
     def __init__(self, *args, **kwargs):
@@ -119,12 +113,8 @@ class TaxiTestSuite():
         for w in self.weights:
             weight = w[state].reshape([1,self.num_outputs])
             df1 = pandas.DataFrame(weight,columns=column_list)
-            #print(df1)
             df = df.append(df1,ignore_index=True)
-        #print(df)
-
         ax = df[column_list].plot()
-        #plt.show()
 
         plt.show()
 
@@ -145,19 +135,12 @@ class TaxiTestSuite():
         random_value = numpy.random.rand(1)
         #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
         if random_value < self.epsilon:
-        #if numpy.random.rand(1)<self.epsilon:
-            #best_action= self.env.action_space.sample()
-            #random_action = numpy.random.randint(6)
-            #if self.is_action_valid(s,random_action):
-            #        best_action = random_action
             best_action=numpy.random.randint(self.num_outputs)
         #execute best action
+        # find invalid actions
         while not self.is_action_valid(s,best_action):
-        #while False:
             minus_value=-100
-
             self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
-
             self.activation_rl[best_action]= minus_value
             best_action = numpy.argmax(self.activation_rl)
 

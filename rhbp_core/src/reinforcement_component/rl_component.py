@@ -3,9 +3,9 @@ from input_state_transformer import SensorValueTransformer
 import time
 import rospy
 from rhbp_core.msg import InputState, ActivationState
-from rhbp_core.srv import  GetActivation,GetActivationResponse
+from rhbp_core.srv import GetActivation, GetActivationResponse, TrainBatches
 import numpy
-
+from reinforcement_component.reinforcement_learning_constants import RLConstants
 class RLComponent:
 
     def __init__(self, name):
@@ -16,6 +16,8 @@ class RLComponent:
         self.is_model_init = False
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
+        self._getStateService = rospy.Service(name + 'TrainBatches', TrainBatches,
+                                              self._train_model_batches)
         self.model = ModelNeuralNetwork(self.name)
         self.last_state = None
 
@@ -25,6 +27,15 @@ class RLComponent:
         self.successfull = 0.0
         self.counter = 0.0
         self.last_100 = 0.0
+    def _train_model_batches(self,request):
+        """
+        
+        :param request: 
+        :return: 
+        
+        """
+        for input_state in request.input_states:
+            self.save_request(input_state,True)
 
     def _get_activation_state_callback(self,request):
         self.counter +=1
@@ -36,21 +47,14 @@ class RLComponent:
             self.last_state = request.input_state
 
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
-            #print(request.input_state)
-            #print(numpy.array(request.input_state))
-            #print(numpy.array(request.input_state).reshape(([1,len(request.input_state)])))
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
             activations=activations.tolist()[0]
-            #print(transformed_input,activations,type(activations))
             activation_state = ActivationState(**{
                 "name": self.name,  # this is sent for sanity check and planner status messages only
                 "activations": activations,
             })
 
-
-            #print(numpy.argmax(request.input_state),numpy.argmax(activations),numpy.round(activations,5),
-            #      self.this_run,self.successfull/self.this_run,self.last_100/100.0)
             return GetActivationResponse(activation_state)
         except Exception as e:
             print(e.message)
@@ -59,28 +63,18 @@ class RLComponent:
 
     def get_activation_state_test(self,request):
         self.counter +=1
-        #if self.counter % 4 == 0:
-        #self.update_model()
         try:
             self.save_request(request)
             self.last_state = request.input_state
-            #request=request.input_state
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
-            #print(request.input_state)
-            #print(numpy.array(request.input_state))
-            #print(numpy.array(request.input_state).reshape(([1,len(request.input_state)])))
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
             activations=activations.tolist()[0]
-            #print(transformed_input,activations,type(activations))
             activation_state = ActivationState(**{
                 "name": self.name,  # this is sent for sanity check and planner status messages only
                 "activations": activations,
             })
 
-
-            #print(numpy.argmax(request.input_state),numpy.argmax(activations),numpy.round(activations,5),
-            #      self.this_run,self.successfull/self.this_run,self.last_100/100.0)
             return activation_state
         except Exception as e:
             print(e.message)
@@ -90,38 +84,24 @@ class RLComponent:
     def get_array(self,s):
         return numpy.identity(16)[s:s + 1]
 
-    def save_request(self,request,is_invalid=False):
+    def save_request(self,request,use_batches=False):
         """
         save the old_state,new_state,action,reward tuple in a list for batch updating of the model
         :param request: 
         :return: 
         """
-        #if self.is_terminal(numpy.argmax(self.last_state)) :
-        #    return
         if self.last_state is not None:
 
             last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
-            #if int(request.reward) == 10:
-                #print("------------------------------------------")
-            #     new = [self.get_array(15).tolist()[0]]
-            #else:
-            #    new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
             new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
-            #new = numpy.array(request.resulting_state).reshape(([1, len(request.resulting_state)]))
 
             reward_tuple = (last,new,request.last_action,request.reward)
-            #print(numpy.argmax(last), numpy.argmax(new), request.last_action, request.reward)
-            if not is_invalid:
-                self.reward_list.append(reward_tuple)
+            self.reward_list.append(reward_tuple)
+            if not use_batches:
                 self.update_model()
             else:
-                for s in range(500):
-                    new = numpy.array(numpy.identity(500)[s:s + 1]).reshape(([1, len(request.input_state)]))
-                    reward_tuple = (last, new, request.last_action, request.reward)
-                    self.reward_list.append(reward_tuple)
-                    self.update_model()
-            #print(numpy.argmax(last),numpy.argmax(new),request.last_action,request.reward)
-            #print(last, new, request.last_action, request.reward)
+                self.update_model_batch()
+
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
             self.init_model(num_inputs,num_outputs)
@@ -129,20 +109,18 @@ class RLComponent:
             if (not self.number_outputs == num_outputs) or (not self.number_inputs == num_inputs):
                 self.init_model(num_inputs,num_outputs)
 
-
     def update_model(self):
         for element in self.reward_list:
             self.model.train_model(element)
-        #for element in self.reward_list:
-        #    self.model.train_model(element)
-        #for element in self.reward_list:
-        #d    self.model.train_model(element)
         self.reward_list=[]
 
     def update_model_batch(self):
-        print(len(self.reward_list))
-        for element in self.reward_list:
-            self.model.train_model(element)
+        """
+        update nn-model with microbatches
+        :return: 
+        """
+        if len(self.reward_list)>=RLConstants.microbatch_size:
+            self.model.train_model_batch(self.reward_list)
         self.reward_list=[]
 
     def init_model(self,num_inputs,num_outputs):
@@ -150,13 +128,6 @@ class RLComponent:
         self.number_inputs = num_inputs
 
         self.number_outputs = num_outputs
-
-        # check this in activation algo
-        #if self.number_inputs < 1 or self.number_inputs < 1:
-        #    print("not enough behaviors or inputs")
-        #    return
-
-        #print("num behaviors", self.number_behaviors, "num inputs", self.number_inputs, "num goals", len(self.goals))
 
         self.model.start_nn(num_inputs,num_outputs)
 
