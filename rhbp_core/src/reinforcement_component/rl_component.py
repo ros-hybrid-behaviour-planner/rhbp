@@ -2,8 +2,10 @@ from nn_model import ModelNeuralNetwork
 from input_state_transformer import SensorValueTransformer
 import time
 import rospy
+
+from reinforcement_component.dqn_model import DQNModel
 from rhbp_core.msg import InputState, ActivationState
-from rhbp_core.srv import GetActivation, GetActivationResponse, TrainBatches
+from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
 from reinforcement_component.reinforcement_learning_constants import RLConstants
 class RLComponent:
@@ -16,9 +18,9 @@ class RLComponent:
         self.is_model_init = False
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
-        self._getStateService = rospy.Service(name + 'TrainBatches', TrainBatches,
-                                              self._train_model_batches)
-        self.model = ModelNeuralNetwork(self.name)
+
+        #self.model = ModelNeuralNetwork(self.name)
+        self.model = DQNModel(self.name)
         self.last_state = None
 
         self.number_outputs = -1
@@ -27,34 +29,32 @@ class RLComponent:
         self.successfull = 0.0
         self.counter = 0.0
         self.last_100 = 0.0
-    def _train_model_batches(self,request):
-        """
-        
-        :param request: 
-        :return: 
-        
-        """
-        for input_state in request.input_states:
-            self.save_request(input_state,True)
+
 
     def _get_activation_state_callback(self,request):
+        """
+        answers the service and responds with the activations
+        :param request: GetActivation 
+        :return: 
+        """
         self.counter +=1
 
         try:
             request=request.input_state
-
+            # check if the model has same dimension as request and if not reinit the model
+            self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
+            # save the input state in the model
             self.save_request(request)
             self.last_state = request.input_state
-
-            self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
+            # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
+            # return the activation via the service
             activations=activations.tolist()[0]
             activation_state = ActivationState(**{
                 "name": self.name,  # this is sent for sanity check and planner status messages only
                 "activations": activations,
             })
-
             return GetActivationResponse(activation_state)
         except Exception as e:
             print(e.message)
@@ -62,6 +62,11 @@ class RLComponent:
 
 
     def get_activation_state_test(self,request):
+        """
+        test function which does same as the GetActivation service
+        :param request: 
+        :return: 
+        """
         self.counter +=1
         try:
             self.save_request(request)
@@ -80,27 +85,24 @@ class RLComponent:
             print(e.message)
             return None
 
-
-    def get_array(self,s):
-        return numpy.identity(16)[s:s + 1]
-
     def save_request(self,request,use_batches=False):
         """
         save the old_state,new_state,action,reward tuple in a list for batch updating of the model
         :param request: 
         :return: 
         """
-        if self.last_state is not None:
+        if self.last_state is None:
+            return
 
-            last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
-            new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+        last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
+        new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
 
-            reward_tuple = (last,new,request.last_action,request.reward)
-            self.reward_list.append(reward_tuple)
-            if not use_batches:
-                self.update_model()
-            else:
-                self.update_model_batch()
+        reward_tuple = (last,new,request.last_action,request.reward)
+        self.reward_list.append(reward_tuple)
+        if not use_batches:
+            self.update_model()
+        else:
+            self.update_model_batch()
 
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
@@ -114,16 +116,8 @@ class RLComponent:
             self.model.train_model(element)
         self.reward_list=[]
 
-    def update_model_batch(self):
-        """
-        update nn-model with microbatches
-        :return: 
-        """
-        if len(self.reward_list)>=RLConstants.microbatch_size:
-            self.model.train_model_batch(self.reward_list)
-        self.reward_list=[]
-
     def init_model(self,num_inputs,num_outputs):
+
 
         self.number_inputs = num_inputs
 

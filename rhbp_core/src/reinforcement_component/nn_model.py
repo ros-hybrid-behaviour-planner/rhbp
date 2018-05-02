@@ -5,15 +5,15 @@ import random
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from input_state_transformer import SensorValueTransformer
+from reinforcement_learning_constants import RLConfig
 
-
-class ModelNeuralNetwork(object):
+class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
         print("init class mnn")
         # pathes for saving the models
         self.model_path = 'models/rl-model' + name + '-1000.meta'
         self.model_folder = './models'
-
+        self.config = RLConfig()# TODO include rospy here
         self.name = name
         # tf.reset_default_graph()
 
@@ -52,11 +52,11 @@ class ModelNeuralNetwork(object):
 
     def start_nn(self, num_inputs, num_outputs):
         """
-        calls to start the neural network. checks first if one already exists.
-        :param num_inputs: 
-        :param num_outputs: 
-        :return: 
-        """
+          calls to start the neural network. checks first if one already exists.
+          :param num_inputs: 
+          :param num_outputs: 
+          :return: 
+          """
         model_exists = self.check_if_model_exists()
 
         if model_exists:
@@ -66,6 +66,47 @@ class ModelNeuralNetwork(object):
             # todo maybe save one model for each input/output number
         else:
             self.initialize_model(num_inputs, num_outputs)
+
+    def initialize_model(self, num_inputs, num_outputs):
+        raise NotImplementedError
+
+    def check_if_model_exists(self):
+        """
+        check if the model exists
+        :return: True if the model is saved. False otherwise
+        """
+        return tf.train.checkpoint_exists(self.model_folder)
+
+    def load_model(self, num_inputs, num_outputs):
+        raise NotImplementedError
+    def feed_forward(self, input_state):
+        """
+        feed forwarding the input_state into the network and getting the calculated activations
+        :param input_state: the input state as a vector
+        :return: vector of activations
+        """
+
+        a, self.allQ = self.sess.run([self.predict, self.Qout], feed_dict={self.inputs1: input_state})
+
+        return self.allQ
+
+    def train_model(self, tuple):
+        raise NotImplementedError
+
+
+    def save_model(self, num_inputs, num_outputs):
+        """
+        saves the model 
+        :param num_inputs: 
+        :param num_outputs: 
+        :return: 
+        """
+        # Save model weights to disk
+        self.saver.save(self.sess, self.model_path)  # TODO save model with dim in end of name
+
+class ModelNeuralNetwork(ReinforcementAlgorithmBase):
+    def __init__(self, name):
+        super(ModelNeuralNetwork,self).__init__(name)
 
     def initialize_model(self, num_inputs, num_outputs):
         """
@@ -102,10 +143,6 @@ class ModelNeuralNetwork(object):
             self.Qout = tf.add(tf.matmul(layer2, self.W3, name="Qout"), b3)
 
         # combine weights with inputs
-
-
-
-
         # choose action with highest q-value
         self.predict = tf.argmax(self.Qout, 1, name="predict")
 
@@ -128,12 +165,6 @@ class ModelNeuralNetwork(object):
 
         self.model_is_set_up = True
 
-    def check_if_model_exists(self):
-        """
-        check if the model exists
-        :return: True if the model is saved. False otherwise
-        """
-        return tf.train.checkpoint_exists(self.model_folder)
 
     def load_model(self, num_inputs, num_outputs):
         """
@@ -163,16 +194,6 @@ class ModelNeuralNetwork(object):
 
         self.model_is_set_up = True
 
-    def feed_forward(self, input_state):
-        """
-        feed forwarding the input_state into the network and getting the calculated activations
-        :param input_state: the input state as a vector
-        :return: vector of activations
-        """
-
-        a, self.allQ = self.sess.run([self.predict, self.Qout], feed_dict={self.inputs1: input_state})
-
-        return self.allQ
 
     def train_model(self, tuple):
         """
@@ -205,13 +226,4 @@ class ModelNeuralNetwork(object):
         # Reduce chance of random action as we train the model.
         self.epsilon = 1. / ((self.num_updates / 50) + 10)
 
-    def save_model(self, num_inputs, num_outputs):
-        """
-        saves the model 
-        :param num_inputs: 
-        :param num_outputs: 
-        :return: 
-        """
 
-        # Save model weights to disk
-        self.saver.save(self.sess, self.model_path)  # TODO save model with dim in end of name

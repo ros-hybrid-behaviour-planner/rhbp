@@ -124,7 +124,7 @@ batch_size = 32 #Size of training batch
 startE = 1 #Starting chance of random action
 endE = 0.0 #Final chance of random action
 anneling_steps = 200000 #How many steps of training to reduce startE to endE.
-pre_train_steps = 50000 #Number of steps used before training updates begin.
+pre_train_steps = 32 #Number of steps used before training updates begin.
 
 tf.reset_default_graph()
 
@@ -176,13 +176,15 @@ with tf.Session() as sess:
             # depending which strategy for exploration choose a action from the q-network
             if exploration == "greedy":
                 # Choose an action with the maximum expected value.
-
                 a, allQ = sess.run([q_net.predict, q_net.Q_out], feed_dict={q_net.inputs: [s], q_net.keep_per: 1.0})
                 a = a[0]
             if exploration == "random":
                 # Choose an action randomly.
                 a = env.action_space.sample()
             if exploration == "e-greedy":
+                #print([s])
+                #print(len(s))
+                print(np.array(s).shape)
                 # Choose an action by greedily (with e chance of random action) from the Q-network
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
                     a = env.action_space.sample()
