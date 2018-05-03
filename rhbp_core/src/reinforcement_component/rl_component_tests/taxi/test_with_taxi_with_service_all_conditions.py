@@ -85,7 +85,7 @@ class TaxiTestSuite():
 
     def start_env(self):
 
-        num_prints = 10
+        num_prints = 100
 
         for i in range(1,13500):
             s = self.env.reset()

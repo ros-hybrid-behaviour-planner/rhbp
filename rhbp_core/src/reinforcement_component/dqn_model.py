@@ -93,10 +93,11 @@ class DQNModel(ReinforcementAlgorithmBase):
         """
 
         #save the input tuple in buffer
+        #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
-        self.counter +=1
-        if self.counter <= self.pre_train_steps or self.counter % 500 != 0:
+        self.counter += 1
+        if self.counter <= self.pre_train_steps or self.counter % 32 != 0:
             return
         """
         last_state = tuple[0]
@@ -104,7 +105,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         last_action = tuple[2]
         reward = tuple[3]
         """
-        print("train")
+        #print("train")
         # We use Double-DQN training algorithm
         # get sample of buffer for training
         trainBatch = self.myBuffer.sample(self.batch_size)
@@ -204,6 +205,6 @@ class experience_buffer():
         self.buffer.extend(experience)
     # get a random sample of the buffer
     def sample(self, size):
-        return np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
+        return np.reshape(np.array(random.sample(self.buffer, size)), [size, 4])
 
 

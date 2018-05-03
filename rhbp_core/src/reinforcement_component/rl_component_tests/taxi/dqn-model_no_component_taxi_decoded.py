@@ -58,7 +58,7 @@ class Q_Network():
 
         # defining_parameters
         number_outputs = 6
-        number_inputs = 500
+        number_inputs = 19
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
         self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
@@ -106,7 +106,6 @@ def decode(i):
     return reversed(out)
 
 def get_array(s):
-    return one_hot(s,500)
     row, col, passenger, dest = decode(s)
     array = one_hot(row,5)
     array.extend(one_hot(col,5))
@@ -118,13 +117,13 @@ def get_array(s):
 # Set learning parameters
 exploration = "e-greedy" #Exploration method. Choose between: greedy, random, e-greedy, boltzmann, bayesian.
 y = .99 #Discount factor.
-num_episodes = 20000 #Total number of episodes to train network for.
+num_episodes = 30000 #Total number of episodes to train network for.
 tau = 0.001 #Amount to update target network at each step.
 batch_size = 32 #Size of training batch
 startE = 1 #Starting chance of random action
 endE = 0.0 #Final chance of random action
-anneling_steps = 200000 #How many steps of training to reduce startE to endE.
-pre_train_steps = 32 #Number of steps used before training updates begin.
+anneling_steps = 300000 #How many steps of training to reduce startE to endE.
+pre_train_steps = 50000 #Number of steps used before training updates begin.
 
 tf.reset_default_graph()
 
@@ -157,12 +156,7 @@ with tf.Session() as sess:
     for i in range(num_episodes):
         # reset environment in beginning of each step
         s = env.reset()
-        #print(get_array(s))
-        #s = [s,0]
-        #s = s
-        #s=tf.one_hot(s,500,dtype=tf.int32)
-        #s = get_array(s)
-        #print(s)
+
         s = get_array(s)
         #s = get_array(s)
         #print("s",sess.run(s))

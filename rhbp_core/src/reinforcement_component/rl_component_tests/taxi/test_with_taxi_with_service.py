@@ -56,7 +56,7 @@ class TaxiTestSuite():
 
     def start_env(self):
 
-        num_prints = 10
+        num_prints = 100
 
         for i in range(1,13500):
             s = self.env.reset()
@@ -71,32 +71,7 @@ class TaxiTestSuite():
                 self.cycles_last = 0
                 self.counter_last=0
                 self.rewards_all=0
-                weight=self.rl_component.model.get_value_of_weight()
 
-                self.weights.append(weight)
-
-        for i in range(self.num_inputs):
-            input = self.get_array(i)
-            activations = self.rl_component.model.feed_forward(input)
-
-            best_action = numpy.argmax(activations)
-            print(i,best_action)
-
-    def print_weights(self,state):
-        #print(self.weights[0][0].reshape([1,4]))
-        column_list = ["Left","Down","Right","Up"]
-        df = pandas.DataFrame([],columns=column_list)
-        for w in self.weights:
-            weight = w[state].reshape([1,self.num_outputs])
-            df1 = pandas.DataFrame(weight,columns=column_list)
-            #print(df1)
-            df = df.append(df1,ignore_index=True)
-        #print(df)
-
-        ax = df[column_list].plot()
-        #plt.show()
-
-        plt.show()
 
     def make_cycle(self,s,i):
 
@@ -129,28 +104,6 @@ class TaxiTestSuite():
         self.counter_last+=1
         self.rewards_last += r
 
-        self.resulting_state = self.get_array(s1)
-        #print(s,s1,best_action)
-        #if (s == s1):
-            #print"same state" , s,s1,best_action
-        #    r = -0.5
-        #if r == 0:
-        #    r = 10
-        #if (s1 == 0):
-        #    self.last_r=-10
-        #if (d == True) and not self.last_r == 10:
-        #    self.last_r = -10
-        #self.last_r=self.last_r/10
-        #if (d == True) and  r == 1:
-        #    r = 10
-        #if self.last_r == 0:
-        #    self.last_r = -0.1
-        output=self.get_array(s1)
-        #print("-----------------")
-        #print((numpy.argmax(input),numpy.argmax(output),best_action,r*10))
-        #self.rl_component.reward_list.append((input,output,best_action,r))
-
-        #self.rl_component.update_model()
         return s1, d
 
     def get_best_action(self, input_state, reward, last_action_index):
