@@ -15,7 +15,9 @@ class RLConstants:
     learning_rate_q_learning = 0.99
     interval_prints = 100
     microbatch_size = 20
-class RLConfig(): #TODO let config get variables from rospy
+
+
+class RLConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
     def __init__(self):
         self.model_path = ""
         self.model_directory = ""

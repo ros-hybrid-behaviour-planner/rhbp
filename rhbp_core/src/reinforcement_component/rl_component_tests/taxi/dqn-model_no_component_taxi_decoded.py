@@ -122,7 +122,7 @@ tau = 0.001 #Amount to update target network at each step.
 batch_size = 32 #Size of training batch
 startE = 1 #Starting chance of random action
 endE = 0.0 #Final chance of random action
-anneling_steps = 300000 #How many steps of training to reduce startE to endE.
+anneling_steps = 400000 #How many steps of training to reduce startE to endE.
 pre_train_steps = 50000 #Number of steps used before training updates begin.
 
 tf.reset_default_graph()
@@ -245,7 +245,7 @@ with tf.Session() as sess:
         jList.append(j)
         rList.append(rAll)
         # print results
-        if i % 100 == 0 and i != 0:
+        if i % 200 == 0 and i != 0:
             r_mean = np.mean(rList[-100:])
             j_mean = np.mean(jList[-100:])
             if exploration == 'e-greedy':
