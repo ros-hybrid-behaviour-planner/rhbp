@@ -26,39 +26,57 @@ System test for knowledge base fact cache.
 """
 
 
-class TaxiTestSuite():
-    def __init__(self, *args, **kwargs):
+class BaseTestSuite(object):
+    def __init__(self,algorithm = 0, *args, **kwargs):
         #super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
-        self.resulting_state=numpy.array([[]])
+        self.rl_address = "test_agent"
+        self.resulting_state = numpy.array([[]])
+
+        # algorithm(=0) is per default dqn
+        self.rl_component = RLComponent(self.rl_address,algorithm)
+
+        self.set_up_environment()
+
+    def init_variables(self,seed):
+
+        # set random seeds
+        self.env.seed(seed)
+        numpy.random.seed(seed)
+        # parameter for episodes
+        self.max_episodes = 13500
+        # metrics for saving results
         self.rewards = 0
         self.cycles = 0
-        numpy.random.seed(0)
         self.rewards_last = 0
         self.cycles_last = 0
-        self.weights = []
-        self.last_r=0
-        self.last_action=0
-        self.rl_address="test_agent"
-        self.set_up_environment()
+        self.last_r = 0
+        self.last_action = 0
         self.counter = 0
         self.rewards_all = 0
-        self.counter_last=0
+        self.counter_last = 0
+        self.rewards_tuples=None
+        #dqn parameters for random execution
+        self.pre_train = 32
+        self.startE = 1
+        self.endE = 0.0
+        self.anneling_steps = 200000
+        self.epsilon = self.startE
+        self.stepDrop = (self.startE - self.endE) / self.anneling_steps
+
     def set_up_environment(self):
-        self.rl_component=RLComponent(self.rl_address)
+
         self.env = gym.make('Taxi-v2')
 
-        self.env.seed(0)
         self.num_inputs = 500
         self.num_outputs = 6
 
     def get_array(self,s):
         return numpy.identity(self.num_inputs)[s:s + 1]
 
-    def start_env(self):
+    def start_env(self,num_prints=100,threshold=10,random_seed=0,should_print=True):
+        self.init_variables(random_seed)
 
-        num_prints = 100
-
-        for i in range(1,13500):
+        for i in range(1,self.max_episodes):
             s = self.env.reset()
             d = 0
             while not d:
@@ -66,7 +84,23 @@ class TaxiTestSuite():
                 s = s1
             self.cycles_last+=1
             if self.cycles_last == num_prints:
-                print(self.counter,self.rewards_all/float(self.counter_last),self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
+
+                # save metrics for this cylce  # TODO make more elegant?
+                arr=numpy.array([[self.rewards_last / float(num_prints), num_prints, i]])
+                if self.rewards_tuples is None:
+                    self.rewards_tuples = arr
+                else:
+                    self.rewards_tuples = numpy.concatenate( (self.rewards_tuples,arr),axis=0 )
+
+                # print metrics for last cycle if should_print is True
+                if should_print:
+                    print(self.counter,self.rewards_all/float(self.counter_last),self.rewards,i,(self.rewards/i)*100,self.rewards_last/float(num_prints))
+                # if last reward is over threshold print time after stop process
+                if self.rewards_last/float(num_prints) > threshold:
+                    print(self.__class__.__name__,"Over threshold",threshold,"after",self.counter,"steps and",i,"episodes")
+                    return self.rewards_tuples
+
+                # reset variables for last cycle
                 self.rewards_last = 0
                 self.cycles_last = 0
                 self.counter_last=0
@@ -75,36 +109,30 @@ class TaxiTestSuite():
 
     def make_cycle(self,s,i):
 
+        # transform input
         input = self.get_array(s)
 
-        #self.rl_component.check_if_model_is_valid(self.num_inputs, self.num_outputs)
+        # execute the step for the specific logic
+        s1,r,d=self.do_step(input)
 
-        #activations = self.rl_component.model.feed_forward(input)
-
-        #best_action = numpy.argmax(activations)
-        best_action=self.get_best_action(input,self.last_r,self.last_action)
-        i = self.counter
-        self.counter +=1
-        # choose randomly best action
-        self.epsilon = 1. / ((i / 50.0) + 10)
-        random_value = numpy.random.rand(1)
-        #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
-        if random_value < self.epsilon:
-        #if numpy.random.rand(1)<self.epsilon:
-            #best_action= self.env.action_space.sample()
-            best_action = numpy.random.randint(6)
-        #execute best action
-        s1, r, d, _ = self.env.step(best_action)
+        # update metrics
         self.last_r = r
-        self.last_action=best_action
         self.rewards_all += r
-        #print(s1,r,d)
         self.rewards+=r
         self.cycles+=1
         self.counter_last+=1
         self.rewards_last += r
 
         return s1, d
+
+    def do_step(self,input):
+       """
+       override this function with the logic for exeecuting a step. 
+       can differ on exploration, action selection, sending invalid actions, or the algorithm
+       :param input: 
+       :return: 
+       """
+       raise NotImplementedError
 
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()
@@ -141,8 +169,3 @@ class TaxiTestSuite():
             #                 self._readyThreshold, self._wishes, self._active, self._priority, self._interruptable)
         except rospy.ServiceException as e:
             print(e.message)
-
-if __name__ == '__main__':
-    #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)
-    fl_test = TaxiTestSuite()
-    fl_test.start_env()

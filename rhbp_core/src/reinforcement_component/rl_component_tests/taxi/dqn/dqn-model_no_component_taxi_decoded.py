@@ -16,6 +16,7 @@ class experience_buffer():
     def __init__(self, buffer_size=10000):
         self.buffer = []
         self.buffer_size = buffer_size
+        random.seed(0)
     # add a new experience
     def add(self, experience):
         if len(self.buffer) + len(experience) >= self.buffer_size:
@@ -124,7 +125,9 @@ startE = 1 #Starting chance of random action
 endE = 0.0 #Final chance of random action
 anneling_steps = 400000 #How many steps of training to reduce startE to endE.
 pre_train_steps = 50000 #Number of steps used before training updates begin.
-
+tf.set_random_seed(0)
+np.random.seed(0)
+print_steps = False
 tf.reset_default_graph()
 
 # initialize two networks. q-network and target q-network
@@ -200,6 +203,8 @@ with tf.Session() as sess:
             # Get new state and reward from environment
             s1, r, d, _ = env.step(a)
             s1 = get_array(s1)
+            if print_steps:
+                print(total_steps,np.argmax(s),np.argmax(s1),r,e)
             #s1 = tf.one_hot(s1,500,dtype=tf.int32)
             #s1 = s1
             # add train_tuple into buffer
@@ -211,9 +216,12 @@ with tf.Session() as sess:
             # train the model . key of algorithm. using Double DQN
             # train only if the steps are greater than the pre_train_steps and only every 5 episodes
             if total_steps > pre_train_steps and total_steps % 5 == 0:
+
                 # We use Double-DQN training algorithm
                 # get sample of buffer for training
                 trainBatch = myBuffer.sample(batch_size)
+                if print_steps:
+                    print(total_steps, "train",np.argmax(trainBatch[10]))
                 # feed resulting state and keep prob of 1 to predict action
                 Q1 = sess.run(q_net.predict, feed_dict={q_net.inputs: np.vstack(trainBatch[:, 3]), q_net.keep_per: 1.0})
 

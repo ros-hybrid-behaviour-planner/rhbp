@@ -197,6 +197,7 @@ class TaxiTestSuite():
         return s1, d
 
     def send_invalid_action_to_rl(self,input_state,reward,last_action_index):
+
         input_state_msg = InputState()
         input_state_msg.input_state = input_state.tolist()[0]
         input_state_msg.num_outputs = self.num_outputs

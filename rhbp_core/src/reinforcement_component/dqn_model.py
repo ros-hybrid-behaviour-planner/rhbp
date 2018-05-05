@@ -22,7 +22,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.startE = 1  # Starting chance of random action
         self.endE = 0.0  # Final chance of random action
         self.anneling_steps = 200000  # How many steps of training to reduce startE to endE.
-        self.pre_train_steps = 1000  # Number of steps used before training updates begin.
+        self.pre_train_steps = 32  # Number of steps used before training updates begin.
         tf.set_random_seed(0)
         self.q_net = None
         self.target_net = None
@@ -39,6 +39,9 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param num_outputs: number of output values for the network
         :return: 
         """
+        tf.set_random_seed(0)
+        np.random.seed(0)
+
         tf.reset_default_graph()
         # initialize two networks. q-network and target q-network
         self.q_net = Q_Network(num_inputs,num_outputs)
@@ -72,6 +75,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         #input_state =
         allQ = self.sess.run([self.q_net.Q_out], feed_dict={self.q_net.inputs: input_state,self.q_net.keep_per: 1.0})
         #print(allQ[0])
+
         return allQ[0]
 
     def load_model(self, num_inputs, num_outputs):
@@ -97,7 +101,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1
-        if self.counter <= self.pre_train_steps or self.counter % 32 != 0:
+        if self.counter < self.pre_train_steps or self.counter % 5 != 1:
             return
         """
         last_state = tuple[0]
@@ -160,7 +164,7 @@ class DQNModel(ReinforcementAlgorithmBase):
  #Implementing the network itself
 class Q_Network():
     def __init__(self,number_inputs,number_outputs):
-
+        tf.set_random_seed(0)
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
         self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
@@ -198,13 +202,21 @@ class experience_buffer():
     def __init__(self, buffer_size=10000):
         self.buffer = []
         self.buffer_size = buffer_size
+        self.counter = 0
+        self.print_steps = False
+        random.seed(0)
     # add a new experience
     def add(self, experience):
+        if  self.print_steps:
+            print(self.counter, np.argmax(experience[0, 0]), np.argmax(experience[0, 3]), experience[0, 1], experience[0, 2])
+        self.counter += 1
         if len(self.buffer) + len(experience) >= self.buffer_size:
             self.buffer[0:(len(experience) + len(self.buffer)) - self.buffer_size] = []
         self.buffer.extend(experience)
     # get a random sample of the buffer
     def sample(self, size):
-        return np.reshape(np.array(random.sample(self.buffer, size)), [size, 4])
-
+        sample = np.reshape(np.array(random.sample(self.buffer, size)), [size, 4])
+        if  self.print_steps:
+            print("train", np.argmax(sample[10][0]), np.argmax(sample[10][3]), sample[10][1], sample[10][2])
+        return sample
 

@@ -9,21 +9,30 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 env = gym.make('Taxi-v2')
-
+env.seed(0)
 
 # class for revisiting experiences
 class experience_buffer():
     def __init__(self, buffer_size=10000):
         self.buffer = []
         self.buffer_size = buffer_size
+        self.counter = 0
+        self.print_steps = False
+        random.seed(0)
     # add a new experience
     def add(self, experience):
+        if self.print_steps:
+            print(self.counter,np.argmax(experience[0,0]),np.argmax(experience[0,3]),experience[0,1],experience[0,2])
+        self.counter +=1
         if len(self.buffer) + len(experience) >= self.buffer_size:
             self.buffer[0:(len(experience) + len(self.buffer)) - self.buffer_size] = []
         self.buffer.extend(experience)
     # get a random sample of the buffer
     def sample(self, size):
-        return np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
+        sample = np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
+        if self.print_steps:
+            print("train",np.argmax(sample[10][0]),np.argmax(sample[10][3]),sample[10][1],sample[10][2])
+        return sample
 
 
 def updateTargetGraph(tfVars, tau):
@@ -55,7 +64,7 @@ def updateTarget(op_holder, sess):
 # Implementing the network itself
 class Q_Network():
     def __init__(self):
-
+        tf.set_random_seed(0)
         # defining_parameters
         number_outputs = 6
         number_inputs = 500
@@ -126,6 +135,10 @@ endE = 0.0 #Final chance of random action
 anneling_steps = 200000 #How many steps of training to reduce startE to endE.
 pre_train_steps = 32 #Number of steps used before training updates begin.
 
+tf.set_random_seed(0)
+np.random.seed(0)
+print_steps = False
+
 tf.reset_default_graph()
 
 # initialize two networks. q-network and target q-network
@@ -186,11 +199,15 @@ with tf.Session() as sess:
                 #print(len(s))
                 #print(np.array(s).shape)
                 # Choose an action by greedily (with e chance of random action) from the Q-network
-                if np.random.rand(1) < e or total_steps < pre_train_steps:
-                    a = env.action_space.sample()
+                random_value = np.random.rand(1)
+                if  random_value < e or total_steps < pre_train_steps:
+                    #a = env.action_space.sample()
+                    a = np.random.randint(6)
+                    #print("random",a,random_value,e)
                 else:
                     a, allQ = sess.run([q_net.predict, q_net.Q_out], feed_dict={q_net.inputs: [s], q_net.keep_per: 1.0})
                     a = a[0]
+                    #print(allQ)
             if exploration == "boltzmann":
                 # Choose an action probabilistically, with weights relative to the Q-values.
                 Q_d, allQ = sess.run([q_net.Q_dist, q_net.Q_out],
@@ -206,6 +223,8 @@ with tf.Session() as sess:
             # Get new state and reward from environment
             s1, r, d, _ = env.step(a)
             s1 = get_array(s1)
+            if print_steps:
+                print(total_steps,np.argmax(s),np.argmax(s1),r,e)
             #s1 = tf.one_hot(s1,500,dtype=tf.int32)
             #s1 = s1
             # add train_tuple into buffer
@@ -220,6 +239,8 @@ with tf.Session() as sess:
                 # We use Double-DQN training algorithm
                 # get sample of buffer for training
                 trainBatch = myBuffer.sample(batch_size)
+                if print_steps:
+                    print(total_steps, "train",np.argmax(trainBatch[10]))
                 # feed resulting state and keep prob of 1 to predict action
                 Q1 = sess.run(q_net.predict, feed_dict={q_net.inputs: np.vstack(trainBatch[:, 3]), q_net.keep_per: 1.0})
 

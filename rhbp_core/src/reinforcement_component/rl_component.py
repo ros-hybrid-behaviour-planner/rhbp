@@ -10,7 +10,7 @@ import numpy
 from reinforcement_component.reinforcement_learning_constants import RLConstants
 class RLComponent:
 
-    def __init__(self, name):
+    def __init__(self, name, algorithm=0):
 
         print("started rl component node",name)
 
@@ -18,9 +18,14 @@ class RLComponent:
         self.is_model_init = False
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
+        if algorithm == 0:
+            self.model = DQNModel(self.name)
+        elif algorithm == 1:
+            self.model = ModelNeuralNetwork(self.name)
+        else:
+            #in case wrong number always use dqn
+            self.model = DQNModel(self.name)
 
-        #self.model = ModelNeuralNetwork(self.name)
-        self.model = DQNModel(self.name)
         self.last_state = None
 
         self.number_outputs = -1
@@ -85,7 +90,7 @@ class RLComponent:
             print(e.message)
             return None
 
-    def save_request(self,request,use_batches=False):
+    def save_request(self,request):
         """
         save the old_state,new_state,action,reward tuple in a list for batch updating of the model
         :param request: 
@@ -99,10 +104,8 @@ class RLComponent:
 
         reward_tuple = (last,new,request.last_action,request.reward)
         self.reward_list.append(reward_tuple)
-        if not use_batches:
-            self.update_model()
-        else:
-            self.update_model_batch()
+
+        self.update_model()
 
     def check_if_model_is_valid(self,num_inputs,num_outputs):
         if not self.is_model_init:
