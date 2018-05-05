@@ -86,7 +86,7 @@ class BaseTestSuite(object):
             if self.cycles_last == num_prints:
 
                 # save metrics for this cylce  # TODO make more elegant?
-                arr=numpy.array([[self.rewards_last / float(num_prints), num_prints, i]])
+                arr=numpy.array([[self.rewards_last / float(num_prints), self.counter, i]])
                 if self.rewards_tuples is None:
                     self.rewards_tuples = arr
                 else:
@@ -133,6 +133,37 @@ class BaseTestSuite(object):
        :return: 
        """
        raise NotImplementedError
+
+    def decode(self, i):
+        out = []
+        out.append(i % 4)  # row
+        i = i // 4
+        out.append(i % 5)  # col
+        i = i // 5
+        out.append(i % 5)  # passloc
+        i = i // 5
+        out.append(i)  # destination
+        assert 0 <= i < 5
+        return reversed(out)
+
+    def is_action_valid(self, s, a):
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        row, col, passenger, dest = self.decode(s)
+        if a == 4:
+            # if passenger ==4:
+            #    return False
+            for i in range(4):
+                if locs[i][0] == row and locs[i][1] == col:
+                    return True
+            return False
+        if a == 5:
+            if not passenger == 4:
+                return False
+            for i in range(4):
+                if locs[i][0] == row and locs[i][1] == col:
+                    return True
+            return False
+        return True
 
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()

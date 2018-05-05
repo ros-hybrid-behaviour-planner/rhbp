@@ -55,6 +55,52 @@ class TaxiTestSuiteDQN(BaseTestSuite):
 
         return s1,r,d
 
+class TaxiTestSuiteDQNConditions(BaseTestSuite):
+    def __init__(self,algorithm=0, *args, **kwargs):
+        super(TaxiTestSuiteDQN, self).__init__(algorithm,*args, **kwargs)
+
+    def send_invalid_action_to_rl(self, input_state, reward, last_action_index):
+
+        input_state_msg = InputState()
+        input_state_msg.input_state = input_state.tolist()[0]
+        input_state_msg.num_outputs = self.num_outputs
+        input_state_msg.num_inputs = self.num_inputs
+        input_state_msg.reward = reward
+        input_state_msg.last_action = last_action_index
+        input_state_msg.resulting_state = self.resulting_state.tolist()[0]
+
+        self.rl_component.save_request(input_state_msg)
+
+    def do_step(self,input):
+        # e-greedy random selection without restriction
+
+        best_action = self.get_best_action(input, self.last_r, self.last_action)
+        i = self.counter
+        self.counter += 1
+        # choose randomly best action
+        # self.epsilon = 1. / ((i / 50.0) + 10)
+        random_value = numpy.random.rand(1)
+        # print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
+
+        if random_value < self.epsilon or self.counter - 1 < self.pre_train:
+            # if numpy.random.rand(1)<self.epsilon:
+            # best_action= self.env.action_space.sample()
+            best_action = numpy.random.randint(6)
+            # print("random", best_action,random_value,self.epsilon)
+        # execute best action
+        while not self.is_action_valid(s, best_action):
+            # while False:
+            minus_value = -100
+
+            self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
+
+            self.activation_rl[best_action] = minus_value
+            best_action = numpy.argmax(self.activation_rl)
+
+        s1, r, d, _ = self.env.step(best_action)
+
+        return s1,r,d
+
 
 if __name__ == '__main__':
     #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)

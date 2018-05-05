@@ -17,10 +17,8 @@ if __name__ == '__main__':
 
     test_case = TaxiTestSuiteDQN(algorithm=dqn)
 
-    tuples1 = test_case.start_env(num_prints=100, threshold=0, random_seed=0, should_print=True)
-    plt.plot(tuples1[:,2],tuples1[:,0],marker="o",color="black")
 
-    tuples2 =  test_case.start_env(num_prints=100, threshold=0, random_seed=1, should_print=True)
-    plt.plot(tuples1[:, 2], tuples1[:, 0], marker="o", color="red")
-
+    for i in range(5):
+        tuples1 = test_case.start_env(num_prints=100, threshold=8, random_seed=i, should_print=False)
+        plt.plot(tuples1[:, 1], tuples1[:, 0], marker="o")
     plt.show()
