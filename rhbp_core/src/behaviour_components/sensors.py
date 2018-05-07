@@ -469,7 +469,13 @@ class AggregationSensor(Sensor):
             self._func = func
 
     def _aggregate(self, sensor_values):
+        """
+        callback to overwrite if used with inheritance
+        :param sensor_values: list of sensor values for aggregation
+        :return: aggregated float value
+        """
         raise NotImplementedError()
+        # return the aggregated values
 
     def sync(self):
 
