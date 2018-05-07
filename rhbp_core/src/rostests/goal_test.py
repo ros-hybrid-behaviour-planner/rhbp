@@ -50,8 +50,7 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
                         name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
         goal.add_condition(condition)
@@ -75,8 +74,7 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
                         name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
         goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
@@ -102,8 +100,7 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
                         name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
         goal = PublisherGoal(method_prefix + 'PublisherGoal', plannerPrefix=planner_prefix)
         goal.add_condition(condition)

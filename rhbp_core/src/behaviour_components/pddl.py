@@ -13,11 +13,13 @@ predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
+
 class PDDL(object):
     """
-    This class wraps PDDL fragments while building statements. It is used to collect predicates that are used in the statement for easier domain description generation.
+    This class wraps PDDL fragments while building statements. It is used to collect predicates that are used in the
+    statement for easier domain description generation.
     """
-    def __init__(self, statement = None, predicates = None, functions = None):
+    def __init__(self, statement=None, predicates=None, functions=None, time_stamp=None):
         if statement is not None:
             self.statement = statement
         else:
@@ -36,26 +38,29 @@ class PDDL(object):
                 self.functions = set([functions])
         else:
             self.functions = set()
+        if time_stamp is None:
+            self.time_stamp = rospy.Time.now()
+        else:
+            self.time_stamp = time_stamp
 
     @property
     def empty(self):
         return not self.statement.strip() and len(self.predicates) == 0 and len(self.predicates) == 0
     
     def __repr__(self):
-        return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + " statement: " + self.statement
+        return "PDDL: predicates: " + " ".join(self.predicates) + " functions: " + " ".join(self.functions) + \
+               " statement: " + self.statement
 
 
 def get_pddl_effect_name(sensor_name, activator_name):
     """
-    generate an effect name that uniquely identifies a particular effect on a activator/sensor combination
+    generate an effect name that uniquely identifies a particular effect in PDDL
     :param sensor_name: name of the sensor
     :param activator_name: name of the activator
     :return: str pddl effect name
     """
-    if activator_name:
-        return sensor_name + '_' + activator_name
-    else:
-        return sensor_name
+    return sensor_name
+
 
 def tokenizePDDL(pddlString):
     '''
@@ -79,6 +84,7 @@ def tokenizePDDL(pddlString):
     if obr != 0:
         rospy.logwarn("incorrect PDDL (not matching brackets) passed to tokenizePDDL(): %s", pddlString)
     return tokens
+
 
 def mergeStatePDDL(PDDLone, PDDLtwo):
     '''
@@ -104,15 +110,28 @@ def mergeStatePDDL(PDDLone, PDDLtwo):
             rospy.logwarn("inconsistent PDDL data structure: statement %s does not contain any of the declared in predicates (%s) or functions (%s)", x, PDDLone.predicates, PDDLone.functions)
         if statementIsPredicate:
             if sensorName in PDDLtwo.predicates:
-                if not x in tokenizePDDL(PDDLtwo.statement):
-                    rospy.logwarn("predicate declared differently than before %s vs %s", x, PDDLtwo.statement)
+                pddl_two_tokens = tokenizePDDL(PDDLtwo.statement)
+                if not x in pddl_two_tokens:
+                    if PDDLtwo.time_stamp < PDDLone.time_stamp:
+                        # rospy.logwarn("predicate '%s' declared differently than before %s vs %s", sensorName, x, PDDLtwo.statement)
+                        for pddl_two_token in pddl_two_tokens:
+                            if sensorName in pddl_two_token:
+                                PDDLtwo.statement = PDDLtwo.statement.replace(pddl_two_token, x)
+                                break
             else:
                 PDDLtwo.predicates.add(sensorName)
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
         else: # statement is function
             if sensorName in PDDLtwo.functions:
-                if not x in tokenizePDDL(PDDLtwo.statement):
-                    rospy.logwarn("function declared differently than before %s vs %s", x, PDDLtwo.statement)
+                pddl_two_tokens = tokenizePDDL(PDDLtwo.statement)
+                if not x in pddl_two_tokens:  # test if we already have the same token
+                    # if it is not the same token, check if the one we have was more recently updated
+                    if PDDLtwo.time_stamp < PDDLone.time_stamp:
+                        # rospy.logwarn("function '%s' declared differently than before %s vs %s", sensorName, x, PDDLtwo.statement)
+                        for pddl_two_token in pddl_two_tokens:
+                            if sensorName in pddl_two_token:
+                                PDDLtwo.statement = PDDLtwo.statement.replace(pddl_two_token, x)
+                                break
             else:
                 PDDLtwo.functions.add(sensorName)
                 PDDLtwo.statement += "\n\t\t{0}".format(x)
@@ -134,17 +153,18 @@ def init_missing_functions(domain_pddl, state_pddl):
 
     return state_pddl
 
+
 def parseStatePDDL(pddl):
     '''
     This function creates a {sensor name <string> : value} dictionary of a state PDDL object.
     '''
     state = {}
     for token in tokenizePDDL(pddl.statement):
-        match =  functionRegex.search(token)
+        match = functionRegex.search(token)
         if match: # it is a function value declaration
             state[match.group(1)] = float(match.group(2))
         else: # it must be a predicate
-            match =  predicateRegex.search(token)
+            match = predicateRegex.search(token)
             if match: # it actually is a predicate
                 if match.group(2): # it is negated
                     state[match.group(3)] = False
@@ -171,6 +191,7 @@ def getStatePDDLchanges(oldPDDL, newPDDL):
                 if value != oldState[sensorName]:
                     changes[sensorName] = value - oldState[sensorName]
     return changes
+
 
 def create_valid_pddl_name(str):
     """

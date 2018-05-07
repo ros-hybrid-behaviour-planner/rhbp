@@ -204,10 +204,11 @@ install(PROGRAMS
 catkin_add_nosetests(src/tests)
 
 find_package(rostest REQUIRED)
+add_rostest(test/condition_elements_test.test)
 add_rostest(test/dynamic_sensor_test.test)
 add_rostest(test/goal_test.test)
 add_rostest(test/greedy_activator_test.test)
 add_rostest(test/manager_test.test)
 add_rostest(test/network_behavior_test.test)
-add_rostest(test/topic_listener_test.test)
 add_rostest(test/simple_sensor_test.test)
+add_rostest(test/topic_listener_test.test)
