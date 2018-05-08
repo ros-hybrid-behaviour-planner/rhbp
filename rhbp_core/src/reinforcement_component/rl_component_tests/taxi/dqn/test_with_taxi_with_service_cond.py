@@ -32,28 +32,29 @@ class TaxiTestSuite():
         self.resulting_state=numpy.array([[]])
         self.rewards = 0
         self.cycles = 0
-        numpy.random.seed(0)
+        numpy.random.seed(1)
         self.rewards_last = 0
         self.cycles_last = 0
         self.weights = []
         self.last_r=0
         self.last_action=0
         self.rl_address="test_agent"
+        self.pre_train = 32
         self.set_up_environment()
         self.counter = 0
         self.rewards_all = 0
         self.counter_last=0
-        self.pre_train = 32
+
         self.startE = 1
-        self.endE = 0.0
-        self.anneling_steps = 200000
+        self.endE = 0.1
+        self.anneling_steps = 400000
         self.epsilon = self.startE
         self.stepDrop = (self.startE - self.endE) /self.anneling_steps
     def set_up_environment(self):
-        self.rl_component=RLComponent(self.rl_address)
+        self.rl_component=RLComponent(self.rl_address,pre_train=self.pre_train)
         self.env = gym.make('Taxi-v2')
 
-        self.env.seed(0)
+        self.env.seed(1)
         self.num_inputs = 500
         self.num_outputs = 6
 
@@ -88,7 +89,7 @@ class TaxiTestSuite():
         input_state_msg.last_action = last_action_index
         input_state_msg.resulting_state = self.resulting_state.tolist()[0]
 
-        self.rl_component.save_request(input_state_msg, False)
+        self.rl_component.save_request(input_state_msg)
 
     def decode(self, i):
         out = []
@@ -133,18 +134,12 @@ class TaxiTestSuite():
         i = self.counter
         self.counter +=1
         # choose randomly best action
-        #self.epsilon = 1. / ((i / 50.0) + 10)
         random_value = numpy.random.rand(1)
-        #print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
 
         if random_value < self.epsilon or self.counter-1 < self.pre_train:
-        #if numpy.random.rand(1)<self.epsilon:
-            #best_action= self.env.action_space.sample()
             best_action = numpy.random.randint(6)
-            #print("random", best_action,random_value,self.epsilon)
         #execute best action
         while not self.is_action_valid(s,best_action):
-        #while False:
             minus_value=-100
 
             self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)

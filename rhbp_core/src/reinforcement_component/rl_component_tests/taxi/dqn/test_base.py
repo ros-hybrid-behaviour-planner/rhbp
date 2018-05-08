@@ -29,11 +29,11 @@ System test for knowledge base fact cache.
 class BaseTestSuite(object):
     def __init__(self,algorithm = 0, *args, **kwargs):
         #super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
-        self.rl_address = "test_agent"
+        self.rl_address = "test_agent"+self.__class__.__name__+str(algorithm)
         self.resulting_state = numpy.array([[]])
-
+        self.pre_train = 32
         # algorithm(=0) is per default dqn
-        self.rl_component = RLComponent(self.rl_address,algorithm)
+        self.rl_component = RLComponent(self.rl_address,algorithm,pre_train=self.pre_train)
 
         self.set_up_environment()
 
@@ -43,7 +43,7 @@ class BaseTestSuite(object):
         self.env.seed(seed)
         numpy.random.seed(seed)
         # parameter for episodes
-        self.max_episodes = 13500
+        self.max_episodes = 5000
         # metrics for saving results
         self.rewards = 0
         self.cycles = 0
@@ -56,10 +56,10 @@ class BaseTestSuite(object):
         self.counter_last = 0
         self.rewards_tuples=None
         #dqn parameters for random execution
-        self.pre_train = 32
+        #self.pre_train = 32
         self.startE = 1
-        self.endE = 0.0
-        self.anneling_steps = 200000
+        self.endE = 0.1
+        self.anneling_steps = 400000
         self.epsilon = self.startE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
 
@@ -86,7 +86,7 @@ class BaseTestSuite(object):
             if self.cycles_last == num_prints:
 
                 # save metrics for this cylce  # TODO make more elegant?
-                arr=numpy.array([[self.rewards_last / float(num_prints), self.counter, i]])
+                arr=numpy.array([[self.rewards_last / float(num_prints), self.counter, i,self.__class__.__name__]])
                 if self.rewards_tuples is None:
                     self.rewards_tuples = arr
                 else:
@@ -105,7 +105,7 @@ class BaseTestSuite(object):
                 self.cycles_last = 0
                 self.counter_last=0
                 self.rewards_all=0
-
+        return self.rewards_tuples
 
     def make_cycle(self,s,i):
 

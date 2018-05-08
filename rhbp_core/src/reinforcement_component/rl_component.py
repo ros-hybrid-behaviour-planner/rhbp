@@ -10,7 +10,7 @@ import numpy
 from reinforcement_component.reinforcement_learning_constants import RLConstants
 class RLComponent:
 
-    def __init__(self, name, algorithm=0):
+    def __init__(self, name, algorithm=0,pre_train=32):
 
         print("started rl component node",name)
 
@@ -19,12 +19,12 @@ class RLComponent:
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
         if algorithm == 0:
-            self.model = DQNModel(self.name)
+            self.model = DQNModel(self.name,pre_train)
         elif algorithm == 1:
             self.model = ModelNeuralNetwork(self.name)
         else:
             #in case wrong number always use dqn
-            self.model = DQNModel(self.name)
+            self.model = DQNModel(self.name,pre_train)
 
         self.last_state = None
 

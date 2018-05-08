@@ -13,7 +13,7 @@ from reinforcement_learning_constants import RLConfig
 
 
 class DQNModel(ReinforcementAlgorithmBase):
-    def __init__(self, name):
+    def __init__(self, name,pre_train=32):
         super(DQNModel,self).__init__(name)
         # Set learning parameters
         self.y = .99  # Discount factor.
@@ -22,7 +22,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.startE = 1  # Starting chance of random action
         self.endE = 0.0  # Final chance of random action
         self.anneling_steps = 200000  # How many steps of training to reduce startE to endE.
-        self.pre_train_steps = 32  # Number of steps used before training updates begin.
+        self.pre_train_steps = 5000  # Number of steps used before training updates begin.
         tf.set_random_seed(0)
         self.q_net = None
         self.target_net = None
@@ -91,7 +91,7 @@ class DQNModel(ReinforcementAlgorithmBase):
 
     def train_model(self, tuple):
         """
-        trains the model by inserting a tuple contaning the chosen action in a specific situation with the resulting reward.
+        trains the model by inserting a tuple containing the chosen action in a specific situation with the resulting reward.
         :param tuple: contains the last state, new state, last action and the resulting reward
         :return: 
         """
@@ -103,13 +103,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.counter += 1
         if self.counter < self.pre_train_steps or self.counter % 5 != 1:
             return
-        """
-        last_state = tuple[0]
-        next_state = tuple[1]
-        last_action = tuple[2]
-        reward = tuple[3]
-        """
-        #print("train")
+
         # We use Double-DQN training algorithm
         # get sample of buffer for training
         trainBatch = self.myBuffer.sample(self.batch_size)

@@ -55,9 +55,10 @@ class TaxiTestSuiteDQN(BaseTestSuite):
 
         return s1,r,d
 
+
 class TaxiTestSuiteDQNConditions(BaseTestSuite):
     def __init__(self,algorithm=0, *args, **kwargs):
-        super(TaxiTestSuiteDQN, self).__init__(algorithm,*args, **kwargs)
+        super(TaxiTestSuiteDQNConditions, self).__init__(algorithm,*args, **kwargs)
 
     def send_invalid_action_to_rl(self, input_state, reward, last_action_index):
 
@@ -73,23 +74,16 @@ class TaxiTestSuiteDQNConditions(BaseTestSuite):
 
     def do_step(self,input):
         # e-greedy random selection without restriction
-
+        s = numpy.argmax(input)
         best_action = self.get_best_action(input, self.last_r, self.last_action)
         i = self.counter
         self.counter += 1
         # choose randomly best action
-        # self.epsilon = 1. / ((i / 50.0) + 10)
         random_value = numpy.random.rand(1)
-        # print(i,self.counter, self.epsilon, random_value, random_value < self.epsilon)
-
         if random_value < self.epsilon or self.counter - 1 < self.pre_train:
-            # if numpy.random.rand(1)<self.epsilon:
-            # best_action= self.env.action_space.sample()
             best_action = numpy.random.randint(6)
-            # print("random", best_action,random_value,self.epsilon)
         # execute best action
         while not self.is_action_valid(s, best_action):
-            # while False:
             minus_value = -100
 
             self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
@@ -98,6 +92,13 @@ class TaxiTestSuiteDQNConditions(BaseTestSuite):
             best_action = numpy.argmax(self.activation_rl)
 
         s1, r, d, _ = self.env.step(best_action)
+
+        # reduce epsilon
+        if self.epsilon > self.endE and self.counter - 1 > self.pre_train:
+            self.epsilon -= self.stepDrop
+
+        self.last_action = best_action
+
 
         return s1,r,d
 
