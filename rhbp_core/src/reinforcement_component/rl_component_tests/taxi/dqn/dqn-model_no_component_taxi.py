@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 env = gym.make('Taxi-v2')
-env.seed(0)
+env.seed(2)
 
 # class for revisiting experiences
 class experience_buffer():
@@ -127,16 +127,16 @@ def get_array(s):
 # Set learning parameters
 exploration = "e-greedy" #Exploration method. Choose between: greedy, random, e-greedy, boltzmann, bayesian.
 y = .99 #Discount factor.
-num_episodes = 20000 #Total number of episodes to train network for.
+num_episodes = 10000 #Total number of episodes to train network for.
 tau = 0.001 #Amount to update target network at each step.
 batch_size = 32 #Size of training batch
 startE = 1 #Starting chance of random action
-endE = 0.0 #Final chance of random action
-anneling_steps = 200000 #How many steps of training to reduce startE to endE.
-pre_train_steps = 32 #Number of steps used before training updates begin.
+endE = 0.1 #Final chance of random action
+anneling_steps = 400000 #How many steps of training to reduce startE to endE.
+pre_train_steps = 32 # Number of steps used before training updates begin.
 
 tf.set_random_seed(0)
-np.random.seed(0)
+np.random.seed(2)
 print_steps = False
 
 tf.reset_default_graph()

@@ -104,9 +104,9 @@ class ReinforcementAlgorithmBase(object):
         # Save model weights to disk
         self.saver.save(self.sess, self.model_path)  # TODO save model with dim in end of name
 
-class ModelNeuralNetwork(ReinforcementAlgorithmBase):
+class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
     def __init__(self, name):
-        super(ModelNeuralNetwork,self).__init__(name)
+        super(QLearningNeuralNetwork, self).__init__(name)
 
     def initialize_model(self, num_inputs, num_outputs):
         """

@@ -58,7 +58,7 @@ class Q_Network():
 
         # defining_parameters
         number_outputs = 6
-        number_inputs = 4
+        number_inputs = 11
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
         self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
@@ -107,9 +107,10 @@ def decode(i):
 
 def get_array(s):
     row, col, passenger, dest = decode(s)
-    return [row,col,passenger,dest]
-    array = one_hot(row,5)
-    array.extend(one_hot(col,5))
+    array = [row,col]
+    #return [row,col,passenger,dest]
+    #array = one_hot(row,5)
+    #array.extend(one_hot(col,5))
     array.extend(one_hot(passenger,5))
     array.extend(one_hot(dest,4))
     return array

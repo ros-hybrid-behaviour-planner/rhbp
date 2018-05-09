@@ -27,13 +27,12 @@ System test for knowledge base fact cache.
 """
 
 
-class TaxiTestSuiteDQN(BaseTestSuite):
+class TaxiTestNormal(BaseTestSuite):
     def __init__(self,algorithm=0, *args, **kwargs):
-        super(TaxiTestSuiteDQN, self).__init__(algorithm,*args, **kwargs)
+        super(TaxiTestNormal, self).__init__(algorithm,*args, **kwargs)
 
     def do_step(self,input):
         # e-greedy random selection without restriction
-
         # get the best action
         best_action = self.get_best_action(input, self.last_r, self.last_action)
         i = self.counter
@@ -56,9 +55,9 @@ class TaxiTestSuiteDQN(BaseTestSuite):
         return s1,r,d
 
 
-class TaxiTestSuiteDQNConditions(BaseTestSuite):
+class TaxiTestConditions(BaseTestSuite):
     def __init__(self,algorithm=0, *args, **kwargs):
-        super(TaxiTestSuiteDQNConditions, self).__init__(algorithm,*args, **kwargs)
+        super(TaxiTestConditions, self).__init__(algorithm,*args, **kwargs)
 
     def send_invalid_action_to_rl(self, input_state, reward, last_action_index):
 
@@ -102,9 +101,28 @@ class TaxiTestSuiteDQNConditions(BaseTestSuite):
 
         return s1,r,d
 
+class TaxiTestDecoded(TaxiTestNormal):
+    """
+    uses normal exploration strategy without condition (like. but decodes state into four variables with on_hot
+    """
+    def __init__(self,algorithm=0, *args, **kwargs):
+        super(TaxiTestDecoded, self).__init__(algorithm,*args, **kwargs)
+
+        self.num_inputs = 19
+
+    def get_array(self,s):
+        row,col,passenger,dest=self.decode(s)
+
+        array = self.one_hot(row, 5)
+        array = numpy.concatenate( (array,self.one_hot(col, 5)),axis=1)
+        array = numpy.concatenate((array, self.one_hot(passenger, 5)),axis=1)
+        array = numpy.concatenate((array, self.one_hot(dest, 4)),axis=1)
+        return array
+
+
 
 if __name__ == '__main__':
     #rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)
-    fl_test = TaxiTestSuiteDQN()
+    fl_test = TaxiTestNormal()
     fl_test.start_env(num_prints=100,threshold=-500,random_seed=0,should_print=True)
     fl_test.start_env(num_prints=100, threshold=-400, random_seed=1,should_print=True)

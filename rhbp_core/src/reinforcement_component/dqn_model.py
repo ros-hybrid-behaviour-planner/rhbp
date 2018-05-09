@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from tensorflow.contrib import slim
 
 from input_state_transformer import SensorValueTransformer
-from reinforcement_component.nn_model import ReinforcementAlgorithmBase
+from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
 from reinforcement_learning_constants import RLConfig
 
 

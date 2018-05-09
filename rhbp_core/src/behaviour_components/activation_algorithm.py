@@ -833,7 +833,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
 
     def get_rl_activation_for_ref(self,ref_behaviour):
-        #index = self.behaviour_to_index(ref_behaviour)
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
         if len(self.activation_rl)==0:
             value=100
@@ -859,16 +858,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         try:
             current_activation_step=self.get_rl_activation_for_ref(ref_behaviour)*10000
-            #this_index=self.behaviour_to_index(ref_behaviour)
-            #current_activation_step = self.activation_rl[this_index]*10000
-            #self.epsilon = 1. / ((self.count / 50) + 10)
-            #if numpy.random.rand(1) < self.epsilon:
-            #    print("choose random action",ref_behaviour)
-            #    current_activation_step = 1000000.0
             ref_behaviour.current_activation_step = 0
             ref_behaviour.activation = current_activation_step
-            #print(ref_behaviour,this_index, current_activation_step ,ref_behaviour.activation)
-            #self.rl_component.update_model()
+            # TODO excluded changing the whole activation
             return current_activation_step
         except Exception as e:
             print(e.message)

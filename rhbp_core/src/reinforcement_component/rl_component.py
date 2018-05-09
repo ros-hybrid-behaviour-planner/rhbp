@@ -1,4 +1,4 @@
-from nn_model import ModelNeuralNetwork
+from nn_model_base import QLearningNeuralNetwork
 from input_state_transformer import SensorValueTransformer
 import time
 import rospy
@@ -21,7 +21,7 @@ class RLComponent:
         if algorithm == 0:
             self.model = DQNModel(self.name,pre_train)
         elif algorithm == 1:
-            self.model = ModelNeuralNetwork(self.name)
+            self.model = QLearningNeuralNetwork(self.name)
         else:
             #in case wrong number always use dqn
             self.model = DQNModel(self.name,pre_train)
@@ -34,7 +34,6 @@ class RLComponent:
         self.successfull = 0.0
         self.counter = 0.0
         self.last_100 = 0.0
-
 
     def _get_activation_state_callback(self,request):
         """
@@ -64,7 +63,6 @@ class RLComponent:
         except Exception as e:
             print(e.message)
             return None
-
 
     def get_activation_state_test(self,request):
         """

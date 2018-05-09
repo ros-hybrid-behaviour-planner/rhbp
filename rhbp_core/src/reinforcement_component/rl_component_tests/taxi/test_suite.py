@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import TaxiTestSuiteDQN, \
-    TaxiTestSuiteDQNConditions
+from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import  TaxiTestNormal, TaxiTestConditions, TaxiTestDecoded
 
 
 def plot_for_different_seed(num_range,env,threshold,should_print):
@@ -16,16 +15,16 @@ def plot_for_different_seed(num_range,env,threshold,should_print):
         tuple = env.start_env(num_prints=100, threshold=threshold, random_seed=i, should_print=should_print)
         tuples.append(tuple)
     for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0:3])+" + seed= "+str(index))
+        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+" + seed= "+str(index))
     plt.xlabel("time in steps")
     plt.ylabel("reward")
-    plt.legend()
+    plt.legend(loc=4)
     plt.show()
     for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0:3])+" + seed= "+str(index))
+        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+" + seed= "+str(index))
     plt.xlabel("time in episodes")
     plt.ylabel("reward")
-    plt.legend()
+    plt.legend(loc=4)
     plt.show()
 
 def compare_classes(envs,num_range,threshold,should_print):
@@ -34,17 +33,20 @@ def compare_classes(envs,num_range,threshold,should_print):
         for i in range(1, num_range+1):
             tuple = envs[num_env].start_env(num_prints=100, threshold=threshold, random_seed=i, should_print=should_print)
             tuples.append(tuple)
+
     for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0:3])+"+ seed= "+str(index/len(envs)))
+        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+"+ seed= "+str(index/len(envs)))
+        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o",
+                 label=str(tuples[index][0, 3]) + "+ seed= " + str(index / len(envs)))
     plt.xlabel("time in steps")
     plt.ylabel("reward")
-    plt.legend()
+    plt.legend(loc=4)
     plt.show()
     for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0:3])+"+ seed= "+str(index/len(envs)))
+        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+"+ seed= "+str(index/len(envs)))
     plt.xlabel("time in episodes")
     plt.ylabel("reward")
-    plt.legend()
+    plt.legend(loc=4)
     plt.show()
 
 
@@ -52,14 +54,19 @@ if __name__ == '__main__':
     dqn = 0
     qlearning = 1
 
-    test_case = TaxiTestSuiteDQN(algorithm=dqn)
+    test_case_normal = TaxiTestNormal(algorithm=dqn)
 
-    test_case_cond = TaxiTestSuiteDQNConditions(algorithm=dqn)
+    test_case_cond = TaxiTestConditions(algorithm=dqn)
 
-    test_case_q = TaxiTestSuiteDQN(algorithm=qlearning)
+    test_case_normal_q = TaxiTestNormal(algorithm=qlearning)
 
-    test_case_cond_q = TaxiTestSuiteDQNConditions(algorithm=qlearning)
+    test_case_cond_q = TaxiTestConditions(algorithm=qlearning)
+
+    test_case_decoded = TaxiTestDecoded(algorithm=dqn)
+
+    test_case_decoded_q = TaxiTestDecoded(algorithm=qlearning)
     #plot_for_different_seed(4,test_case,0,False)
     #plot_for_different_seed(5, test_case_cond, 0, False)
-    #plot_for_different_seed(5, test_case_cond, 8, False)
-    compare_classes([test_case_cond,test_case,test_case_q,test_case_cond_q],5,0,True)
+    plot_for_different_seed(5, test_case_normal, 0, True)
+    #compare_classes([test_case_normal,test_case_cond,test_case_normal_q,test_case_cond_q,test_case_decoded#
+    #                 ],1,0,False)

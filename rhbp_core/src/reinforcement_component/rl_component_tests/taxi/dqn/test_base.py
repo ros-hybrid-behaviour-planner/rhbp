@@ -43,7 +43,7 @@ class BaseTestSuite(object):
         self.env.seed(seed)
         numpy.random.seed(seed)
         # parameter for episodes
-        self.max_episodes = 5000
+        self.max_episodes = 10000
         # metrics for saving results
         self.rewards = 0
         self.cycles = 0
@@ -58,8 +58,8 @@ class BaseTestSuite(object):
         #dqn parameters for random execution
         #self.pre_train = 32
         self.startE = 1
-        self.endE = 0.1
-        self.anneling_steps = 400000
+        self.endE = 0.0
+        self.anneling_steps = 250000
         self.epsilon = self.startE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
 
@@ -86,7 +86,7 @@ class BaseTestSuite(object):
             if self.cycles_last == num_prints:
 
                 # save metrics for this cylce  # TODO make more elegant?
-                arr=numpy.array([[self.rewards_last / float(num_prints), self.counter, i,self.__class__.__name__]])
+                arr=numpy.array([[self.rewards_last / float(num_prints), self.counter, i,self.rl_address]])
                 if self.rewards_tuples is None:
                     self.rewards_tuples = arr
                 else:
@@ -134,6 +134,9 @@ class BaseTestSuite(object):
        """
        raise NotImplementedError
 
+    def one_hot(self,s, size):
+        return numpy.identity(size)[s:s + 1]
+
     def decode(self, i):
         out = []
         out.append(i % 4)  # row
@@ -164,7 +167,17 @@ class BaseTestSuite(object):
                     return True
             return False
         return True
+    def send_invalid_action_to_rl(self, input_state, reward, last_action_index):
 
+        input_state_msg = InputState()
+        input_state_msg.input_state = input_state.tolist()[0]
+        input_state_msg.num_outputs = self.num_outputs
+        input_state_msg.num_inputs = self.num_inputs
+        input_state_msg.reward = reward
+        input_state_msg.last_action = last_action_index
+        input_state_msg.resulting_state = self.resulting_state.tolist()[0]
+
+        self.rl_component.save_request(input_state_msg)
     def get_best_action(self, input_state, reward, last_action_index):
         input_state_msg = InputState()
         input_state_msg.input_state = input_state.tolist()[0]

@@ -5,7 +5,9 @@ from rhbp_core.msg import SensorValue
 
 
 class SensorValueTransformer:
-
+    """
+    this class is for extracting the sensor values from the conditions and creating a SensorValue message
+    """
     def __init__(self):
         self.conditions={}
 
@@ -92,7 +94,9 @@ class SensorValueTransformer:
 
 
 class InputStateTransformer:
-
+    """
+    this class gets called in the activation algorithm and transform the rhbp components into the InputStateMessage
+    """
     def __init__(self,manager):
         self._manager = manager
 
