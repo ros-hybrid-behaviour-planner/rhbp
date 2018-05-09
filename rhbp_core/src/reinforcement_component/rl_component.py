@@ -44,12 +44,18 @@ class RLComponent:
         self.counter +=1
 
         try:
+            negative_states = request.negative_states
+            for state in negative_states:
+                self.save_request(state)
+            #print(len(negative_states))
+
             request=request.input_state
             # check if the model has same dimension as request and if not reinit the model
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
             # save the input state in the model
             self.save_request(request)
             self.last_state = request.input_state
+
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
@@ -64,7 +70,7 @@ class RLComponent:
             print(e.message)
             return None
 
-    def get_activation_state_test(self,request):
+    def get_activation_state_test(self,request,negative_states=[]):
         """
         test function which does same as the GetActivation service
         :param request: 
@@ -72,8 +78,12 @@ class RLComponent:
         """
         self.counter +=1
         try:
+            # save currrent input state and update the model
             self.save_request(request)
+            # update the last state
             self.last_state = request.input_state
+            for state in negative_states:
+                self.save_request(state)
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
@@ -82,6 +92,9 @@ class RLComponent:
                 "name": self.name,  # this is sent for sanity check and planner status messages only
                 "activations": activations,
             })
+
+            # updating the model with negative states has to come after the getting the activations
+
 
             return activation_state
         except Exception as e:
@@ -96,13 +109,11 @@ class RLComponent:
         """
         if self.last_state is None:
             return
-
+        #print( request.input_state)
         last  = numpy.array(self.last_state).reshape(([1,len(self.last_state)]))
         new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
-
         reward_tuple = (last,new,request.last_action,request.reward)
         self.reward_list.append(reward_tuple)
-
         self.update_model()
 
     def check_if_model_is_valid(self,num_inputs,num_outputs):

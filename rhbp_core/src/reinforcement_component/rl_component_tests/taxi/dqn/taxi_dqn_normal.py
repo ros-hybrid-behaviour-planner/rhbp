@@ -101,6 +101,8 @@ class TaxiTestConditions(BaseTestSuite):
 
         return s1,r,d
 
+
+
 class TaxiTestDecoded(TaxiTestNormal):
     """
     uses normal exploration strategy without condition (like. but decodes state into four variables with on_hot
