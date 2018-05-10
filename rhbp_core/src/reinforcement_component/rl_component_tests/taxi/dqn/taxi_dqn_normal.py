@@ -31,6 +31,23 @@ class TaxiTestNormal(BaseTestSuite):
     def __init__(self,algorithm=0, *args, **kwargs):
         super(TaxiTestNormal, self).__init__(algorithm,*args, **kwargs)
 
+    def get_randomly_best_action(self,counter,best_action):
+
+        # choose randomly best action
+        random_value = numpy.random.rand(1)
+
+        if random_value < self.epsilon or self.counter - 1 < self.pre_train:
+            best_action = numpy.random.randint(self.num_outputs)
+        # execute best action
+            # reduce epsilon
+        if self.epsilon > self.endE and counter - 1 > self.pre_train:
+            self.epsilon -= self.stepDrop
+
+        return best_action
+
+
+
+
     def do_step(self,input):
         # e-greedy random selection without restriction
         # get the best action

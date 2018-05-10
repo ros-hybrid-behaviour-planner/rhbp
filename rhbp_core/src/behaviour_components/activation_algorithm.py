@@ -11,6 +11,7 @@ import rospy
 #from .managers import Manager has to be commented because of circular dependency problem
 import time
 
+from reinforcement_component.exploration_strategies import ExplorationStrategies
 from reinforcement_component.input_state_transformer import InputStateTransformer
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
@@ -729,6 +730,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.first_fetching=False
         numpy.random.seed(0) #TODO delete later. only for test purposes
 
+        ###
+        self.exploration_strategies = ExplorationStrategies()
+
+
     def start_rl_class(self):
         """
         starts the rl_component as a class
@@ -805,9 +810,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 negative_state.reward = self.min_activation
                 negative_state.last_action = action_index
                 negative_states.append(negative_state)
-        self.fetchActivation(input_state_msg)
+        self.fetchActivation(input_state_msg,negative_states)
 
-    def fetchActivation(self, msg):
+    def fetchActivation(self, msg,negative_states):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
@@ -824,7 +829,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             return
         try:
             getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
-            activation_result = getActivationRequest(msg)
+            activation_result = getActivationRequest(msg,negative_states)
             self.activation_rl = list(activation_result.activation_state.activations)
             self.last_ref_activations = activation_result.activation_state.activations
         except rospy.ServiceException as e:
@@ -888,6 +893,33 @@ w
         current_activation_step=self.max_activation #TODO necessary?
         return current_activation_step
 
+    def get_randomly_best_action(self, counter, best_action):
+
+        # choose randomly best action
+        random_value = numpy.random.rand(1)
+
+        if random_value < self.epsilon or self.counter - 1 < self.pre_train:
+            best_action = numpy.random.randint(self.num_outputs)
+            # execute best action
+            # reduce epsilon
+        if self.epsilon > self.endE and counter - 1 > self.pre_train:
+            self.epsilon -= self.stepDrop
+
+        return best_action
+
+    def greedy_e_pre_train(self,step):
+
+        random_value = numpy.random.rand(1)
+        num_actions = len(self._manager._behaviours)
+
+        if (random_value < self.epsilon or step < self.pre_train) and num_actions > 0:
+            best_action = numpy.random.randint(num_actions)
+            self.activation_rl[best_action] = self.max_activation
+
+        if self.epsilon > self.endE and self._step_counter > self.pre_train:
+            self.epsilon -= self.stepDrop
+
+
     def update_config(self,**kwargs):
         """
         overrides update_config. includes fetching the most recent activation for the input state and 
@@ -904,28 +936,13 @@ w
             print("no activation found")
             return
 
-        # random selection for exploration. e-greedy - strategy
-        epsilon = 1. / ((self._step_counter / 50.0) + 10)
-
-        random_value = numpy.random.rand(1)
-
+        # choose randomly best action
         num_actions = len(self._manager._behaviours)
+
+        changed ,best_action = self.exploration_strategies.e_greedy_pre_train(self._step_counter,num_actions)
+        if changed:
+            self.activation_rl[best_action] = self.max_activation
+
         self._step_counter += 1
-
-        # if randomly chosen give one random action the max_activation
-        if random_value < epsilon and num_actions > 0:
-            best_action = numpy.random.randint(num_actions)
-            self.activation_rl[best_action]=self.max_activation
-
-        # TODO include in get_activations proces
-        # scheck for not executable actions
-        return
-        for index in range(num_actions):
-            # if random chosen number is not executalbe, give minus reward and sent it to rl component
-            if not self._manager._behaviours[index].executable:
-                #print(index,self.min_activation)
-                self.activation_rl[index] = self.min_activation
-                # TODO sent new reward to rl component
-                self.send_negative_reward(index)
 
 ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)

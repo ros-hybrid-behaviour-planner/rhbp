@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy
 import pandas
 
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew
+from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
+    TaxiTestAllConditionsNew
 from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import  TaxiTestNormal, TaxiTestConditions, TaxiTestDecoded
 
 
@@ -68,8 +69,10 @@ if __name__ == '__main__':
     test_case_decoded_q = TaxiTestDecoded(algorithm=qlearning)
 
     test_case_new_cond = TaxiTestConditionsNew(algorithm=dqn)
+
+    test_case_new_all_cond = TaxiTestAllConditionsNew(algorithm=dqn)
     #plot_for_different_seed(4,test_case,0,False)
     #plot_for_different_seed(5, test_case_cond, 0, False)
-    plot_for_different_seed(1, test_case_new_cond, 0, True)
+    plot_for_different_seed(5, test_case_decoded, 0, True)
     #compare_classes([test_case_normal,test_case_cond,test_case_normal_q,test_case_cond_q,test_case_decoded#
     #                 ],1,0,False)

@@ -29,11 +29,10 @@ System test for knowledge base fact cache.
 class BaseTestSuite(object):
     def __init__(self,algorithm = 0, *args, **kwargs):
         #super(UpdateHandlerTestSuite, self).__init__(*args, **kwargs)
+        self.algorithm = algorithm
         self.rl_address = "test_agent"+self.__class__.__name__+str(algorithm)
         self.resulting_state = numpy.array([[]])
-        self.pre_train = 32
-        # algorithm(=0) is per default dqn
-        self.rl_component = RLComponent(self.rl_address,algorithm,pre_train=self.pre_train)
+
 
         self.set_up_environment()
 
@@ -62,6 +61,10 @@ class BaseTestSuite(object):
         self.anneling_steps = 250000
         self.epsilon = self.startE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
+
+        self.pre_train = 32
+        # algorithm(=0) is per default dqn
+        self.rl_component = RLComponent(self.rl_address+str(seed), self.algorithm, pre_train=self.pre_train)
 
     def set_up_environment(self):
 

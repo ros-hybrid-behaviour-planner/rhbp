@@ -35,7 +35,7 @@ class RLComponent:
         self.counter = 0.0
         self.last_100 = 0.0
 
-    def _get_activation_state_callback(self,request):
+    def _get_activation_state_callback(self,request_msg):
         """
         answers the service and responds with the activations
         :param request: GetActivation 
@@ -44,17 +44,17 @@ class RLComponent:
         self.counter +=1
 
         try:
-            negative_states = request.negative_states
-            for state in negative_states:
-                self.save_request(state)
-            #print(len(negative_states))
 
-            request=request.input_state
+            request=request_msg.input_state
             # check if the model has same dimension as request and if not reinit the model
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
             # save the input state in the model
             self.save_request(request)
             self.last_state = request.input_state
+
+            negative_states = request_msg.negative_states
+            for state in negative_states:
+                self.save_request(state)
 
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))

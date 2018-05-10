@@ -226,7 +226,7 @@ class LocationCondition(Condition):
         if self.sensor_row._value is None:
             self._satisfaction = 0.0
             return
-        #print(self.sensor_row._value,self.sensor_col._value ,self.sensor_passenger._value,self.sensor_destination._value)
+
         locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
         if self.is_pick_up:
 
@@ -239,7 +239,6 @@ class LocationCondition(Condition):
             location = self.sensor_destination.value
         dest = locs[location]
         if self.sensor_row.value == dest[0] and self.sensor_col.value == dest[1]:
-            #print("Valid")
             self._satisfaction = 1.0
         else:
             self._satisfaction = 0.0
@@ -267,6 +266,6 @@ class RewardSensor(Sensor):
             self.step += 1
             self.step_last += 1
             if self.step_last == self.intervall:
-                print(self.updates,"average_rate:",numpy.round(self.reward/float(self.step),3),"last_rate:",self.reward_last/float(self.step_last))
+                print(self.updates,self.intervall,self.step,"average_rate:",numpy.round(self.reward/float(self.step),3),"last_rate:",self.reward_last/float(self.step_last))
                 self.reward_last=0
                 self.step_last=0

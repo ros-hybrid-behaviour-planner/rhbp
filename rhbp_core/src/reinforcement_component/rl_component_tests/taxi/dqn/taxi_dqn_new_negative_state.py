@@ -104,3 +104,27 @@ class TaxiTestConditionsNew(BaseTestSuite):
 
         self.fetchActivation(input_state_msg,negative)
         return numpy.argmax(self.activation_rl)
+
+
+class TaxiTestAllConditionsNew(TaxiTestConditionsNew):
+    def __init__(self,algorithm=0, *args, **kwargs):
+        super(TaxiTestAllConditionsNew, self).__init__(algorithm,*args, **kwargs)
+
+    def is_action_valid(self, s, a):
+        locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
+        row, col, passenger, dest = self.decode(s)
+        if a == 4:
+            if passenger == 4:
+                return False
+            if locs[passenger][0] == row and locs[passenger][1] == col:
+                return True
+            return False
+        if a == 5:
+            if not passenger == 4:
+                return False
+            if locs[dest][0] == row and locs[dest][1] == col:
+                return True
+            return False
+        return True
+
+
