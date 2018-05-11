@@ -751,39 +751,42 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
         self._rl_process = launch.launch(node)
 
-
-    def get_activation_from_rl_node(self):
+    def check_if_input_state_correct(self):
         """
-        :return:num_inputs
-                num_outputs
-                input_state
-                reward
-                last_action
+        :return:
         """
         num_outputs = len(self._manager.behaviours)
         if num_outputs == 0:
             print("num outputs cannot be 0")
-            return
+            return False
         input_state = self.input_transformer.transform_input_values()
         num_inputs = input_state.shape[0]
         if num_inputs == 0:
             print("num inputs cannot be 0", input_state)
-            return
+            return False
         reward = self.input_transformer.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
-            print(self._step_counter,"last action cannot be None",self.activation_rl)
-            return
-        last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
-        #last_action_index = self.behaviour_to_index(
-        #    last_action[0])  # TODO deal here with multiple executed actions
+            print(self._step_counter, "last action cannot be None", self.activation_rl)
+            return False
+        last_action_index = self.input_transformer.behaviour_to_index(
+            last_action[0])  # TODO deal here with multiple executed actions.
+            # idea : sent list for last action and for each las action update model
         if last_action_index is None:
             print("last action not found")
-            #time.sleep(2)
-            #self._manager.step()
-            last_action_index=0
+            # time.sleep(2)
+            # self._manager.step()
+            last_action_index = 0
+            return False
+        return True, num_inputs,num_outputs,input_state,reward,last_action_index
+
+    def get_activation_from_rl_node(self):
+        """
+        :return:
+        """
+        is_correct, num_inputs, num_outputs, input_state,reward,last_action_index = self.check_if_input_state_correct()
+        if not is_correct:
             return
-        # TODO if invalid dim dont send anything just return
 
         input_state_msg = InputState()
         input_state_msg.input_state = input_state
@@ -804,6 +807,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 negative_state.reward = self.min_activation
                 negative_state.last_action = action_index
                 negative_states.append(negative_state)
+
+        # start service to get the activations from the model
         self.fetchActivation(input_state_msg,negative_states)
 
     def fetchActivation(self, msg,negative_states):
@@ -826,7 +831,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
-
 
     def get_rl_activation_for_ref(self,ref_behaviour):
         # TODO normalize and include the weight.
@@ -887,8 +891,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
             ref_behaviour.current_activation_step = current_activation_step
             return current_activation_step
-
-
 
     def update_config(self,**kwargs):
         """
