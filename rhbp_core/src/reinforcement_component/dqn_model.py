@@ -9,27 +9,27 @@ from tensorflow.contrib import slim
 
 from input_state_transformer import SensorValueTransformer
 from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
-from reinforcement_learning_constants import RLConfig
+from reinforcement_learning_config import ExplorationConfig, NNConfig
 
 
 class DQNModel(ReinforcementAlgorithmBase):
     def __init__(self, name,pre_train=32):
         super(DQNModel,self).__init__(name)
         # Set learning parameters
-        self.y = .99  # Discount factor.
-        self.tau = 0.001  # Amount to update target network at each step.
-        self.batch_size = 32  # Size of training batch
-        self.startE = 1  # Starting chance of random action
-        self.endE = 0.0  # Final chance of random action
-        self.anneling_steps = 200000  # How many steps of training to reduce startE to endE.
-        self.pre_train_steps = 5000  # Number of steps used before training updates begin.
+        self.model_config = NNConfig()
+
+        self.exploration_config = ExplorationConfig()
+        self.train_interval = self.exploration_config.train_interval
+        self.pre_train_steps = self.exploration_config.pre_train  # Number of steps used before training updates begin.
+
         tf.set_random_seed(0)
+
         self.q_net = None
         self.target_net = None
         self.init = None
         self.targetOps = None
         # buffer class for experience learning
-        self.myBuffer = experience_buffer()
+        self.myBuffer = experience_buffer(self.model_config.buffer_size)
         self.counter = 0
 
     def initialize_model(self, num_inputs, num_outputs):
@@ -50,7 +50,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         # returns all variables created with trainable=True
         trainables = tf.trainable_variables()
         # create target operations
-        self.targetOps = self.updateTargetGraph(trainables, self.tau)
+        self.targetOps = self.updateTargetGraph(trainables, self.model_config.tau)
         # buffer class for experience learning
         #self.myBuffer = experience_buffer()
 
@@ -67,15 +67,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param input_state: the input state as a vector
         :return: vector of activations
         """
-        #print("feed")
-        #input_state = input_state.tolist()
-        #print(len(input_state))
-        #print("feed", input_state)
-        #print(np.array(input_state).shape)
-        #input_state =
         allQ = self.sess.run([self.q_net.Q_out], feed_dict={self.q_net.inputs: input_state,self.q_net.keep_per: 1.0})
-        #print(allQ[0])
-
         return allQ[0]
 
     def load_model(self, num_inputs, num_outputs):
@@ -101,12 +93,12 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1
-        if self.counter < self.pre_train_steps or self.counter % 5 != 1:
+        if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1:
             return
 
         # We use Double-DQN training algorithm
         # get sample of buffer for training
-        trainBatch = self.myBuffer.sample(self.batch_size)
+        trainBatch = self.myBuffer.sample(self.model_config.batch_size)
         # feed resulting state and keep prob of 1 to predict action
         Q1 = self.sess.run(self.q_net.predict, feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 3]), self.q_net.keep_per: 1.0})
 
@@ -118,10 +110,9 @@ class DQNModel(ReinforcementAlgorithmBase):
         #end_multiplier = -(trainBatch[:, 4] - 1)
         # print(trainBatch[:,4],end_multiplier)
         # target-q-values of batch for choosing prediction of q-network
-        # print(Q1,Q2)
-        doubleQ = Q2[range(self.batch_size), Q1]  # target_q-values for the q-net predicted action
+        doubleQ = Q2[range(self.model_config.batch_size), Q1]  # target_q-values for the q-net predicted action
         # target q value calculation according to q-learning
-        targetQ = trainBatch[:, 2] + (self.y * doubleQ)  # TODO add maybe here again doubleQ * endmultiplier. Nonte:works without as well
+        targetQ = trainBatch[:, 2] + (self.model_config.y * doubleQ)  # TODO add maybe here again doubleQ * endmultiplier. Nonte:works without as well
         # update the q-network model by giving the target-q-values, the input states and the chosen actions
         _ = self.sess.run(self.q_net.updateModel,
                      feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 0]), self.q_net.nextQ: targetQ,

@@ -7,7 +7,7 @@ from reinforcement_component.dqn_model import DQNModel
 from rhbp_core.msg import InputState, ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
-from reinforcement_component.reinforcement_learning_constants import RLConstants
+from reinforcement_component.reinforcement_learning_config import RLConstants
 class RLComponent:
 
     def __init__(self, name, algorithm=0,pre_train=32):
@@ -18,6 +18,7 @@ class RLComponent:
         self.is_model_init = False
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self._get_activation_state_callback)
+        # choose appropriate model
         if algorithm == 0:
             self.model = DQNModel(self.name,pre_train)
         elif algorithm == 1:
@@ -26,14 +27,12 @@ class RLComponent:
             #in case wrong number always use dqn
             self.model = DQNModel(self.name,pre_train)
 
+        # save the last state
         self.last_state = None
 
         self.number_outputs = -1
         self.number_inputs = -1
-        self.this_run =1
-        self.successfull = 0.0
         self.counter = 0.0
-        self.last_100 = 0.0
 
     def _get_activation_state_callback(self,request_msg):
         """

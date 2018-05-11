@@ -17,7 +17,7 @@ class RLConstants:
     microbatch_size = 20
 
 
-class RLConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
+class NNConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
     def __init__(self):
         self.model_path = ""
         self.model_directory = ""
@@ -30,4 +30,15 @@ class RLConfig(): #TODO let config get variables from rospy try-catch if rospy i
         self.epsilon = 0.1
         self.learning_rate_q_learning = 0.99
         self.interval_prints = 100
-        self.microbatch_size = 20
+        self.y = .99  # Discount factor.
+        self.tau = 0.001  # Amount to update target network at each step.
+        self.batch_size = 32  # Size of training batch
+        self.buffer_size = 10000  # size of the experience learning buffer
+class ExplorationConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
+    def __init__(self):
+        self.pre_train = 32 # let the model choose random actions and dont train for these number of steps
+        self.startE = 1
+        self.endE = 0.0
+        self.anneling_steps = 250000
+        self.stepDrop = (self.startE - self.endE) / self.anneling_steps
+        self.train_interval = 5 #train the model every train_interval steps

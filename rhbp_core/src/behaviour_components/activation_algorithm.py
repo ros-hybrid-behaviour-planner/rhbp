@@ -696,7 +696,6 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
 ActivationAlgorithmFactory.register_algorithm("uniform", UniformActivationAlgorithm)
 
 
-
 class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     """
     This activation algorithm changes the activation calculation formulas in respect to the base algorithm with
@@ -710,28 +709,23 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         #self.start_rl_node()
 
         self.SERVICE_TIMEOUT = 5
-        self.i = 0
+
         self.rl_component=None
 
-        self.counter=0
-        self.successfull = 0
-        self.count=1
-        self.count_last = 0
-        self.successfull_last = 0
-        self.episode_reward = 0
-        self.episode_steps = 0
+        self.weight_rl = 1.0
+
         self.max_activation = 100
         self.min_activation = -100
         self._step_counter = 0
-        self.ref_activations ={}
-        self.last_ref_activations = []
+
         self.input_transformer = InputStateTransformer(manager)
+
         self.start_rl_class()
+
         self.first_fetching=False
         numpy.random.seed(0) #TODO delete later. only for test purposes
 
-        ###
-        self.exploration_strategies = ExplorationStrategies()
+        self.exploration_strategies = ExplorationStrategies()  # implements different exploration strategies
 
 
     def start_rl_class(self):
@@ -778,7 +772,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         reward = self.input_transformer.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
-            print(self._step_counter,self.count,"last action cannot be None",self.activation_rl)
+            print(self._step_counter,"last action cannot be None",self.activation_rl)
             return
         last_action_index = self.input_transformer.behaviour_to_index(last_action[0]) # TODO deal here with multiple executed actions
         #last_action_index = self.behaviour_to_index(
@@ -816,9 +810,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         '''
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
-        self._justFinished_state = False
         if not self.first_fetching:
-            #self._manager.reset_step_counter()
             self._step_counter = 0
         self.first_fetching = True
         try:
@@ -826,18 +818,18 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
-            return
+            return 0
         try:
             getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
             activation_result = getActivationRequest(msg,negative_states)
             self.activation_rl = list(activation_result.activation_state.activations)
-            self.last_ref_activations = activation_result.activation_state.activations
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
             print(e.message)
 
 
     def get_rl_activation_for_ref(self,ref_behaviour):
+        # TODO normalize and include the weight.
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
         if len(self.activation_rl)==0:
             value=100
@@ -845,79 +837,57 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             value=self.activation_rl[index]+100 # plus 100 so incase all reawrds are negative still something gets chosen
         return value
 
-
-
     def compute_behaviour_activation_step(self, ref_behaviour):
         """
-        activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
-        activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
-        inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
-        activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
-        activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
-        inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
-        activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+        computes out of the different activaiton influences the activation step. 
+        
+        :param ref_behaviour: 
+        :return: 
         """
-        #TODO integrate again
+        # when rl has all influence only compute it.
+        if self.weight_rl >= 1.0:
+            try:
+                current_activation_step = self.get_rl_activation_for_ref(ref_behaviour) * 10000
+                ref_behaviour.current_activation_step = 0
+                ref_behaviour.activation = current_activation_step
+                return current_activation_step
+            except Exception as e:
+                print(e.message)
+                return 0
+
+        else: # otherwise use all influences
+
+            activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
+            activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
+            inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
+            activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
+            activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
+            inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
+            activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+            rl_activation = self.get_rl_activation_for_ref(ref_behaviour) # TODO normalize the value
+
+            rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
+            rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
+            rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
+            rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
+            rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
+            rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
+            rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
+            rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
+
+            current_activation_step = activation_precondition \
+                                      + activation_goals \
+                                      + inhibition_goals \
+                                      + activation_predecessors \
+                                      + activation_successors \
+                                      + inhibition_conflictors \
+                                      + activation_plan \
+                                      + rl_activation
 
 
-
-        try:
-            current_activation_step=self.get_rl_activation_for_ref(ref_behaviour)*10000
-            ref_behaviour.current_activation_step = 0
-            ref_behaviour.activation = current_activation_step
-            # TODO excluded changing the whole activation
+            ref_behaviour.current_activation_step = current_activation_step
             return current_activation_step
-        except Exception as e:
-            print(e.message)
-        #self.activation_rl[self.behaviour_to_index(ref_behaviour)]
-        # TODO implement here logic for random execution of behaviors in greedely manner for exploration.
-        """
-        rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
-        rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
-        rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
-        rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
-        rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
-        rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
-        rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
 
-        current_activation_step = activation_precondition \
-                                  + activation_goals \
-                                  + inhibition_goals \
-                                  + activation_predecessors \
-                                  + activation_successors \
-                                  + inhibition_conflictors \
-                                  + activation_plan
-w
-        ref_behaviour.current_activation_step = current_activation_step
-        """
-        current_activation_step=self.max_activation #TODO necessary?
-        return current_activation_step
-
-    def get_randomly_best_action(self, counter, best_action):
-
-        # choose randomly best action
-        random_value = numpy.random.rand(1)
-
-        if random_value < self.epsilon or self.counter - 1 < self.pre_train:
-            best_action = numpy.random.randint(self.num_outputs)
-            # execute best action
-            # reduce epsilon
-        if self.epsilon > self.endE and counter - 1 > self.pre_train:
-            self.epsilon -= self.stepDrop
-
-        return best_action
-
-    def greedy_e_pre_train(self,step):
-
-        random_value = numpy.random.rand(1)
-        num_actions = len(self._manager._behaviours)
-
-        if (random_value < self.epsilon or step < self.pre_train) and num_actions > 0:
-            best_action = numpy.random.randint(num_actions)
-            self.activation_rl[best_action] = self.max_activation
-
-        if self.epsilon > self.endE and self._step_counter > self.pre_train:
-            self.epsilon -= self.stepDrop
 
 
     def update_config(self,**kwargs):
