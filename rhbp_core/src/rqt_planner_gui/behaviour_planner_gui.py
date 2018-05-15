@@ -199,14 +199,14 @@ class Overview(Plugin):
                     rospy.logdebug("Removed goal %s", name)
 
     def step_push_button_callback(self):
-        service_name = self.__plannerPrefix + '/' + 'step'
+        service_name = self.__plannerPrefix + '/step'
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name, timeout=1)
         stepRequest = rospy.ServiceProxy(service_name, Empty)
         stepRequest()
 
     def _automatic_stepping_checkbox_Callback(self, status):
-        self._widget.stepPushButton.setEnabled(status)
+        self._widget.stepPushButton.setEnabled(not status)
 
         service_name = self.__plannerPrefix + '/' + 'set_automatic_stepping'
         rospy.logdebug("Waiting for service %s", service_name)
@@ -246,10 +246,12 @@ class Overview(Plugin):
             enabled = self._is_automatic_stepping_enabled()
             rospy.loginfo("Automatic stepping enabled: " + str(enabled))
             self._widget.automaticSteppingCheckBox.setEnabled(True)
+            self._widget.automaticSteppingCheckBox.setChecked(enabled)
             self._widget.stepPushButton.setEnabled(not enabled)
         except:
             self._widget.automaticSteppingCheckBox.setEnabled(False)
             self._widget.stepPushButton.setEnabled(False)
+            self._widget.automaticSteppingCheckBox.setChecked(True)
 
     def _update_discovery(self, manager_prefix):
         """

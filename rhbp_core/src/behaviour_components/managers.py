@@ -304,8 +304,12 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
-    def step(self):
-        if (self.pause_counter > 0) or (not self.__activated):
+    def step(self, force=False):
+        """
+        Execute one decision-making step
+        :param force: set to True to force the stepping regardless of pause and activation states
+        """
+        if not force and ((self.pause_counter > 0) or (not self.__activated)):
             return
 
         if self._create_log_files:  # debugging only
@@ -742,6 +746,10 @@ class Manager(object):
     @property
     def activated(self):
         return self.__activated
+
+    @property
+    def paused(self):
+        return self.pause_counter > 0
     
     @property
     def plan(self):
