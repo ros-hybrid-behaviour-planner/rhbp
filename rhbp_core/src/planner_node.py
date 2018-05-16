@@ -80,10 +80,10 @@ class ManagerNode(object):
         Service callback for manual planning/manager steps
         :param request:
         """
-        if not self.automatic_stepping:
+        if not self.automatic_stepping or self._manager.paused:
             self._manager.step(force=True)
         else:
-            rospy.logwarn("No manual stepping if automatic stepping is enabled")
+            rospy.logwarn("No manual stepping if automatic stepping is enabled and manager is not paused")
         return EmptyResponse()
 
     def run(self):

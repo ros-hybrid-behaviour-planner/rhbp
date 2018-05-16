@@ -12,7 +12,7 @@ from python_qt_binding.QtWidgets import QWidget
 from behaviourWidget import BehaviourWidget
 from goalWidget import GoalWidget
 from rhbp_core.msg import PlannerStatus, DiscoverInfo
-from rhbp_core.srv import SetStepping, GetStepping
+from rhbp_core.srv import SetStepping, GetStepping, GetPaused
 from PyQt5.QtCore import pyqtSignal
 from behaviour_components.managers import Manager
 from threading import Lock
@@ -76,8 +76,6 @@ class Overview(Plugin):
         self._widget.pausePushButton.toggled.connect(self.pauseButtonCallback)
         self._widget.stepPushButton.clicked.connect(self.step_push_button_callback)
         self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_Callback)
-        #this fire fore every key input
-        #self._widget.plannerPrefixComboBox.editTextChanged.connect(self.set_planner_prefix_callback)
         self._widget.plannerPrefixComboBox.activated.connect(self.set_planner_prefix_callback)
 
         # Connect signal so we can refresh Widgets from the main thread        
@@ -92,7 +90,14 @@ class Overview(Plugin):
         self.__sub_planner_status = None
         self.set_planner_prefix(self.__plannerPrefix)
 
-        self.__sub_planner_discovery = rospy.Subscriber(Manager.MANAGER_DISCOVERY_TOPIC, DiscoverInfo, self._planner_discovery_callback)
+        manager_paused = self._is_paused()
+
+        rospy.logdebug("Manager paused: " + str(manager_paused))
+
+        self.setPauseResumeButton(running=not manager_paused)
+
+        self.__sub_planner_discovery = rospy.Subscriber(Manager.MANAGER_DISCOVERY_TOPIC, DiscoverInfo,
+                                                        self._planner_discovery_callback)
         
     def updateGUI(self, newValues):
         self._widget.activationThresholdDoubleSpinBox.setValue(newValues["activationThreshold"])
@@ -101,7 +106,7 @@ class Overview(Plugin):
         self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
         self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
         self._widget.currentStepLabel.setText(str(newValues["stepCounter"]))
-        self.setPauseResumeButton(True)  # if we receive updates the manager is running
+        # self.setPauseResumeButton(True)  # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
         self.__behaviour_widgets[name] = BehaviourWidget(name, self)
@@ -129,26 +134,32 @@ class Overview(Plugin):
         if running:
             self._widget.pausePushButton.setText("pause")
             self._widget.pausePushButton.setChecked(False)
+            try:
+                self._widget.stepPushButton.setEnabled(not self._is_automatic_stepping_enabled())
+            except:
+                self._widget.stepPushButton.setEnabled(False)
+
         else:
             self._widget.pausePushButton.setText("resume")
             self._widget.pausePushButton.setChecked(True)
+            self._widget.stepPushButton.setEnabled(True)
     
     def pauseButtonCallback(self, status):
         try:
-            if status == True:
+            if status is True:
                 service_name = self.__plannerPrefix + '/' + 'Pause'
                 rospy.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-                pauseRequest = rospy.ServiceProxy(service_name, Empty)
-                pauseRequest()
-                self.setPauseResumeButton(False)
+                pause_request = rospy.ServiceProxy(service_name, Empty)
+                pause_request()
             else:
                 service_name = self.__plannerPrefix + '/' + 'Resume'
                 rospy.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-                resumeRequest = rospy.ServiceProxy(service_name, Empty)
-                resumeRequest()
-                self.setPauseResumeButton(True)
+                resume_request = rospy.ServiceProxy(service_name, Empty)
+                resume_request()
+            # double checking if pausing/resuming worked
+            self.setPauseResumeButton(running=not self._is_paused())
         except Exception as e:
             rospy.logerr("error while toggling pause or resume: %s", str(e))
     
@@ -223,6 +234,24 @@ class Overview(Plugin):
         if ret and ret.automatic_stepping:
             return True
         else:
+            return False
+
+    def _is_paused(self):
+        """
+        Determine if the manager is currently paused
+        :return: True if paused, False if running/not paused
+        """
+        service_name = self.__plannerPrefix + '/' + 'GetPaused'
+        rospy.logdebug("Waiting for service %s", service_name)
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            get_paused = rospy.ServiceProxy(service_name, GetPaused)
+            ret = get_paused()
+            if ret and ret.paused:
+                return True
+            else:
+                return False
+        except:
             return False
 
     def setActivationThresholdDecay(self):

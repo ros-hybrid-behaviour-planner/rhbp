@@ -71,6 +71,7 @@ add_service_files(
   TopicUpdateSubscribe.srv
   SetStepping.srv
   GetStepping.srv
+  GetPaused.srv
 )
 
 ## Generate actions in the 'action' folder

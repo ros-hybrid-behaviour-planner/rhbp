@@ -10,11 +10,13 @@ import threading
 import rospy
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
-from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
+from rhbp_core.msg import PlannerStatus, Status, DiscoverInfo
+from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
+    RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, GetPaused, GetPausedResponse
 from .behaviours import Behaviour
 from .goals import GoalProxy
-from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
+from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
+    create_valid_pddl_name
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
@@ -111,6 +113,7 @@ class Manager(object):
         self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manual_start_callback)
         self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
+        self.__get_paused_service = rospy.Service(self._service_prefix + 'GetPaused', GetPaused, self.__get_paused_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1, latch=True)
 
@@ -127,6 +130,7 @@ class Manager(object):
         self.__removeGoalService.shutdown()
         self.__manualStartService.shutdown()
         self.__pauseService.shutdown()
+        self.__get_paused_service.shutdown()
         self.__resumeService.shutdown()
         self.__statusPublisher.unregister()
         self.__pub_discover.unregister()
@@ -692,9 +696,12 @@ class Manager(object):
         self.pause()
         return EmptyResponse()
 
-    def __resume_callback(self, dummy):
+    def __resume_callback(self, req):
         self.resume()
         return EmptyResponse()
+
+    def __get_paused_callback(self, req):
+        return GetPausedResponse(paused=self.paused)
 
     def __remove_goal_callback(self, request):
         self.remove_goal(goal_name=request.name)
