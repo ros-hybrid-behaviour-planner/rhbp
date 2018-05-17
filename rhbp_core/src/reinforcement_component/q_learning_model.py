@@ -6,7 +6,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from input_state_transformer import SensorValueTransformer
 from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
-from reinforcement_learning_config import RLConfig
+from reinforcement_learning_config import NNConfig
 
 class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
     def __init__(self, name):

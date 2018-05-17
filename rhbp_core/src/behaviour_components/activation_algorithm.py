@@ -11,6 +11,8 @@ import rospy
 #from .managers import Manager has to be commented because of circular dependency problem
 import time
 
+import subprocess
+
 from reinforcement_component.exploration_strategies import ExplorationStrategies
 from reinforcement_component.input_state_transformer import InputStateTransformer
 from .behaviours import Behaviour
@@ -721,13 +723,50 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.input_transformer = InputStateTransformer(manager)
 
         self.start_rl_class()
+        #self.start_rl_node()
 
         self.first_fetching=False
         numpy.random.seed(0) #TODO delete later. only for test purposes
 
         self.exploration_strategies = ExplorationStrategies()  # implements different exploration strategies
 
+    """
+    import rospy
+    import os
+    import rospy
+    import rospkg
+    import subprocess
 
+    import roslaunch
+    from std_srvs.srv import Trigger, TriggerResponse
+
+    def start_node_direct():
+        package = 'rhbp_core'
+        node_name = 'planner_node.py'
+        command = "rosrun {0} {1}".format(package, node_name)
+        p = subprocess.Popen(command, shell=True)
+        state = p.poll()
+        if state is None:
+            rospy.loginfo("process is running fine")
+        elif state < 0:
+            rospy.loginfo("Process terminated with error")
+        elif state > 0:
+            rospy.loginfo("Process terminated without error")
+
+    def start_node2():
+        package = 'rhbp_core'
+        launch_file = 'planner.launch'
+        command = "roslaunch  {0} {1}".format(package, launch_file)
+        p = subprocess.Popen(command, shell=True)
+        state = p.poll()
+        if state is None:
+            rospy.loginfo("process is running fine")
+        elif state < 0:
+            rospy.loginfo("Process terminated with error")
+        elif state > 0:
+            rospy.loginfo("Process terminated without error")
+
+    """
     def start_rl_class(self):
         """
         starts the rl_component as a class
@@ -742,14 +781,20 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         """
         package = 'reinforcement_component'
         executable = 'rl_component_node.py'
-        self.rl_address=self._manager._prefix.replace("/Manager","_rl_node")
-        print(self.rl_address)
-        node = roslaunch.core.Node(package=package, node_type=executable, name=self.rl_address,
-                                   output='screen')
-        launch = roslaunch.scriptapi.ROSLaunch()
-        launch.start()
 
-        self._rl_process = launch.launch(node)
+        self.rl_address=self._manager._prefix.replace("/Manager","_rl_node")
+
+        print(self.rl_address)
+
+        command = "rosrun {0} {1}".format(package, executable)
+        p = subprocess.Popen(command, shell=True)
+        state = p.poll()
+        if state is None:
+            rospy.loginfo("process is running fine")
+        elif state < 0:
+            rospy.loginfo("Process terminated with error")
+        elif state > 0:
+            rospy.loginfo("Process terminated without error")
 
     def check_if_input_state_correct(self):
         """
@@ -758,26 +803,23 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         num_outputs = len(self._manager.behaviours)
         if num_outputs == 0:
             print("num outputs cannot be 0")
-            return False
+            return False, None, None,None,None,None
         input_state = self.input_transformer.transform_input_values()
         num_inputs = input_state.shape[0]
         if num_inputs == 0:
             print("num inputs cannot be 0", input_state)
-            return False
+            return False, None, None,None,None,None
         reward = self.input_transformer.calculate_reward()
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
             print(self._step_counter, "last action cannot be None", self.activation_rl)
-            return False
+            return False, None, None,None,None,None
         last_action_index = self.input_transformer.behaviour_to_index(
             last_action[0])  # TODO deal here with multiple executed actions.
             # idea : sent list for last action and for each las action update model
         if last_action_index is None:
             print("last action not found")
-            # time.sleep(2)
-            # self._manager.step()
-            last_action_index = 0
-            return False
+            return False , None, None,None,None,None
         return True, num_inputs,num_outputs,input_state,reward,last_action_index
 
     def get_activation_from_rl_node(self):
@@ -798,7 +840,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         num_actions = len(self._manager._behaviours)
         negative_states = []
         for action_index in range(num_actions):
-            # if random chosen number is not executalbe, give minus reward and sent it to rl component
+            # if random chosen number is not executable, give minus reward and sent it to rl component
             if not self._manager._behaviours[action_index].executable:
                 negative_state = InputState()
                 negative_state.input_state = input_state
@@ -835,10 +877,14 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     def get_rl_activation_for_ref(self,ref_behaviour):
         # TODO normalize and include the weight.
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
+        sum_activations = sum(self.activation_rl)
         if len(self.activation_rl)==0:
             value=100
         else:
-            value=self.activation_rl[index]+100 # plus 100 so incase all reawrds are negative still something gets chosen
+            value = self.activation_rl[index]
+            #value /= sum_activations
+            #value *= self.weight_rl
+            value= value + 100  # plus 100 so in case all activations are negative still something gets chosen
         return value
 
     def compute_behaviour_activation_step(self, ref_behaviour):
@@ -859,7 +905,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 print(e.message)
                 return 0
 
-        else: # otherwise use all influences
+        else:  # otherwise use all influences
 
             activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
             activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
@@ -887,7 +933,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                                       + inhibition_conflictors \
                                       + activation_plan \
                                       + rl_activation
-
 
             ref_behaviour.current_activation_step = current_activation_step
             return current_activation_step

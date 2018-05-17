@@ -1,4 +1,4 @@
-from nn_model_base import QLearningNeuralNetwork
+from q_learning_model import QLearningNeuralNetwork
 from input_state_transformer import SensorValueTransformer
 import time
 import rospy
