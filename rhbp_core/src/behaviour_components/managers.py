@@ -186,10 +186,6 @@ class Manager(object):
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
-        if self._create_log_files:
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename="pddl{0}Domain".format(self._stepCounter), extension=".pddl" )
-            domainLog.write(domainPDDLString)
-
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
@@ -205,13 +201,18 @@ class Manager(object):
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
 
-        if self._create_log_files:
-            filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
-            domainLog.write(problemPDDLString)
-
         return problemPDDLString
-    
+
+    def _log_pddl_files(self, domainPDDLString, problemPDDLString, goals):
+
+        filename = "pddl{0}Domain".format(self._stepCounter)
+        domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
+        domainLog.write(domainPDDLString)
+
+        filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
+        problemLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl")
+        problemLog.write(problemPDDLString)
+
     def _generate_priority_goal_sequences(self):
         '''
         This is a generator that generates goal sequences with descending priorities.
@@ -222,7 +223,7 @@ class Manager(object):
         numElements = len(sortedGoals)
         for i in xrange(0, numElements, 1):
             for j in xrange(numElements, i, -1):
-                yield sortedGoals[i : j]
+                yield sortedGoals[i:j]
     
     def _plan_if_necessary(self):
         '''
@@ -281,9 +282,11 @@ class Manager(object):
             # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
             # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in descending order until a reachable goal is found.
             for goalSequence in self._generate_priority_goal_sequences():
+                problemPDDL = ""
                 try:
                     rhbplog.logdebug("trying to reach goals %s", goalSequence)
                     problemPDDL = self._create_problem_pddl(goalSequence)
+
                     tmpPlan = self.planner.plan(domainPDDL, problemPDDL)
                     if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
                         rhbplog.loginfo("FOUND PLAN: %s", tmpPlan)
@@ -293,9 +296,12 @@ class Manager(object):
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
+                    if self._create_log_files:
+                        self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
                 except Exception as e:
-                    rhbplog.logerr("PLANNER ERROR: %s", e)
-                    self.__replanningNeeded = True # in case of planning exceptions try again next iteration
+                    rhbplog.logerr("PLANNER ERROR: %s. Generating PDDL log files for step %d", e, self._stepCounter)
+                    self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
+                    self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
         else:
             rhbplog.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
