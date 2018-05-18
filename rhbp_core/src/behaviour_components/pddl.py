@@ -199,5 +199,5 @@ def create_valid_pddl_name(str):
     :param str: string to convert
     :type str: String
     """
-    return ''.join(e for e in str if e.isalnum() or e =='_')
+    return ''.join(e for e in str if e.isalnum() or e == '_')
 
