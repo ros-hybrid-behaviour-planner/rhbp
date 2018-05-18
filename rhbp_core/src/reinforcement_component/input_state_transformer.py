@@ -139,7 +139,7 @@ class InputStateTransformer:
         """
         state = int(state)
         #print(state,num_state_space)
-        array = numpy.identity(num_state_space)[state:state + 1]
+        #array = numpy.identity(num_state_space)[state:state + 1]
         return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
 
     def transform_input_values(self):
@@ -186,4 +186,5 @@ class InputStateTransformer:
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
         # TODO get wishes from sensors
+        #print("input",input_array)
         return input_array

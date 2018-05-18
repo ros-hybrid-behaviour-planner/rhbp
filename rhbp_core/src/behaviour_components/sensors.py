@@ -21,7 +21,7 @@ import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
 class RlExtension(object):
-    def __init__(self, encoding="hot_state", state_space=16,
+    def __init__(self, encoding="none", state_space=16,
                  include_in_rl=True):
         self.encoding = encoding
         self.state_space = state_space

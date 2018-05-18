@@ -827,9 +827,10 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         :return:
         """
         is_correct, num_inputs, num_outputs, input_state,reward,last_action_index = self.check_if_input_state_correct()
+
         if not is_correct:
             return
-
+        #print(num_inputs,num_outputs,input_state,reward,last_action_index)
         input_state_msg = InputState()
         input_state_msg.input_state = input_state
         input_state_msg.num_outputs = num_outputs

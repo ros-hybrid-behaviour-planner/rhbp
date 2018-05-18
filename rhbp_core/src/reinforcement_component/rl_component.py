@@ -43,18 +43,17 @@ class RLComponent:
         self.counter +=1
 
         try:
-
+            #print(request_msg)
             request=request_msg.input_state
             # check if the model has same dimension as request and if not reinit the model
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
             # save the input state in the model
             self.save_request(request)
             self.last_state = request.input_state
-
             negative_states = request_msg.negative_states
             for state in negative_states:
-                self.save_request(state)
-
+                #self.save_request(state)
+                continue
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
@@ -93,8 +92,6 @@ class RLComponent:
             })
 
             # updating the model with negative states has to come after the getting the activations
-
-
             return activation_state
         except Exception as e:
             print(e.message)

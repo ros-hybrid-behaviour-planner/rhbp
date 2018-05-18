@@ -32,6 +32,10 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.myBuffer = experience_buffer(self.model_config.buffer_size)
         self.counter = 0
 
+    def reset_model_values(self):
+        self.counter = 0
+        self.myBuffer.reset()
+
     def initialize_model(self, num_inputs, num_outputs):
         """
         initializes the neural network layer. THis funciton defines how exactly the neural network looks like
@@ -41,6 +45,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         """
         tf.set_random_seed(0)
         np.random.seed(0)
+        self.reset_model_values()
 
         tf.reset_default_graph()
         # initialize two networks. q-network and target q-network
@@ -60,7 +65,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.sess.run(self.init)
         # run target operations
         self.updateTarget(self.targetOps, self.sess)
-
+        print("init mode",num_inputs,num_outputs)
     def feed_forward(self, input_state):
         """
         feed forwarding the input_state into the network and getting the calculated activations
@@ -90,18 +95,20 @@ class DQNModel(ReinforcementAlgorithmBase):
 
         #save the input tuple in buffer
         #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
+        #print(tuple)
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1
         if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1:
             return
-
+        #print("update")
+        #print(tuple[:,3].shape)
         # We use Double-DQN training algorithm
         # get sample of buffer for training
         trainBatch = self.myBuffer.sample(self.model_config.batch_size)
         # feed resulting state and keep prob of 1 to predict action
+        #print(0,trainBatch[:,3])
         Q1 = self.sess.run(self.q_net.predict, feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 3]), self.q_net.keep_per: 1.0})
-
         # get q-values of target network with the resulting state
         Q2 = self.sess.run(self.target_net.Q_out,
                       feed_dict={self.target_net.inputs: np.vstack(trainBatch[:, 3]), self.target_net.keep_per: 1.0})
@@ -191,6 +198,10 @@ class experience_buffer():
         self.print_steps = False
         random.seed(0)
     # add a new experience
+    def reset(self):
+        self.buffer=[]
+        random.seed(0)
+        self.counter=0
     def add(self, experience):
         if  self.print_steps:
             print(self.counter, np.argmax(experience[0, 0]), np.argmax(experience[0, 3]), experience[0, 1], experience[0, 2])
@@ -199,6 +210,7 @@ class experience_buffer():
             self.buffer[0:(len(experience) + len(self.buffer)) - self.buffer_size] = []
         self.buffer.extend(experience)
     # get a random sample of the buffer
+
     def sample(self, size):
         sample = np.reshape(np.array(random.sample(self.buffer, size)), [size, 4])
         if  self.print_steps:
