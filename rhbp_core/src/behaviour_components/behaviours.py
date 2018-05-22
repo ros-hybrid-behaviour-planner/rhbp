@@ -47,7 +47,6 @@ class Behaviour(object):
         self._activationFromPreconditions = 0.0 # We get it via getStatus service of actual behaviour node
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
         self._interruptable = True  # We get it via getStatus service of actual behaviour node
-        self._progress = 0.0        # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
         self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
@@ -114,7 +113,6 @@ class Behaviour(object):
                 self._executionTime = -1
                 self._justFinished = True
             self._isExecuting = status.isExecuting
-            self._progress = status.progress
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
@@ -284,11 +282,7 @@ class Behaviour(object):
     @property
     def priority(self):
         return self._priority
-    
-    @property
-    def progress(self):
-        return self._progress
-    
+
     @property
     def interruptable(self):
         return self._interruptable
@@ -557,14 +551,7 @@ class BehaviourBase(object):
                 if abs(filteredWishes[w.get_pddl_effect_name()].indicator) > abs(w.indicator):
                     filteredWishes[w.get_pddl_effect_name()] = w
         return filteredWishes.values()
-    
-    def getProgress(self):
-        """
-        This method should return the progress of the current activities if isExecuting == True.
-        It there is no current activity the value is ignored and may be filled with a dummy.
-        """
-        return 0.5
-    
+
     def getActionPDDL(self):
         """
         This method should produce a valid PDDL action snippet suitable for FastDownward (http://www.fast-downward.org/PddlSupport)
@@ -645,7 +632,6 @@ class BehaviourBase(object):
                                "wishes"       : self.computeWishes(),
                                "isExecuting"  : self._isExecuting,
                                "executionTimeout" : self._executionTimeout,
-                               "progress"     : self.getProgress(),
                                "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                                "priority"     : self._priority,
                                "interruptable": self._is_interruptible(),

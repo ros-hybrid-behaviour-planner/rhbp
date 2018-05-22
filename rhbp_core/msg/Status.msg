@@ -7,7 +7,6 @@ Wish[] wishes
 bool isExecuting
 int32 executionTimeout
 int32 executionTime
-float32 progress
 bool active
 bool interruptable
 bool independentFromPlanner

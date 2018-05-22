@@ -49,8 +49,6 @@ class BehaviourWidget(QWidget):
         self.readyThresholdDoubleSpinBox.setToolTip("{0}".format(newValues["readyThreshold"]))
         self.executableLabel.setText(newValues["executable"])
         self.isExecutingLabel.setText(newValues["isExecuting"])
-        self.progressDoubleSpinBox.setValue(newValues["progress"])
-        self.progressDoubleSpinBox.setToolTip("{0}".format(newValues["progress"]))
         self.executionTimeSpinBox.setValue(newValues["executionTime"])
         if not self.prioritySpinBox.hasFocus():
             self.prioritySpinBox.setValue(newValues["priority"])
@@ -80,7 +78,6 @@ class BehaviourWidget(QWidget):
                                    "isExecuting" : str(msg.isExecuting),
                                    "executionTimeout" : msg.executionTimeout,
                                    "executionTime" : msg.executionTime,
-                                   "progress" : msg.progress,
                                    "priority" : msg.priority,
                                    "interruptable" : str(msg.interruptable),
                                    "independentFromPlanner": str(msg.independentFromPlanner)
