@@ -346,7 +346,7 @@ class Manager(object):
             currently_influenced_sensors = set()
 
             # perform the decision making based on the calculated activations
-            for behaviour in sorted(self._behaviours, key = lambda x: x.activation, reverse = True):
+            for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
                 if not behaviour.active and not behaviour.manualStart: # it must be active
                     rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
@@ -367,9 +367,11 @@ class Manager(object):
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
                                         behaviour.name, behaviour.activation, self._activationThreshold)
                         self._stop_behaviour(behaviour, False)
-                    elif self.__max_parallel_behaviours > 0 and \
-                                    amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
+                    elif self.__max_parallel_behaviours > 0 and behaviour.interruptable and \
+                            amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
                             and not behaviour.manualStart:
+                        # if we try to stop non-interruptable behaviours and we have already to many behaviours running
+                        # this should be resolved in the next decision-making round
                         rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
                         self._stop_behaviour(behaviour, False)
                     else:
