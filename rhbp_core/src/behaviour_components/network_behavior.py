@@ -37,6 +37,10 @@ class NetworkBehaviour(BehaviourBase):
         :param kwargs: args for the manager, except the prefix arg
         """
         super(NetworkBehaviour, self).__init__(name=name, requires_execution_steps=requires_execution_steps, **kwargs)
+        if "interruptable" in kwargs:
+            rhbplog.logwarn("Interruptable parameter will be ignored in a NetworkBehaviour. Interruptable attribute is "
+                            "evaluated based on the running or registered parameters, "
+                            "see 'only_running_for_deciding_interruptible'")
         self.requires_execution_steps = requires_execution_steps
         self.always_update_activation = always_update_activation
         manager_args = {}

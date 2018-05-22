@@ -8,6 +8,7 @@ Created on 25.03.2017
 '''
 import time
 import unittest
+import mock
 
 import rospy
 import rostest
@@ -39,6 +40,24 @@ class TestNetworkBehaviour(unittest.TestCase):
         # Disable planner, since the change from python to C
         #  disturbs the connection between the test process and the node process
         rospy.set_param("~planBias", 0.0)
+
+    @mock.patch('behaviour_components.network_behavior.utils.rhbp_logging')
+    def test_interruptible_warning(self, mock_rhbp_logging):
+        """
+        This test tests if logwarn is generated if a NetworkBehaviour is created with a interruptable parameter
+        :param mock_rhbp_logging:
+        """
+        #with mock.patch('__main__.Foo.foo', new_callable=mock.PropertyMock) as mock_foo:
+        method_prefix = self.__message_prefix + "/test_interruptible_warning"
+        planner_prefix = method_prefix + "/Manager"
+
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
+
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
+                                               interruptable=True)
+
+        mock_rhbp_logging.assert_has_calls(mock_rhbp_logging.logwarn, "logwarn not triggered")
+
 
     def test_multiple_embedded_network_behaviors(self):
         """
