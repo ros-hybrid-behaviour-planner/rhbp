@@ -462,7 +462,6 @@ class Manager(object):
             statusMessage.isExecuting = behaviour.isExecuting
             statusMessage.executionTimeout = behaviour.executionTimeout
             statusMessage.executionTime = behaviour.executionTime
-            statusMessage.progress = behaviour.progress
             statusMessage.executable = behaviour.executable
             statusMessage.threshold = behaviour.readyThreshold
             statusMessage.priority = behaviour.priority
