@@ -4,8 +4,7 @@ Created on 22.08.2017
 @author: hrabia
 '''
 from __future__ import division # force floating point division when using plain /
-import rospy
-from .pddl import PDDL, get_pddl_effect_name
+from .pddl import PDDL, get_pddl_effect_name, create_valid_pddl_name
 from rhbp_core.msg import Wish as WishMsg
 from rhbp_core.msg import Correlation as CorrelationMsg
 
@@ -31,7 +30,7 @@ class Effect(object):
         :param condition: manually added conditional effect
         :type condition: str
         """
-        self.sensor_name = sensor_name
+        self.sensor_name = create_valid_pddl_name(sensor_name)
         self.indicator = indicator
         self.activator_name = activator_name
         self.sensor_type = str(sensor_type)
@@ -88,6 +87,7 @@ class Effect(object):
     def __str__(self):
         return "Effect(s:{},i:{},s_t:{},a:{},c:{})".format(str(self.sensor_name), str(self.indicator), self.sensor_type, str(self.activator_name), self.condition)
 
+
 class Wish(object):
 
     def __init__(self, sensor_name, indicator, activator_name=''):
@@ -101,8 +101,8 @@ class Wish(object):
         :return: WishMsg()
         """
         msg = WishMsg()
-        msg.indicator=self.indicator
-        msg.sensorName=self.sensor_name
+        msg.indicator = self.indicator
+        msg.sensorName = self.sensor_name
         msg.activatorName = self.activator_name
         return msg
 

@@ -49,11 +49,11 @@ class ManagerNode(object):
         init all services handlers
         :param prefix: manager prefix
         """
-        self._set_automatic_stepping_service = rospy.Service(prefix + '/' + 'set_automatic_stepping', SetStepping,
+        self._set_automatic_stepping_service = rospy.Service(prefix + '/set_automatic_stepping', SetStepping,
                                                              self._set_stepping_callback)
-        self._get_automatic_stepping_service = rospy.Service(prefix + '/' + 'get_automatic_stepping', GetStepping,
+        self._get_automatic_stepping_service = rospy.Service(prefix + '/get_automatic_stepping', GetStepping,
                                                              self._get_stepping_callback)
-        self._stepping_service = rospy.Service(prefix + '/' + 'step', Empty, self._step_callback)
+        self._stepping_service = rospy.Service(prefix + '/step', Empty, self._step_callback)
 
     def _set_stepping_callback(self, request):
         """
@@ -80,10 +80,10 @@ class ManagerNode(object):
         Service callback for manual planning/manager steps
         :param request:
         """
-        if not self.automatic_stepping:
-            self._manager.step()
+        if not self.automatic_stepping or self._manager.paused:
+            self._manager.step(force=True)
         else:
-            rospy.logwarn("No manual stepping if automatic stepping is enabled")
+            rospy.logwarn("No manual stepping if automatic stepping is enabled and manager is not paused")
         return EmptyResponse()
 
     def run(self):

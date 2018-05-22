@@ -69,8 +69,7 @@ class TestNetworkBehaviour(unittest.TestCase):
         # Both methods are used here, to demonstrate both ways.
         second_level_network.add_effects_and_goals([(sensor, effect)])
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        increaser_behavior = IncreaserBehavior(effect_name=pddl_function_name, topic_name=topic_name,
+        increaser_behavior = IncreaserBehavior(effect_name=sensor.name, topic_name=topic_name,
                                                     name=method_prefix + "TopicIncreaser",
                                                     plannerPrefix=second_level_network.get_manager_prefix())
 

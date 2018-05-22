@@ -10,11 +10,13 @@ import threading
 import rospy
 import itertools
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
-from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
+from rhbp_core.msg import PlannerStatus, Status, DiscoverInfo
+from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
+    RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, GetPaused, GetPausedResponse
 from .behaviours import Behaviour
 from .goals import GoalProxy
-from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
+from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
+    create_valid_pddl_name
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
@@ -111,6 +113,7 @@ class Manager(object):
         self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manual_start_callback)
         self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
+        self.__get_paused_service = rospy.Service(self._service_prefix + 'GetPaused', GetPaused, self.__get_paused_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1, latch=True)
 
@@ -127,6 +130,7 @@ class Manager(object):
         self.__removeGoalService.shutdown()
         self.__manualStartService.shutdown()
         self.__pauseService.shutdown()
+        self.__get_paused_service.shutdown()
         self.__resumeService.shutdown()
         self.__statusPublisher.unregister()
         self.__pub_discover.unregister()
@@ -182,10 +186,6 @@ class Manager(object):
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
-        if self._create_log_files:
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename="pddl{0}Domain".format(self._stepCounter), extension=".pddl" )
-            domainLog.write(domainPDDLString)
-
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
@@ -201,13 +201,18 @@ class Manager(object):
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
 
-        if self._create_log_files:
-            filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
-            domainLog.write(problemPDDLString)
-
         return problemPDDLString
-    
+
+    def _log_pddl_files(self, domainPDDLString, problemPDDLString, goals):
+
+        filename = "pddl{0}Domain".format(self._stepCounter)
+        domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
+        domainLog.write(domainPDDLString)
+
+        filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
+        problemLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl")
+        problemLog.write(problemPDDLString)
+
     def _generate_priority_goal_sequences(self):
         '''
         This is a generator that generates goal sequences with descending priorities.
@@ -218,7 +223,7 @@ class Manager(object):
         numElements = len(sortedGoals)
         for i in xrange(0, numElements, 1):
             for j in xrange(numElements, i, -1):
-                yield sortedGoals[i : j]
+                yield sortedGoals[i:j]
     
     def _plan_if_necessary(self):
         '''
@@ -237,13 +242,13 @@ class Manager(object):
         domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
-        for sensorName, indicator in self.__sensorChanges.iteritems():
+        for sensor_name, indicator in self.__sensorChanges.iteritems():
             changeWasExpected = False
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
                     # the observed change happened because of the running behaviour (at least the behaviour is
                     # correlated to the changed sensor in the correct way)
-                    if item.get_pddl_effect_name() == sensorName and item.indicator * indicator > 0:
+                    if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
                         changeWasExpected = True
                         break
                 if changeWasExpected:
@@ -277,9 +282,11 @@ class Manager(object):
             # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
             # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in descending order until a reachable goal is found.
             for goalSequence in self._generate_priority_goal_sequences():
+                problemPDDL = ""
                 try:
                     rhbplog.logdebug("trying to reach goals %s", goalSequence)
                     problemPDDL = self._create_problem_pddl(goalSequence)
+
                     tmpPlan = self.planner.plan(domainPDDL, problemPDDL)
                     if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
                         rhbplog.loginfo("FOUND PLAN: %s", tmpPlan)
@@ -289,9 +296,12 @@ class Manager(object):
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
+                    if self._create_log_files:
+                        self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
                 except Exception as e:
-                    rhbplog.logerr("PLANNER ERROR: %s", e)
-                    self.__replanningNeeded = True # in case of planning exceptions try again next iteration
+                    rhbplog.logerr("PLANNER ERROR: %s. Generating PDDL log files for step %d", e, self._stepCounter)
+                    self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
+                    self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
         else:
             rhbplog.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
     
@@ -304,8 +314,12 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
-    def step(self):
-        if (self.pause_counter > 0) or (not self.__activated):
+    def step(self, force=False):
+        """
+        Execute one decision-making step
+        :param force: set to True to force the stepping regardless of pause and activation states
+        """
+        if not force and ((self.pause_counter > 0) or (not self.__activated)):
             return
 
         if self._create_log_files:  # debugging only
@@ -688,9 +702,12 @@ class Manager(object):
         self.pause()
         return EmptyResponse()
 
-    def __resume_callback(self, dummy):
+    def __resume_callback(self, req):
         self.resume()
         return EmptyResponse()
+
+    def __get_paused_callback(self, req):
+        return GetPausedResponse(paused=self.paused)
 
     def __remove_goal_callback(self, request):
         self.remove_goal(goal_name=request.name)
@@ -742,6 +759,10 @@ class Manager(object):
     @property
     def activated(self):
         return self.__activated
+
+    @property
+    def paused(self):
+        return self.pause_counter > 0
     
     @property
     def plan(self):

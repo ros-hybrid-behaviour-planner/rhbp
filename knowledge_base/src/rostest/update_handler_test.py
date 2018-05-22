@@ -126,18 +126,18 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         """
         Test updating an existing fact
         """
-        prefix = self.__message_prefix + '_test_update_empty'
+        prefix = self.__message_prefix + '_test_update_existing'
 
         updated_old = (prefix, 'updated', '1')
 
         self.__client.push(updated_old)
 
+        rospy.sleep(0.1)
+
         cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
-        update_stamp = cache.update_time
-
         updated_new = (prefix, 'updated', '1')
-
+        update_stamp = cache.update_time
         self.__client.update((prefix, '*', '*'), updated_new)
 
         while update_stamp == cache.update_time:
