@@ -600,5 +600,7 @@ class PublisherGoal(GoalBase):
         return self.__condition
 
     def _cleanup_topics_services(self):
-        super(PublisherGoal, self)._cleanup_topics_services(terminate_services=True)
-        self.__pub.unregister()
+        super(PublisherGoal, self)._cleanup_topics_services()
+        if hasattr(self, "__pub") and self.__pub:
+            self.__pub.unregister()
+

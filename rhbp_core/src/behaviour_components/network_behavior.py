@@ -15,6 +15,7 @@ from utils.deprecation import deprecated
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
 
+
 class NetworkBehaviour(BehaviourBase):
     """
     Behavior, which encapsulates an additional manager and behaviors.
@@ -25,7 +26,7 @@ class NetworkBehaviour(BehaviourBase):
 
     def __init__(self, name, requires_execution_steps=True,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
-                 correlations = None, always_update_activation = False,
+                 correlations=None, always_update_activation=False,
                  **kwargs):
         """
         :param correlations: tuple <Effect>
