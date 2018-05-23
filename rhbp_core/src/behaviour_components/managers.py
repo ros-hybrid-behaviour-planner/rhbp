@@ -39,7 +39,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, activated = True, use_only_running_behaviors_for_interRuptible = USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, activated=True, use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         '''
         Constructor
         '''
