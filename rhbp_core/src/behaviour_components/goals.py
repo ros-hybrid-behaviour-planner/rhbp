@@ -434,8 +434,8 @@ class GoalBase(Goal):
                 "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
                 self._planner_prefix, self._name)
             rospy.wait_for_service(self._planner_prefix + '/' + 'AddGoal')
-            registerMe = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
-            registerMe(self._name, self._permanent)
+            add_goal = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
+            add_goal(self._name, self._permanent)
             self._registered = True
             rhbplog.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                            self._planner_prefix, self._name)
@@ -518,6 +518,10 @@ class GoalBase(Goal):
             rhbplog.logerr("ROS service callback exception in '_get_status_callback' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
+
+    @property
+    def isPermanent(self):
+        return self._permanent
 
 
 class OfflineGoal(AbstractGoalRepresentation):
