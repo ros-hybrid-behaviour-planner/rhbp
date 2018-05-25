@@ -221,9 +221,12 @@ class Overview(Plugin):
 
         service_name = self.__plannerPrefix + '/' + 'set_automatic_stepping'
         rospy.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name, timeout=1)
-        set_stepping = rospy.ServiceProxy(service_name, SetStepping)
-        set_stepping(status)
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            set_stepping = rospy.ServiceProxy(service_name, SetStepping)
+            set_stepping(status)
+        except rospy.exceptions.ROSException:
+            rospy.logdebug("Service %s not available", service_name)
 
     def _is_automatic_stepping_enabled(self):
         service_name = self.__plannerPrefix + '/' + 'get_automatic_stepping'
