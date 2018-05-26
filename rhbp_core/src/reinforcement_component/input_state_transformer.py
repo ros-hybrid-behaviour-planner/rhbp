@@ -114,6 +114,7 @@ class InputStateTransformer:
             # goal_value = goal.fulfillment * (10 ** goal.priority)
             goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
+
         #print("reward",reward_value)
         return reward_value
 

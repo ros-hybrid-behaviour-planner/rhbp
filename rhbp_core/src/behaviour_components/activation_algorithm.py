@@ -721,52 +721,16 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self._step_counter = 0
 
         self.input_transformer = InputStateTransformer(manager)
-
-        self.start_rl_class()
-        #self.start_rl_node()
+        if self.weight_rl>0.0:
+            self.start_rl_class()
+            #self.start_rl_node()
 
         self.first_fetching=False
         numpy.random.seed(0) #TODO delete later. only for test purposes
 
         self.exploration_strategies = ExplorationStrategies()  # implements different exploration strategies
 
-    """
-    import rospy
-    import os
-    import rospy
-    import rospkg
-    import subprocess
 
-    import roslaunch
-    from std_srvs.srv import Trigger, TriggerResponse
-
-    def start_node_direct():
-        package = 'rhbp_core'
-        node_name = 'planner_node.py'
-        command = "rosrun {0} {1}".format(package, node_name)
-        p = subprocess.Popen(command, shell=True)
-        state = p.poll()
-        if state is None:
-            rospy.loginfo("process is running fine")
-        elif state < 0:
-            rospy.loginfo("Process terminated with error")
-        elif state > 0:
-            rospy.loginfo("Process terminated without error")
-
-    def start_node2():
-        package = 'rhbp_core'
-        launch_file = 'planner.launch'
-        command = "roslaunch  {0} {1}".format(package, launch_file)
-        p = subprocess.Popen(command, shell=True)
-        state = p.poll()
-        if state is None:
-            rospy.loginfo("process is running fine")
-        elif state < 0:
-            rospy.loginfo("Process terminated with error")
-        elif state > 0:
-            rospy.loginfo("Process terminated without error")
-
-    """
     def start_rl_class(self):
         """
         starts the rl_component as a class
@@ -915,7 +879,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
             inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
             activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
-            rl_activation = self.get_rl_activation_for_ref(ref_behaviour) # TODO normalize the value
+            #rl_activation = self.get_rl_activation_for_ref(ref_behaviour) # TODO normalize the value
 
             rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
             rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
@@ -924,17 +888,15 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
             rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
             rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
-            rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
-
+            #rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
             current_activation_step = activation_precondition \
                                       + activation_goals \
                                       + inhibition_goals \
                                       + activation_predecessors \
                                       + activation_successors \
                                       + inhibition_conflictors \
-                                      + activation_plan \
-                                      + rl_activation
-
+                                      + activation_plan
+                                      #+ rl_activation
             ref_behaviour.current_activation_step = current_activation_step
             return current_activation_step
 

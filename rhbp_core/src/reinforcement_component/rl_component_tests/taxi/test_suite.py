@@ -9,6 +9,7 @@ import pandas
 from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
     TaxiTestAllConditionsNew
 from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import  TaxiTestNormal, TaxiTestConditions, TaxiTestDecoded
+from reinforcement_component.rl_component_tests.test_suite.experiments_analyses import Analysis
 
 
 def plot_for_different_seed(num_range,env,threshold,should_print):
@@ -56,6 +57,9 @@ if __name__ == '__main__':
     dqn = 0
     qlearning = 1
 
+    an = Analysis("../../../../../../../../../.ros/experiment_results.csv")
+    an.plot_left_over_time()
+    exit(0)
     test_case_normal = TaxiTestNormal(algorithm=dqn)
 
     test_case_cond = TaxiTestConditions(algorithm=dqn)
