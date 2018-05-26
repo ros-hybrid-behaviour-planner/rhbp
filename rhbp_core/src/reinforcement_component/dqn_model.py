@@ -38,7 +38,7 @@ class DQNModel(ReinforcementAlgorithmBase):
 
     def initialize_model(self, num_inputs, num_outputs):
         """
-        initializes the neural network layer. THis funciton defines how exactly the neural network looks like
+        initializes the neural network layer. THis function defines how exactly the neural network looks like
         :param num_inputs: number of input values for the network
         :param num_outputs: number of output values for the network
         :return: 
@@ -95,7 +95,8 @@ class DQNModel(ReinforcementAlgorithmBase):
 
         #save the input tuple in buffer
         #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
-        #print(tuple)
+        #print(tuple,self.counter)
+
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1

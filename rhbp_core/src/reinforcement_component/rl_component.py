@@ -43,7 +43,7 @@ class RLComponent:
         self.counter +=1
 
         try:
-            #print(request_msg)
+            print(request_msg)
             request=request_msg.input_state
             # check if the model has same dimension as request and if not reinit the model
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
@@ -51,12 +51,13 @@ class RLComponent:
             self.save_request(request)
             self.last_state = request.input_state
             negative_states = request_msg.negative_states
-            for state in negative_states:
+            for state in negative_states:#todo include negative ones
                 #self.save_request(state)
                 continue
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
+            print(activations)
             # return the activation via the service
             activations=activations.tolist()[0]
             activation_state = ActivationState(**{

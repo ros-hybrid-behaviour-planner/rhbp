@@ -57,7 +57,7 @@ if __name__ == '__main__':
     dqn = 0
     qlearning = 1
 
-    an = Analysis("../../../../../../../../../.ros/experiment_results.csv")
+    an = Analysis("../../../../../../../../../.ros/experiment_results.csv",range_start=30)
     an.plot_left_over_time()
     exit(0)
     test_case_normal = TaxiTestNormal(algorithm=dqn)

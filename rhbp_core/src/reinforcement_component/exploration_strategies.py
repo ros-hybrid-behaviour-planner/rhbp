@@ -12,12 +12,13 @@ class ExplorationStrategies(object):
         random_value = numpy.random.rand(1)
         best_action = None
         changed = False
+
         if (random_value < self.epsilon or counter < self.config.pre_train) and num_actions > 0:
             best_action = numpy.random.randint(num_actions)
             changed = True
         if self.epsilon > self.config.endE and counter > self.config.pre_train and num_actions > 0:
             self.epsilon -= self.config.stepDrop
-
+        print("epsilon", self.epsilon,counter)
         return changed, best_action
 
     def e_greedy(self, counter, num_actions):
@@ -26,6 +27,7 @@ class ExplorationStrategies(object):
         changed = False
         random_value = numpy.random.rand(1)
         best_action = None
+
         # if randomly chosen give one random action the max_activation
         if random_value < epsilon and num_actions > 0:
             best_action = numpy.random.randint(num_actions)

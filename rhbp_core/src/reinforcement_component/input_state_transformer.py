@@ -126,7 +126,9 @@ class InputStateTransformer:
         """
         num = 0
         for b in self._manager.behaviours:
+
             if b == name:
+                print(name,num)
                 return num
             num += 1
         return None
