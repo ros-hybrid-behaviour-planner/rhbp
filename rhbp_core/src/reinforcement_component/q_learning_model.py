@@ -79,6 +79,7 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
         """
         print("load model")
         # restore the session
+        #TODO load the modellllllll
 
         self.sess = tf.Session()
 

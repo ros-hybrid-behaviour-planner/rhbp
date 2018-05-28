@@ -3,13 +3,11 @@ this file evaluates the diffeerent algorithm , exploration techniques and action
 """
 import matplotlib.pyplot as plt
 
-import numpy
-import pandas
-
 from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
     TaxiTestAllConditionsNew
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import  TaxiTestNormal, TaxiTestConditions, TaxiTestDecoded
-from reinforcement_component.rl_component_tests.test_suite.experiments_analyses import Analysis
+from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import TaxiTestNormal, TaxiTestConditions, \
+    TaxiTestDecoded
+from src.rcs_ros_bridge.src.experiments_analyses import ExperimentAnalysis
 
 
 def plot_for_different_seed(num_range,env,threshold,should_print):
@@ -56,9 +54,12 @@ def compare_classes(envs,num_range,threshold,should_print):
 if __name__ == '__main__':
     dqn = 0
     qlearning = 1
+    filename_goals = "../../../../../../../../../.ros/goal_experiment_results.csv"
+    filename = "../../../../../../../../../.ros/experiment_results.csv"
 
-    an = Analysis("../../../../../../../../../.ros/experiment_results.csv",range_start=30)
-    an.plot_left_over_time()
+    an = ExperimentAnalysis(filename=filename,filename_goals=filename_goals)
+    an.plot_sequences(start=334,min_num=10)
+    an.plot_left_over_time(start=64)
     exit(0)
     test_case_normal = TaxiTestNormal(algorithm=dqn)
 

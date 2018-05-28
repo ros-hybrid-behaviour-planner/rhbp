@@ -31,6 +31,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         # buffer class for experience learning
         self.myBuffer = experience_buffer(self.model_config.buffer_size)
         self.counter = 0
+        self.saver = None
 
     def reset_model_values(self):
         self.counter = 0
@@ -59,6 +60,8 @@ class DQNModel(ReinforcementAlgorithmBase):
         # buffer class for experience learning
         #self.myBuffer = experience_buffer()
 
+        #saver
+        self.saver = tf.train.Saver()
         #with tf.Session() as self.sess:
         self.sess = tf.Session()
         # init all variables
@@ -66,6 +69,9 @@ class DQNModel(ReinforcementAlgorithmBase):
         # run target operations
         self.updateTarget(self.targetOps, self.sess)
         print("init mode",num_inputs,num_outputs)
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
+
     def feed_forward(self, input_state):
         """
         feed forwarding the input_state into the network and getting the calculated activations
@@ -84,6 +90,28 @@ class DQNModel(ReinforcementAlgorithmBase):
         """
         print("load model")
         # TODO add here mechanism to load a model
+
+        print("load model")
+        # restore the session
+        # TODO load the modellllllll
+
+        self.sess = tf.Session()
+
+        # check for model with this dimensions
+        self.saver = tf.train.import_meta_graph(self.model_path)
+
+        self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_folder))
+
+        # restore the nodes
+        graph = tf.get_default_graph()
+        self.Qout = graph.get_tensor_by_name("Qout:0")
+        self.predict = graph.get_tensor_by_name("predict:0")
+        self.inputs1 = graph.get_tensor_by_name("inputs1:0")
+
+        self.nextQ = graph.get_tensor_by_name("nextQ:0")
+        self.updateModel = graph.get_tensor_by_name("updateModel:0")
+
+
         self.model_is_set_up = True
 
     def train_model(self, tuple):
@@ -92,7 +120,8 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param tuple: contains the last state, new state, last action and the resulting reward
         :return: 
         """
-
+        if self.counter % self.model_config.steps_save == 1:
+            self.save_model(self.num_inputs,self.num_outputs)
         #save the input tuple in buffer
         #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
         #print(tuple,self.counter)
@@ -102,6 +131,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.counter += 1
         if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1:
             return
+
         #print("update")
         #print(tuple[:,3].shape)
         # We use Double-DQN training algorithm

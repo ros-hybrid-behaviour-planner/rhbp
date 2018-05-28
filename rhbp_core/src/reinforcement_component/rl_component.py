@@ -43,7 +43,7 @@ class RLComponent:
         self.counter +=1
 
         try:
-            print(request_msg)
+            #print(request_msg)
             request=request_msg.input_state
             # check if the model has same dimension as request and if not reinit the model
             self.check_if_model_is_valid(request.num_inputs,request.num_outputs)

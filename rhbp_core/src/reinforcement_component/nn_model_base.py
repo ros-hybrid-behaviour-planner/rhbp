@@ -5,7 +5,7 @@ import random
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from input_state_transformer import SensorValueTransformer
-
+import os
 class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
         print("init class mnn")
@@ -14,7 +14,9 @@ class ReinforcementAlgorithmBase(object):
         self.model_folder = './models'
         self.name = name
         # tf.reset_default_graph()
-
+        #dimensions
+        self.num_inputs = 0
+        self.num_outputs = 0
         # number of hidden layers
         self.num_hl = 0
 
@@ -55,7 +57,7 @@ class ReinforcementAlgorithmBase(object):
           :param num_outputs: 
           :return: 
           """
-        model_exists = self.check_if_model_exists()
+        model_exists = self.check_if_model_exists(num_inputs,num_outputs)
 
         if model_exists:
             self.load_model(num_inputs, num_outputs)  # TODO check if loaded model is still valid for in and output
@@ -68,15 +70,23 @@ class ReinforcementAlgorithmBase(object):
     def initialize_model(self, num_inputs, num_outputs):
         raise NotImplementedError
 
-    def check_if_model_exists(self):
+    def check_if_model_exists(self,num_inputs,num_outputs):
         """
         check if the model exists
         :return: True if the model is saved. False otherwise
         """
-        return tf.train.checkpoint_exists(self.model_folder)
+        self.model_path = 'models/' + str(num_inputs) + '/' + str(num_outputs) + '/rl-model' + self.name + "_" + str(
+            num_inputs) + "_" + str(num_outputs) + '-1000.meta'
+        self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs)
+        try:
+
+            return tf.train.checkpoint_exists(self.model_folder)
+        except Exception as e:
+            return  False
 
     def load_model(self, num_inputs, num_outputs):
         raise NotImplementedError
+
     def feed_forward(self, input_state):
         """
         feed forwarding the input_state into the network and getting the calculated activations
@@ -99,6 +109,9 @@ class ReinforcementAlgorithmBase(object):
         :param num_outputs: 
         :return: 
         """
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+
         # Save model weights to disk
-        self.saver.save(self.sess, self.model_path)  # TODO save model with dim in end of name
+        self.saver.save(self.sess, self.model_path)
 
