@@ -6,6 +6,10 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from input_state_transformer import SensorValueTransformer
 import os
+
+from reinforcement_component.reinforcement_learning_config import NNConfig
+
+
 class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
         print("init class mnn")
@@ -45,7 +49,7 @@ class ReinforcementAlgorithmBase(object):
         self.transformer = None
 
         self.behaviors = []
-
+        self.conf = NNConfig()
         self.model_is_set_up = False
         self.executed_behaviours = []
         tf.set_random_seed(0)
@@ -79,10 +83,11 @@ class ReinforcementAlgorithmBase(object):
             num_inputs) + "_" + str(num_outputs) + '-1000.meta'
         self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs)
         try:
-
-            return tf.train.checkpoint_exists(self.model_folder)
+            model_exists = tf.train.checkpoint_exists(self.model_folder)
+            print("does the model exist?",model_exists)
+            return model_exists
         except Exception as e:
-            return  False
+            return False
 
     def load_model(self, num_inputs, num_outputs):
         raise NotImplementedError
@@ -93,7 +98,6 @@ class ReinforcementAlgorithmBase(object):
         :param input_state: the input state as a vector
         :return: vector of activations
         """
-
         a, self.allQ = self.sess.run([self.predict, self.Qout], feed_dict={self.inputs1: input_state})
 
         return self.allQ
@@ -109,8 +113,11 @@ class ReinforcementAlgorithmBase(object):
         :param num_outputs: 
         :return: 
         """
-        if not os.path.exists(self.model_path):
-            os.makedirs(self.model_path)
+        if not self.conf.save:
+            return
+
+        if not os.path.exists(self.model_folder):
+            os.makedirs(self.model_folder)
 
         # Save model weights to disk
         self.saver.save(self.sess, self.model_path)

@@ -1,8 +1,13 @@
+import matplotlib
+matplotlib.use('agg')
 import gym
 import numpy
 import numpy as np
 import random
+
+import pandas
 import tensorflow as tf
+
 import matplotlib.pyplot as plt
 
 from tensorflow.contrib import slim
@@ -37,7 +42,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.counter = 0
         self.myBuffer.reset()
 
-    def initialize_model(self, num_inputs, num_outputs):
+    def initialize_model(self, num_inputs, num_outputs,load_mode=False):
         """
         initializes the neural network layer. THis function defines how exactly the neural network looks like
         :param num_inputs: number of input values for the network
@@ -47,8 +52,8 @@ class DQNModel(ReinforcementAlgorithmBase):
         tf.set_random_seed(0)
         np.random.seed(0)
         self.reset_model_values()
-
-        tf.reset_default_graph()
+        if not load_mode:
+            tf.reset_default_graph()
         # initialize two networks. q-network and target q-network
         self.q_net = Q_Network(num_inputs,num_outputs)
         self.target_net = Q_Network(num_inputs,num_outputs)
@@ -59,18 +64,18 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.targetOps = self.updateTargetGraph(trainables, self.model_config.tau)
         # buffer class for experience learning
         #self.myBuffer = experience_buffer()
-
-        #saver
-        self.saver = tf.train.Saver()
-        #with tf.Session() as self.sess:
-        self.sess = tf.Session()
-        # init all variables
-        self.sess.run(self.init)
-        # run target operations
-        self.updateTarget(self.targetOps, self.sess)
-        print("init mode",num_inputs,num_outputs)
-        self.num_inputs = num_inputs
-        self.num_outputs = num_outputs
+        if not load_mode:
+            # saver
+            self.saver = tf.train.Saver()
+            #with tf.Session() as self.sess:
+            self.sess = tf.Session()
+            # init all variables
+            self.sess.run(self.init)
+            # run target operations
+            self.updateTarget(self.targetOps, self.sess)
+            print("init mode",num_inputs,num_outputs)
+            self.num_inputs = num_inputs
+            self.num_outputs = num_outputs
 
     def feed_forward(self, input_state):
         """
@@ -79,6 +84,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         :return: vector of activations
         """
         allQ = self.sess.run([self.q_net.Q_out], feed_dict={self.q_net.inputs: input_state,self.q_net.keep_per: 1.0})
+
         return allQ[0]
 
     def load_model(self, num_inputs, num_outputs):
@@ -91,28 +97,73 @@ class DQNModel(ReinforcementAlgorithmBase):
         print("load model")
         # TODO add here mechanism to load a model
 
-        print("load model")
         # restore the session
-        # TODO load the modellllllll
-
         self.sess = tf.Session()
-
+        print(1,self.model_path)
         # check for model with this dimensions
         self.saver = tf.train.import_meta_graph(self.model_path)
-
+        print("2",self.model_folder)
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_folder))
-
+        print(3)
         # restore the nodes
         graph = tf.get_default_graph()
-        self.Qout = graph.get_tensor_by_name("Qout:0")
-        self.predict = graph.get_tensor_by_name("predict:0")
-        self.inputs1 = graph.get_tensor_by_name("inputs1:0")
 
-        self.nextQ = graph.get_tensor_by_name("nextQ:0")
-        self.updateModel = graph.get_tensor_by_name("updateModel:0")
+        self.initialize_model(num_inputs,num_outputs,load_mode=True)
 
+        self.q_net.load(graph)
 
+        self.target_net.load(graph)
+
+        self.updateTarget(self.targetOps, self.sess)
+
+        self.sess.run(tf.global_variables_initializer())
         self.model_is_set_up = True
+
+
+    def print_weights(self):
+
+        num=self.counter/self.model_config.steps_prints
+        array = numpy.array([[0,0,0,0]])
+        for dist in numpy.arange(62,0,-1):
+                dir = 0
+                input = numpy.array([[dist,dir]])
+                results = self.feed_forward(input)
+                dribble = results[0][2]
+                shoot = results[0][3]
+                line = numpy.array([[dist,dir,dribble,shoot]])
+                array = numpy.concatenate( (array,line),axis=0 )
+        #df = pandas.DataFrame(array[1:],columns=["dist","dir","dribble","shoot"])
+        #df.plot(x="dist",y=["dribble","shoot"])
+        #plt.show()
+        plt.plot(array[1:,0],array[1:,2],label="dribble")
+        plt.plot(array[1:, 0], array[1:, 3],label="shoot")
+        plt.xlabel("distance in degrees")
+        plt.ylabel("activation")
+        plt.legend()
+        #plt.show()
+        path="figures/dist/d_s_dist_comp_"+str(num)+".png"
+        plt.savefig(path)
+        plt.close()
+
+        array = numpy.array([[0, 0, 0, 0]])
+        for dir in numpy.arange(-45, 45, 1):
+            dist=25
+            input = numpy.array([[dist, dir]])
+            results = self.feed_forward(input)
+            dribble = results[0][2]
+            shoot = results[0][3]
+            line = numpy.array([[dist, dir, dribble, shoot]])
+            array = numpy.concatenate((array, line), axis=0)
+
+        plt.plot(array[1:, 1], array[1:, 2],label="dribble")
+        plt.plot(array[1:, 1], array[1:, 3],label="shoot")
+        plt.xlabel("direction in degrees")
+        plt.ylabel("activation")
+        plt.legend()
+        # plt.show()
+        path = "figures/dir/d_s_dir_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
 
     def train_model(self, tuple):
         """
@@ -120,11 +171,13 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param tuple: contains the last state, new state, last action and the resulting reward
         :return: 
         """
-        if self.counter % self.model_config.steps_save == 1:
+        if self.counter % self.model_config.steps_save == 1 and self.model_config.save:
             self.save_model(self.num_inputs,self.num_outputs)
         #save the input tuple in buffer
         #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
         #print(tuple,self.counter)
+        if self.counter % self.model_config.steps_prints == 1 and self.model_config.print_model:
+            self.print_weights()
 
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
@@ -186,7 +239,8 @@ class DQNModel(ReinforcementAlgorithmBase):
 
  #Implementing the network itself
 class Q_Network():
-    def __init__(self,number_inputs,number_outputs):
+    def __init__(self,number_inputs,number_outputs,name="q"):
+        self.name = name
         tf.set_random_seed(0)
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
@@ -197,11 +251,11 @@ class Q_Network():
 
         # the layers that define the nn
         #one_hot_inputs = tf.one_hot(self.inputs,number_inputs,dtype=tf.float32)
-        hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
+        self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
         # drop tensors out and scales others by probability of self.keep_per
-        hidden = slim.dropout(hidden, self.keep_per)
+        self.hidden = slim.dropout(self.hidden, self.keep_per)
         # layer for computing the q_values
-        self.Q_out = slim.fully_connected(hidden, number_outputs, activation_fn=None, biases_initializer=None)
+        self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=None, biases_initializer=None)
         # prediction is highest q-value
         self.predict = tf.argmax(self.Q_out, 1)
         # compute the softmax activations.
@@ -209,7 +263,7 @@ class Q_Network():
 
         # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
-        self.actions_onehot = tf.one_hot(self.actions, number_outputs, dtype=tf.float32)
+        self.actions_onehot = tf.one_hot(self.actions, number_outputs, dtype=tf.float32) # TODO here could also multiple actions be included
 
         self.Q = tf.reduce_sum(tf.multiply(self.Q_out, self.actions_onehot), reduction_indices=1)
         #tf.mul
@@ -219,6 +273,11 @@ class Q_Network():
         trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
         self.updateModel = trainer.minimize(loss)
 
+    def load(self,graph):
+        name_hidden = "hidden_"+self.name+":0"
+        name_q_out = "q_out" + self.name+":0"
+        self.hidden = graph.get_tensor_by_name(name_hidden)
+        self.Q_out = graph.get_tensor_by_name(name_q_out)
 
 # class for revisiting experiences
 class experience_buffer():

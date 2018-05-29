@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('agg')
 from q_learning_model import QLearningNeuralNetwork
 from input_state_transformer import SensorValueTransformer
 import time
@@ -52,8 +54,8 @@ class RLComponent:
             self.last_state = request.input_state
             negative_states = request_msg.negative_states
             for state in negative_states:#todo include negative ones
-                #self.save_request(state)
-                continue
+                self.save_request(state)
+                #continue
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)

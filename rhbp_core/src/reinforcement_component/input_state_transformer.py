@@ -188,5 +188,5 @@ class InputStateTransformer:
                     input_array = numpy.concatenate([input_array, value])
         input_array = input_array[1:]
         # TODO get wishes from sensors
-        #print("input",input_array)
+        print("input",input_array)
         return input_array
