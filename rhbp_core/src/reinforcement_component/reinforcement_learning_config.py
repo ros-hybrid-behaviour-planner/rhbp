@@ -36,7 +36,7 @@ class NNConfig(): #TODO let config get variables from rospy try-catch if rospy i
         self.buffer_size = 10000  # size of the experience learning buffer
         self.steps_save = 500 # interval for saving model
         self.save=False #if the model should be saved
-        self.print_model = False # if the model should be saved
+        self.print_model = True # if the model should be saved
         self.steps_prints = 3000 # interval for saving model
 
 
@@ -44,7 +44,7 @@ class ExplorationConfig(): #TODO let config get variables from rospy try-catch i
     def __init__(self):
         self.pre_train = 100 # let the model choose random actions and dont train for these number of steps
         self.startE = 1.00
-        self.endE = 1.00
+        self.endE = 0.0
         self.anneling_steps = 30000 # steps until it reache endE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
         self.train_interval = 5 #train the model every train_interval steps

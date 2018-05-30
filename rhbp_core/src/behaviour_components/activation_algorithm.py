@@ -849,7 +849,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             value = self.activation_rl[index]
             #value /= sum_activations
             #value *= self.weight_rl
-            value= value + 100  # plus 100 so in case all activations are negative still something gets chosen
+            value= value + 1000  # plus 100 so in case all activations are negative still something gets chosen
         return value
 
     def compute_behaviour_activation_step(self, ref_behaviour):
