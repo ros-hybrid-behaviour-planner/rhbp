@@ -85,6 +85,7 @@ class Manager(object):
         self._plan = {}
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
+        self.__last_domain_PDDL = ""
 
         self.planner = MetricFF()
 
@@ -189,6 +190,7 @@ class Manager(object):
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
+        self.__last_domain_PDDL = domainPDDLString
         return domainPDDLString
     
     def _create_problem_pddl(self, goals):
@@ -794,6 +796,12 @@ class Manager(object):
             if (not behavior.interruptable):
                 return False
         return True
+
+    def plan_with_additional_goal(self, goal_statement):
+        # TODO create proper problemPDDL including the additional goal statement
+        problem_pddl = ""   # placeholder
+        plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
+        return plan
 
 
 class ManagerControl(object):
