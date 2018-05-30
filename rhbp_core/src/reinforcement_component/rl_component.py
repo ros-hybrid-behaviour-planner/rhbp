@@ -52,7 +52,7 @@ class RLComponent:
             # save the input state in the model
             self.save_request(request)
             self.last_state = request.input_state
-            print(self.last_state)
+            print(self.last_state,request.reward)
             negative_states = request_msg.negative_states
             for state in negative_states:#todo include negative ones
                 self.save_request(state)
