@@ -116,6 +116,7 @@ class RLComponent:
         self.update_model()
 
     def check_if_model_is_valid(self,num_inputs,num_outputs):
+
         if not self.is_model_init:
             self.init_model(num_inputs,num_outputs)
         else:
@@ -123,12 +124,12 @@ class RLComponent:
                 self.init_model(num_inputs,num_outputs)
 
     def update_model(self):
+
         for element in self.reward_list:
             self.model.train_model(element)
         self.reward_list=[]
 
     def init_model(self,num_inputs,num_outputs):
-
 
         self.number_inputs = num_inputs
 

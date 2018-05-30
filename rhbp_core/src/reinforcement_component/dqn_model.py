@@ -126,7 +126,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         array = numpy.array([[0,0,0,0]])
         for dist in numpy.arange(62,0,-1):
                 dir = 0
-                input = numpy.array([[dist,dir]])
+                input = numpy.array([[1,1,1,0.1,dist,dir]])
                 results = self.feed_forward(input)
                 dribble = results[0][2]
                 shoot = results[0][3]
@@ -142,13 +142,13 @@ class DQNModel(ReinforcementAlgorithmBase):
         plt.legend()
         #plt.show()
         path="figures/dist/d_s_dist_comp_"+str(num)+".png"
+        plt.show()
         plt.savefig(path)
         plt.close()
-
         array = numpy.array([[0, 0, 0, 0]])
         for dir in numpy.arange(-45, 45, 1):
             dist=25
-            input = numpy.array([[dist, dir]])
+            input = numpy.array([[1,1,1,0.1,dist, dir]])
             results = self.feed_forward(input)
             dribble = results[0][2]
             shoot = results[0][3]
