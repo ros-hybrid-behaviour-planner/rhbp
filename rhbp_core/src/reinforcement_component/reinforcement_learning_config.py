@@ -47,4 +47,5 @@ class ExplorationConfig(): #TODO let config get variables from rospy try-catch i
         self.endE = 0.0
         self.anneling_steps = 30000 # steps until it reache endE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
-        self.train_interval = 5 #train the model every train_interval steps
+        self.train_interval = 50 #train the model every train_interval steps
+        self.stop_training = 30000 # steps after the model does not get trained anymore

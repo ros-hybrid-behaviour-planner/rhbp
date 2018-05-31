@@ -171,6 +171,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param tuple: contains the last state, new state, last action and the resulting reward
         :return: 
         """
+        #todo COUNTER DOES NOT ONLY COUNT STEPS BUT ALSO  negative steps included
         if self.counter % self.model_config.steps_save == 1 and self.model_config.save:
             self.save_model(self.num_inputs,self.num_outputs)
         #save the input tuple in buffer
@@ -179,10 +180,15 @@ class DQNModel(ReinforcementAlgorithmBase):
         if self.counter % self.model_config.steps_prints == 1 and self.model_config.print_model:
             self.print_weights()
 
+        #if self.counter > self.exploration_config.stop_training:
+        #    return
+
         self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1
-        if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1:
+        #todo/problem with interval = 5 got trained two times per step because one step is 5 tuples(negative included)
+        if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1 \
+                or self.counter > self.exploration_config.stop_training:
             return
 
         #print("update")
@@ -252,10 +258,20 @@ class Q_Network():
         # the layers that define the nn
         #one_hot_inputs = tf.one_hot(self.inputs,number_inputs,dtype=tf.float32)
         self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
+
+        self.hidden2 = slim.fully_connected(self.hidden, 96, activation_fn=tf.nn.tanh, biases_initializer=None)
+
+        self.hidden3 = slim.fully_connected(self.hidden2, 128, activation_fn=tf.nn.tanh, biases_initializer=None)
+
+        self.hidden4 = slim.fully_connected(self.hidden3, 96, activation_fn=tf.nn.tanh, biases_initializer=None)
+
+        self.hidden5 = slim.fully_connected(self.hidden4, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
+
+        self.hidden6 = slim.fully_connected(self.hidden5, 32, activation_fn=tf.nn.tanh, biases_initializer=None)
         # drop tensors out and scales others by probability of self.keep_per
-        self.hidden = slim.dropout(self.hidden, self.keep_per)
+        #self.hidden = slim.dropout(self.hidden2, self.keep_per)
         # layer for computing the q_values
-        self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=None, biases_initializer=None)
+        self.Q_out = slim.fully_connected(self.hidden6, number_outputs, activation_fn=None, biases_initializer=None)
         # prediction is highest q-value
         self.predict = tf.argmax(self.Q_out, 1)
         # compute the softmax activations.
