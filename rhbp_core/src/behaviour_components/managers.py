@@ -86,6 +86,7 @@ class Manager(object):
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
         self.__last_domain_PDDL = ""
+        self.__currently_pursued_goals = []
 
         self.planner = MetricFF()
 
@@ -295,6 +296,7 @@ class Manager(object):
                         self._plan = tmpPlan
                         self.__replanningNeeded = False
                         self._planExecutionIndex = 0
+                        self.__currently_pursued_goals = goalSequence
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
@@ -798,10 +800,21 @@ class Manager(object):
         return True
 
     def plan_with_additional_goal(self, goal_statement):
-        # TODO create proper problemPDDL including the additional goal statement
-        problem_pddl = ""   # placeholder
+        problem_pddl = self._create_problem_pddl_with_additional_goal(self.__currently_pursued_goals, goal_statement)
+        print("Domain:")
+        print(self.__last_domain_PDDL)
+        print("Problem:")
+        print(problem_pddl)
         plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
         return plan
+
+    def _create_problem_pddl_with_additional_goal(self, goals, goal_statement):
+        goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
+        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions)+" "+goal_statement)
+        problemPDDLString += ")\n"
+
+        return problemPDDLString
 
 
 class ManagerControl(object):
