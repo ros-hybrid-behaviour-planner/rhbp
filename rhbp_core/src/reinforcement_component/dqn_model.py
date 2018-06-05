@@ -35,6 +35,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.targetOps = None
         # buffer class for experience learning
         self.myBuffer = experience_buffer(self.model_config.buffer_size)
+        #self.myBuffer.fill_buffer(self.model_config.buffer_size)#todo delet elater
         self.counter = 0
         self.saver = None
 
@@ -119,24 +120,112 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.sess.run(tf.global_variables_initializer())
         self.model_is_set_up = True
 
-
-    def print_weights(self):
+    def print_weights_bool(self):
 
         num=self.counter/self.model_config.steps_prints
-        array = numpy.array([[0,0,0,0]])
-        for dist in numpy.arange(62,0,-1):
+        names = ["turn_to_ball","search_goal","dribble_ball","shoot","search_ball","go_to_ball"]
+        input_not_kickable = numpy.array([[1,1,1,10,60]])
+        input_kick_ball = numpy.array([[1, 1, 1, 0.5,40, 0,20,0]])
+        #input_ball_not_seen = numpy.array([[1, 1, 1, 0.5,20, 0,20,0]])
+        #input_goal_not_seen = numpy.array([[1, 0, 1, 0.5,20, 0,20,0]])
+        input_not_playable = numpy.array([[0, 1, 1, 10,60]])
+
+        res_input_not_kickable = self.feed_forward(input_not_kickable)[0]
+        res_input_kick_ball = self.feed_forward(input_kick_ball)[0]
+        #res_input_ball_not_seen = self.feed_forward(input_ball_not_seen)[0]
+        #res_input_goal_not_seen = self.feed_forward(input_goal_not_seen)[0]
+        res_input_not_playable = self.feed_forward(input_not_playable)[0]
+
+        df = pandas.DataFrame(res_input_not_kickable,columns=["activations"])
+        df["names"]=pandas.DataFrame(names)
+        df.plot(x="names", y="activations")
+        path = "figures/actions/not_kickable_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
+
+        df = pandas.DataFrame(res_input_kick_ball,columns=["activations"])
+        df["names"]=pandas.DataFrame(names)
+        df.plot(x="names", y="activations")
+        path = "figures/actions/kick_ball_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
+        """    
+        df = pandas.DataFrame(res_input_ball_not_seen,columns=["activations"])
+        df["names"]=pandas.DataFrame(names)
+        df.plot(x="names", y="activations")
+        path = "figures/actions/ball_not_seen_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
+
+        df = pandas.DataFrame(res_input_goal_not_seen,columns=["activations"])
+        df["names"]=pandas.DataFrame(names)
+        df.plot(x="names", y="activations")
+        path = "figures/actions/goal_not_seen_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
+        """
+        df = pandas.DataFrame(res_input_not_playable,columns=["activations"])
+        df["names"]=pandas.DataFrame(names)
+        df.plot(x="names", y="activations")
+        path = "figures/actions/not_playable_comp_" + str(num) + ".png"
+        plt.savefig(path)
+        plt.close()
+
+    def print_weights_discrete(self):
+
+        nummer=self.counter/self.model_config.steps_prints
+        array = numpy.array([[1,1,1,1]])
+        input1 = numpy.array([[1, 1, 1, 1, 1, 0, 0, 0, 0, 0,0]])
+        input2 = numpy.array([[1, 1, 1, 1, 0, 1, 0, 0, 0, 0,0]])
+        input3 = numpy.array([[1, 1, 1, 1, 0, 0, 1, 0, 0, 0,0]])
+        input4 = numpy.array([[1, 1, 1, 1, 0, 0, 0, 1, 0, 0,0]])
+        input5 = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 1, 0,0]])
+        input6 = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 0, 1,0]])
+        inputs = [input1,input2,input3,input4,input5,input6]
+        num=0
+        for input in inputs:
+            results = self.feed_forward(input)
+            dribble = results[0][2]
+            shoot = results[0][3]
+            line = numpy.array([[num,dir,dribble,shoot]])
+            array = numpy.concatenate( (array,line),axis=0 )
+            num += 1
+        #df = pandas.DataFrame(array[1:],columns=["dist","dir","dribble","shoot"])
+        #df.plot(x="dist",y=["dribble","shoot"])
+        #plt.show()
+        plt.plot(array[1:,0],array[1:,2],label="dribble")
+        plt.plot(array[1:, 0], array[1:, 3],label="shoot")
+        plt.xlabel("distance")
+        plt.ylabel("activation")
+        plt.legend()
+        #plt.show()
+        path="figures/discrete/d_s_dist_comp_"+str(nummer)+".png"
+        plt.show()
+        plt.savefig(path)
+        plt.close()
+
+    def print_weights(self):
+        num=self.counter/self.model_config.steps_prints
+        array = numpy.array([[0,0,0,0,0,0]])
+        for dist in numpy.arange(60,0,-0.5):
                 dir = 0
-                input = numpy.array([[1,1,1,0.1,dist,dir]])
+                input = numpy.array([[1,1,1,0.5,dist]])
                 results = self.feed_forward(input)
                 dribble = results[0][2]
                 shoot = results[0][3]
-                line = numpy.array([[dist,dir,dribble,shoot]])
+                turn = results[0][0]
+                goal = results[0][1]
+                ball = results[0][4]
+                goto = results[0][5]
+                line = numpy.array([[dist,dir,dribble,shoot,turn,goto]])
                 array = numpy.concatenate( (array,line),axis=0 )
         #df = pandas.DataFrame(array[1:],columns=["dist","dir","dribble","shoot"])
         #df.plot(x="dist",y=["dribble","shoot"])
         #plt.show()
         plt.plot(array[1:,0],array[1:,2],label="dribble")
         plt.plot(array[1:, 0], array[1:, 3],label="shoot")
+        plt.plot(array[1:, 0], array[1:, 4], label="turn")
+        plt.plot(array[1:, 0], array[1:, 5], label="goto")
         plt.xlabel("distance in degrees")
         plt.ylabel("activation")
         plt.legend()
@@ -145,10 +234,11 @@ class DQNModel(ReinforcementAlgorithmBase):
         plt.show()
         plt.savefig(path)
         plt.close()
+        return
         array = numpy.array([[0, 0, 0, 0]])
         for dir in numpy.arange(-45, 45, 1):
             dist=25
-            input = numpy.array([[1,1,1,0.1,dist, dir]])
+            input = numpy.array([[1,1,1,0.1,dist, dir,dist-0.1,0]])
             results = self.feed_forward(input)
             dribble = results[0][2]
             shoot = results[0][3]
@@ -178,12 +268,14 @@ class DQNModel(ReinforcementAlgorithmBase):
         #print(np.argmax(tuple[0]),np.argmax(tuple[1]),tuple[2],tuple[3])
         #print(tuple,self.counter)
         if self.counter % self.model_config.steps_prints == 1 and self.model_config.print_model:
+            #self.print_weights_discrete()
+            self.print_weights_bool()
             self.print_weights()
-
         #if self.counter > self.exploration_config.stop_training:
         #    return
-
-        self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
+        #array = tuple[0][0]
+        #if array[0]==1 and array[1]==1 and array[2]==1 and array[3]==1: #TODO save only tuples that are kciking ball
+        #self.myBuffer.add(np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4]))
         # get fields from the input tuple
         self.counter += 1
         #todo/problem with interval = 5 got trained two times per step because one step is 5 tuples(negative included)
@@ -257,21 +349,20 @@ class Q_Network():
 
         # the layers that define the nn
         #one_hot_inputs = tf.one_hot(self.inputs,number_inputs,dtype=tf.float32)
-        self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
+        self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh, biases_initializer=tf.random_uniform_initializer())
+        #self.hidden2 = slim.fully_connected(self.hidden, 128, activation_fn=tf.nn.tanh, biases_initializer=tf.random_uniform_initializer())
 
-        self.hidden2 = slim.fully_connected(self.hidden, 96, activation_fn=tf.nn.tanh, biases_initializer=None)
+        #self.hidden3 = slim.fully_connected(self.hidden2, 64, activation_fn=tf.nn.tanh, biases_initializer=tf.random_uniform_initializer())
 
-        self.hidden3 = slim.fully_connected(self.hidden2, 128, activation_fn=tf.nn.tanh, biases_initializer=None)
+        #self.hidden4 = slim.fully_connected(self.hidden3, 96, activation_fn=tf.nn.tanh, biases_initializer=None)
 
-        self.hidden4 = slim.fully_connected(self.hidden3, 96, activation_fn=tf.nn.tanh, biases_initializer=None)
+        #self.hidden5 = slim.fully_connected(self.hidden4, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
 
-        self.hidden5 = slim.fully_connected(self.hidden4, 64, activation_fn=tf.nn.tanh, biases_initializer=None)
-
-        self.hidden6 = slim.fully_connected(self.hidden5, 32, activation_fn=tf.nn.tanh, biases_initializer=None)
+        #self.hidden6 = slim.fully_connected(self.hidden5, 32, activation_fn=tf.nn.tanh, biases_initializer=None)
         # drop tensors out and scales others by probability of self.keep_per
-        #self.hidden = slim.dropout(self.hidden2, self.keep_per)
+        self.hidden = slim.dropout(self.hidden, self.keep_per)
         # layer for computing the q_values
-        self.Q_out = slim.fully_connected(self.hidden6, number_outputs, activation_fn=None, biases_initializer=None)
+        self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=None, biases_initializer=tf.random_uniform_initializer())
         # prediction is highest q-value
         self.predict = tf.argmax(self.Q_out, 1)
         # compute the softmax activations.
@@ -303,12 +394,23 @@ class experience_buffer():
         self.counter = 0
         self.print_steps = False
         random.seed(0)
+        self.sim_counter = 0
+        self.dict_sequ = {"ds":(0,0),"ss":(0,0),"ds":(0,0),"ddd":(0,0),"dds":(0,0),"sd":(0,0)}
+        self.sequ = ""
     # add a new experience
     def reset(self):
         self.buffer=[]
         random.seed(0)
         self.counter=0
-    def add(self, experience):
+        self.fill_buffer(self.buffer_size/100.0)#TODO delet elate
+        print("results",self.dict_sequ)
+    def add(self, experience,is_negative=False):
+        if not is_negative:
+            self.add_negative_experience(experience)
+        experience = np.reshape(np.array([experience[0], experience[2], experience[3], experience[1]]), [1, 4])
+        if not is_negative:
+            #print(experience,self.sim_counter)
+            self.sim_counter+=1
         if  self.print_steps:
             print(self.counter, np.argmax(experience[0, 0]), np.argmax(experience[0, 3]), experience[0, 1], experience[0, 2])
         self.counter += 1
@@ -323,3 +425,273 @@ class experience_buffer():
             print("train", np.argmax(sample[10][0]), np.argmax(sample[10][3]), sample[10][1], sample[10][2])
         return sample
 
+    def is_chance(self,chance):
+        value=np.random.rand(1)
+        if value <= chance:
+            return True
+        return False
+
+    def random_dist(self):
+        num = numpy.random.randint(low=0,high=5)
+        dist0 = 0
+        dist1 = 0
+        dist2 = 0
+        dist3 = 0
+        dist4 = 0
+        dist5 = 0
+        if num==0:
+            dist0 = 1
+        if num==1:
+            dist1 = 1
+        if num==2:
+            dist2 = 1
+        if num==3:
+            dist3 = 1
+        if num==4:
+            dist4 = 1
+        if num==5:
+            dist5 = 1
+        return dist0,dist1,dist2,dist3,dist4,dist5,num
+
+    def next_dist(self,num):
+        dist0 = 0
+        dist1 = 0
+        dist2 = 0
+        dist3 = 0
+        dist4 = 0
+        dist5 = 0
+        if num == 0:
+            dist1 = 1
+        if num == 1:
+            dist2 = 1
+        if num == 2:
+            dist3 = 1
+        if num == 3:
+            dist4 = 1
+        if num == 4:
+            dist5 = 1
+        if num == 5:
+            dist5 = 1
+        return dist0, dist1, dist2, dist3, dist4, dist5, num+1
+
+    def reward_from_dist(self,num):
+        return 4+num*1.5
+    def add_expected_tuple(self):
+        action = numpy.random.randint(low=0,high=5)
+
+        play = 1
+        ball = 1
+        goal = 1
+        kick = 1
+        speed = 0
+        dist0 = 0
+        dist1 = 0
+        dist2 = 0
+        dist3 = 0
+        dist4 = 0
+        dist5 = 1
+
+        if action == 0: #turn_to_ball
+            play=0
+            kick=0
+
+            is_state = [play,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+            reward = 104
+            if self.is_chance(0.1):
+                next_state =[1,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+                reward=4
+            else:
+                next_state =[play,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+
+        if action == 1:#search_goal
+            goal=0
+            dist0, dist1, dist2, dist3, dist4, dist5,num = self.random_dist()
+            is_state = [play,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+
+            reward = self.reward_from_dist(num)
+            if self.is_chance(0.3):
+                next_state =[play,ball,1,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+            else:
+                next_state =[play,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+
+        if action == 2:  # dribble
+            speed=10
+            dist0, dist1, dist2, dist3, dist4, dist5, num = self.random_dist()
+            is_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,0]
+
+            reward = self.reward_from_dist(num)
+            next_state = [play, ball, goal, 0, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+
+        if action == 3:  # shoot
+            speed=50
+            dist0, dist1, dist2, dist3, dist4, dist5, num = self.random_dist()
+            is_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,0]
+
+            reward = self.reward_from_dist(num)
+            next_state = [play, ball, goal, 0, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+
+        if action == 4:  # search_ball
+            ball = 0
+            kick=0
+            if self.is_chance(0.5):
+                goal=0
+            dist0, dist1, dist2, dist3, dist4, dist5, num = self.random_dist()
+            is_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+            reward = self.reward_from_dist(num)
+            if self.is_chance(0.3):
+                next_state = [play, 1,goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+            else:
+                next_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+
+        if action == 5:  # got_to_ball
+            kick = 0
+            if self.is_chance(0.5):
+                goal=0
+            dist0, dist1, dist2, dist3, dist4, dist5, num = self.random_dist()
+            is_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+            if self.is_chance(0.2):
+                dist0, dist1, dist2, dist3, dist4, dist5, num = self.next_dist(num)
+            reward = self.reward_from_dist(num)
+            if self.is_chance(0.01):
+                next_state = [0, 1, 1, 0, 0, 0, 0, 0, 0, 1]
+                reward = 104
+            elif self.is_chance(0.1):
+                next_state = [play, ball, goal, 1, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+            else:
+                next_state = [play, ball, goal, kick, dist0, dist1, dist2, dist3, dist4, dist5,speed]
+
+        return is_state,next_state,action,reward
+
+    def fill_buffer_old(self,num):
+        for i in range(0,num):
+            tuple=self.add_expected_tuple()
+            sample = np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4])
+            self.add(sample)
+
+    def fill_buffer(self,num):
+        for i in range(0,int(num)):
+            self.add_trial()
+            print(" ")
+            print(" ")
+            #print(self.sequ)
+            dict  =self.dict_sequ
+            value = dict.get(self.sequ)
+            newvalue=(value[0]+self.sim_counter,value[1]+1)
+            self.dict_sequ[self.sequ]=newvalue
+
+            self.sim_counter=0
+            self.sequ=""
+    def get_tuple_go_to_ball_start(self,ball,goal,num,max_moves):
+        ball = ball - (10 / max_moves)
+        goal = goal - (10 / max_moves)
+        return ball,goal
+
+    def get_tuple_go_to_ball_shoot(self,ball,goal,num,max_moves,speed):
+        if num<=2:
+            ball = ball +9.5
+            speed -= 20
+        elif num ==3:
+            ball = ball + 5.0
+            speed -= 10
+        else:
+            ball -= 0.5
+            speed = 0
+        goal = goal - 0.5
+        if speed <= 0:
+            speed = 0
+        return ball,goal,speed
+
+    def get_tuple_go_to_ball_dribble(self, ball, goal, num, max_moves,speed):
+        if num <= 2:
+            ball = ball + 4.5
+            speed = speed - 10
+        elif num == 3:
+            ball = ball + 4.0
+        else:
+            ball -= 0.5
+            speed = 0
+        if speed <= 0:
+            speed = 0
+        goal = goal - 0.5
+
+        return ball, goal,speed
+
+    def add_negative_experience(self,experience):
+        #return
+        for i in range(0,6):
+            if i == experience[1]:
+                continue
+            else:
+                self.add( [experience[0],experience[1],i,experience[3]],True)
+
+    def add_trial(self):
+        step_reward = -1
+        dist_ball = 10
+        dist_goal = 60
+        not_play_t = [0,1,1,dist_ball,dist_goal]
+        reward_not = 3
+        experience_stay_not_play = [not_play_t, not_play_t, 0, reward_not]
+        num_wait_before_play = 75
+        for i in range(0,num_wait_before_play-1):
+            self.add(experience_stay_not_play)
+
+        after_not_play_t = [1,1,1,dist_ball,dist_goal]
+        experience_after_not_play = [not_play_t,after_not_play_t,0,-1]
+        self.add(experience_after_not_play)
+        old_tuple = after_not_play_t
+        num_go_to_first_ball = 20.0
+        for i in range(0,int(num_go_to_first_ball-1)):
+            dist_ball,dist_goal = self.get_tuple_go_to_ball_start(dist_ball,dist_goal,i,num_go_to_first_ball)
+            tuple = [1,1,1,dist_ball,dist_goal]
+            experience = [old_tuple,tuple,5,step_reward]
+            self.add(experience)
+            old_tuple = tuple
+
+        is_end = False
+        while not is_end:
+
+            #random assignment if shoot or dribble
+            is_shoot = self.is_chance(0.5)
+            num=0
+            if is_shoot:
+                self.sequ = self.sequ + "s"
+                # shoot the ball
+                print("shoot")
+                shoot_speed=70
+                dist_ball, dist_goal,is_shoot = self.get_tuple_go_to_ball_shoot(dist_ball, dist_goal+0.5, 0, num_go_to_first_ball,shoot_speed)
+                tuple = [1, 1, 1, dist_ball, dist_goal]
+                experience = [old_tuple, tuple, 3, step_reward]
+                self.add(experience)
+                old_tuple = tuple
+
+                num_go_to_ball_shoot = 70
+                for i in range(0, int(num_go_to_ball_shoot)): #gototheball ater the shot
+                    dist_ball, dist_goal,shoot_speed = self.get_tuple_go_to_ball_shoot(dist_ball, dist_goal, i+1, num_go_to_first_ball,shoot_speed)
+                    tuple = [1, 1, 1, dist_ball, dist_goal]
+                    experience = [old_tuple, tuple, 5, step_reward]
+                    self.add(experience)
+                    old_tuple = tuple
+                    is_end = dist_goal - dist_ball <= 0.0
+                    if is_end:
+                        return
+            else:
+                self.sequ = self.sequ+"d"
+                print("dribble")
+                # dribble the ball
+                dribble_speed = 40
+                dist_ball, dist_goal,dribble_speed = self.get_tuple_go_to_ball_dribble(dist_ball, dist_goal+0.5, 0, num_go_to_first_ball,dribble_speed)
+                tuple = [1, 1, 1, dist_ball, dist_goal]
+                experience = [old_tuple, tuple, 2, step_reward]
+                self.add(experience)
+                old_tuple = tuple
+
+                num_go_to_ball_dribble = 40
+                for i in range(0, num_go_to_ball_dribble):  # gototheball ater the shot
+                    dist_ball, dist_goal,dribble_speed = self.get_tuple_go_to_ball_dribble(dist_ball, dist_goal, i+1, num_go_to_first_ball,dribble_speed)
+                    tuple = [1, 1, 1, dist_ball, dist_goal]
+                    experience = [old_tuple, tuple, 5, step_reward]
+                    self.add(experience)
+                    old_tuple = tuple
+                    is_end  = dist_goal - dist_ball <= 0.0
+                    if is_end:
+                        return

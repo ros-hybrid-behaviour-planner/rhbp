@@ -32,8 +32,8 @@ class NNConfig(): #TODO let config get variables from rospy try-catch if rospy i
         self.interval_prints = 100
         self.y = .99  # Discount factor.
         self.tau = 0.001  # Amount to update target network at each step.
-        self.batch_size = 32  # Size of training batch
-        self.buffer_size = 10000  # size of the experience learning buffer
+        self.batch_size = 64  # Size of training batch
+        self.buffer_size = 5000  # size of the experience learning buffer
         self.steps_save = 500 # interval for saving model
         self.save=False #if the model should be saved
         self.print_model = True # if the model should be saved
@@ -45,7 +45,7 @@ class ExplorationConfig(): #TODO let config get variables from rospy try-catch i
         self.pre_train = 100 # let the model choose random actions and dont train for these number of steps
         self.startE = 1.00
         self.endE = 0.0
-        self.anneling_steps = 30000 # steps until it reache endE
+        self.anneling_steps = 35000 # steps until it reache endE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
         self.train_interval = 50 #train the model every train_interval steps
-        self.stop_training = 30000 # steps after the model does not get trained anymore
+        self.stop_training = 600000 # steps after the model does not get trained anymore
