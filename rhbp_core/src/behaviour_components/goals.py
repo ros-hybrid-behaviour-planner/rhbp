@@ -480,7 +480,7 @@ class GoalBase(Goal):
         Destructor
         '''
         try:
-            if self._registered:
+            if hasattr(self, '_registered') and self._registered:
                 self.unregister(terminate_services=True)
 
             super(GoalBase, self).__del__()
