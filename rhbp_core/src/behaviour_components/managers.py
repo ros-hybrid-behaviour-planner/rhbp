@@ -801,10 +801,6 @@ class Manager(object):
 
     def plan_with_additional_goal(self, goal_statement):
         problem_pddl = self._create_problem_pddl_with_additional_goal(self.__currently_pursued_goals, goal_statement)
-        print("Domain:")
-        print(self.__last_domain_PDDL)
-        print("Problem:")
-        print(problem_pddl)
         plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
         return plan
 
