@@ -20,6 +20,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
+from .delegation_interface import DelegationInterface   # TODO use
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -87,6 +88,8 @@ class Manager(object):
         self.__goalPDDLs = {}
         self.__last_domain_PDDL = ""
         self.__currently_pursued_goals = []
+
+        self.__delegation_interface = DelegationInterface(manager=self)     # needs to know the manager for potential usage of methods
 
         self.planner = MetricFF()
 
@@ -200,10 +203,21 @@ class Manager(object):
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
         '''
         goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
-        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
-        problemPDDLString += ")\n"
+        problemPDDLString = self._create_problem_pddl_string(" ".join(goalConditions))
 
+        return problemPDDLString
+
+    def _create_problem_pddl_string(self, goal_conditions_string):
+        """
+        Creates a problem PDDL-String for a given String, that contains all goal statements
+
+        :param goal_conditions_string: string containing all goal statements separated by a space
+        :return: problmePDDLString
+        """
+
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
+        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(goal_conditions_string)
+        problemPDDLString += ")\n"
         return problemPDDLString
 
     def _log_pddl_files(self, domainPDDLString, problemPDDLString, goals):
@@ -800,17 +814,18 @@ class Manager(object):
         return True
 
     def plan_with_additional_goal(self, goal_statement):
-        problem_pddl = self._create_problem_pddl_with_additional_goal(self.__currently_pursued_goals, goal_statement)
+        """
+        Uses the PDDL-planer to make a plan for the last used combination of
+        active goals and one additional goal statement
+
+        :param goal_statement: a proper PDDL goal statement
+        :return: a PDDL plan for active goals + goal statement
+        """
+
+        current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+        problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
         plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
         return plan
-
-    def _create_problem_pddl_with_additional_goal(self, goals, goal_statement):
-        goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
-        problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions)+" "+goal_statement)
-        problemPDDLString += ")\n"
-
-        return problemPDDLString
 
 
 class ManagerControl(object):
