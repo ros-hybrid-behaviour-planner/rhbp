@@ -40,10 +40,11 @@ class DelegationInterface(object):
         Tries to delegate a goal with given parameters
 
         :param name: name of the goal
-        :type name: String
+        :type name: str
         :param conditions: a list of conditions
+        :type conditions: list
         :param satisfaction_threshold: the satisfaction threshold of the goal
-        :type satisfaction_threshold: Float
+        :type satisfaction_threshold: float
         :return: TODO
         """
 
@@ -59,14 +60,19 @@ class DelegationInterface(object):
         self.__delegation_manager.delegate(goal_wrapper=new_goal_wrapper)
         # TODO return value
 
-    def register(self, delegation_manager):
+    def register(self, delegation_manager, add_own_cost_evaluator=True):
         """
         Registers a delegation_manager at this interface and adds a
-        cost_function_evaluator to him
+        cost_function_evaluator to him, if wanted
 
         :param delegation_manager: DelegationManager from task_decomposition
                 module
         :type delegation_manager: DelegationManager
+        :param add_own_cost_evaluator: determines if a cost_function_evaluator
+                that is using the instance of the connected Manager should be
+                added to the DelegationManager, mainly for scenarios with a
+                DelegationManager instance for multiple Managers
+        :type add_own_cost_evaluator: bool
         """
 
         if self.__active_manager:
@@ -76,7 +82,9 @@ class DelegationInterface(object):
 
         self.__delegation_manager = delegation_manager
         self.__active_manager = True
-        delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator())
+
+        if add_own_cost_evaluator:
+            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator())
 
     def unregister(self):
         """
