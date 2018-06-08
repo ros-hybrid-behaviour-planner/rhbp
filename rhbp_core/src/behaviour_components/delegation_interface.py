@@ -3,7 +3,7 @@
 from delegation_components.goalwrapper import RHBPGoalWrapper
 from delegation_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_manager import DelegationManager
-from behaviour_components.managers import Manager
+#from behaviour_components.managers import Manager
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
@@ -76,7 +76,7 @@ class DelegationInterface(object):
         """
 
         if self.__active_manager:
-            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_manager_name()) + "\" while one with the name \"" + str(self.__delegation_manager.get_manager_name()) + "\" is already registered")
+            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_name()) + "\" while one with the name \"" + str(self.__delegation_manager.get_name()) + "\" is already registered")
             # TODO raise exception or not?
             return
 
@@ -84,7 +84,12 @@ class DelegationInterface(object):
         self.__active_manager = True
 
         if add_own_cost_evaluator:
-            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator())
+            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix)
+
+    def do_step(self):
+
+        if self.__active_manager:
+            self.__delegation_manager.do_step()
 
     def unregister(self):
         """

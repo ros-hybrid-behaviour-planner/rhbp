@@ -450,6 +450,9 @@ class Manager(object):
                 rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                 self._activationThreshold *= (1 / activation_threshold_decay)
 
+            # Let the DelegationManager do a step
+            self.__delegation_interface.do_step()   # TODO think about the position of this (step_lock y/n)
+
         self._stepCounter += 1
 
     def _publish_planner_status(self, activation_threshold_decay, currently_influenced_sensors):
@@ -826,6 +829,10 @@ class Manager(object):
         problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
         plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
         return plan
+
+    def get_delegation_interface(self):
+
+        return self.__delegation_interface
 
 
 class ManagerControl(object):
