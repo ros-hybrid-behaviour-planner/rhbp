@@ -686,6 +686,10 @@ class Manager(object):
             self.__replanningNeeded = True
 
     def remove_goal(self, goal_name):
+
+        # notify the delegation unit that a goal is removed
+        self.__delegation_interface.notify_goal_removal(goal_name=goal_name)
+
         with self._step_lock:
             self._goals = [g for g in self._goals if
                                 g.name != goal_name]  # kick out existing goals with that name.

@@ -98,3 +98,13 @@ class DelegationInterface(object):
 
         self.__active_manager = False
         self.__delegation_manager = None
+
+    def notify_goal_removal(self, goal_name):
+        """
+        Notifies the delegation_manager, if present, that a goal was removed
+
+        :param goal_name: name of the removed goal
+        :type goal_name: str
+        """
+        
+        self.__delegation_manager.end_task(goal_name=goal_name)
