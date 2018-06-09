@@ -45,20 +45,22 @@ class DelegationInterface(object):
         :type conditions: list
         :param satisfaction_threshold: the satisfaction threshold of the goal
         :type satisfaction_threshold: float
-        :return: TODO
+        :return: ID of the delegation
+        :rtype: int
         """
 
         if not self.__active_manager:
-            # TODO do we want to return bools or raise exceptions
-            return
+            # TODO raise exceptions
+            return -1
 
         condition_string = "\n\t".join([str(x) for x in conditions])
         rhbplog.loginfo("New delegation attempt with the conditions:\n\t" + condition_string + "\n\t and the satisfaction threshold of " + str(satisfaction_threshold))
 
         new_goal_wrapper = RHBPGoalWrapper(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
 
-        self.__delegation_manager.delegate(goal_wrapper=new_goal_wrapper)
-        # TODO return value
+        delegation_id = self.__delegation_manager.delegate(goal_wrapper=new_goal_wrapper)
+
+        return delegation_id
 
     def register(self, delegation_manager, add_own_cost_evaluator=True):
         """
@@ -108,3 +110,13 @@ class DelegationInterface(object):
         """
         
         self.__delegation_manager.end_task(goal_name=goal_name)
+
+    def terminate_delegation(self, delegation_id):
+        """
+        Terminates the delegation with a given ID
+
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        """
+
+        self.__delegation_manager.terminate(auction_id=delegation_id)
