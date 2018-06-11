@@ -299,6 +299,7 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         super(GoalProxy, self).__init__(name, permanent)
         self._service_prefix = planner_prefix + '/' + self._name + '/'
+        self.__old_PDDL = (PDDL(statement=name), PDDL(statement="", predicates=[], functions=[]))
 
     def fetchPDDL(self):
         '''
@@ -306,19 +307,21 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         try:
             rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
-            rospy.wait_for_service(self._service_prefix + 'PDDL')
+            rospy.wait_for_service(self._service_prefix + 'PDDL', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
-            return
+            return self.__old_PDDL
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            return (PDDL(statement=pddl.goalStatement),
+            self.__old_PDDL = (PDDL(statement=pddl.goalStatement),
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
                          functions=pddl.stateFunctions))
+            return self.__old_PDDL
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
                          traceback.format_exc())
+            return self.__old_PDDL
 
     def fetchStatus(self, current_step):
         """
@@ -331,6 +334,7 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
+            # just return (old values will still be used)
             return
 
         try:
@@ -359,17 +363,22 @@ class GoalProxy(AbstractGoalRepresentation):
         """
         rhbplog.logerr("ROS service timeout of goal '%s': %s. Fulfillment will be reset", self._name,
                      traceback.format_exc())
-        self._active = False
-        self.fulfillment = 0.0
+        # self._active = False
+        # self.fulfillment = 0.0
+        # TODO make sure this doesnt go on forever
 
     @AbstractGoalRepresentation.activated.setter
     def activated(self, value):
         self._activated = value
+        #inform remote goal about new activated state
+        service_name = self._service_prefix + 'Activate'
+        rhbplog.logdebug("Waiting for service %s", service_name)
         try:
-            #inform remote goal about new activated state
-            service_name = self._service_prefix + 'Activate'
-            rhbplog.logdebug("Waiting for service %s", service_name)
-            rospy.wait_for_service(service_name)
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+        except rospy.ROSException:
+            # TODO this is a setter -> needs to be handled differently
+            pass
+        try:
             activateRequest = rospy.ServiceProxy(service_name, Activate)
             activateRequest(value)
         except rospy.ServiceException:
