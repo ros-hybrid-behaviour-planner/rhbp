@@ -20,7 +20,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
-from .delegation_interface import DelegationInterface   # TODO use
+from .delegation_interface import DelegationInterface
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
