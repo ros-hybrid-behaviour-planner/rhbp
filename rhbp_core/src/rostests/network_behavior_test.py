@@ -4,7 +4,7 @@ Tests the goal implementations
 
 Created on 25.03.2017
 
-@author: rieger
+@author: rieger, hrabia
 '''
 import time
 import unittest
@@ -13,13 +13,13 @@ import mock
 import rospy
 import rostest
 
-from behaviour_components.activators import ThresholdActivator
+from behaviour_components.activators import ThresholdActivator, BooleanActivator
 from behaviour_components.conditions import Condition
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
 from behaviour_components.network_behavior import NetworkBehaviour
 from behaviour_components.condition_elements import Effect
-from behaviour_components.sensors import TopicSensor
+from behaviour_components.sensors import TopicSensor, Sensor
 from std_msgs.msg import Int32
 
 from tests.common import IncreaserBehavior
@@ -120,6 +120,59 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         goal.fetchStatus(3)
         self.assertTrue(goal.satisfied, 'Goal is not satisfied')
+
+    def test_conditions_in_multiple_levels(self):
+        """
+        Testing conditions that are used as well on the highest manager hierarchy level as well as in a sub manager of
+        a NetworkBehaviour. In particular one conditions is used as precondition, the other one as goal condition.
+        """
+
+        method_prefix = self.__message_prefix + "/test_conditions_in_multiple_levels"
+
+        pre_con_sensor = Sensor(name="Precon_sensor", initial_value=False)
+        pre_con = Condition(pre_con_sensor, BooleanActivator(desiredValue=True))
+
+        topic_name = method_prefix + '/Topic'
+        sensor = TopicSensor(topic=topic_name, message_type=Int32, initial_value=0)
+        condition = Condition(sensor, ThresholdActivator(thresholdValue=3))
+
+        planner_prefix = method_prefix + "/Manager"
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
+        goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
+        goal.add_condition(condition)
+        m.add_goal(goal)
+
+        effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
+
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
+                                               createLogFiles=True)
+        first_level_network.add_effects([effect])
+        first_level_network.add_precondition(pre_con)
+
+        goal_with_same_cond = OfflineGoal('CentralGoal2', planner_prefix=planner_prefix)
+        goal_with_same_cond.add_condition(condition)
+        first_level_network.add_goal(goal_with_same_cond)
+
+        increaser_behavior = IncreaserBehavior(effect_name=sensor.name, topic_name=topic_name,
+                                               name=method_prefix + "TopicIncreaser",
+                                               plannerPrefix=first_level_network.get_manager_prefix())
+
+        increaser_behavior.add_precondition(pre_con)
+
+        # activate the first_level_network increaser_Behavior
+        for x in range(0, 3, 1):
+            self.assertFalse(first_level_network._isExecuting)
+            m.step()
+            pre_con_sensor.update(True)
+            rospy.sleep(0.1)
+
+        self.assertTrue(first_level_network._isExecuting)
+
+        for x in range(0, 4, 1):
+            m.step()
+            rospy.sleep(0.1)
+
+        self.assertTrue(increaser_behavior._isExecuting)
 
 
 if __name__ == '__main__':
