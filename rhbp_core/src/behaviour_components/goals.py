@@ -448,8 +448,10 @@ class GoalBase(Goal):
         Cleaning up ROS communication interface
         """
         super(GoalBase, self)._cleanup_topics_services()
-        self._getStatusService.shutdown()
-        self._pddlService.shutdown()
+        if hasattr(self, '_getStatusService') and self._getStatusService:
+            self._getStatusService.shutdown()
+        if hasattr(self, '_pddlService') and self._pddlService:
+            self._pddlService.shutdown()
 
     def unregister(self, terminate_services=True):
         """
