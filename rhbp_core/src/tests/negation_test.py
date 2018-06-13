@@ -8,9 +8,20 @@ import behaviour_components.activators as activators
 import behaviour_components.conditions as conditions
 import behaviour_components.sensors as sensors
 
+from mock import patch
+from rospy.rostime import Time
+
 
 class NegationTestSuite(unittest.TestCase):
     """Testing Negation Condition"""
+
+    def setUp(self):
+        self._rospy_patcher = patch('rospy.Time.now')
+        self._rospy_patcher.start()
+        self._rospy_patcher.return_value = Time(0, 0)
+
+    def tearDown(self):
+        self._rospy_patcher.stop()
 
     def test_negation_increasing_activation(self):
         activator = activators.LinearActivator(zeroActivationValue=0, fullActivationValue=10, minActivation=0,

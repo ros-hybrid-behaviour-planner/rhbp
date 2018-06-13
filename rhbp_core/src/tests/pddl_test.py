@@ -8,9 +8,20 @@ import rospy
 
 from behaviour_components.pddl import create_valid_pddl_name, PDDL, mergeStatePDDL
 
+from mock import patch
+from rospy.rostime import Time
+
 
 class PDDLTestSuite(unittest.TestCase):
     """Testing pddl"""
+
+    def setUp(self):
+        self._rospy_patcher = patch('rospy.Time.now')
+        self._rospy_patcher.start()
+        self._rospy_patcher.return_value = Time(0, 0)
+
+    def tearDown(self):
+        self._rospy_patcher.stop()
 
     def test_pddl_name(self):
         """Testing valid name generation for the PDDL language"""
