@@ -381,7 +381,7 @@ class DynamicSensor(Sensor):
         """
         :param a: a received message
         :param b: another received message
-        :return: wether a is smaller than b
+        :return: whether a is smaller than b
         """
         if (hasattr(a, 'data') and hasattr(b, 'data')):
             return a.data < b.data

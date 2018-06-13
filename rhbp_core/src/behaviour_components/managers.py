@@ -628,7 +628,7 @@ class Manager(object):
             rhbplog.logwarn("Tried to stop already stopped behaviour %s", behaviour.name)
         rhbplog.logdebug("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
 
-    def add_goal(self,goal):
+    def add_goal(self, goal):
         '''
         :param goal: The new goal
         :type goal: AbstractGoalRepresentation
