@@ -215,7 +215,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertEqual(1, len(current))
         self.assertTrue(updated_new_1 in current, 'Update not noticed')
 
-    def __check_content(self,fact_cache, *expected_facts):
+    def __check_content(self, fact_cache, *expected_facts):
 
         content = fact_cache.get_all_matching_facts()
         error_message = 'Excepted "{0}", but is {1}'.format(str(expected_facts), str(content))
@@ -246,11 +246,49 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         new_fact = (prefix, 'updated', '3')
 
-        self.__client.update((prefix,'toUpdate','*'),new_fact)
+        self.__client.update((prefix, 'toUpdate', '*'), new_fact)
 
         rospy.sleep(0.1)
 
         self.__check_content(cache, not_influenced, new_fact)
+
+    def test_mass_updates(self):
+        """
+        Here we test many updates in a short time period
+        """
+
+        prefix = self.__message_prefix + 'test_mass_updates'
+
+        number_of_entries = 500
+
+        # fill KB
+        for i in range(number_of_entries):
+
+            updated_old_1 = (prefix, 'fact', str(i))
+            self.__client.push(updated_old_1)
+
+        cache = KnowledgeBaseFactCache(pattern=(prefix, 'fact_new', '*'), knowledge_base_name=self.__knowledge_base_address)
+        current = cache.get_all_matching_facts()
+        self.assertEqual(0, len(current))
+
+        rospy.sleep(0.5)
+
+        for i in range(number_of_entries):
+            updated_old_1 = (prefix, 'fact', str(i))
+            updated_new_1 = (prefix, 'fact_new', str(i))
+            last_fact = updated_new_1
+            self.__client.update(updated_old_1, updated_new_1)
+
+        rospy.sleep(0.5)
+        while last_fact != cache.last_updated_fact:
+            rospy.sleep(0.5)
+
+        current = cache.get_all_matching_facts()
+
+        # test if we received all tuples
+        for i in range(number_of_entries):
+            updated_new_1 = (prefix, 'fact_new', str(i))
+            self.assertTrue(updated_new_1 in current, 'Update of "' + str(updated_new_1) + '" not noticed')
 
 
 if __name__ == '__main__':

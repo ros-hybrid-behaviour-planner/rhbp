@@ -38,6 +38,7 @@ class KnowledgeBaseFactCache(object):
         self.__value_lock = threading.Lock()
         self.__update_listeners = []  # functions to call on update
         self.__update_time = None
+        self.__last_updated_fact = tuple()
 
         try:
             rospy.wait_for_service(self.__example_service_name, timeout=10)
@@ -64,10 +65,11 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
+        tuple_fact = tuple(fact_added.content)
         with self.__value_lock:
-            if fact_added.content not in self.__contained_facts:
-                self.__contained_facts.append(tuple(fact_added.content))
-                self.__update_time = rospy.get_time()
+            if tuple_fact not in self.__contained_facts:
+                self.__contained_facts.append(tuple_fact)
+                self._cache_updated(tuple_fact)
         self._notify_listeners()
 
     def __handle_remove_update(self, fact_removed):
@@ -75,28 +77,30 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
+        tuple_fact = tuple(fact_removed.fact)
         with self.__value_lock:
             try:
-                self.__contained_facts.remove(tuple(fact_removed.fact))
+                self.__contained_facts.remove(tuple_fact)
             except ValueError:
                 pass
-        self.__update_time = rospy.get_time()
+        self._cache_updated(tuple_fact)
         self._notify_listeners()
 
     def __handle_fact_update(self, fact_updated):
+        tuple_fact_new = tuple(fact_updated.new)
         with self.__value_lock:
-            if fact_updated.new not in self.__contained_facts:
-                self.__contained_facts.append(tuple(fact_updated.new))
+            if tuple_fact_new not in self.__contained_facts:
+                self.__contained_facts.append(tuple_fact_new)
 
             for removed_fact in fact_updated.removed:
                 try:
                     self.__contained_facts.remove(tuple(removed_fact.content))
                 except ValueError:
                     pass
-        self.__update_time = rospy.get_time()
+        self._cache_updated(tuple_fact_new)
         self._notify_listeners()
 
-    def update_state_manually(self):
+    def update_state_manually(self, enable_listener_notification=True):
         """
         requests/polls from knowledge base, whether a matching state exists
         :return: whether matching fact exists
@@ -104,7 +108,10 @@ class KnowledgeBaseFactCache(object):
         new_content = self.__client.all(self.__pattern)
         with self.__value_lock:
             self.__contained_facts = new_content
-            self.__update_time = rospy.get_time()
+            last_fact = self.__contained_facts[-1] if len(self.__contained_facts) > 0 else tuple()
+            self._cache_updated(last_fact)  # last element of all facts
+            if enable_listener_notification:
+                self._notify_listeners()
             return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
@@ -152,6 +159,15 @@ class KnowledgeBaseFactCache(object):
         if func in self.__update_listeners:
             self.__update_listeners.remove(func)
 
+    def _cache_updated(self, fact):
+        """
+        function should be triggered when the cache was updated
+        it stores some information about the last update
+        :param fact: last updated fact
+        """
+        self.__update_time = rospy.Time.now()
+        self.__last_updated_fact = fact
+
     @property
     def update_time(self):
         """
@@ -159,3 +175,12 @@ class KnowledgeBaseFactCache(object):
         :return: ROSTime of last fact change
         """
         return self.__update_time
+
+    @property
+    def last_updated_fact(self):
+        """
+        Get last updated fact
+        :return: fact
+        """
+        return self.__last_updated_fact
+

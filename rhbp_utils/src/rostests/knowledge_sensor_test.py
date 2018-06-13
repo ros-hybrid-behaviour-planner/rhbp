@@ -112,6 +112,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         update_stamp = sensor._value_cache.update_time
         # regular operation
         self.__client.push((self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', str(test_value)))
+        rospy.sleep(0.1)
         while update_stamp == sensor._value_cache.update_time:
             rospy.sleep(0.1)
 
@@ -120,10 +121,11 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
 
         update_stamp = sensor._value_cache.update_time
         # illegal operation with non integer value
-        self.assertEquals(self.__client.update(pattern=sensor_pattern, new=(self.__message_prefix,
-                                               'test_knowledge_fact_int_sensor', 'number', "NO_NUMBER")), True)
-        while update_stamp == sensor._value_cache.update_time:
-            rospy.sleep(0.1)
+        new_tuple = (self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', "NO_NUMBER")
+        self.assertEquals(self.__client.update(pattern=sensor_pattern, new=new_tuple), True)
+        rospy.sleep(0.1)
+        while update_stamp > sensor.value_update_time:
+            rospy.sleep(0.5)
 
         sensor.sync()
         rospy.loginfo(sensor.value)

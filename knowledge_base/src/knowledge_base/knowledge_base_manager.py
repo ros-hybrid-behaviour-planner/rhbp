@@ -38,6 +38,9 @@ class KnowledgeBase(object):
     PUSH_SERVICE_NAME_POSTFIX = '/Push'
     DISCOVERY_TOPIC_NAME = '/kb_discover'
 
+    # This will let the publisher queue grow infinitely but if we would drop here clients might lose information
+    KB_PUBLISHER_QUEUE_SIZE = 0
+
     def __init__(self, name=DEFAULT_NAME, include_patterns_in_update_names=False):
         self.__fact_update_topic_prefix = name + '/FactUpdate/'
         self.__fact_update_topic_counter = 0
@@ -307,11 +310,13 @@ class KnowledgeBase(object):
                                                                          self.__fact_update_topic_counter)
         self.__fact_update_topic_counter += 1
         added_topic_name = basic_topic_name + '/Add'
-        add_publisher = rospy.Publisher(added_topic_name, Fact, queue_size=10, latch=True)
+        add_publisher = rospy.Publisher(added_topic_name, Fact, queue_size=self.KB_PUBLISHER_QUEUE_SIZE, latch=True)
         removed_topic_name = basic_topic_name + '/Remove'
-        remove_publisher = rospy.Publisher(removed_topic_name, FactRemoved, queue_size=10, latch=True)
+        remove_publisher = rospy.Publisher(removed_topic_name, FactRemoved, queue_size=self.KB_PUBLISHER_QUEUE_SIZE,
+                                           latch=True)
         update_topic_name = basic_topic_name + '/Update'
-        update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=10, latch=True)
+        update_publisher = rospy.Publisher(update_topic_name, FactUpdated, queue_size=self.KB_PUBLISHER_QUEUE_SIZE,
+                                           latch=True)
         rospy.sleep(0.1)
         self.__fact_update_topics[converted] = (add_publisher, remove_publisher, update_publisher)
         self.__subscribed_patterns_space.add(converted)

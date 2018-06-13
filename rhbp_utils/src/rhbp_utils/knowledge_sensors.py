@@ -20,10 +20,10 @@ class KnowledgeSensor(Sensor):
     def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, name=None):
         super(KnowledgeSensor, self).__init__(name=name, optional=optional, initial_value=None)
         self._value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
+        self._value_cache.add_update_listener(self._cache_update_callback)
 
-    def sync(self):
+    def _cache_update_callback(self):
         self.update(self._value_cache.does_fact_exists())
-        super(KnowledgeSensor, self).sync()
 
 
 class KnowledgeFactSensor(Sensor):
@@ -36,10 +36,10 @@ class KnowledgeFactSensor(Sensor):
                  initial_value=None):
         super(KnowledgeFactSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
         self._value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
+        self._value_cache.add_update_listener(self._cache_update_callback)
 
-    def sync(self):
+    def _cache_update_callback(self):
         self.update(self._value_cache.get_all_matching_facts())
-        super(KnowledgeFactSensor, self).sync()
 
 
 class KnowledgeFirstFactSensor(KnowledgeFactSensor):
@@ -95,7 +95,7 @@ class KnowledgeFactNumberSensor(KnowledgeFirstFactSensor):
         try:
             new_value = float(new_value)
         except Exception:
-            rhbplog.logwarn("Couldn't cast tuple element to int: %s. Resetting to initial_value", str(new_value))
+            rhbplog.logwarn("Couldn't cast tuple element to float: %s. Resetting to initial_value", str(new_value))
             new_value = self._initial_value
 
         return new_value
