@@ -472,7 +472,7 @@ class Condition(Conditonal):
             indicator = self._activator.getSensorWish(self._normalizedSensorValue)
             return [Wish(sensor_name=self._sensor.name, indicator=indicator, activator_name=self._activator.name)]
         except AssertionError:
-            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            rhbplog.logerr("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
             raise
 
     def _get_current_sensor_value_for_pddl_creation(self):
