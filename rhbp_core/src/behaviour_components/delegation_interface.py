@@ -3,37 +3,58 @@
 from delegation_components.goalwrapper import RHBPGoalWrapper
 from delegation_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_manager import DelegationManager
-#from behaviour_components.managers import Manager
+
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
 
 
-class DelegationInterface(object):
+class DelegationInterfaceBase(object):
 
-    def __init__(self, manager):
+    def __init__(self):
+        self._delegation_manager = None
+        self._active_manager = False
+        self._do_steps = False
+
+    def register(self, delegation_manager, use_this_for_steps):
         """
-        Constructor for the Interface
+        Registers a delegation manager to this interface if there was none
+        registered till now
 
-        :param manager: a Manager from RHBP
-        :type manager: Manager
-        """
-
-        self.__behaviour_manager = manager
-        self.__delegation_manager = None
-        self.__active_manager = False
-
-    def get_new_cost_evaluator(self):
-        """
-        Constructs a new cost_evaluator and returns it
-
-        :return: a cost_evaluator using the managers planning functions
-        :rtype: PDDLCostEvaluator
+        :param delegation_manager: DelegationManager from task_decomposition
+                module
+        :param use_this_for_steps: whether the owner of this interface has to
+                invoke the steps of this manager or not
+        :type use_this_for_steps: bool
+        :type delegation_manager: DelegationManager
         """
 
-        new_cost_evaluator = PDDLCostEvaluator(planning_function=self.__behaviour_manager.plan_with_additional_goal)
+        if self._active_manager:
+            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_name()) + "\" while one with the name \"" + str(self._delegation_manager.get_name()) + "\" is already registered")
+            # TODO raise exception or not?
+            return
 
-        return new_cost_evaluator
+        self._do_steps = use_this_for_steps
+        self._delegation_manager = delegation_manager
+        self._active_manager = True
+
+    def unregister(self):
+        """
+        Unregisters currently used DelegationManager from this interface
+        """
+
+        self._active_manager = False
+        self._do_steps = False
+        self._delegation_manager = None
+
+    def do_step(self):
+        """
+        If a delegation manager is registered and i need to invoke his steps,
+        it will make a step
+        """
+
+        if self._active_manager and self._do_steps:
+            self._delegation_manager.do_step()
 
     def delegate(self, name, conditions, satisfaction_threshold):
         """
@@ -49,7 +70,7 @@ class DelegationInterface(object):
         :rtype: int
         """
 
-        if not self.__active_manager:
+        if not self._active_manager:
             # TODO raise exceptions
             return -1
 
@@ -58,11 +79,36 @@ class DelegationInterface(object):
 
         new_goal_wrapper = RHBPGoalWrapper(name=name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
 
-        delegation_id = self.__delegation_manager.delegate(goal_wrapper=new_goal_wrapper)
+        delegation_id = self._delegation_manager.delegate(goal_wrapper=new_goal_wrapper)
 
         return delegation_id
 
-    def register(self, delegation_manager, add_own_cost_evaluator=True):
+    def terminate_delegation(self, delegation_id):
+        """
+        Terminates the delegation with a given ID
+
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        """
+
+        if self._active_manager:
+            self._delegation_manager.terminate(auction_id=delegation_id)
+
+
+class ManagerDelegationInterface(DelegationInterfaceBase):
+
+    def __init__(self, manager):
+        """
+        Constructor for the Interface
+
+        :param manager: a Manager from RHBP
+        :type manager: Manager
+        """
+
+        super(ManagerDelegationInterface, self).__init__()
+        self.__behaviour_manager = manager
+
+    def register(self, delegation_manager, use_this_for_steps, add_own_cost_evaluator=True):
         """
         Registers a delegation_manager at this interface and adds a
         cost_function_evaluator to him, if wanted
@@ -77,29 +123,10 @@ class DelegationInterface(object):
         :type add_own_cost_evaluator: bool
         """
 
-        if self.__active_manager:
-            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_name()) + "\" while one with the name \"" + str(self.__delegation_manager.get_name()) + "\" is already registered")
-            # TODO raise exception or not?
-            return
-
-        self.__delegation_manager = delegation_manager
-        self.__active_manager = True
+        super(ManagerDelegationInterface, self).register(delegation_manager=delegation_manager, use_this_for_steps=use_this_for_steps)
 
         if add_own_cost_evaluator:
             delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix)
-
-    def do_step(self):
-
-        if self.__active_manager:
-            self.__delegation_manager.do_step()
-
-    def unregister(self):
-        """
-        Unregisters currently used DelegationManager from this interface
-        """
-
-        self.__active_manager = False
-        self.__delegation_manager = None
 
     def notify_goal_removal(self, goal_name):
         """
@@ -108,15 +135,19 @@ class DelegationInterface(object):
         :param goal_name: name of the removed goal
         :type goal_name: str
         """
-        
-        self.__delegation_manager.end_task(goal_name=goal_name)
 
-    def terminate_delegation(self, delegation_id):
+        if self._active_manager:
+            self._delegation_manager.end_task(goal_name=goal_name)
+
+    def get_new_cost_evaluator(self):
         """
-        Terminates the delegation with a given ID
+        Constructs a new cost_evaluator and returns it
 
-        :param delegation_id: ID of the delegation
-        :type delegation_id: int
+        :return: a cost_evaluator using the managers planning functions
+        :rtype: PDDLCostEvaluator
         """
 
-        self.__delegation_manager.terminate(auction_id=delegation_id)
+        new_cost_evaluator = PDDLCostEvaluator(planning_function=self.__behaviour_manager.plan_with_additional_goal)
+
+        return new_cost_evaluator
+
