@@ -7,6 +7,8 @@ from __future__ import division # force floating point division when using plain
 from .pddl import PDDL, get_pddl_effect_name, create_valid_pddl_name
 from rhbp_core.msg import Wish as WishMsg
 from rhbp_core.msg import Correlation as CorrelationMsg
+from behaviour_components.conditions import Condition
+from behaviour_components.activators import BooleanActivator, GreedyActivator
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -86,6 +88,18 @@ class Effect(object):
 
     def __str__(self):
         return "Effect(s:{},i:{},s_t:{},a:{},c:{})".format(str(self.sensor_name), str(self.indicator), self.sensor_type, str(self.activator_name), self.condition)
+
+    def create_condition_from_effect(self, sensor):
+        if self.sensor_type == str(bool):
+            desired_value = True if self.indicator > 0 else False
+            activator = BooleanActivator(desiredValue=desired_value)
+            return Condition(activator=activator, sensor=sensor)
+
+        if self.sensor_type == str(int) or self.sensor_type == str(float):
+            activator = GreedyActivator(maximize=self.indicator > 0, step_size=abs(self.indicator))
+            return Condition(activator=activator, sensor=sensor)
+
+        raise RuntimeError(msg='Cant create condition for effect type \'' + self.sensor_type + '\'. Overwrite the method Effect.create_condition_from_effect to handle the type')
 
 
 class Wish(object):
