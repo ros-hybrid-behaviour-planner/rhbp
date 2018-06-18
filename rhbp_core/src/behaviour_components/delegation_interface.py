@@ -65,12 +65,14 @@ class DelegationInterfaceBase(object):
         self._delegation_manager = None
 
     def activate(self):
-        # TODO
-        pass
+
+        if self._active_manager:
+            self._delegation_manager.activate_interface(interface_id=self._intern_id)
 
     def deactivate(self):
-        # TODO
-        pass
+
+        if self._active_manager:
+            self._delegation_manager.deactivate_interface(interface_id=self._intern_id)
 
     def check_if_registered(self):
         """
@@ -81,7 +83,7 @@ class DelegationInterfaceBase(object):
         :rtype: bool
         """
 
-        return self._active_delegations
+        return self._active_manager
 
     def do_step(self):
         """
