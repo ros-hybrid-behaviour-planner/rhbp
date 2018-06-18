@@ -47,8 +47,9 @@ class DelegationInterfaceBase(object):
         """
 
         if self._active_manager:
-            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_name()) + "\" while one with the name \"" + str(self._delegation_manager.get_name()) + "\" is already registered")
-            # TODO raise exception or not?
+            rhbplog.logwarn("Attempt to log a new delegation_manager with the name \"" + str(delegation_manager.get_name())
+                            + "\" while one with the name \"" + str(self._delegation_manager.get_name()) + "\" is already registered.\nNew DelegationManager will be ignored.")
+            # will still use the old registered one
             return
 
         self._delegation_manager = delegation_manager
@@ -106,11 +107,11 @@ class DelegationInterfaceBase(object):
         :type satisfaction_threshold: float
         :return: ID of the delegation
         :rtype: int
+        :raises RuntimeError: if no DelegationManager is registered
         """
 
         if not self._active_manager:
-            # TODO raise exceptions
-            return -1
+            raise RuntimeError("Delegation without a registered DelegationManager")
 
         condition_string = "\n\t".join([str(x) for x in conditions])
         rhbplog.loginfo("New delegation attempt with the conditions:\n\t" + condition_string + "\n\t and the satisfaction threshold of " + str(satisfaction_threshold))
