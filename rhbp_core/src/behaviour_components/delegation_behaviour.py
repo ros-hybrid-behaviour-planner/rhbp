@@ -95,7 +95,7 @@ class DelegableBehaviour(DelegationBehaviour):
 
             self._delegation_interface.activate()
             conditions = self._get_conditions_for_delegation()
-            # TODO own work octs as parameter, delegate
+            # TODO own work cost as parameter, delegate
 
             self._doing_work_myself = False
         else:

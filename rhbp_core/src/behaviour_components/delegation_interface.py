@@ -23,6 +23,11 @@ class DelegationInterfaceBase(object):
                 rhbplog.loginfo(msg="Error in unregistering of a delegationmanager: " + e.message)
                 # not essential for running, so continue
 
+    @classmethod
+    def get_interface(cls, interface_id):
+
+        return cls.instance_dic[interface_id]
+
     def __init__(self):
         self._delegation_manager = None
         self._active_manager = False
@@ -60,9 +65,11 @@ class DelegationInterfaceBase(object):
         self._delegation_manager = None
 
     def activate(self):
+        # TODO
         pass
 
     def deactivate(self):
+        # TODO
         pass
 
     def check_if_registered(self):
@@ -162,7 +169,7 @@ class ManagerDelegationInterface(DelegationInterfaceBase):
         super(ManagerDelegationInterface, self).register(delegation_manager=delegation_manager)
 
         if add_own_cost_evaluator:
-            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix, )
+            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix, interface_id=self._intern_id)
 
     def notify_goal_removal(self, goal_name):
         """
