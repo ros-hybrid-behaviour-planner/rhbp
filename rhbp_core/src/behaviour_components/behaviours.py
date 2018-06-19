@@ -563,7 +563,7 @@ class BehaviourBase(object):
             return PDDL()
 
         action_name = create_valid_pddl_name(self._name)
-        pddl = PDDL(statement =  "(:action {0}\n:parameters ()\n".format(action_name), functions = "costs")
+        pddl = PDDL(statement="(:action {0}\n:parameters ()\n".format(action_name), functions="costs")
         preconds = [x.getPreconditionPDDL(self._readyThreshold) for x in self._preconditions if not x.optional] # do not use optional preconditions for planning
         pddl.predicates = set(itertools.chain.from_iterable(map(lambda x: x.predicates, preconds))) # unites all predicates in preconditions
         pddl.functions = pddl.functions.union(*map(lambda x: x.functions, preconds)) # unites all functions in preconditions

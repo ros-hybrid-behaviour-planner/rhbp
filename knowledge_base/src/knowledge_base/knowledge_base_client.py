@@ -63,7 +63,7 @@ class KnowledgeBaseClient(object):
             self.__initialize()
             return True
         except rospy.ROSException:
-            rhbplog.logerr(
+            rhbplog.logwarn(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + self.__knowledge_base_name)
             return False
         finally:
