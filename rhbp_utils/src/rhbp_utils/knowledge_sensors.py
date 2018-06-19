@@ -18,7 +18,7 @@ class KnowledgeSensor(Sensor):
     """
 
     def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME, name=None):
-        super(KnowledgeSensor, self).__init__(name=name, optional=optional, initial_value=None)
+        super(KnowledgeSensor, self).__init__(name=name, optional=optional, initial_value=False)
         self._value_cache = KnowledgeBaseFactCache(pattern=pattern, knowledge_base_name=knowledge_base_name)
         self._value_cache.add_update_listener(self._cache_update_callback)
 

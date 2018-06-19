@@ -63,7 +63,7 @@ class KnowledgeBaseClient(object):
             self.__initialize()
             return True
         except rospy.ROSException:
-            rhbplog.loginfo(
+            rhbplog.logerr(
                 'The following knowledge base node is currently not present. Connection will be established later: ' + self.__knowledge_base_name)
             return False
         finally:
@@ -146,8 +146,10 @@ class KnowledgeBaseClient(object):
         :param push_without_existing: True for creating a new fact if it does not yet exist
         :return: whether new fact exists now in the knowledge base
         """
-        self.__ensure_initialization()
-        return self.__update_service(pattern, new, push_without_existing).successful
+        if self.__ensure_initialization():
+            return self.__update_service(pattern, new, push_without_existing).successful
+        else:
+            return False
 
     def push(self, fact):
         """
