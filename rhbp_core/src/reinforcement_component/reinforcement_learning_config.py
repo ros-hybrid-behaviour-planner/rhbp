@@ -28,24 +28,24 @@ class NNConfig(): #TODO let config get variables from rospy try-catch if rospy i
         # Set learning parameters
         self.learning_rate_optimizer = 0.1
         self.epsilon = 0.1
-        self.learning_rate_q_learning = 0.99
+        self.learning_rate_q_learning = 0.999
         self.interval_prints = 100
-        self.y = .99  # Discount factor.
+        self.y = .95  # Discount factor.
         self.tau = 0.001  # Amount to update target network at each step.
-        self.batch_size = 64  # Size of training batch
+        self.batch_size = 5  # Size of training batch
         self.buffer_size = 5000  # size of the experience learning buffer
         self.steps_save = 500 # interval for saving model
         self.save=False #if the model should be saved
-        self.print_model = True # if the model should be saved
-        self.steps_prints = 3000 # interval for saving model
-
+        self.print_model = False # if the model should be saved
+        self.steps_prints = 500 # interval for saving model
+        self.experiment_steps = 5050
 
 class ExplorationConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
     def __init__(self):
-        self.pre_train = 100 # let the model choose random actions and dont train for these number of steps
+        self.pre_train = 1000 # let the model choose random actions and dont train for these number of steps
         self.startE = 1.00
         self.endE = 0.0
-        self.anneling_steps = 35000 # steps until it reache endE
+        self.anneling_steps = 15000 # steps until it reache endE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
-        self.train_interval = 50 #train the model every train_interval steps
-        self.stop_training = 600000 # steps after the model does not get trained anymore
+        self.train_interval = 15 #train the model every train_interval steps
+        self.stop_training = 6000000 # steps after the model does not get trained anymore

@@ -18,7 +18,7 @@ class ExplorationStrategies(object):
             changed = True
         if self.epsilon > self.config.endE and counter > self.config.pre_train and num_actions > 0:
             self.epsilon -= self.config.stepDrop
-        print("epsilon", self.epsilon,counter)
+        #print("epsilon", self.epsilon,counter)
         return changed, best_action
 
     def e_greedy(self, counter, num_actions):

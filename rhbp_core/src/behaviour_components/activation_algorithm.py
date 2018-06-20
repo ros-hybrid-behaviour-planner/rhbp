@@ -15,6 +15,7 @@ import subprocess
 
 from reinforcement_component.exploration_strategies import ExplorationStrategies
 from reinforcement_component.input_state_transformer import InputStateTransformer
+from reinforcement_component.test_environment import environment_test
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
 import numpy
@@ -711,7 +712,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         #self.start_rl_node()
 
         self.SERVICE_TIMEOUT = 5
-
+        self.env_test = environment_test()
         self.rl_component=None
 
         self.weight_rl = 1.0
@@ -816,6 +817,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 negative_states.append(negative_state)
 
         # start service to get the activations from the model
+
         self.fetchActivation(input_state_msg,negative_states)
 
     def fetchActivation(self, msg,negative_states):
