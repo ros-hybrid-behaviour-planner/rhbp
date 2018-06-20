@@ -20,7 +20,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
-from .delegation_interface import ManagerDelegationInterface
+from .delegation_clients import ManagerDelegationClient
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -89,7 +89,7 @@ class Manager(object):
         self.__last_domain_PDDL = ""
         self.__currently_pursued_goals = []
 
-        self.__delegation_interface = ManagerDelegationInterface(manager=self)     # needs to know the manager for potential usage of methods
+        self.__delegation_interface = ManagerDelegationClient(manager=self)     # needs to know the manager for potential usage of methods
 
         self.planner = MetricFF()
 

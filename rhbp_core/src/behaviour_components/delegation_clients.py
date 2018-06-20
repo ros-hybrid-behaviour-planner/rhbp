@@ -8,36 +8,60 @@ import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
 
 
-class DelegationInterfaceBase(object):
+class DelegationClient(object):
+    """
+    Client for the DelegationManager, part of the task decomposition module
+    that directly interfaces with outside objects.
+    """
 
     instance_counter = 0
-    instance_dic = {}
+    all_clients_and_ids = {}
 
     @classmethod
-    def unregister_at(cls, list_of_ids):
-        for i in list_of_ids:
+    def unregister_at(cls, client_ids):
+        """
+        Unregisters the DelegationManager at all clients with IDs in the given
+        list
+
+        :param client_ids: list of client IDs
+        :type client_ids: list
+        """
+
+        for i in client_ids:
             try:
-                cls.instance_dic[i].unregister()
+                cls.all_clients_and_ids[i].unregister()
             except Exception as e:
-                rhbplog.loginfo(msg="Error in unregistering of a delegationmanager: " + e.message)
+                rhbplog.loginfo(msg="Error in unregistering of a delegationmanager at client with ID "+str(i)+": "+e.message)
                 # not essential for running, so continue
 
     @classmethod
-    def get_interface(cls, interface_id):
+    def get_client(cls, client_id):
+        """
+        Returns the client with the given ID
 
-        return cls.instance_dic[interface_id]
+        :param client_id: ID of the client
+        :type client_id: int
+        :return: matching instance of client
+        :rtype: DelegationClient
+        """
+
+        return cls.all_clients_and_ids[client_id]
 
     def __init__(self):
+        """
+        Constructor of the client
+        """
+
         self._delegation_manager = None
         self._active_manager = False
         self._active_delegations = []   # list of IDs
-        DelegationInterfaceBase.instance_counter += 1
-        self._intern_id = DelegationInterfaceBase.instance_counter
-        DelegationInterfaceBase.instance_dic[self._intern_id] = self
+        DelegationClient.instance_counter += 1
+        self._client_id = DelegationClient.instance_counter
+        DelegationClient.all_clients_and_ids[self._client_id] = self
 
     def register(self, delegation_manager):
         """
-        Registers a delegation manager to this interface if there was none
+        Registers a delegation manager at this client if there was none
         registered till now
 
         :param delegation_manager: DelegationManager from task_decomposition
@@ -53,26 +77,26 @@ class DelegationInterfaceBase(object):
 
         self._delegation_manager = delegation_manager
         self._active_manager = True
-        delegation_manager.add_interface(interface_id=self._intern_id)
+        delegation_manager.add_interface(interface_id=self._client_id)
 
     def unregister(self):
         """
-        Unregisters currently used DelegationManager from this interface
+        Unregisters currently used DelegationManager from this client
         """
 
-        self._delegation_manager.remove_interface(interface_id=self._intern_id)
+        self._delegation_manager.remove_interface(interface_id=self._client_id)
         self._active_manager = False
         self._delegation_manager = None
 
     def activate(self):
 
         if self._active_manager:
-            self._delegation_manager.activate_interface(interface_id=self._intern_id)
+            self._delegation_manager.activate_interface(interface_id=self._client_id)
 
     def deactivate(self):
 
         if self._active_manager:
-            self._delegation_manager.deactivate_interface(interface_id=self._intern_id)
+            self._delegation_manager.deactivate_interface(interface_id=self._client_id)
 
     def check_if_registered(self):
         """
@@ -87,8 +111,8 @@ class DelegationInterfaceBase(object):
 
     def do_step(self, current_step):
         """
-        If a delegation manager is registered and i need to invoke his steps,
-        it will make a step
+        If a delegation manager is registered, it will make a step, if it has
+        not done this step already
         """
 
         if self._active_manager:
@@ -135,27 +159,34 @@ class DelegationInterfaceBase(object):
             self._active_delegations.remove(delegation_id)
 
     def terminate_all_delegations(self):
+        """
+        Terminates all current delegations of this client
+        """
 
         for delegation_id in self._active_delegations:
             self.terminate_delegation(delegation_id=delegation_id)
 
 
-class ManagerDelegationInterface(DelegationInterfaceBase):
+class ManagerDelegationClient(DelegationClient):
+    """
+    Version of the DelegationClient used for Managers that handle goals and
+    cost evaluation.
+    """
 
     def __init__(self, manager):
         """
-        Constructor for the Interface
+        Constructor for the client
 
         :param manager: a Manager from RHBP
         :type manager: Manager
         """
 
-        super(ManagerDelegationInterface, self).__init__()
+        super(ManagerDelegationClient, self).__init__()
         self.__behaviour_manager = manager
 
     def register(self, delegation_manager, add_own_cost_evaluator=True):
         """
-        Registers a delegation_manager at this interface and adds a
+        Registers a delegation_manager at this client and adds a
         cost_function_evaluator to him, if wanted
 
         :param delegation_manager: DelegationManager from task_decomposition
@@ -163,15 +194,15 @@ class ManagerDelegationInterface(DelegationInterfaceBase):
         :type delegation_manager: DelegationManager
         :param add_own_cost_evaluator: determines if a cost_function_evaluator
                 that is using the instance of the connected Manager should be
-                added to the DelegationManager, mainly for scenarios with a
-                DelegationManager instance for multiple Managers
+                added to the DelegationManager, mainly important for scenarios
+                with a DelegationManager instance for multiple Managers
         :type add_own_cost_evaluator: bool
         """
 
-        super(ManagerDelegationInterface, self).register(delegation_manager=delegation_manager)
+        super(ManagerDelegationClient, self).register(delegation_manager=delegation_manager)
 
         if add_own_cost_evaluator:
-            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix, interface_id=self._intern_id)
+            delegation_manager.set_cost_function_evaluator(cost_function_evaluator=self.get_new_cost_evaluator(), manager_name=self.__behaviour_manager._prefix, interface_id=self._client_id)
 
     def notify_goal_removal(self, goal_name):
         """
