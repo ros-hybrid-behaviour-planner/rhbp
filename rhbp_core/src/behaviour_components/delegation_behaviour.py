@@ -1,6 +1,6 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from behaviour_components.delegation_clients import DelegationClient
+from delegation_components.delegation_clients import DelegationClient
 from behaviour_components.conditions import create_condition_from_effect
 
 
