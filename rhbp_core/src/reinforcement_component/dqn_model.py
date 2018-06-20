@@ -43,6 +43,7 @@ class DQNModel(ReinforcementAlgorithmBase):
     def reset_model_values(self):
         self.counter = 0
         self.myBuffer.reset()
+        self.reward_saver = []
 
     def initialize_model(self, num_inputs, num_outputs,load_mode=False):
         """
@@ -329,6 +330,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         plt.close()
 
     def set_next_experiment_parameter(self):
+        self.reward_saver = []
         self.experiment_counter +=1
         exp = self.experiment_counter
         if exp <=5:
@@ -365,22 +367,24 @@ class DQNModel(ReinforcementAlgorithmBase):
     def save_experiment_results(self):
         filename = "experiment_test"+str(self.experiment_counter)+"_"+str(random.randint(0,100000000))+".csv"
         counter = 0
-
-        dict = {"num": [counter], "reward": [self.reward_saver[0]], "y": [self.model_config.y], "buffer": [self.model_config.buffer_size]
+        schritt = 1000
+        rew = numpy.mean(self.reward_saver[0 * schritt:(0 + 1) * schritt])
+        dict = {"num": [counter], "reward": [rew], "y": [self.model_config.y], "buffer": [self.model_config.buffer_size]
             , "pre_train": [self.exploration_config.pre_train], "train_step": [self.exploration_config.train_interval]
             , "batch": [self.model_config.batch_size]}
         df = pandas.DataFrame(dict)
-
-        for rew in self.reward_saver[1:]:
+        print(len(self.reward_saver[1:]),len(self.reward_saver[1:])/schritt)
+        for i in range(1,len(self.reward_saver[1:])/schritt):
+            rew=numpy.mean(self.reward_saver[i*schritt:(i+1)*schritt])
             dict = {"num": [counter], "reward": [rew],"y":[self.model_config.y],"buffer":[self.model_config.buffer_size]
                     ,"pre_train":[self.exploration_config.pre_train],"train_step":[self.exploration_config.train_interval]
                     ,"batch":[self.model_config.batch_size] }
             df2 = pandas.DataFrame(dict)
-            df.append(df2)
+            df = df.append(df2)
         df.to_csv(filename, index=False)
         print("saved experiment")
 
-        avg = np.mean(self.reward_saver[-5:])
+        avg = np.mean(self.reward_saver[-5000:])
         dict = {"num": [counter], "reward": [avg], "y": [self.model_config.y],
                 "buffer": [self.model_config.buffer_size]
             , "pre_train": [self.exploration_config.pre_train], "train_step": [self.exploration_config.train_interval]
@@ -414,7 +418,7 @@ class DQNModel(ReinforcementAlgorithmBase):
             self.print_weights()
 
         # if experiment over, start new one.
-        if self.counter > self.model_config.experiment_steps:
+        if self.counter > self.model_config.experiment_steps and self.experiment_counter<60:
             print("experiment over",self.counter)
             self.counter = 0
             self.save_experiment_results()

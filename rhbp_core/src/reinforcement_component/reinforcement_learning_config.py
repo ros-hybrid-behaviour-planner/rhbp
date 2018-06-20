@@ -38,7 +38,7 @@ class NNConfig(): #TODO let config get variables from rospy try-catch if rospy i
         self.save=False #if the model should be saved
         self.print_model = False # if the model should be saved
         self.steps_prints = 500 # interval for saving model
-        self.experiment_steps = 5050
+        self.experiment_steps = 120000
 
 class ExplorationConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
     def __init__(self):
