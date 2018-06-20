@@ -85,14 +85,14 @@ class DelegationInterfaceBase(object):
 
         return self._active_manager
 
-    def do_step(self):
+    def do_step(self, current_step):
         """
         If a delegation manager is registered and i need to invoke his steps,
         it will make a step
         """
 
         if self._active_manager:
-            self._delegation_manager.do_step()
+            self._delegation_manager.do_step(current_step=current_step)
 
     def delegate(self, name, conditions, satisfaction_threshold):
         """
