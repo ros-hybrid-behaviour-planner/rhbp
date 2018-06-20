@@ -2,7 +2,6 @@
 
 from delegation_components.goalwrapper import RHBPGoalWrapper
 from delegation_components.cost_computing import PDDLCostEvaluator
-from delegation_components.delegation_manager import DelegationManager
 
 
 import utils.rhbp_logging
