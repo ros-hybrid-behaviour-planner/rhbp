@@ -26,8 +26,6 @@ class DelegationBehaviour(BehaviourBase):
             rhbplog.logerr("DelegationBehaviour %s started without a registered DelegationManager. Will do nothing!", self.name)
             return
 
-        self._delegation_interface.activate()
-
         conditions = self._get_conditions_for_delegation()
 
         self._delegation_interface.delegate(name=self.name+"Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
@@ -57,7 +55,6 @@ class DelegationBehaviour(BehaviourBase):
 
     def stop(self):
         self._delegation_interface.terminate_all_delegations()
-        self._delegation_interface.deactivate()
 
     def add_effect(self, effect):
         """
@@ -89,30 +86,30 @@ class DelegableBehaviour(DelegationBehaviour):
     def __init__(self, name, work_cost, satisfaction_threshold=1.0, **kwargs):
         super(DelegableBehaviour, self).__init__(name=name, satisfaction_threshold=satisfaction_threshold, **kwargs)
         self._own_cost = work_cost
-        self._doing_work_myself = False
+        self._currently_doing_work_myself = False
 
     def start(self):
         if self._delegation_interface.check_if_registered():
 
-            self._delegation_interface.activate()
             conditions = self._get_conditions_for_delegation()
             # TODO own work cost as parameter, delegate
 
-            self._doing_work_myself = False
+            self._currently_doing_work_myself = False
         else:
 
             self.start_work()
-            self._doing_work_myself = True
+            self._currently_doing_work_myself = True
 
     def stop(self):
-        if self._doing_work_myself:
+        if self._currently_doing_work_myself:
             self.stop_work()
+            self._currently_doing_work_myself = False
 
         else:
             super(DelegableBehaviour, self).stop()
 
     def do_step(self):
-        if self._doing_work_myself:
+        if self._currently_doing_work_myself:
             self.do_step_work()
 
         else:
@@ -125,5 +122,4 @@ class DelegableBehaviour(DelegationBehaviour):
         raise NotImplementedError()
 
     def do_step_work(self):
-        raise  NotImplementedError()
-
+        raise NotImplementedError()
