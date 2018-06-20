@@ -4,8 +4,7 @@ Created on 05.01.2017
 @author: rieger
 '''
 
-from behaviour_components.activators import Activator, BooleanActivator, GreedyActivator
-from behaviour_components.conditions import Condition
+from behaviour_components.conditions import create_condition_from_effect
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
@@ -91,7 +90,7 @@ class NetworkBehaviour(BehaviourBase):
         """
 
         try:
-            condition = effect.create_condition_from_effect(sensor=sensor)
+            condition = create_condition_from_effect(effect=effect, sensor=sensor)
             return OfflineGoal(name=goal_name, planner_prefix=self.get_manager_prefix(), permanent=True,
                                conditions={condition})
         except RuntimeError:

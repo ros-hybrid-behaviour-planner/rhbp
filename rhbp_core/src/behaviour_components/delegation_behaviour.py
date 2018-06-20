@@ -1,6 +1,7 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
 from behaviour_components.delegation_interface import DelegationInterfaceBase
+from behaviour_components.conditions import create_condition_from_effect
 
 
 class DelegationBehaviour(BehaviourBase):
@@ -46,7 +47,7 @@ class DelegationBehaviour(BehaviourBase):
             # only effects with matching sensors become conditions
             if self._correlation_sensors.keys().__contains__(effect):
                 sensor = self._correlation_sensors[effect]
-                condition = effect.create_condition_from_effect(sensor=sensor)
+                condition = create_condition_from_effect(effect=effect, sensor=sensor)
                 conditions.append(condition)
 
         return conditions

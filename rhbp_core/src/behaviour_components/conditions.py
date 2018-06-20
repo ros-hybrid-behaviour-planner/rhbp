@@ -13,6 +13,7 @@ from std_msgs.msg import Float32
 
 from behaviour_components.activators import rhbplog
 from behaviour_components.pddl import get_pddl_effect_name
+from behaviour_components.activators import BooleanActivator, GreedyActivator
 from .pddl import PDDL
 from .condition_elements import Wish
 
@@ -555,3 +556,16 @@ class PublisherCondition(Condition):
     @property
     def topic_name(self):
         return self._topic_name
+
+
+def create_condition_from_effect(effect, sensor):
+    if effect.sensor_type == str(bool):
+        desired_value = True if effect.indicator > 0 else False
+        activator = BooleanActivator(desiredValue=desired_value)
+        return Condition(activator=activator, sensor=sensor)
+
+    if effect.sensor_type == str(int) or effect.sensor_type == str(float):
+        activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator))
+        return Condition(activator=activator, sensor=sensor)
+
+    raise RuntimeError(msg='Cant create condition for effect type \'' + effect.sensor_type + '\'. Overwrite the method Effect.create_condition_from_effect to handle the type')
