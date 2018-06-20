@@ -13,7 +13,7 @@ from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Status
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, \
-    SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
+    SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour, DoStep, DoStepResponse
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter
@@ -73,17 +73,17 @@ class Behaviour(object):
         if (self.__requires_execution_steps):
             rospy.wait_for_service(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
             self.__execution_step_service = rospy.ServiceProxy(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX,
-                                                               Empty)
+                                                               DoStep)
         else:
             self.__execution_step_service = None
 
-    def do_step(self):
+    def do_step(self, current_step):
         if not (self.__execution_step_service):
             rhbplog.logerr('Step method is called, but behavior does not need a step')
             return
         # notice that __execution_step_service is a callable variable of this instance and no method of class Behaviour
         try:
-            self.__execution_step_service()
+            self.__execution_step_service(current_step)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'do_step' of behaviour '%s': %s", self._name, traceback.format_exc())
 
@@ -386,7 +386,7 @@ class BehaviourBase(object):
         self._registered = False # keeps track of behaviour registration state
 
         if self._requires_execution_steps:
-            self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
+            self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, DoStep,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
@@ -798,13 +798,25 @@ class BehaviourBase(object):
         """
         pass
 
-    def do_step_callback(self, dummy):
+    def do_step_callback(self, request):
         self.do_step()
-        return EmptyResponse()
+        self.do_current_step(current_step=request.current_step)
+        return DoStepResponse()
 
+    @deprecated
     def do_step(self):
         '''
         This method should be overriden, if the behavior needs steps.
         This method is called in every iteration of the manager, when the behavior is running
         '''
+        pass
+
+    def do_current_step(self, current_step):
+        """
+        This method should be overriden, if the behavior needs steps.
+        This method is an extension of the deprecated do_step.
+        This method is called in every iteration of the manager, when the
+        behavior is running
+        :param current_step: the step index
+        """
         pass
