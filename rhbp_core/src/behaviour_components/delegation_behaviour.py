@@ -13,6 +13,12 @@ class DelegationBehaviour(BehaviourBase):
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
 
+    def __del__(self):
+
+        super(DelegationBehaviour, self).__del__()
+        self._delegation_interface.__del__()
+        del self._correlation_sensors[:]
+
     def register_delegation_manager(self, delegation_manager):
         self._delegation_interface.register(delegation_manager=delegation_manager)
 
