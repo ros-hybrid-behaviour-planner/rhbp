@@ -6,9 +6,9 @@ from behaviour_components.conditions import create_condition_from_effect
 
 class DelegationBehaviour(BehaviourBase):
 
-    def __init__(self, name, satisfaction_threshold=1.0, **kwargs):
+    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, **kwargs):
 
-        super(DelegationBehaviour, self).__init__(name=name, requires_execution_steps=True, **kwargs)
+        super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
         self._delegation_interface = DelegationClient()
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
