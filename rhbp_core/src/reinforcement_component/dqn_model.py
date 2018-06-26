@@ -375,7 +375,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         df = pandas.DataFrame(dict)
         print(len(self.reward_saver[1:]),len(self.reward_saver[1:])/schritt)
         for i in range(1,len(self.reward_saver[1:])/schritt):
-            rew=numpy.mean(self.reward_saver[i*schritt:(i+1)*schritt])
+            rew=numpy.round(numpy.mean(self.reward_saver[i*schritt:(i+1)*schritt]),4)
             dict = {"num": [counter], "reward": [rew],"y":[self.model_config.y],"buffer":[self.model_config.buffer_size]
                     ,"pre_train":[self.exploration_config.pre_train],"train_step":[self.exploration_config.train_interval]
                     ,"batch":[self.model_config.batch_size] }
@@ -417,8 +417,15 @@ class DQNModel(ReinforcementAlgorithmBase):
             #self.print_weights_bool()
             self.print_weights()
 
+        exp_over = False
+        for i in range(1, len(self.reward_saver[1:]) / 1000):
+            rew=numpy.round(numpy.mean(self.reward_saver[i*1000:(i+1)*1000]),4)
+            if rew >= 0.0999:
+                exp_over = True
+
         # if experiment over, start new one.
-        if self.counter > self.model_config.experiment_steps and self.experiment_counter<60:
+        #if self.counter > self.model_config.experiment_steps and self.experiment_counter<60:
+        if (exp_over or self.counter>self.model_config.experiment_steps) and self.experiment_counter<60:
             print("experiment over",self.counter)
             self.counter = 0
             self.save_experiment_results()
