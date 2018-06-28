@@ -20,7 +20,6 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
-from delegation_components.delegation_clients import ManagerDelegationClient
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -88,8 +87,6 @@ class Manager(object):
         self.__goalPDDLs = {}
         self.__last_domain_PDDL = ""
         self.__currently_pursued_goals = []
-
-        self.__delegation_client = ManagerDelegationClient(manager=self)     # needs to know the manager for potential usage of methods
 
         self.planner = MetricFF()
 
@@ -450,9 +447,6 @@ class Manager(object):
                 rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                 self._activationThreshold *= (1 / activation_threshold_decay)
 
-            # Let the DelegationManager do a step
-            self.__delegation_client.do_step()   # TODO think about the position of this (step_lock y/n)
-
         self._stepCounter += 1
 
     def _publish_planner_status(self, activation_threshold_decay, currently_influenced_sensors):
@@ -687,9 +681,6 @@ class Manager(object):
 
     def remove_goal(self, goal_name):
 
-        # notify the delegation unit that a goal is removed
-        self.__delegation_client.notify_goal_removal(goal_name=goal_name)
-
         with self._step_lock:
             self._goals = [g for g in self._goals if
                                 g.name != goal_name]  # kick out existing goals with that name.
@@ -836,15 +827,6 @@ class Manager(object):
             plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
 
         return plan
-
-    def get_delegation_client(self):
-        """
-        Returns the DelegationClient used by this Manager
-
-        :return: used DelegationClient
-        """
-
-        return self.__delegation_client
 
 
 class ManagerControl(object):
