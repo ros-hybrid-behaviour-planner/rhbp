@@ -451,7 +451,7 @@ class Manager(object):
                 self._activationThreshold *= (1 / activation_threshold_decay)
 
             # Let the DelegationManager do a step
-            self.__delegation_client.do_step(current_step=self._stepCounter)   # TODO think about the position of this (step_lock y/n)
+            self.__delegation_client.do_step()   # TODO think about the position of this (step_lock y/n)
 
         self._stepCounter += 1
 

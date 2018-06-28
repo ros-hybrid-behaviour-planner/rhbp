@@ -56,9 +56,6 @@ class DelegationBehaviour(BehaviourBase):
 
         return conditions
 
-    def do_current_step(self, current_step):
-        self._delegation_interface.do_step(current_step=current_step)
-
     def stop(self):
         self._delegation_interface.terminate_all_delegations()
 
