@@ -402,7 +402,7 @@ class Manager(object):
                         amount_currently_selected_behaviours += 1
 
                         if behaviour.requires_execution_steps:
-                            behaviour.do_step(current_step=self._stepCounter)
+                            behaviour.do_step()
                     continue
                 if not behaviour.executable and not behaviour.manualStart:  # it must be executable
                     rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
