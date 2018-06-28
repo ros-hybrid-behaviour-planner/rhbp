@@ -212,7 +212,7 @@ class Manager(object):
         Creates a problem PDDL-String for a given String, that contains all goal statements
 
         :param goal_conditions_string: string containing all goal statements separated by a space
-        :return: problmePDDLString
+        :return: problemPDDLString
         """
 
         problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
@@ -826,15 +826,23 @@ class Manager(object):
         active goals and one additional goal statement
 
         :param goal_statement: a proper PDDL goal statement
+        :type goal_statement: str
         :return: a PDDL plan for active goals + goal statement
         """
 
-        current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
-        plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
+        with self._step_lock:
+            current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+            problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
+            plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
+
         return plan
 
     def get_delegation_client(self):
+        """
+        Returns the DelegationClient used by this Manager
+
+        :return: used DelegationClient
+        """
 
         return self.__delegation_client
 
