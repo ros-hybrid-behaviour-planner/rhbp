@@ -48,5 +48,5 @@ class MetricFF(Planner):
 
     def plan(self, domain_pddl, problem_pddl):
         return ffp.plan(domainPDDL=domain_pddl, problemPDDL=problem_pddl, searchMode=self.search_mode,
-                        upperCostBound=self.upper_bound, weight=self.weight, costMinimization =  self.cost_minimization,
-                        debug = self.debug)
+                        upperCostBound=self.upper_bound, weight=self.weight, costMinimization=self.cost_minimization,
+                        debug=self.debug)
