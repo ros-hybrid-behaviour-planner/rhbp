@@ -72,6 +72,7 @@ add_service_files(
   SetStepping.srv
   GetStepping.srv
   GetPaused.srv
+  PlanWithGoal.srv
 )
 
 ## Generate actions in the 'action' folder

@@ -284,6 +284,10 @@ class Goal(object):
     def active(self):
         return self._active
 
+    @property
+    def name(self):
+        return self._name
+
 
 class GoalProxy(AbstractGoalRepresentation):
     '''

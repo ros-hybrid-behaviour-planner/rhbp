@@ -12,7 +12,8 @@ import itertools
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, DiscoverInfo
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
-    RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, GetPaused, GetPausedResponse
+    RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, GetPaused, \
+    GetPausedResponse, PlanWithGoal, PlanWithGoalResponse
 from .behaviours import Behaviour
 from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
@@ -20,6 +21,7 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
+from copy import copy
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -116,6 +118,8 @@ class Manager(object):
         self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
         self.__get_paused_service = rospy.Service(self._service_prefix + 'GetPaused', GetPaused, self.__get_paused_callback)
+        self.__plan_with_goal = rospy.Service(self._service_prefix + 'PlanWithGoal', PlanWithGoal,
+                                              self.__plan_with_registered_goals_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1, latch=True)
 
@@ -134,6 +138,7 @@ class Manager(object):
         self.__pauseService.shutdown()
         self.__get_paused_service.shutdown()
         self.__resumeService.shutdown()
+        self.__plan_with_goal.shutdown()
         self.__statusPublisher.unregister()
         self.__pub_discover.unregister()
 
@@ -824,9 +829,52 @@ class Manager(object):
         with self._step_lock:
             current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
             problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
-            plan = self.planner.plan(self.__last_domain_PDDL, problem_pddl)
+            domain_pddl = copy(self.__last_domain_PDDL)
+        plan = self.planner.plan(domain_pddl, problem_pddl)
 
         return plan
+
+    def __plan_with_registered_goals_callback(self, req):
+        """
+        callback for a service that allows to use the symbolic planner directly for a given set of goals on the current
+        state
+        :param req: service request. req.goal_names has to include the names of the considered goals
+        :return: response with the plan sequence (list of behaviour names)
+        """
+
+        response = PlanWithGoalResponse()
+
+        if len(req.goal_names) > 0:
+
+            valid_goals = []
+            for goal_name in req.goal_names:
+
+                goal = next((x for x in self._goals if x.name == goal_name), None)
+                if goal:
+                    valid_goals.append(goal)
+                else:
+                    rhbplog.logwarn("Trying to plan with an unregistered goal")
+            response.plan_sequence = self.plan_with_registered_goals(goals=valid_goals)
+        else:
+            response.plan_sequence = self.plan_with_registered_goals(goals=self.__currently_pursued_goals)
+
+        return response
+
+    def plan_with_registered_goals(self, goals):
+        """
+        Planning directly with the symbolic planner and the latest known states (last decision step())
+        :param goals: Goal objects that will be used for planning
+        :raises RuntimeError if manager has never stepped before
+        :return: list(behaviour_names)
+        """
+        with self._step_lock:
+            if not self.__last_domain_PDDL:
+                raise RuntimeError("plan_with_registered_goals requires at least one previous planner step")
+            domain_pddl = copy(self.__last_domain_PDDL)
+            problem_pddl = self._create_problem_pddl(goals)
+
+        plan = self.planner.plan(domain_pddl, problem_pddl)
+        return plan['actions'].values()
 
 
 class ManagerControl(object):

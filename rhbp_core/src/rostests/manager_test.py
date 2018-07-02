@@ -15,8 +15,10 @@ from behaviour_components.activators import BooleanActivator, GreedyActivator
 from behaviour_components.conditions import Condition
 from behaviour_components.goals import GoalBase
 from behaviour_components.managers import Manager
+from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.condition_elements import Effect
 from behaviour_components.sensors import TopicSensor, Sensor
+from rhbp_core.srv import PlanWithGoal
 from std_msgs.msg import Bool, Int32
 
 from tests.common import SetTrueBehavior, IncreaserBehavior
@@ -194,6 +196,64 @@ class TestManager(unittest.TestCase):
 
         self.assertFalse(behaviour1._isExecuting, "Behaviour 1 is executed")
         self.assertTrue(behaviour2._isExecuting, "Behaviour 2 is not executed")
+
+    def test_plan_with_registered_goals(self):
+
+        method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
+        planner_prefix = method_prefix + "Manager"
+        manager = Manager(activationThreshold=7.0, prefix=planner_prefix)
+
+        sensor_1 = Sensor(name="Sensor1", initial_value=False)
+        sensor_2 = Sensor(name="Sensor2", initial_value=False)
+        sensor_3 = Sensor(name="Sensor3", initial_value=False)
+
+        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1.add_effect(Effect(sensor_name=sensor_1.name, indicator=1))
+        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2.add_effect(Effect(sensor_name=sensor_2.name, indicator=1))
+        behaviour_2.add_precondition(Condition(sensor_1, BooleanActivator()))
+        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        behaviour_3.add_effect(Effect(sensor_name=sensor_3.name, indicator=1))
+        behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
+
+        goal1 = GoalBase(name="Test_Goal1", conditions=[Condition(sensor_3, BooleanActivator())],
+                        plannerPrefix=planner_prefix)
+
+        goal2 = GoalBase(name="Test_Goal2", conditions=[Condition(sensor_2, BooleanActivator())],
+                        plannerPrefix=planner_prefix)
+
+        # test plannning without prior decision step
+        self.assertRaises(RuntimeError, lambda: manager.plan_with_registered_goals([manager.goals[0]]))
+
+        # plan again after manual step
+        manager.step()
+
+        plan_seq = manager.plan_with_registered_goals([manager.goals[0]])
+
+        expected_plan_seq = ["Behaviour1", "Behaviour2", "Behaviour3"]
+
+        self.assertEquals(len(plan_seq), len(expected_plan_seq))
+        self.assertListEqual(plan_seq, expected_plan_seq)
+
+        # plan again using a service
+
+        service_name = planner_prefix + '/' + 'PlanWithGoal'
+        # do not wait forever here, manager might be already closed
+        rospy.wait_for_service(service_name, timeout=1)
+        plan_service = rospy.ServiceProxy(service_name, PlanWithGoal)
+
+        # use all registered goals
+        res = plan_service()
+
+        self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
+        self.assertListEqual(res.plan_sequence, expected_plan_seq)
+
+        # use other named goal
+        expected_plan_seq = ["Behaviour1", "Behaviour2"]
+        res = plan_service(goal_names=[goal2.name])
+
+        self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
+        self.assertListEqual(res.plan_sequence, expected_plan_seq)
 
 
 if __name__ == '__main__':

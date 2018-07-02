@@ -1,0 +1,4 @@
+string[] goal_names # goal names that are used for planning
+---
+string[] plan_sequence # list of behaviour that fulfil the goal(s)
+
