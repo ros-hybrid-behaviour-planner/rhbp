@@ -255,6 +255,22 @@ class TestManager(unittest.TestCase):
         self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
         self.assertListEqual(res.plan_sequence, expected_plan_seq)
 
+        # test infeasible plan
+
+        sensor_4 = Sensor(name="Sensor4", initial_value=False)
+
+        goal3 = GoalBase(name="Test_Goal3", conditions=[Condition(sensor_4, BooleanActivator())],
+                         plannerPrefix=planner_prefix)
+
+        expected_plan_seq = []
+
+        manager.step() # force a step to get values for the new goal
+
+        res = plan_service(goal_names=[goal3.name])
+
+        self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
+        self.assertListEqual(res.plan_sequence, expected_plan_seq)
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'test_goals_node', TestManager)

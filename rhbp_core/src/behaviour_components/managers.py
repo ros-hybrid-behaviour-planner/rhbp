@@ -865,7 +865,7 @@ class Manager(object):
         Planning directly with the symbolic planner and the latest known states (last decision step())
         :param goals: Goal objects that will be used for planning
         :raises RuntimeError if manager has never stepped before
-        :return: list(behaviour_names)
+        :return: list(behaviour_names), empty list if no plan could be found
         """
         with self._step_lock:
             if not self.__last_domain_PDDL:
@@ -873,8 +873,11 @@ class Manager(object):
             domain_pddl = copy(self.__last_domain_PDDL)
             problem_pddl = self._create_problem_pddl(goals)
 
-        plan = self.planner.plan(domain_pddl, problem_pddl)
-        return plan['actions'].values()
+        try:
+            plan = self.planner.plan(domain_pddl, problem_pddl)
+            return plan['actions'].values()
+        except:
+            return []
 
 
 class ManagerControl(object):
