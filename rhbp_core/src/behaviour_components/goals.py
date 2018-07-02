@@ -292,6 +292,7 @@ class GoalProxy(AbstractGoalRepresentation):
     '''
 
     SERVICE_TIMEOUT = 2
+    MAX_CONSECUTIVE_TIMEOUTS = 10
 
     def __init__(self, name, permanent, planner_prefix):
         '''
@@ -299,6 +300,8 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         super(GoalProxy, self).__init__(name, permanent)
         self._service_prefix = planner_prefix + '/' + self._name + '/'
+        self.__old_PDDL = (PDDL(statement=name), PDDL(statement="", predicates=[], functions=[]))
+        self.__consecutive_timeouts = 0
 
     def fetchPDDL(self):
         '''
@@ -306,19 +309,22 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         try:
             rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
-            rospy.wait_for_service(self._service_prefix + 'PDDL')
+            rospy.wait_for_service(self._service_prefix + 'PDDL', timeout=self.SERVICE_TIMEOUT)
+            self.__consecutive_timeouts = 0
         except rospy.ROSException:
             self._handle_service_timeout()
-            return
+            return self.__old_PDDL
         try:
             getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
             pddl = getPDDLRequest()
-            return (PDDL(statement=pddl.goalStatement),
+            self.__old_PDDL = (PDDL(statement=pddl.goalStatement),
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
                          functions=pddl.stateFunctions))
+            return self.__old_PDDL
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'fetchPDDL' of goal '%s': %s", self._name,
                          traceback.format_exc())
+            return self.__old_PDDL
 
     def fetchStatus(self, current_step):
         """
@@ -329,8 +335,10 @@ class GoalProxy(AbstractGoalRepresentation):
         try:
             rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
             rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
+            self.__consecutive_timeouts = 0
         except rospy.ROSException:
             self._handle_service_timeout()
+            # just return (old values will still be used)
             return
 
         try:
@@ -357,21 +365,31 @@ class GoalProxy(AbstractGoalRepresentation):
         """
         basically deactivate the goal in case a service has timeout
         """
-        rhbplog.logerr("ROS service timeout of goal '%s': %s. Fulfillment will be reset", self._name,
+        rhbplog.logerr("ROS service timeout of goal '%s': %s.", self._name,
                      traceback.format_exc())
-        self._active = False
-        self.fulfillment = 0.0
+
+        self.__consecutive_timeouts += 1
+
+        if self.__consecutive_timeouts > self.MAX_CONSECUTIVE_TIMEOUTS:
+            rhbplog.logerr("Too many consecutive timeouts for goal '%s'! Fulfillment will be reset", self._name)
+            self._active = False
+            self.fulfillment = 0.0
 
     @AbstractGoalRepresentation.activated.setter
     def activated(self, value):
-        self._activated = value
+        # inform remote goal about new activated state
+        service_name = self._service_prefix + 'Activate'
+        rhbplog.logdebug("Waiting for service %s", service_name)
         try:
-            #inform remote goal about new activated state
-            service_name = self._service_prefix + 'Activate'
-            rhbplog.logdebug("Waiting for service %s", service_name)
-            rospy.wait_for_service(service_name)
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+            self.__consecutive_timeouts = 0
+        except rospy.ROSException:
+            self._handle_service_timeout()
+            return
+        try:
             activateRequest = rospy.ServiceProxy(service_name, Activate)
             activateRequest(value)
+            self._activated = value
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'activated' of goal '%s': %s", self._name,
                          traceback.format_exc())

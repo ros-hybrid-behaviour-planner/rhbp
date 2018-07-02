@@ -4,8 +4,7 @@ Created on 05.01.2017
 @author: rieger
 '''
 
-from behaviour_components.activators import Activator, BooleanActivator, GreedyActivator
-from behaviour_components.conditions import Condition
+from behaviour_components.conditions import create_condition_from_effect
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
@@ -86,20 +85,17 @@ class NetworkBehaviour(BehaviourBase):
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
         :return: a goal, which causes the manager to work on the effect during the whole time
+        :raises RuntimeError: if the creation of a goal for an effect of this
+                type is not possible
         """
-        if effect.sensor_type == str(bool):
-            desired_value = True if effect.indicator > 0 else False
-            activator = BooleanActivator(desiredValue=desired_value)
-            condition = Condition(activator=activator, sensor=sensor)
+
+        try:
+            condition = create_condition_from_effect(effect=effect, sensor=sensor)
             return OfflineGoal(name=goal_name, planner_prefix=self.get_manager_prefix(), permanent=True,
                                conditions={condition})
-        if effect.sensor_type == str(int) or effect.sensor_type == str(float):
-            activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator))
-            condition = Condition(activator=activator, sensor=sensor)
-            return OfflineGoal(goal_name, planner_prefix=self.get_manager_prefix(), permanent=True,
-                               conditions={condition})
-        raise RuntimeError(msg='Cant create goal for effect type \'' +
-            effect.sensor_type + '\'. Overwrite the method _create_goal to handle the type')
+        except RuntimeError:
+            raise RuntimeError(msg='Cant create goal for effect type \'' +
+                                   effect.sensor_type + '\'. Overwrite the method _create_goal to handle the type')
 
     @deprecated
     def add_correlations(self, correlations):
