@@ -148,14 +148,14 @@ class Manager(object):
     def _getDomainName(self):
         return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
-    def _fetchPDDL(self):
+    def _fetchPDDL(self, behaviours, goals):
         '''
-        This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns a tuple of
-        (domainPDDL, problemPDDL) strings ready for ff.
+        This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns the domain
+        PDDL string ready for ff. Alongside it updates
         As a side effect, is also computes the sensor changes that happened between the last invocation and now.
         '''
-        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._activeBehaviours]
-        self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in self._activeGoals}
+        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in behaviours]
+        self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in goals}
         pddl = PDDL()
         #Get relevant domain information from behaviour pddls
         for actionPDDL, statePDDL in behaviourPDDLs:
@@ -189,7 +189,7 @@ class Manager(object):
         mergedStatePDDL = init_missing_functions(pddl, mergedStatePDDL)
 
         # filter out negative predicates. FF can't handle them!
-        statePDDL = PDDL(statement = "\n\t\t".join(
+        statePDDL = PDDL(statement="\n\t\t".join(
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
@@ -217,7 +217,8 @@ class Manager(object):
         :return: problemPDDLString
         """
 
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(
+            self._getDomainName(), self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(goal_conditions_string)
         problemPDDLString += ")\n"
         return problemPDDLString
@@ -258,7 +259,8 @@ class Manager(object):
         if rospy.get_param("~planBias", 1.0) == 0.0:
             return # return if planner is disabled
 
-        domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
+        # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
+        domainPDDL = self._fetchPDDL(behaviours=self._activeBehaviours, goals=self._activeGoals)
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensor_name, indicator in self.__sensorChanges.iteritems():
@@ -527,9 +529,10 @@ class Manager(object):
                 rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
                 goal.active = False  # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
         ### do housekeeping ###
-        self._activeGoals = filter(lambda x: x.active, self._goals)
-        self._activeBehaviours = filter(lambda x: x.active,
-                                        self._behaviours)  # this line (and the one above) must happen BEFORE computeActivation() of the behaviours is called in each step.
+        # active goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
+        self._activeGoals = [x for x in self._goals if x.active]
+        self._activeBehaviours = [x for x in self._behaviours if x.active]
+
         ### use the symbolic planner if necessary ###
         if plan_if_necessary:
             self._plan_if_necessary()
@@ -854,23 +857,39 @@ class Manager(object):
                     valid_goals.append(goal)
                 else:
                     rhbplog.logwarn("Trying to plan with an unregistered goal")
-            response.plan_sequence = self.plan_with_registered_goals(goals=valid_goals)
+            response.plan_sequence = self.plan_with_registered_goals(goals=valid_goals,
+                                                                     force_state_update=req.force_state_update)
         else:
-            response.plan_sequence = self.plan_with_registered_goals(goals=self.__currently_pursued_goals)
+            if self.__currently_pursued_goals:
+                goals = self.__currently_pursued_goals
+                force_state_update = req.force_state_update
+            else:
+                # manager did not plan before we just use all available goals and force a state update
+                goals = [x for x in self._goals if x.active]
+                force_state_update = True
+            response.plan_sequence = self.plan_with_registered_goals(goals=goals, force_state_update=force_state_update)
 
         return response
 
-    def plan_with_registered_goals(self, goals):
+    def plan_with_registered_goals(self, goals, force_state_update=False):
         """
         Planning directly with the symbolic planner and the latest known states (last decision step())
-        :param goals: Goal objects that will be used for planning
+        :param goals: Goal objects that will be used for planning, if list is empty all active goals are used
+        :param force_state_update: If True the state (sensor values) of Goals and Behaviours will be refreshed before
+                planning
         :raises RuntimeError if manager has never stepped before
         :return: list(behaviour_names), empty list if no plan could be found
         """
         with self._step_lock:
-            if not self.__last_domain_PDDL:
-                raise RuntimeError("plan_with_registered_goals requires at least one previous planner step")
-            domain_pddl = copy(self.__last_domain_PDDL)
+            if not self.__last_domain_PDDL or force_state_update:
+                # first get the goals and behaviours we want to use for planning
+                behaviours = [x for x in self._behaviours if x.active]
+                # take all goals if not specified
+                goals = goals if len(goals) > 0 else [x for x in self._goals if x.active]
+                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+            else:
+                domain_pddl = copy(self.__last_domain_PDDL)
+
             problem_pddl = self._create_problem_pddl(goals)
 
         try:

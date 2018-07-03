@@ -223,11 +223,6 @@ class TestManager(unittest.TestCase):
                         plannerPrefix=planner_prefix)
 
         # test plannning without prior decision step
-        self.assertRaises(RuntimeError, lambda: manager.plan_with_registered_goals([manager.goals[0]]))
-
-        # plan again after manual step
-        manager.step()
-
         plan_seq = manager.plan_with_registered_goals([manager.goals[0]])
 
         expected_plan_seq = ["Behaviour1", "Behaviour2", "Behaviour3"]
@@ -264,9 +259,8 @@ class TestManager(unittest.TestCase):
 
         expected_plan_seq = []
 
-        manager.step() # force a step to get values for the new goal
-
-        res = plan_service(goal_names=[goal3.name])
+        # force an update to make the new goal available
+        res = plan_service(goal_names=[goal3.name], force_state_update=True)
 
         self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
         self.assertListEqual(res.plan_sequence, expected_plan_seq)
