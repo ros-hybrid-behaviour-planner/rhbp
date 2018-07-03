@@ -1,9 +1,9 @@
 
-from delegation_components.cost_computing import AbstractCostEvaluator
+from delegation_components.cost_computing import CostEvaluatorBase
 from delegation_components.delegation_errors import DelegationPlanningWarning
 
 
-class PDDLCostEvaluator(AbstractCostEvaluator):
+class PDDLCostEvaluator(CostEvaluatorBase):
     """
     Cost function evaluator for DelegationManager using the symbolic
     PDDL-Planer of the RHBP-Manager

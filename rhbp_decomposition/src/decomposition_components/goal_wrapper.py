@@ -1,4 +1,4 @@
-from delegation_components.goalwrapper import GoalWrapperBase
+from delegation_components.goal_wrapper import GoalWrapperBase
 from behaviour_components.goals import GoalBase
 from delegation_components.delegation_errors import DelegationError
 
