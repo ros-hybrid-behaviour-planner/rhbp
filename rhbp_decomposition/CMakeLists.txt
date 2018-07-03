@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   task_decomposition_module
+  rhbp_core
 )
 
 ## System dependencies are found with CMake's conventions
@@ -105,7 +106,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rhbp_decomposition
-#  CATKIN_DEPENDS rospy std_msgs task_decomposition_module
+#  CATKIN_DEPENDS rospy std_msgs task_decomposition_module rhbp_core
 #  DEPENDS system_lib
 )
 
