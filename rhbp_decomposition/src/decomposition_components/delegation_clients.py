@@ -1,8 +1,8 @@
 
 from delegation_components.delegation_clients import DelegationClientBase
 
-from delegation_components.goal_wrapper import RHBPGoalWrapper
-from delegation_components.cost_computing import PDDLCostEvaluator
+from decomposition_components.goal_wrapper import RHBPGoalWrapper
+from decomposition_components.cost_computing import PDDLCostEvaluator
 
 
 import utils.rhbp_logging

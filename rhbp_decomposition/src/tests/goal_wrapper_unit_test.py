@@ -12,9 +12,15 @@ from decomposition_components.goal_wrapper import RHBPGoalWrapper
 
 
 class GoalWrapperTest(unittest.TestCase):
+    """
+    Tests the RHBPGoalWrapper
+
+    NEEDS A RUNNING ROSCORE
+    """
 
     @classmethod
     def setUpClass(cls):
+        print("Needs a running roscore")
         super(GoalWrapperTest, cls).setUpClass()
         rospy.init_node("test_node")
         cls.manager = Manager(prefix="Test_manager")
@@ -28,13 +34,7 @@ class GoalWrapperTest(unittest.TestCase):
         self.assertEqual(test_wrapper.get_goal_name(), "test_goal")
         self.assertFalse(test_wrapper.goal_is_created())
 
-        exception = False
-        try:
-            test_wrapper.get_goal()
-        except RuntimeError:
-            exception = True
-
-        self.assertTrue(exception)
+        self.assertRaises(RuntimeError, test_wrapper.get_goal)
 
     def test_goal_representation(self):
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
@@ -85,4 +85,5 @@ class GoalWrapperTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # Make sure a ROSCORE is running before starting
     unittest.main()
