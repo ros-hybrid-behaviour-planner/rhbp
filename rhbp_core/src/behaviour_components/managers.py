@@ -22,6 +22,7 @@ from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
 from copy import copy
+from delegation_components.delegation_clients import ManagerDelegationClient
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -105,6 +106,8 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
+
+        self.__delegation_client = ManagerDelegationClient(manager=self)  # needs to know the manager for potential usage of methods
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -348,6 +351,9 @@ class Manager(object):
             self.__threshFile.append("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activationThreshold))
 
         self.send_discovery()
+
+        # Let the DelegationManager do a step
+        self.__delegation_client.do_step()  # TODO think about the position of this (step_lock y/n)
 
         with self._step_lock:
             rhbplog.logdebug("###################################### STEP {0} ######################################"
@@ -689,6 +695,9 @@ class Manager(object):
 
     def remove_goal(self, goal_name):
 
+        # notify the delegation unit that a goal is removed
+        self.__delegation_client.notify_goal_removal(goal_name=goal_name)
+
         with self._step_lock:
             self._goals = [g for g in self._goals if
                                 g.name != goal_name]  # kick out existing goals with that name.
@@ -898,6 +907,15 @@ class Manager(object):
         except:
             return []
 
+    def get_delegation_client(self):
+        """
+        Returns the DelegationClient used by this Manager
+
+        :return: used DelegationClient
+        """
+
+        return self.__delegation_client
+    
 
 class ManagerControl(object):
     '''
