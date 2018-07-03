@@ -57,11 +57,12 @@ class RLComponent:
             #print("last",self.last_state)
             # change env input
 
-
+            print(request.input_state)
             if self.last_state is None:
-                self.last_state = [60,1]
-
+                self.last_state = [62,1]
+            print(self.last_state)
             transformed_input = numpy.array(self.last_state).reshape(([1, len(request.input_state)]))
+            #"""
             if transformed_input[0][1] == 1:
                 try:
                     activations = self.model.feed_forward(transformed_input)
@@ -95,9 +96,11 @@ class RLComponent:
                     if action == 2 or action == 3:
                         request.last_action = action +2
             old_request = request
+            
             new_t = self.env_test.get_new_tuple(self.last_state,request.last_action)
             request.input_state = new_t[0]
             request.reward = new_t[3]
+            #"""
             #print(request)
             #print("--------")
 
@@ -112,14 +115,15 @@ class RLComponent:
             #print(self.last_state,request.reward)
             negative_states = request_msg.negative_states
 
-            if old_request.input_state[1] == 1:
-                self.save_neg_state(old_request)
-            else:
-                self.save_neg_state_zero(old_request)
+            #if old_request.input_state[1] == 1:
+            #    self.save_neg_state(old_request)
+            #else:
+            #    self.save_neg_state_zero(old_request)
+
             #self.include_neg(request)
             for state in negative_states:#todo include negative ones
-                #self.save_request(state)
-                continue
+                self.save_request(state)
+                #continue
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1,len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)

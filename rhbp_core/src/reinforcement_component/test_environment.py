@@ -28,6 +28,7 @@ class environment_test():
         self.dict_sequ = {"ds":(0,0),"ss":(0,0),"ds":(0,0),"ddd":(0,0),"dds":(0,0),"sd":(0,0)}
         self.sequ = ""
         self.is_zero = False
+
     def get_new_tuple(self,t,a):
         d = t[0]
         if a == 3:
@@ -51,6 +52,8 @@ class environment_test():
             self.is_zero=False
             return [[60, 1], t, a, 0.1]
         return [ [d,1],t,a, r]
+
+
 
 
     def add_easy_trial(self):
@@ -125,26 +128,19 @@ class environment_test():
     def reward_from_dist(self,num):
         return 4+num*1.5
 
-    def add_expected_tuple(self):
-        action = numpy.random.randint(low=0,high=5)
-
+    def add_expected_tuple(self,t,action):
+        #action = numpy.random.randint(low=0,high=5)
+        print(t)
         play = 1
         ball = 1
         goal = 1
         kick = 1
-        speed = 0
-        dist0 = 0
-        dist1 = 0
-        dist2 = 0
-        dist3 = 0
-        dist4 = 0
-        dist5 = 1
-
+        dist = t[0][4]
         if action == 0: #turn_to_ball
             play=0
             kick=0
 
-            is_state = [play,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]
+            is_state = [play,ball,goal,kick,dist]
             reward = 104
             if self.is_chance(0.1):
                 next_state =[1,ball,goal,kick,dist0,dist1,dist2,dist3,dist4,dist5,speed]

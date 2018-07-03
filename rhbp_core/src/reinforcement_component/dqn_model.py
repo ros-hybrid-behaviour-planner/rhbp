@@ -230,7 +230,7 @@ class DQNModel(ReinforcementAlgorithmBase):
 
             summe = sum(self.reward_saver[schritt*i:schritt*(i+1)] )
             #print(summe/1000.0)
-            print(i,schritt*i,schritt*(i+1),summe,summe/float(schritt),summe/1000.0)
+            #print(i,schritt*i,schritt*(i+1),summe,summe/float(schritt),summe/1000.0)
             plt.plot(i,summe/1000.0,marker="o")
 
         plt.xlabel("time")
@@ -416,7 +416,7 @@ class DQNModel(ReinforcementAlgorithmBase):
             self.print_rewards()
             #self.print_weights_bool()
             self.print_weights()
-
+        return
         exp_over = False
         for i in range(1, len(self.reward_saver[1:]) / 1000):
             rew=numpy.round(numpy.mean(self.reward_saver[i*1000:(i+1)*1000]),4)
@@ -442,7 +442,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         :return: 
         """
         self.experiment_process(tuple)
-
+        #print(tuple,"jojoj")
         #todo COUNTER DOES NOT ONLY COUNT STEPS BUT ALSO  negative steps included
         if self.counter % self.model_config.steps_save == 1 and self.model_config.save:
             self.save_model(self.num_inputs,self.num_outputs)
