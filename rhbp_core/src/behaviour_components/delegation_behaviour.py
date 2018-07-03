@@ -1,6 +1,6 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from delegation_components.delegation_clients import DelegationClient
+from delegation_components.delegation_clients import RHBPDelegationClient
 from behaviour_components.conditions import create_condition_from_effect
 
 
@@ -9,7 +9,7 @@ class DelegationBehaviour(BehaviourBase):
     def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, **kwargs):
 
         super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
-        self._delegation_interface = DelegationClient()
+        self._delegation_interface = RHBPDelegationClient()
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
 
@@ -34,7 +34,7 @@ class DelegationBehaviour(BehaviourBase):
 
         conditions = self._get_conditions_for_delegation()
 
-        self._delegation_interface.delegate(name=self.name+"Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+        self._delegation_interface.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
 
     def _get_conditions_for_delegation(self):
         """

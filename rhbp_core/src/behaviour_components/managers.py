@@ -22,7 +22,7 @@ from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
 from copy import copy
-from delegation_components.delegation_clients import ManagerDelegationClient
+from delegation_components.delegation_clients import RHBPManagerDelegationClient
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -107,7 +107,7 @@ class Manager(object):
 
         self.__executedBehaviours = []
 
-        self.__delegation_client = ManagerDelegationClient(manager=self)  # needs to know the manager for potential usage of methods
+        self.__delegation_client = RHBPManagerDelegationClient(manager=self)  # needs to know the manager for potential usage of methods
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -909,13 +909,13 @@ class Manager(object):
 
     def get_delegation_client(self):
         """
-        Returns the DelegationClient used by this Manager
+        Returns the RHBPDelegationClient used by this Manager
 
-        :return: used DelegationClient
+        :return: used RHBPDelegationClient
         """
 
         return self.__delegation_client
-    
+
 
 class ManagerControl(object):
     '''
