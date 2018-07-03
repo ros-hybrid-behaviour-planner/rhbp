@@ -44,7 +44,7 @@ class KnowledgeBaseFactCache(object):
             rospy.wait_for_service(self.__example_service_name, timeout=10)
             self.__register_for_updates()
         except rospy.ROSException:
-            rhbplog.loginfo(
+            rhbplog.logwarn(
                 'The following knowledge base node is currently not present. Connection will be established later: '
                 + knowledge_base_name)
 
