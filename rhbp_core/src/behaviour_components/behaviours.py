@@ -58,7 +58,7 @@ class Behaviour(object):
         self._create_log_files = create_log_files
         self._independentFromPlanner = independentFromPlanner
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
-        self.__requires_execution_steps=requires_execution_steps
+        self.__requires_execution_steps = requires_execution_steps
         Behaviour._instanceCounter += 1
 
         self._log_file_path_prefix = log_file_path_prefix
@@ -383,7 +383,7 @@ class BehaviourBase(object):
         self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
                                                       self._set_execution_timeout_callback)
 
-        self._registered = False # keeps track of behaviour registration state
+        self._registered = False  # keeps track of behaviour registration state
 
         if self._requires_execution_steps:
             self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
@@ -400,15 +400,23 @@ class BehaviourBase(object):
     def register(self):
         """
         Register behaviour in the manager
-        Only call this directly if you have unrregistered the behaviour manually before
+        Only call this directly if you have unregistered the behaviour manually before
         """
         if self._registered:
-            rhbplog.logwarn("Behaviour '%s' is already registred", self._name)
+            rhbplog.logwarn("Behaviour '%s' is already registered", self._name)
             return
         try:
             service_name = self._plannerPrefix + '/' + 'AddBehaviour'
-            rhbplog.logdebug("Waiting for service %s", service_name)
-            rospy.wait_for_service(service_name)
+            service_found = False
+            while not service_found:
+                try:
+                    rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+                    service_found = True
+                except rospy.ROSException:
+                    rhbplog.logwarn("Behaviour '%s': Registration timeout for service '%s'. Keep waiting...Please check"
+                                    "if you use the correct 'plannerPrefix'. Current prefix:'%s'", self._name,
+                                    service_name, self._plannerPrefix)
+
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
             register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps)
             self._registered = True

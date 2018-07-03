@@ -449,18 +449,27 @@ class GoalBase(Goal):
         only call it manually if you have manually unregistred the goal before
         """
         if self._registered:
-            rhbplog.logwarn("Goal '%s' is already registred", self._name)
+            rhbplog.logwarn("Goal '%s' is already registered", self._name)
             return
         try:
-            rhbplog.logdebug(
-                "GoalBase constructor waiting for registration at planner manager with prefix '%s' for behaviour node %s",
-                self._planner_prefix, self._name)
-            rospy.wait_for_service(self._planner_prefix + '/' + 'AddGoal')
-            add_goal = rospy.ServiceProxy(self._planner_prefix + '/' + 'AddGoal', AddGoal)
+
+            service_name = self._planner_prefix + '/' + 'AddGoal'
+
+            service_found = False
+            while not service_found:
+                try:
+                    rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+                    service_found = True
+                except rospy.ROSException:
+                    rhbplog.logwarn("Goal '%s': Registration timeout for service '%s'. Keep waiting... Please check if "
+                                    "you use the correct 'plannerPrefix'. Current prefix:'%s'", self._name,
+                                    service_name, self._planner_prefix)
+
+            add_goal = rospy.ServiceProxy(service_name, AddGoal)
             add_goal(self._name, self._permanent)
             self._registered = True
             rhbplog.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
-                           self._planner_prefix, self._name)
+                             self._planner_prefix, self._name)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in '_register_goal' of goal '%s': %s", self._name,
                          traceback.format_exc())
