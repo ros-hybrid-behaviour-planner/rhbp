@@ -45,6 +45,7 @@ class RHBPDelegationClient(DelegationClientBase):
         new_goal_wrapper = RHBPGoalWrapper(name=goal_name, conditions=conditions, satisfaction_threshold=satisfaction_threshold)
 
         delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper)
+        self.logger.loginfo("Delegation has local ID " + str(delegation_id))
 
         return delegation_id
 

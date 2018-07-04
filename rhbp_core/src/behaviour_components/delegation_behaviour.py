@@ -1,6 +1,6 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from delegation_components.delegation_clients import RHBPDelegationClient
+from decomposition_components.delegation_clients import RHBPDelegationClient
 from behaviour_components.conditions import create_condition_from_effect
 
 
@@ -9,18 +9,18 @@ class DelegationBehaviour(BehaviourBase):
     def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, **kwargs):
 
         super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
-        self._delegation_interface = RHBPDelegationClient()
+        self._delegation_client = RHBPDelegationClient()
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
 
     def __del__(self):
 
         super(DelegationBehaviour, self).__del__()
-        self._delegation_interface.__del__()
+        self._delegation_client.__del__()
         del self._correlation_sensors[:]
 
     def register_delegation_manager(self, delegation_manager):
-        self._delegation_interface.register(delegation_manager=delegation_manager)
+        self._delegation_client.register(delegation_manager=delegation_manager)
 
     def start(self):
         """
@@ -28,13 +28,16 @@ class DelegationBehaviour(BehaviourBase):
         corresponding sensor to them, as conditions for the goal
         """
 
-        if not self._delegation_interface.check_if_registered():
+        if not self._delegation_client.check_if_registered():
             rhbplog.logerr("DelegationBehaviour %s started without a registered DelegationManager. Will do nothing!", self.name)
             return
 
         conditions = self._get_conditions_for_delegation()
 
-        self._delegation_interface.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+        self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+
+    def do_step(self):
+        self._delegation_client.do_step()
 
     def _get_conditions_for_delegation(self):
         """
@@ -57,7 +60,7 @@ class DelegationBehaviour(BehaviourBase):
         return conditions
 
     def stop(self):
-        self._delegation_interface.terminate_all_delegations()
+        self._delegation_client.terminate_all_delegations()
 
     def add_effect(self, effect):
         """
@@ -92,7 +95,7 @@ class DelegableBehaviour(DelegationBehaviour):
         self._currently_doing_work_myself = False
 
     def start(self):
-        if self._delegation_interface.check_if_registered():
+        if self._delegation_client.check_if_registered():
 
             conditions = self._get_conditions_for_delegation()
             # TODO own work cost as parameter, delegate
