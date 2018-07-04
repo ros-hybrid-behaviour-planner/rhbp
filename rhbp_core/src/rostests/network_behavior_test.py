@@ -58,7 +58,6 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         mock_rhbp_logging.assert_has_calls(mock_rhbp_logging.logwarn, "logwarn not triggered")
 
-
     def test_multiple_embedded_network_behaviors(self):
         """
         Tests the case, that one network behavior is embedded into another network behavior.
