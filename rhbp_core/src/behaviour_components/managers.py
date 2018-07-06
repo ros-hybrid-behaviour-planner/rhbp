@@ -336,10 +336,12 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
-    def step(self, force=False):
+    def step(self, force=False, guarantee_decision=False):
         """
         Execute one decision-making step
         :param force: set to True to force the stepping regardless of pause and activation states
+        :param guarantee_decision: Repeat activation algorithm threshold adjustments until at least one behaviour can
+                                   be activated and enough executable behaviours are available
         """
         if not force and ((self.pause_counter > 0) or (not self.__activated)):
             return
@@ -365,94 +367,102 @@ class Manager(object):
 
             rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
-            currently_influenced_sensors = set()
+            while True: # do while loop for guarante_decision
 
-            # perform the decision making based on the calculated activations
-            for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
-                ### now comes a series of tests that a behaviour must pass in order to get started ###
-                if not behaviour.active and not behaviour.manualStart: # it must be active
-                    rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
-                    continue
-                # Behaviour is not already running and is not manually activated
-                if behaviour.isExecuting:
-                    # It is important to remember that only interruptable behaviours can be stopped by the manager
-                    if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
-                            and behaviour.interruptable and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
-                        self._stop_behaviour(behaviour, True)
-                        self.__replanningNeeded = True  # this is unusual so we trigger replanning
-                    elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
-                        self._stop_behaviour(behaviour, True)
-                    elif behaviour.activation < self._activationThreshold and behaviour.interruptable \
-                            and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
-                                        behaviour.name, behaviour.activation, self._activationThreshold)
-                        self._stop_behaviour(behaviour, False)
-                    elif self.__max_parallel_behaviours > 0 and behaviour.interruptable and \
-                            amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
-                            and not behaviour.manualStart:
-                        # if we try to stop non-interruptable behaviours and we have already to many behaviours running
-                        # this should be resolved in the next decision-making round
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
-                        self._stop_behaviour(behaviour, False)
-                    else:
-                        rhbplog.logdebug("'%s' will not be started because it is already executing", behaviour.name)
-                        behaviour.executionTime += 1
+                currently_influenced_sensors = set()
 
-                        if behaviour.manualStart:
-                            amount_of_manually_startable_behaviours -= 1
+                activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
 
-                        amount_currently_selected_behaviours += 1
+                # perform the decision making based on the calculated activations
+                for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
+                    ### now comes a series of tests that a behaviour must pass in order to get started ###
+                    if not behaviour.active and not behaviour.manualStart: # it must be active
+                        rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
+                        continue
+                    # Behaviour is not already running and is not manually activated
+                    if behaviour.isExecuting:
+                        # It is important to remember that only interruptable behaviours can be stopped by the manager
+                        if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
+                                and behaviour.interruptable and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
+                            self._stop_behaviour(behaviour, True)
+                            self.__replanningNeeded = True  # this is unusual so we trigger replanning
+                        elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
+                            self._stop_behaviour(behaviour, True)
+                        elif behaviour.activation < self._activationThreshold and behaviour.interruptable \
+                                and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
+                                            behaviour.name, behaviour.activation, self._activationThreshold)
+                            self._stop_behaviour(behaviour, False)
+                        elif self.__max_parallel_behaviours > 0 and behaviour.interruptable and \
+                                amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
+                                and not behaviour.manualStart:
+                            # if we try to stop non-interruptable behaviours and we have already to many behaviours running
+                            # this should be resolved in the next decision-making round
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
+                            self._stop_behaviour(behaviour, False)
+                        else:
+                            rhbplog.logdebug("'%s' will not be started because it is already executing", behaviour.name)
+                            behaviour.executionTime += 1
 
-                        if behaviour.requires_execution_steps:
-                            behaviour.do_step()
-                    continue
-                if not behaviour.executable and not behaviour.manualStart:  # it must be executable
-                    rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
-                    continue
-                if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
-                    rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
-                    continue
+                            if behaviour.manualStart:
+                                amount_of_manually_startable_behaviours -= 1
 
-                currently_influenced_sensors = self._get_currently_influenced_sensors()
+                            amount_currently_selected_behaviours += 1
 
-                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+                            if behaviour.requires_execution_steps:
+                                behaviour.do_step()
+                        continue
+                    if not behaviour.executable and not behaviour.manualStart:  # it must be executable
+                        rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
+                        continue
+                    if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
+                        rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
+                        continue
 
-                if behaviour_is_interferring_others:
-                    continue
+                    currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                if behaviour.manualStart:
-                    rhbplog.loginfo("BEHAVIOUR %s IS STARTED BECAUSE OF MANUAL REQUEST", behaviour.name)
-                # Do not execute more behaviours than allowed, behaviours are ordered by descending activation hence
-                # we prefer behaviours with higher activation
-                elif self.__max_parallel_behaviours > 0 and \
-                                (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
-                                >= self.__max_parallel_behaviours:
-                    rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
-                    continue
+                    behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
 
-                ### if the behaviour got here it really is ready to be started ###
-                rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
-                behaviour.start()
+                    if behaviour_is_interferring_others:
+                        continue
 
-                amount_currently_selected_behaviours += 1
+                    if behaviour.manualStart:
+                        rhbplog.loginfo("BEHAVIOUR %s IS STARTED BECAUSE OF MANUAL REQUEST", behaviour.name)
+                    # Do not execute more behaviours than allowed, behaviours are ordered by descending activation hence
+                    # we prefer behaviours with higher activation
+                    elif self.__max_parallel_behaviours > 0 and \
+                                    (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
+                                    >= self.__max_parallel_behaviours:
+                        rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
+                        continue
 
-                self.__executedBehaviours.append(behaviour)
-                amount_started_behaviours += 1
-                rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
+                    ### if the behaviour got here it really is ready to be started ###
+                    rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
+                    behaviour.start()
 
-            activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
+                    amount_currently_selected_behaviours += 1
+
+                    self.__executedBehaviours.append(behaviour)
+                    amount_started_behaviours += 1
+                    rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
+
+
+                # Reduce or increase the activation threshold based on executed and started behaviours
+                if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
+                    self._activationThreshold *= activation_threshold_decay
+                    rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+                elif amount_started_behaviours > 0:
+                    rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+                    self._activationThreshold *= (1 / activation_threshold_decay)
+
+                executable_behaviours = [b for b in self._behaviours if b.executable]
+                if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
+                    # at least one behaviour is executing or there is no executable behaviour available
+                    break
 
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
-
-            # Reduce or increase the activation threshold based on executed and started behaviours
-            if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-                self._activationThreshold *= activation_threshold_decay
-                rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            elif amount_started_behaviours > 0:
-                rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-                self._activationThreshold *= (1 / activation_threshold_decay)
 
         self._stepCounter += 1
 
@@ -516,7 +526,7 @@ class Manager(object):
             if behaviour.active:
                 self._totalActivation += behaviour.activation
         if self._totalActivation == 0.0:
-            self._totalActivation = 1.0  # the behaviours are going to divide by this so make sure it is non-zero
+            self._totalActivation = 1.0  # the behaviours are going to divide by this value so make sure it is non-zero
         rhbplog.logdebug("############# GOAL STATES #############")
         ### collect information about goals ###
         for goal in self._goals:
@@ -548,11 +558,14 @@ class Manager(object):
             rhbplog.logdebug(
                 "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
+        self.calculate_final_behaviour_activations()
+        rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
+
+    def calculate_final_behaviour_activations(self):
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
             self.activation_algorithm.commit_behaviour_activation(ref_behaviour=behaviour)
             rhbplog.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
-        rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
 
     def handle_interfering_correlations(self, behaviour, currently_influenced_sensors):
         """

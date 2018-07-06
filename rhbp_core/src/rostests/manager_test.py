@@ -265,6 +265,27 @@ class TestManager(unittest.TestCase):
         self.assertEquals(len(res.plan_sequence), len(expected_plan_seq))
         self.assertListEqual(res.plan_sequence, expected_plan_seq)
 
+    def test_guarantee_decision(self):
+
+        method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
+        planner_prefix = method_prefix + "Manager"
+        manager = Manager(activationThreshold=7.0, prefix=planner_prefix)
+
+        sensor_3 = Sensor(name="Sensor3", initial_value=False)
+
+        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+
+
+        goal1 = GoalBase(name="Test_Goal1", conditions=[Condition(sensor_3, BooleanActivator())],
+                         plannerPrefix=planner_prefix)
+
+        manager.step()
+        self.assertFalse(behaviour_1._isExecuting, "Behaviour 1 is executed even though it should not have enough activation")
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                         "Behaviour 1 is not executed even though a decision was forced")
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'test_goals_node', TestManager)
