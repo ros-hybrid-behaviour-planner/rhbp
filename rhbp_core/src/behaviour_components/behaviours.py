@@ -685,7 +685,7 @@ class BehaviourBase(object):
         else:
             rhbplog.logwarn("Passed wrong object, requires Effect")
 
-    def set_activated(self, activated):
+    def set_activated(self, activated, stop_running=True):
         """
         Set behaviour to activated or deactivated
         Should be called manually if the behaviour is not
@@ -695,7 +695,7 @@ class BehaviourBase(object):
         :return:
         """
         self._activated = activated
-        if self._activated is False and self._isExecuting:
+        if self._activated is False and self._isExecuting and stop_running:
             self.stop()
             self._isExecuting = False
     
