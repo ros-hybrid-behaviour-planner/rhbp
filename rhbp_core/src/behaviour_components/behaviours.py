@@ -169,7 +169,7 @@ class Behaviour(object):
                 return
             startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
             startRequest()
-            rhbplog.loginfo("Started action of %s", self._name)
+            rhbplog.loginfo("Started %s", self._name)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'start' of behaviour '%s': %s", self._name, traceback.format_exc())
 
@@ -193,7 +193,8 @@ class Behaviour(object):
                 return
             stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
             stopRequest()
-            rhbplog.logdebug("Stopping action of %s", self._name)
+            self._isExecuting = False
+            rhbplog.logdebug("Stopped %s", self._name)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'stop' of behaviour '%s': %s", self._name, traceback.format_exc())
         self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway

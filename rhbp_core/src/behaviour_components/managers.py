@@ -365,9 +365,9 @@ class Manager(object):
             amount_started_behaviours = 0
             amount_currently_selected_behaviours = 0
 
-            rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
+            while True:  # do while loop for guarantee_decision
 
-            while True: # do while loop for guarante_decision
+                rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
                 currently_influenced_sensors = set()
 
@@ -423,9 +423,9 @@ class Manager(object):
 
                     currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                    behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+                    behaviour_is_interfering_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
 
-                    if behaviour_is_interferring_others:
+                    if behaviour_is_interfering_others:
                         continue
 
                     if behaviour.manualStart:
@@ -457,10 +457,18 @@ class Manager(object):
                     rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                     self._activationThreshold *= (1 / activation_threshold_decay)
 
-                executable_behaviours = [b for b in self._behaviours if b.executable]
+                executable_behaviours = [b for b in self._behaviours if b.executable and b.activation >= 0.00001]
                 if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
                     # at least one behaviour is executing or there is no executable behaviour available
                     break
+                else:
+                    rhbplog.logerr("No decision_taken repeating threshold adjustment. Threshold: %f",
+                                   self._activationThreshold)
+
+                    for b in executable_behaviours:
+                        rhbplog.logerr("B: %s T: %f", b.name, b.activation)
+
+                    self.calculate_final_behaviour_activations()
 
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
