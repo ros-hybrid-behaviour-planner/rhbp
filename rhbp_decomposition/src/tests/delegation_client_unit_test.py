@@ -1,6 +1,7 @@
 
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPManagerDelegationClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
+from delegation_tests.test_utils import MockedDelegationManager
 import unittest
 
 
@@ -11,32 +12,6 @@ class MockedManager(object):
 
     def plan_with_additional_goal(self):
         return self._prefix
-
-
-class MockedDelegationManager(object):
-
-    def __init__(self):
-        self._name = "test_name"
-        self.cfe = None
-        self.m_name = None
-        self.client_id = None
-        self.goal_wrapper = None
-        self.clients = []
-
-    def add_client(self, client_id):
-        self.clients.append(client_id)
-
-    def get_name(self):
-        return self._name
-
-    def set_cost_function_evaluator(self, cost_function_evaluator, manager_name, client_id):
-        self.cfe = cost_function_evaluator
-        self.m_name = manager_name
-        self.client_id = client_id
-
-    def delegate(self, goal_wrapper):
-        self.goal_wrapper = goal_wrapper
-        return 1
 
 
 class RHBPClientsTest(unittest.TestCase):
