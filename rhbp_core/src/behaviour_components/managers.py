@@ -448,7 +448,6 @@ class Manager(object):
                     amount_started_behaviours += 1
                     rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
-
                 # Reduce or increase the activation threshold based on executed and started behaviours
                 if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
                     self._activationThreshold *= activation_threshold_decay
@@ -457,18 +456,13 @@ class Manager(object):
                     rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                     self._activationThreshold *= (1 / activation_threshold_decay)
 
-                executable_behaviours = [b for b in self._behaviours if b.executable and b.activation >= 0.00001]
+                executable_behaviours = [b for b in self._behaviours if b.executable and b.activation > 0.00001]
                 if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
                     # at least one behaviour is executing or there is no executable behaviour available
                     break
                 else:
-                    rhbplog.logerr("No decision_taken repeating threshold adjustment. Threshold: %f",
-                                   self._activationThreshold)
-
-                    for b in executable_behaviours:
-                        rhbplog.logerr("B: %s T: %f", b.name, b.activation)
-
-                    self.calculate_final_behaviour_activations()
+                    rhbplog.loginfo("No decision_taken repeating with adjusted threshold. New activation threshold: %f",
+                                    self._activationThreshold)
 
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
