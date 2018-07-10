@@ -57,6 +57,7 @@ class KnowledgeBaseFactCache(object):
         rospy.Subscriber(removed_topic_name, FactRemoved, self.__handle_remove_update)
         rospy.Subscriber(update_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
+        rospy.sleep(0.1)  # Short sleep guarantees that we do not miss updates (triggering publisher queue processing)
         self.__initialized = True
         rhbplog.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 

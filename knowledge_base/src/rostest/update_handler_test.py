@@ -179,10 +179,10 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
 
-        updated_new_1 = (prefix, 'fact_1', '3')
+        updated_new_1 = (prefix, 'fact_1', '1*')
         self.__client.update(updated_old_1, updated_new_1)
 
-        updated_new_2 = (prefix, 'fact_2', '4')
+        updated_new_2 = (prefix, 'fact_2', '2*')
 
         update_stamp = cache.update_time
         self.__client.update(updated_old_2, updated_new_2)
@@ -192,6 +192,7 @@ class UpdateHandlerTestSuite(unittest.TestCase):
             rospy.sleep(0.5)
 
         current = cache.get_all_matching_facts()
+
         self.assertEqual(2, len(current))
         self.assertTrue(updated_new_1 in current, 'Update of updated_new_1 not noticed')
         self.assertTrue(updated_new_2 in current, 'Update of updated_new_2 not noticed')

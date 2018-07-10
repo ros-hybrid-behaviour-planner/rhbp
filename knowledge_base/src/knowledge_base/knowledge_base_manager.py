@@ -7,7 +7,7 @@ Created on 07.12.2016
 
 import re
 import sys
-from threading import Lock
+from threading import Lock, RLock
 
 import rospy
 from knowledge_base.msg import Fact, FactRemoved, FactUpdated
@@ -50,7 +50,7 @@ class KnowledgeBase(object):
         self.__fact_update_topics = {}
 
         self.__register_lock = Lock()
-        self.__tuple_lock = Lock()
+        self.__tuple_lock = RLock()
 
         self.__push_service = rospy.Service(name + KnowledgeBase.PUSH_SERVICE_NAME_POSTFIX, Push, self.__push)
         self.__exists_service = rospy.Service(name + KnowledgeBase.EXISTS_SERVICE_NAME_POSTFIX, Exists, self.__exists)
@@ -371,19 +371,22 @@ class KnowledgeBase(object):
         """
         pattern = self.__converts_request_to_tuple_space_format(update_request.pattern)
         new_fact = self.__converts_request_to_tuple_space_format(update_request.newFact)
-        if self.__exists_tuple_as_is(new_fact):
-            self.__pop_internal(pattern)
 
-        removed_facts = self.__pop_internal(pattern, dont_inform=new_fact).removed
-        facts_removed = len(removed_facts) > 0
-        if not update_request.pushWithoutExisting and not facts_removed:
-            # If no facts was removed (no update), no clients will be informed and the fact will not be stored
-            return UpdateResponse(False)
+        with self.__tuple_lock: # it is a RLock for this reason it is safe to acquire it here as well as in push and pop
 
-        if facts_removed:
-            self.__push_internal(update_request.newFact, new_fact, dont_inform=pattern)
-        else:
-            self.__push_internal(update_request.newFact, new_fact, None)
+            if self.__exists_tuple_as_is(new_fact):
+                self.__pop_internal(pattern)
+
+            removed_facts = self.__pop_internal(pattern, dont_inform=new_fact).removed
+            facts_removed = len(removed_facts) > 0
+            if not update_request.pushWithoutExisting and not facts_removed:
+                # If no facts was removed (no update), no clients will be informed and the fact will not be stored
+                return UpdateResponse(False)
+
+            if facts_removed:
+                self.__push_internal(update_request.newFact, new_fact, dont_inform=pattern)
+            else:
+                self.__push_internal(update_request.newFact, new_fact, None)
 
         self.__fact_updated(removed_facts, update_request.newFact, new_fact)
         return UpdateResponse(True)
