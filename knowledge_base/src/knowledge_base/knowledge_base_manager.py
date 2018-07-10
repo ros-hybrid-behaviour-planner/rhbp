@@ -93,7 +93,7 @@ class KnowledgeBase(object):
         :return: an empty PushResponse
         """
         # Since all read request converts nones to string type, it must be done also here.
-        # Otherwise the stored tuple can't readed or removed anymore
+        # Otherwise the stored tuple can't read or removed anymore
         converted = self.__converts_request_to_tuple_space_format(request.content)
         rhbplog.logdebug('New tuple {0}'.format(str(request.content)))
         self.__push_internal(request.content, converted, None)
@@ -377,11 +377,13 @@ class KnowledgeBase(object):
         removed_facts = self.__pop_internal(pattern, dont_inform=new_fact).removed
         facts_removed = len(removed_facts) > 0
         if not update_request.pushWithoutExisting and not facts_removed:
-            # If no facts was removed, no clients was informed
+            # If no facts was removed (no update), no clients will be informed and the fact will not be stored
             return UpdateResponse(False)
+
         if facts_removed:
             self.__push_internal(update_request.newFact, new_fact, dont_inform=pattern)
-            self.__fact_updated(removed_facts, update_request.newFact, new_fact)
         else:
             self.__push_internal(update_request.newFact, new_fact, None)
+
+        self.__fact_updated(removed_facts, update_request.newFact, new_fact)
         return UpdateResponse(True)

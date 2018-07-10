@@ -89,14 +89,17 @@ class KnowledgeBaseFactCache(object):
     def __handle_fact_update(self, fact_updated):
         tuple_fact_new = tuple(fact_updated.new)
         with self.__value_lock:
+
             if tuple_fact_new not in self.__contained_facts:
                 self.__contained_facts.append(tuple_fact_new)
 
             for removed_fact in fact_updated.removed:
-                try:
-                    self.__contained_facts.remove(tuple(removed_fact.content))
-                except ValueError:
-                    pass
+                tuple_fact_old = tuple(removed_fact.content)
+                if tuple_fact_old != tuple_fact_new:
+                    try:
+                        self.__contained_facts.remove(tuple_fact_old)
+                    except ValueError:
+                        pass
         self._cache_updated(tuple_fact_new)
         self._notify_listeners()
 
