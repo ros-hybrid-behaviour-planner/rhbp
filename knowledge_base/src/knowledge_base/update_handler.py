@@ -41,7 +41,8 @@ class KnowledgeBaseFactCache(object):
         self.__last_updated_fact = tuple()
 
         try:
-            rospy.wait_for_service(self.__example_service_name, timeout=10)
+            initial_timeout = timeout if timeout else 5 # use here also provided timeout for initial non crucial waiting
+            rospy.wait_for_service(self.__example_service_name, initial_timeout)
             self.__register_for_updates()
         except rospy.ROSException:
             rhbplog.logwarn(
