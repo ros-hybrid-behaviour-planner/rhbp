@@ -1,51 +1,44 @@
-class RLConstants:
-    #todo umbenenen config.
-    #todo init als casse
-    # todo get values from rospy param
-    # path to model
-    model_path=""
-    model_directory=""
-    # setting for the nn
-    number_hidden_layer=1
-    number_variables=16
-    auto_number_variables=True
-    # Set learning parameters
-    learning_rate_optimizer = 0.1
-    epsilon = 0.1
-    learning_rate_q_learning = 0.99
-    interval_prints = 100
-    microbatch_size = 20
+import rospy
 
 
-class NNConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
+class NNConfig():
+    """
+    used for setting the neural network and the algorithm parameter
+    """
+
     def __init__(self):
-        self.model_path = ""
-        self.model_directory = ""
+        # path for saving the trained model
+        self.model_path = rospy.get_param("~model_path", 'models/rl-model')
+        self.model_directory = rospy.get_param("~model_directory", './models')
         # setting for the nn
-        self.number_hidden_layer = 1
-        self.number_variables = 16
-        self.auto_number_variables = True
+        self.number_hidden_layer = rospy.get_param("~number_hidden_layer", 1)  # not in use
+        self.number_variables_hl = rospy.get_param("~number_variables_hl", 64)  # not in use
         # Set learning parameters
-        self.learning_rate_optimizer = 0.1
-        self.epsilon = 0.1
-        self.learning_rate_q_learning = 0.999
-        self.interval_prints = 100
-        self.y = .80  # Discount factor.
-        self.tau = 0.001  # Amount to update target network at each step.
-        self.batch_size = 75  # Size of training batch
-        self.buffer_size = 50000  # size of the experience learning buffer
-        self.steps_save = 500 # interval for saving model
-        self.save=False #if the model should be saved
-        self.print_model = True # if the model should be saved
-        self.steps_prints = 500 # interval for saving model
-        self.experiment_steps = 40000000
+        self.y = rospy.get_param("~y", 0.99)  # Discount factor.
+        self.tau = rospy.get_param("~tau", 0.001)  # Amount to update target network at each step.
+        self.batch_size = rospy.get_param("~batch_size", 75)  # Size of training batch
+        self.buffer_size = rospy.get_param("~buffer_size", 50000)  # size of the experience learning buffer
+        self.steps_save = rospy.get_param("~steps_save", 500)  # interval for saving model
+        self.save = rospy.get_param("~save", False)  # if the model should be saved
+        self.print_model = rospy.get_param("~print_model", True)  # if the model should be saved
+        self.steps_prints = rospy.get_param("~steps_prints", 500)  # interval for saving model
+        self.experiment_steps = rospy.get_param("~experiment_steps", 40000000)
+        self.train_interval = rospy.get_param("~train_interval", 50)  # train the model every train_interval steps
+        self.stop_training = rospy.get_param("~stop_training",
+                                             6000000)  # steps after the model does not get trained anymore
+        self.pre_train = rospy.get_param("~pre_train", 10000)  # no training before this many steps
 
-class ExplorationConfig(): #TODO let config get variables from rospy try-catch if rospy is avialabe if node is avialable
+
+class ExplorationConfig():
+    """
+    used for setting the parameter for the exploration strategy
+    """
+
     def __init__(self):
-        self.pre_train = 10000 # let the model choose random actions and dont train for these number of steps
-        self.startE = 1.00
-        self.endE = 0.0
-        self.anneling_steps = 1500000 # steps until it reache endE
+        # let the model choose random actions and dont train for these number of steps
+        self.pre_train = rospy.get_param("~pre_train", 10000)
+        self.startE = rospy.get_param("~startE", 1.00)
+        self.endE = rospy.get_param("~endE", 0.0)
+        self.anneling_steps = rospy.get_param("~anneling_steps", 1500000)  # steps until it reache endE
+        # function that describes the stepDrop changing epsilon
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
-        self.train_interval = 50 #train the model every train_interval steps
-        self.stop_training = 6000000 # steps after the model does not get trained anymore

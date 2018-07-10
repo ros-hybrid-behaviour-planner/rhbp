@@ -18,9 +18,7 @@ class SensorValueTransformer:
         :return: SensorValue: a object containing necessary parameter from the sensor
         """
         value = None
-        #print("get_value")
         try:
-            #print("value1:",cond._sensor.value,cond._sensor._name)
             value = float(cond._sensor.value)
             sensor_value = SensorValue()
             sensor_value.name = cond._sensor._name
@@ -28,15 +26,12 @@ class SensorValueTransformer:
             sensor_value.encoding = cond._sensor.rl_extension.encoding
             sensor_value.state_space = cond._sensor.rl_extension.state_space
             sensor_value.include_in_rl = cond._sensor.rl_extension.include_in_rl
-            #print(sensor_value)
             return sensor_value
         except Exception as e:
-            #print(e)
             value = None
         try:
 
             value = float(cond._condition._sensor.value)
-            #print("value2:", value,cond._condition._sensor._name)
             sensor_value = SensorValue()
             sensor_value.name = cond._condition._sensor._name
             sensor_value.value = value
@@ -55,7 +50,6 @@ class SensorValueTransformer:
             return list
         except Exception :
             value = None
-        #print("no value found",cond)
         return None
 
     def get_values_of_list(self,full_list):
@@ -80,9 +74,7 @@ class SensorValueTransformer:
         :return: list of sensorvalues
         """
         list_of_sensor_values = []
-        #print("sensor", self.name,len(self.get_preconditions()  ))
         for p in conditions:
-            #print(p)
             value = self.get_value_of_condition(p)
             if isinstance(value,(list,)):
                 list_of_sensor_values.extend(self.get_values_of_list(value))
@@ -110,12 +102,9 @@ class InputStateTransformer:
         # todo use wishes instead of fulfillment
         reward_value = 0
         for goal in self._manager.activeGoals:
-            #print(goal,goal.fulfillment,goal.priority)
-            # goal_value = goal.fulfillment * (10 ** goal.priority)
             goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
 
-        #print("reward",reward_value)
         return reward_value
 
     def behaviour_to_index(self,name):
@@ -126,7 +115,6 @@ class InputStateTransformer:
         """
         num = 0
         for b in self._manager.behaviours:
-
             if b == name:
                 return num
             num += 1
@@ -140,8 +128,6 @@ class InputStateTransformer:
         :return: 
         """
         state = int(state)
-        #print(state,num_state_space)
-        #array = numpy.identity(num_state_space)[state:state + 1]
         return numpy.identity(num_state_space)[state:state + 1].reshape([num_state_space,1])
 
     def transform_input_values(self):
@@ -149,22 +135,24 @@ class InputStateTransformer:
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
         """
+        # todo let config decide if wish or true vlaues included
+        use_wishes = False
+        use_true_value = True
         # init input array with first row of zeros
         input_array = numpy.zeros([1,1])
         # extend array with input vector from wishes
         for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in behaviour.wishes:
-                continue #TODO remove later
-                #wish_row = numpy.array([wish.indicator]).reshape([1,1])
-                #input_array = numpy.concatenate([input_array,wish_row])
+                if use_wishes:
+                    wish_row = numpy.array([wish.indicator]).reshape([1,1])
+                    input_array = numpy.concatenate([input_array,wish_row])
         sensor_input = {}
+        # get sensor values from conditions via the behaviours
         for behaviour in self._manager.behaviours:
-            # TODO include here wishes
-            #print(behaviour)
             for sensor_value in behaviour.sensor_values:
-                if not sensor_input.has_key(sensor_value.name):
-                    #print("sensor vlaue input1", sensor_value)
+                if not sensor_input.has_key(sensor_value.name) and use_true_value:
+                    # encode or ignore the value regarding configuraiton in RLExtension
                     if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding=="hot_state":
@@ -172,12 +160,13 @@ class InputStateTransformer:
                     else:
                         value = numpy.array([[sensor_value.value]])
                     sensor_input[sensor_value.name] = value
-                    #print(sensor_value.name,sensor_value.value,value)
                     input_array = numpy.concatenate([input_array, value])
-        # cut out first row and return
+
+        # get sensors from goals
         for goal in self._manager._goals:
             for sensor_value in goal.sensor_values:
-                if not sensor_input.has_key(sensor_value.name):
+                if not sensor_input.has_key(sensor_value.name) and use_true_value:
+                    # encode or ignore the value regarding configuraiton in RLExtension
                     if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding=="hot_state":
@@ -186,7 +175,11 @@ class InputStateTransformer:
                         value = numpy.array([[sensor_value.value]])
                     sensor_input[sensor_value.name] = value
                     input_array = numpy.concatenate([input_array, value])
+            for wish in goal.wishes:
+                if use_wishes:
+                    wish_row = numpy.array([wish.indicator]).reshape([1,1])
+                    input_array = numpy.concatenate([input_array,wish_row])
+        # cut first dummy line
         input_array = input_array[1:]
-        # TODO get wishes from sensors
-        #print("input",input_array)
+
         return input_array

@@ -14,30 +14,15 @@ class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
         print("init class mnn")
         # pathes for saving the models
-        self.model_path = 'models/rl-model' + name + '-1000.meta'
-        self.model_folder = './models'
+        self.conf = NNConfig()
+
+        self.model_path = self.conf.model_path + name + '-1000.meta'
+        self.model_folder = self.conf.model_directory
         self.name = name
-        # tf.reset_default_graph()
-        #dimensions
+        # dimensions
         self.num_inputs = 0
         self.num_outputs = 0
-        # number of hidden layers
         self.num_hl = 0
-
-        self.hl1_variables = 19
-        self.hl2_variables = 10
-        # Set learning parameters
-        self.learning_rate_optimizer = 0.1
-
-        self.epsilon = 0.1
-        self.learning_rate_q_learning = 0.99
-
-        # information about current model
-        self.num_updates = 0
-        self.current_state = None
-        self.last_action = None
-        self.next_state = None
-
         # model variables
         self.Qout = None
         self.predict = None
@@ -46,13 +31,7 @@ class ReinforcementAlgorithmBase(object):
         self.nextQ = None
         self.updateModel = None
 
-        self.transformer = None
-
-        self.behaviors = []
-        self.conf = NNConfig()
         self.model_is_set_up = False
-        self.executed_behaviours = []
-        tf.set_random_seed(0)
 
     def start_nn(self, num_inputs, num_outputs):
         """

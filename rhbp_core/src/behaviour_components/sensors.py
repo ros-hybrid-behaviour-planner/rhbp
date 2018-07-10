@@ -20,12 +20,20 @@ from .pddl import create_valid_pddl_name
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
+
 class RlExtension(object):
+    """
+    This Extension can be included in the Sensors. It determines how the true values of the sensors should be used the
+    RL-algorithm.
+    # Encoding types = [ one_hot , none]
+    """
     def __init__(self, encoding="none", state_space=16,
                  include_in_rl=True):
+
         self.encoding = encoding
         self.state_space = state_space
         self.include_in_rl = include_in_rl
+
 
 class Sensor(object):
     """

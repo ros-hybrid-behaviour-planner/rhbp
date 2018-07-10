@@ -1,12 +1,7 @@
-import gym
-import numpy
 import numpy as np
-import random
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from input_state_transformer import SensorValueTransformer
 from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
-from reinforcement_learning_config import NNConfig
+
 
 class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
     def __init__(self, name):
@@ -69,7 +64,6 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
 
         self.model_is_set_up = True
 
-
     def load_model(self, num_inputs, num_outputs):
         """
         loads a saved model. only gets called if the model exists
@@ -79,7 +73,7 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
         """
         print("load model")
         # restore the session
-        #TODO load the modellllllll
+        # TODO load the modellllllll
 
         self.sess = tf.Session()
 
@@ -99,7 +93,6 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
 
         self.model_is_set_up = True
 
-
     def train_model(self, tuple):
         """
         trains the model by inserting a tuple contaning the chosen action in a specific situation with the resulting reward.
@@ -111,9 +104,6 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
         next_state = tuple[1]
         last_action = tuple[2]
         reward = tuple[3]
-
-        # if(not self.model_is_set_up):
-        #    return
 
         # Obtain the Q' values by feeding the new state through our network
         Q1 = self.sess.run(self.Qout, feed_dict={self.inputs1: next_state})
@@ -127,8 +117,4 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
 
         # Train our network using target and predicted Q values
         self.sess.run([self.updateModel], feed_dict={self.inputs1: last_state, self.nextQ: targetQ})
-
-        # Reduce chance of random action as we train the model.
-        self.epsilon = 1. / ((self.num_updates / 50) + 10)
-
 

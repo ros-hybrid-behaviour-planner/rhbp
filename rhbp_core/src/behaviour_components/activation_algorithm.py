@@ -709,28 +709,24 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     def __init__(self, manager, extensive_logging=False, create_log_files = False):
         super(ReinforcementLearningActivationAlgorithm, self).__init__(manager, extensive_logging=extensive_logging)
         self.activation_rl = []
-        #self.start_rl_node()
-
         self.SERVICE_TIMEOUT = 5
-        self.env_test = environment_test()
         self.rl_component=None
-
+        # values how much the rl activation influences the other components
         self.weight_rl = 1.0
-
+        # self.weight_rl = rospy.get_param("weight_rl",0)
+        # set if the exploration choose random action
         self.max_activation = 100
-        self.min_activation = -100
+        # gets set for not executable actions
+        self.min_activation = -100 # todo get from config
+        # step counter is used for exploration
         self._step_counter = 0
 
         self.input_transformer = InputStateTransformer(manager)
         if self.weight_rl>0.0:
             self.start_rl_class()
-            #self.start_rl_node()
-
-        self.first_fetching=False
-        numpy.random.seed(0) #TODO delete later. only for test purposes
+            # self.start_rl_node()
 
         self.exploration_strategies = ExplorationStrategies()  # implements different exploration strategies
-
 
     def start_rl_class(self):
         """
@@ -747,9 +743,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         package = 'reinforcement_component'
         executable = 'rl_component_node.py'
 
-        self.rl_address=self._manager._prefix.replace("/Manager","_rl_node")
-
-        print(self.rl_address)
+        self.rl_address = self._manager._prefix.replace("/Manager","_rl_node")
 
         command = "rosrun {0} {1}".format(package, executable)
         p = subprocess.Popen(command, shell=True)
@@ -763,39 +757,46 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
     def check_if_input_state_correct(self):
         """
-        :return:
+        receive via the input state transformer the rl values needed for the algorithm.
+        checks if values are incomplete
+        :return: returns the input state values or a False value if vlaues are incomplete
         """
+
+        # receive outputs from the known behaviours
         num_outputs = len(self._manager.behaviours)
         if num_outputs == 0:
-            print("num outputs cannot be 0")
             return False, None, None,None,None,None
+        # receive the input values from the sensors and conditions
         input_state = self.input_transformer.transform_input_values()
         num_inputs = input_state.shape[0]
         if num_inputs == 0:
-            print("num inputs cannot be 0", input_state)
             return False, None, None,None,None,None
+        # receive the reward from the goals
         reward = self.input_transformer.calculate_reward()
+        # receive the executed action from the executed behaviour
         last_action = self._manager.executedBehaviours
         if len(last_action) == 0:
-            print(self._step_counter, "last action cannot be None", self.activation_rl)
             return False, None, None,None,None,None
         last_action_index = self.input_transformer.behaviour_to_index(
             last_action[0])  # TODO deal here with multiple executed actions.
-            # idea : sent list for last action and for each las action update model
         if last_action_index is None:
-            print("last action not found")
             return False , None, None,None,None,None
         return True, num_inputs,num_outputs,input_state,reward,last_action_index
 
     def get_activation_from_rl_node(self):
         """
-        :return:
+        this function gets first the InputState from the rhbp components and sends this to the rl_node via service.
+        
+        :return: the received activations
         """
+        # get the input state. also check if the input state is correct
         is_correct, num_inputs, num_outputs, input_state,reward,last_action_index = self.check_if_input_state_correct()
 
+        # if input state is incorect return
         if not is_correct:
             return
-        #print(num_inputs,num_outputs,input_state,reward,last_action_index)
+
+        # create an input state message for sending it to the rl_node
         input_state_msg = InputState()
         input_state_msg.input_state = input_state
         input_state_msg.num_outputs = num_outputs
@@ -803,6 +804,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         input_state_msg.reward = reward
         input_state_msg.last_action = last_action_index
 
+        # find negative state (not executable behaviors)
         num_actions = len(self._manager._behaviours)
         negative_states = []
         for action_index in range(num_actions):
@@ -817,16 +819,15 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
                 negative_states.append(negative_state)
 
         # start service to get the activations from the model
+        self.fetch_activation(input_state_msg,negative_states)
 
-        self.fetchActivation(input_state_msg,negative_states)
-
-    def fetchActivation(self, msg,negative_states):
-        '''
-        This method fetches the status from the actual behaviour node via GetStatus service call
-        '''
-        if not self.first_fetching:
-            self._step_counter = 0
-        self.first_fetching = True
+    def fetch_activation(self, msg,negative_states):
+        """
+        This method fetches the activation from the rl node via GetActivation service call
+        :param msg: 
+        :param negative_states: 
+        :return: 
+        """
         try:
             rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
             rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
@@ -843,27 +844,30 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
     def get_rl_activation_for_ref(self,ref_behaviour):
         # TODO normalize and include the weight.
+        # TODO deal with neg. acti.: minmax norm. -> z = (x-min)/(max-min). highest value = 1 lowest = 0
+        # TODO between -1 and 1 -> z = 2 * (x-min) / (max-min) -1
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
         sum_activations = sum(self.activation_rl)
+        # if the activation is not yet received the values are zero
         if len(self.activation_rl)==0:
-            value=100
+            value=0
         else:
             value = self.activation_rl[index]
             #value /= sum_activations
             #value *= self.weight_rl
-            value= value + 10000  # plus 100 so in case all activations are negative still something gets chosen
+            value= value + 10000  # plus 100 so in case all activations are negative still something gets chosen TODo remove factor
         return value
 
     def compute_behaviour_activation_step(self, ref_behaviour):
         """
-        computes out of the different activaiton influences the activation step. 
-        
-        :param ref_behaviour: 
+        computes out of the different activation influences the activation step. 
+        :param ref_behaviour: for which behaviour the activation should be computed
         :return: 
         """
         # when rl has all influence only compute it.
         if self.weight_rl >= 1.0:
             try:
+                #TODO reduce factor
                 current_activation_step = self.get_rl_activation_for_ref(ref_behaviour) * 10000
                 ref_behaviour.current_activation_step = 0
                 ref_behaviour.activation = current_activation_step
@@ -881,7 +885,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
             inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
             activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
-            #rl_activation = self.get_rl_activation_for_ref(ref_behaviour) # TODO normalize the value
+            rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
 
             rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
             rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
@@ -890,41 +894,47 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
             rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
             rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
-            #rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
+            rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
             current_activation_step = activation_precondition \
                                       + activation_goals \
                                       + inhibition_goals \
                                       + activation_predecessors \
                                       + activation_successors \
                                       + inhibition_conflictors \
-                                      + activation_plan
-                                      #+ rl_activation
+                                      + activation_plan \
+                                      + rl_activation
             ref_behaviour.current_activation_step = current_activation_step
             return current_activation_step
 
     def update_config(self,**kwargs):
         """
         overrides update_config. includes fetching the most recent activation for the input state and 
-        sending negative rewards for notexecutable behaviours
+        choosing a random action according to the exploration strategy 
         :param kwargs: 
         :return: 
         """
+        # include BaseActivation functions
         super(ReinforcementLearningActivationAlgorithm, self).update_config(**kwargs)
-        #return
+
+        num_actions = len(self._manager._behaviours)
+        # if the rl activation is not used dont calculate the values and set all to zero
+        if self.weight_rl <= 0:
+            self.activation_rl =  [0] * num_actions
+            return
         # get the activations from the rl_component via service
         self.get_activation_from_rl_node()
         # return if no activations received
-        if len(self.activation_rl)==0:
+        if len(self.activation_rl) == 0:
             print("no activation found")
             return
 
-        # choose randomly best action
-        num_actions = len(self._manager._behaviours)
-
-        changed ,best_action = self.exploration_strategies.e_greedy_pre_train(self._step_counter,num_actions)
+        # TODO let exploration strategy choose the function
+        # check if exploration chooses randomly best action
+        changed, best_action = self.exploration_strategies.e_greedy_pre_train(self._step_counter, num_actions)
         if changed:
             self.activation_rl[best_action] = self.max_activation
-
+        # set the step counter higher
         self._step_counter += 1
+
 
 ActivationAlgorithmFactory.register_algorithm("reinforcement", ReinforcementLearningActivationAlgorithm)
