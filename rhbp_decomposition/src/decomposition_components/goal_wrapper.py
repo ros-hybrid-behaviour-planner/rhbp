@@ -53,13 +53,13 @@ class RHBPGoalWrapper(GoalWrapperBase):
         :raises DelegationError: if there is any problem with the goal creation
         """
         try:
-            self._goal = GoalBase(name=self.goal_name(), plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._goal = GoalBase(name=self.goal_name, plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
             self._created_goal = True
             return
         except Exception as e:
             self._created_goal = False
             self._goal = None
-            raise DelegationError("Sending goal raised exception: " + e.message)
+            raise DelegationError("Sending goal raised exception: " + str(e.message))
 
     def terminate_goal(self):
         """

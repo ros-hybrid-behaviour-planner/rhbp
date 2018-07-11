@@ -31,7 +31,7 @@ class GoalWrapperTest(unittest.TestCase):
     def test_basic_setter_getter(self):
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
 
-        self.assertEqual(test_wrapper.goal_name(), "test_goal")
+        self.assertEqual(test_wrapper.goal_name, "test_goal")
         self.assertFalse(test_wrapper.goal_is_created())
 
         self.assertRaises(RuntimeError, test_wrapper.get_goal)
