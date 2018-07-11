@@ -1,4 +1,4 @@
-from delegation_components.goal_wrapper import GoalWrapperBase
+from delegation_components.goal_wrappers import GoalWrapperBase
 from behaviour_components.goals import GoalBase
 from delegation_components.delegation_errors import DelegationError
 
@@ -53,7 +53,7 @@ class RHBPGoalWrapper(GoalWrapperBase):
         :raises DelegationError: if there is any problem with the goal creation
         """
         try:
-            self._goal = GoalBase(name=self.get_goal_name(), plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._goal = GoalBase(name=self.goal_name(), plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
             self._created_goal = True
             return
         except Exception as e:

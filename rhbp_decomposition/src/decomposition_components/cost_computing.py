@@ -1,5 +1,5 @@
 
-from delegation_components.cost_computing import CostEvaluatorBase
+from delegation_components.cost_evaluators import CostEvaluatorBase
 from delegation_components.delegation_errors import DelegationPlanningWarning
 
 
