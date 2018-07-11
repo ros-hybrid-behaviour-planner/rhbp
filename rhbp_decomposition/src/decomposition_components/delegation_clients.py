@@ -49,6 +49,10 @@ class RHBPDelegationClient(DelegationClientBase):
 
         return delegation_id
 
+    def start_work(self, delegation_id):
+        # This should never happen
+        self.logger.logerr(msg="Unexpected need to start work for the delegation "+str(delegation_id)+" in the DelegationClient with the ID "+str(self.id))
+
 
 class RHBPManagerDelegationClient(RHBPDelegationClient):
     """
