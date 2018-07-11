@@ -1,5 +1,5 @@
 
-from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPManagerDelegationClient, RHBPClientForDelegable
+from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPManagerDelegationClient, RHBPDelegableClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_tests.test_utils import MockedDelegationManager, FunctionPointerTester
 import unittest
@@ -66,7 +66,7 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(uut._delegation_manager, self.mockedDM)
 
     def test_delegable_delegate(self):
-        uut = RHBPClientForDelegable()
+        uut = RHBPDelegableClient()
 
         goal_name = "test_goal"
         conditions = ["test_conditions"]
@@ -83,7 +83,7 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(self.mockedDM.goal_wrapper._satisfaction_threshold, threshold)
 
         # with own cost
-        uut = RHBPClientForDelegable()
+        uut = RHBPDelegableClient()
         uut.register(delegation_manager=self.mockedDM)
         fpt = FunctionPointerTester()
         own_cost = 2.3
@@ -98,7 +98,7 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(uut._work_function_dictionary[delegation_id], fpt.function)
 
     def test_work_function_dict(self):
-        uut = RHBPClientForDelegable()
+        uut = RHBPDelegableClient()
         uut.register(delegation_manager=self.mockedDM)
         fpt = FunctionPointerTester()
         own_cost = 2.3

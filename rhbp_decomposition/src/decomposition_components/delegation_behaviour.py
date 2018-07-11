@@ -1,6 +1,6 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPClientForDelegable
+from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
 from behaviour_components.conditions import create_condition_from_effect
 
 
@@ -99,7 +99,7 @@ class DelegableBehaviour(DelegationBehaviour):
         self._currently_doing_work_myself = False
 
     def _create_delegation_client(self):
-        self._delegation_client = RHBPClientForDelegable()
+        self._delegation_client = RHBPDelegableClient()
 
     def _quick_start_work(self):
         self._currently_doing_work_myself = True

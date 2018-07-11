@@ -70,14 +70,18 @@ class RHBPDelegationClient(DelegationClientBase):
         self.logger.logerr(msg="Unexpected need to start work for the delegation "+str(delegation_id)+" in the DelegationClient with the ID "+str(self.id))
 
 
-class RHBPClientForDelegable(RHBPDelegationClient):
+class RHBPDelegableClient(RHBPDelegationClient):
     """
     Version of the RHBPDelegationClient used for units that can do the work
     themselves if needed (the DelegableBehaviour)
     """
 
     def __init__(self):
-        super(RHBPClientForDelegable, self).__init__()
+        """
+        Constructor
+        """
+
+        super(RHBPDelegableClient, self).__init__()
         self._work_function_dictionary = {}
 
     def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0, own_cost=-1, start_work_function=None):
@@ -133,6 +137,16 @@ class RHBPClientForDelegable(RHBPDelegationClient):
         self._work_function_dictionary[delegation_id] = start_work_function
 
     def start_work(self, delegation_id):
+        """
+        Signal the owner of this delegation that he needs to do the work
+        himself, this will invoke the function given at the start of the auction
+
+        This will be done automatically, dont call this function yourself
+
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        :raises KeyError: if there is no function given for this delegation
+        """
 
         self.logger.loginfo("Won the auction for the delegation "+str(delegation_id)+" myself, starting to work myself")
         try:
@@ -146,7 +160,14 @@ class RHBPClientForDelegable(RHBPDelegationClient):
         return
 
     def terminate_delegation(self, delegation_id):
-        super(RHBPClientForDelegable, self).terminate_delegation(delegation_id=delegation_id)
+        """
+        Terminates the delegation with the given ID
+
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        """
+
+        super(RHBPDelegableClient, self).terminate_delegation(delegation_id=delegation_id)
 
         if self._work_function_dictionary.keys().__contains__(delegation_id):
             del self._work_function_dictionary[delegation_id]
