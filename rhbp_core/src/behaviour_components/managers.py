@@ -796,6 +796,10 @@ class Manager(object):
         else:
             return None
 
+    @property
+    def prefix(self):
+        return self._prefix
+
     def deactivate(self):
         self.__activated = False
         #use while to avoid illegal state of non running behaviors in __executedBehaviors
