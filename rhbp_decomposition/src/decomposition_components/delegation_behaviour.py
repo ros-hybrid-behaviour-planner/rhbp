@@ -1,6 +1,6 @@
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from decomposition_components.delegation_clients import RHBPDelegationClient
+from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPClientForDelegable
 from behaviour_components.conditions import create_condition_from_effect
 
 
@@ -9,9 +9,13 @@ class DelegationBehaviour(BehaviourBase):
     def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, **kwargs):
 
         super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
-        self._delegation_client = RHBPDelegationClient()
+        self._delegation_client = None
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
+        self._create_delegation_client()
+
+    def _create_delegation_client(self):
+        self._delegation_client = RHBPDelegationClient()
 
     def __del__(self):
 
@@ -94,11 +98,18 @@ class DelegableBehaviour(DelegationBehaviour):
         self._own_cost = work_cost
         self._currently_doing_work_myself = False
 
+    def _create_delegation_client(self):
+        self._delegation_client = RHBPClientForDelegable()
+
+    def _quick_start_work(self):
+        self._currently_doing_work_myself = True
+        self.start_work()
+
     def start(self):
         if self._delegation_client.check_if_registered():
 
             conditions = self._get_conditions_for_delegation()
-            # TODO own work cost as parameter, delegate
+            self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold, own_cost=self._own_cost, start_work_function=self._quick_start_work)
 
             self._currently_doing_work_myself = False
         else:
