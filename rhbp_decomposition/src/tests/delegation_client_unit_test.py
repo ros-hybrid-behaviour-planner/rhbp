@@ -1,17 +1,8 @@
 
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPManagerDelegationClient, RHBPDelegableClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
-from delegation_tests.test_utils import MockedDelegationManager, FunctionPointerTester
+from delegation_tests.test_utils import MockedDelegationManager, FunctionPointerTester, MockedManager
 import unittest
-
-
-class MockedManager(object):
-
-    def __init__(self):
-        self._prefix = "test_prefix"
-
-    def plan_with_additional_goal(self):
-        return self._prefix
 
 
 class RHBPClientsTest(unittest.TestCase):

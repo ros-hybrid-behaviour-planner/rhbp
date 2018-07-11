@@ -215,7 +215,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
 
         if add_own_cost_evaluator:
             new_cost_evaluator = self.get_new_cost_evaluator()
-            self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, manager_name=self.__behaviour_manager._prefix)
+            self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, manager_name=self.__behaviour_manager.prefix)
 
     def get_new_cost_evaluator(self):
         """
