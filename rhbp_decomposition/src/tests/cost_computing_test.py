@@ -6,9 +6,11 @@ import rostest
 
 from behaviour_components.managers import Manager
 from decomposition_components.cost_computing import PDDLCostEvaluator
-from delegation_tests.basic_sceanrio import BasicCookingRobot       # TODO change this
+from basic_sceanrio import BasicCookingRobot       # TODO change this
 
 PKG = "rhbp_decomposition"
+
+# TODO this test needs to be updated
 
 
 class CostComputingTest(unittest.TestCase):
