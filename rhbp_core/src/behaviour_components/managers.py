@@ -357,15 +357,15 @@ class Manager(object):
 
             self.update_activation()
 
-            rhbplog.loginfo("############## ACTIONS ###############")
-            # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active
-            # before isExecuting we are safe this way
-            self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
-            amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
-            amount_started_behaviours = 0
-            amount_currently_selected_behaviours = 0
-
             while True:  # do while loop for guarantee_decision
+
+                rhbplog.loginfo("############## ACTIONS ###############")
+                # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active
+                # before isExecuting we are safe this way
+                self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
+                amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
+                amount_started_behaviours = 0
+                amount_currently_selected_behaviours = 0
 
                 rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
@@ -456,7 +456,7 @@ class Manager(object):
                     rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                     self._activationThreshold *= (1 / activation_threshold_decay)
 
-                executable_behaviours = [b for b in self._behaviours if b.executable and b.activation > 0.00001]
+                executable_behaviours = [b for b in self._behaviours if b.executable]
                 if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
                     # at least one behaviour is executing or there is no executable behaviour available
                     break
