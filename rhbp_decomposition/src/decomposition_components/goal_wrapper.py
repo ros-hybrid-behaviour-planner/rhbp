@@ -1,6 +1,20 @@
 from delegation_components.goal_wrappers import GoalWrapperBase
-from behaviour_components.goals import GoalBase
+from behaviour_components.goals import GoalBase, rhbplog
 from delegation_components.delegation_errors import DelegationError
+from rospy.exceptions import ROSException
+import rospy
+
+
+class DecompositionGoal(GoalBase):
+
+    def check_if_alive(self):
+        service_name = self._planner_prefix + '/' + 'AddGoal'
+        try:
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+            return True
+        except ROSException as e:
+            rhbplog.logwarn("Connection to Manager with prefix \""+str(e.message)+"\" was impossible")
+            return False
 
 
 class RHBPGoalWrapper(GoalWrapperBase):
@@ -53,7 +67,7 @@ class RHBPGoalWrapper(GoalWrapperBase):
         :raises DelegationError: if there is any problem with the goal creation
         """
         try:
-            self._goal = GoalBase(name=self.goal_name, plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._goal = DecompositionGoal(name=self.goal_name, plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
             self._created_goal = True
             return
         except Exception as e:
@@ -70,3 +84,14 @@ class RHBPGoalWrapper(GoalWrapperBase):
             self._created_goal = False
             self._goal.__del__()   # unregisters goal
             self._goal = None
+
+    def check_if_still_alive(self):
+        """
+        Checks whether this goal is still actively pursued by the contractor, by
+        probing the connection to the manager via the goal
+
+        :return: if it is actively pursued
+        :rtype: bool
+        """
+
+        return self._goal.check_if_alive()
