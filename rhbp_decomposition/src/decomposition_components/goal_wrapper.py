@@ -7,14 +7,41 @@ import rospy
 
 class DecompositionGoal(GoalBase):
 
+    def __init__(self, *args, **kwargs):
+        super(DecompositionGoal, self).__init__(*args, **kwargs)
+        self._failed_alive_check = False
+
+    def __del__(self):
+        """
+        Destructor that makes sure waiting is not required if its already known
+        that the manager failed
+        """
+
+        if self._failed_alive_check:
+            # No additional full timeout required
+            self.SERVICE_TIMEOUT = 0.01
+
+        super(DecompositionGoal, self).__del__()
+
     def check_if_alive(self):
-        service_name = self._planner_prefix + '/' + 'AddGoal'
-        try:
-            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+        """
+        Checks if the manager this goal is registered at is still running
+
+        :return: if the manager is still alive
+        :rtype: bool
+        """
+
+        if hasattr(self, '_registered') and self._registered:
+            service_name = self._planner_prefix + '/' + 'AddGoal'
+            try:
+                rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
+                return True
+            except ROSException:
+                rhbplog.logwarn("Connection to Manager with prefix \""+str(self._planner_prefix)+"\" was impossible")
+                self._failed_alive_check = True
+                return False
+        else:
             return True
-        except ROSException as e:
-            rhbplog.logwarn("Connection to Manager with prefix \""+str(e.message)+"\" was impossible")
-            return False
 
 
 class RHBPGoalWrapper(GoalWrapperBase):
