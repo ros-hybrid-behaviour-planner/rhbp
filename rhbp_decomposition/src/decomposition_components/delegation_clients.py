@@ -3,6 +3,7 @@ from delegation_components.delegation_clients import DelegationClientBase
 
 from decomposition_components.goal_wrapper import RHBPGoalWrapper
 from decomposition_components.cost_computing import PDDLCostEvaluator
+from delegation_components.delegation_errors import DelegationError
 
 
 import utils.rhbp_logging
@@ -17,6 +18,10 @@ class RHBPDelegationClient(DelegationClientBase):
 
     logger = rhbplogger
 
+    def __init__(self):
+        super(RHBPDelegationClient, self).__init__()
+        self._waiting_delegations = []
+
     def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0):
         """
         Tries to delegate a goal with given parameters
@@ -30,6 +35,7 @@ class RHBPDelegationClient(DelegationClientBase):
         :return: ID of the delegation
         :rtype: int
         :raises RuntimeError: if no DelegationManager is registered
+        :raises DelegationError: if Delegation was not successful
         """
 
         if not self._active_manager:
@@ -37,9 +43,13 @@ class RHBPDelegationClient(DelegationClientBase):
 
         new_goal_wrapper = self.build_goal_wrapper(conditions=conditions, goal_name=goal_name, satisfaction_threshold=satisfaction_threshold)
 
-        delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper)
-        self.logger.loginfo("Delegation has local ID " + str(delegation_id))
+        try:
+            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper)
+        except DelegationError:
+            self.logger.logwarn("Attempted Delegation was not successful")
+            raise
 
+        self.logger.loginfo("Delegation has local ID " + str(delegation_id))
         return delegation_id
 
     def build_goal_wrapper(self, conditions, goal_name, satisfaction_threshold=1.0):
@@ -106,6 +116,7 @@ class RHBPDelegableClient(RHBPDelegationClient):
         :rtype: int
         :raises RuntimeError: if no DelegationManager is registered
         :raises RuntimeError: if own_cost>=0 and no start_work_function is given
+        :raises DelegationError: if Delegation was not successful
         """
 
         if not self._active_manager:
@@ -116,8 +127,11 @@ class RHBPDelegableClient(RHBPDelegationClient):
 
         new_goal_wrapper = self.build_goal_wrapper(conditions=conditions, goal_name=goal_name, satisfaction_threshold=satisfaction_threshold)
 
-        delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper, own_cost=own_cost)
-        self.logger.loginfo("Delegation has local ID " + str(delegation_id))
+        try:
+            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper, own_cost=own_cost)
+        except DelegationError:
+            self.logger.logwarn("Attempted Delegation was not successful")
+            raise
 
         if own_cost >= 0:
             self._add_work_function(delegation_id=delegation_id, start_work_function=start_work_function)
@@ -141,7 +155,7 @@ class RHBPDelegableClient(RHBPDelegationClient):
         Signal the owner of this delegation that he needs to do the work
         himself, this will invoke the function given at the start of the auction
 
-        This will be done automatically, dont call this function yourself
+        This will be done automatically, do not call this function yourself
 
         :param delegation_id: ID of the delegation
         :type delegation_id: int

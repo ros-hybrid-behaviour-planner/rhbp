@@ -2,6 +2,7 @@
 from behaviour_components.behaviours import BehaviourBase, rhbplog
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
 from behaviour_components.conditions import create_condition_from_effect
+from delegation_components.delegation_errors import DelegationError
 from abc import abstractmethod
 
 
@@ -35,6 +36,7 @@ class DelegationBehaviour(BehaviourBase):
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
         self._create_delegation_client()
+        self._attempt_unsuccessful = False
 
     def _create_delegation_client(self):
         """
@@ -73,14 +75,25 @@ class DelegationBehaviour(BehaviourBase):
             rhbplog.logerr("DelegationBehaviour %s started without a registered DelegationManager. Will do nothing!", self.name)
             return
 
-        conditions = self._get_conditions_for_delegation()
+        self._delegate()
 
-        self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+    def _delegate(self):
+        conditions = self._get_conditions_for_delegation()
+        try:
+            self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._attempt_unsuccessful = False
+        except DelegationError:
+            rhbplog.logwarn("Attempted Delegation was not successful. Will retry next step!")
+            self._attempt_unsuccessful = True
 
     def do_step(self):
         """
         Makes sure the auction will step, if an auction is active
         """
+
+        if self._attempt_unsuccessful:
+            self._delegate()
+            return
 
         self._delegation_client.do_step()
 
@@ -202,7 +215,12 @@ class DelegableBehaviour(DelegationBehaviour):
 
         if self._delegation_client.check_if_registered():
             conditions = self._get_conditions_for_delegation()
-            self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold, own_cost=self._own_cost, start_work_function=self._quick_start_work)
+            try:
+                self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold, own_cost=self._own_cost, start_work_function=self._quick_start_work)
+            except Exception as e:
+                rhbplog.logwarn("Attempted Delegation was not successful (error-msg: "+str(e.message)+")\n\t-->Will do work myself!")
+                self._quick_start_work()
+                return
 
             self._currently_doing_work_myself = False
 
