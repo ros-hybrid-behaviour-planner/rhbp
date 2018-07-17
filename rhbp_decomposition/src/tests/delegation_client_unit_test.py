@@ -10,9 +10,10 @@ class RHBPClientsTest(unittest.TestCase):
     def setUp(self):
         self.mockedDM = MockedDelegationManager()
         self.mockedManager = MockedManager()
+        self.checking_prefix = "test_prefix"
 
     def test_delegate(self):
-        uut = RHBPDelegationClient()
+        uut = RHBPDelegationClient(checking_prefix=self.checking_prefix)
 
         goal_name = "test_goal"
         conditions = ["test_conditions"]
@@ -55,9 +56,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(self.mockedDM.clients[0], uut._client_id)
         self.assertTrue(uut._active_manager)
         self.assertEqual(uut._delegation_manager, self.mockedDM)
+        self.assertEqual(self.mockedDM.start_service_prefix, self.mockedManager.prefix)
 
     def test_delegable_delegate(self):
-        uut = RHBPDelegableClient()
+        uut = RHBPDelegableClient(checking_prefix=self.checking_prefix)
 
         goal_name = "test_goal"
         conditions = ["test_conditions"]
@@ -74,7 +76,7 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(self.mockedDM.goal_wrapper._satisfaction_threshold, threshold)
 
         # with own cost
-        uut = RHBPDelegableClient()
+        uut = RHBPDelegableClient(checking_prefix=self.checking_prefix)
         uut.register(delegation_manager=self.mockedDM)
         fpt = FunctionPointerTester()
         own_cost = 2.3
@@ -89,7 +91,7 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(uut._work_function_dictionary[delegation_id], fpt.function)
 
     def test_work_function_dict(self):
-        uut = RHBPDelegableClient()
+        uut = RHBPDelegableClient(checking_prefix=self.checking_prefix)
         uut.register(delegation_manager=self.mockedDM)
         fpt = FunctionPointerTester()
         own_cost = 2.3

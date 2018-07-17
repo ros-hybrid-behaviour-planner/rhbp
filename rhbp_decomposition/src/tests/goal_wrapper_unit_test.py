@@ -27,6 +27,7 @@ class GoalWrapperTest(unittest.TestCase):
         sensor = TopicSensor(name="test_sensor", topic="sensor_topic", message_type=Bool, initial_value=False)
         cls.test_condition = Condition(sensor, BooleanActivator())
         cls.comparison_goal = OfflineGoal(name="comparison_goal", planner_prefix="Test_manager")
+        cls.manager_name = "Test_manager"
 
     def test_basic_setter_getter(self):
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
@@ -45,7 +46,7 @@ class GoalWrapperTest(unittest.TestCase):
     def test_sending_goal(self):
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
 
-        test_wrapper.send_goal(name="Test_manager")
+        test_wrapper.send_goal(name=self.manager_name)
 
         rospy.sleep(1)
 
@@ -63,10 +64,12 @@ class GoalWrapperTest(unittest.TestCase):
 
         self.assertTrue(manager_has_goal)
 
+        test_wrapper._goal.unregister()
+
     def test_terminating_goal(self):
         test_wrapper = RHBPGoalWrapper(name="terminate_goal", conditions=[self.test_condition])
 
-        test_wrapper.send_goal(name="Test_manager")
+        test_wrapper.send_goal(name=self.manager_name)
 
         rospy.sleep(1)
 
@@ -82,6 +85,22 @@ class GoalWrapperTest(unittest.TestCase):
                 manager_has_goal = True
 
         self.assertFalse(manager_has_goal)
+
+    def test_check_alive(self):
+        test_wrapper = RHBPGoalWrapper(name="terminate_goal", conditions=[self.test_condition])
+
+        self.assertTrue(test_wrapper.check_if_still_alive())
+
+        test_wrapper.send_goal(name=self.manager_name)
+        self.assertTrue(test_wrapper.check_if_still_alive())
+
+        self.manager.unregister()
+
+        self.assertFalse(test_wrapper.check_if_still_alive())
+
+        self.manager.init_services_topics()
+
+        test_wrapper._goal.unregister()
 
 
 if __name__ == '__main__':
