@@ -130,23 +130,21 @@ class UpdateHandlerTestSuite(unittest.TestCase):
 
         updated_old = (prefix, 'updated', '1')
 
-        self.__client.push(updated_old)
+        self.assertTrue(self.__client.push(updated_old))
 
         rospy.sleep(0.1)
 
         cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
-
+        rospy.sleep(0.1)
         updated_new = (prefix, 'updated', '1')
-        update_stamp = cache.update_time
-        self.__client.update((prefix, '*', '*'), updated_new)
+        self.assertTrue(self.__client.update((prefix, '*', '*'), updated_new))
 
-        while update_stamp == cache.update_time:
-            rospy.sleep(0.1)
+        rospy.sleep(0.5)  # don' t wait for updates because we will not get one, as nothing changed
 
         current = cache.get_all_matching_facts()
 
         self.assertEqual(1, len(current))
-        self.assertTrue(updated_new in current, 'Update not noticed')
+        self.assertTrue(updated_new in current, 'Update corrupted')
 
     def test_update(self):
         prefix = self.__message_prefix + '_test_update'
@@ -169,6 +167,24 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertEqual(2, len(current))
         self.assertTrue(updated_new in current, 'Update not noticed')
         self.assertTrue(not_influenced in current, 'NotInfluenced was influenced')
+
+    def test_update_non_existing(self):
+        prefix = self.__message_prefix + 'test_update_non_existing'
+        updated_not_existing = (prefix, 'updated', '1')
+
+        cache = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
+
+        update_stamp = cache.update_time
+
+        updated_new = (prefix, 'updated', '0')
+
+        self.__client.update(updated_not_existing, updated_new)
+        while update_stamp == cache.update_time:
+            rospy.sleep(0.5)
+
+        current = cache.get_all_matching_facts()
+        self.assertEqual(1, len(current))
+        self.assertTrue(updated_new in current, 'Update not noticed')
 
     def test_multiple_updates(self):
         prefix = self.__message_prefix + '_test_multiple_updates'
@@ -196,6 +212,66 @@ class UpdateHandlerTestSuite(unittest.TestCase):
         self.assertEqual(2, len(current))
         self.assertTrue(updated_new_1 in current, 'Update of updated_new_1 not noticed')
         self.assertTrue(updated_new_2 in current, 'Update of updated_new_2 not noticed')
+
+    def test_update_with_partly_matching_patterns(self):
+        """
+        test an update that replaces several existing facts with a single new one or adds a new fact as a result of an
+        update
+        """
+        prefix = self.__message_prefix + 'test_update_reduction'
+        updated_old_1 = (prefix, 'fact_1', '1')
+        updated_old_2 = (prefix, 'fact_2', '1')
+        self.__client.push(updated_old_1)
+        self.__client.push(updated_old_2)
+
+        cache_all = KnowledgeBaseFactCache(pattern=(prefix, '*', '*'), knowledge_base_name=self.__knowledge_base_address)
+
+        cache_specific_1 = KnowledgeBaseFactCache(pattern=(prefix, 'fact_1', '*'),
+                                                  knowledge_base_name=self.__knowledge_base_address)
+
+        cache_specific_2 = KnowledgeBaseFactCache(pattern=(prefix, 'fact_2', '*'),
+                                                  knowledge_base_name=self.__knowledge_base_address)
+
+        cache_specific_3 = KnowledgeBaseFactCache(pattern=(prefix, 'fact_3', '*'),
+                                                  knowledge_base_name=self.__knowledge_base_address)
+
+        current_all = cache_all.get_all_matching_facts()
+        current_specific_1 = cache_specific_1.get_all_matching_facts()
+        current_specific_2 = cache_specific_2.get_all_matching_facts()
+        current_specific_3 = cache_specific_3.get_all_matching_facts()
+
+        self.assertEqual(2, len(current_all))
+        self.assertEqual(1, len(current_specific_1))
+        self.assertEqual(1, len(current_specific_2))
+        self.assertEqual(0, len(current_specific_3))
+
+        updated_new = (prefix, 'fact_3', '1')
+        update_stamp1 = cache_all.update_time
+        update_stamp2 = cache_specific_1.update_time
+        update_stamp3 = cache_specific_2.update_time
+        update_stamp4 = cache_specific_3.update_time
+        self.__client.update((prefix, '*', '1'), updated_new)
+
+        # wait until the caches are updated
+        rospy.sleep(0.5)
+        while update_stamp1 == cache_all.update_time or \
+                update_stamp2 == cache_specific_1.update_time or update_stamp3 == cache_specific_2.update_time \
+                or update_stamp4 == cache_specific_3.update_time:
+            rospy.sleep(0.1)
+
+        current_all = cache_all.get_all_matching_facts()
+        current_specific_1 = cache_specific_1.get_all_matching_facts()
+        current_specific_2 = cache_specific_2.get_all_matching_facts()
+        current_specific_3 = cache_specific_3.get_all_matching_facts()
+
+        self.assertEqual(1, len(current_all))
+        self.assertEqual(0, len(current_specific_1))
+        self.assertEqual(0, len(current_specific_2))
+        self.assertEqual(1, len(current_specific_3))
+        self.assertTrue(updated_new in current_all, 'Update general cache of not noticed')
+        self.assertTrue(updated_new not in current_specific_1, 'Delete update in specific cache 1 not noticed')
+        self.assertTrue(updated_new not in current_specific_2, 'Delete update in specific cache 2 not noticed')
+        self.assertTrue(updated_new in current_specific_3, 'Add update in specific cache 3 not noticed')
 
     def test_all_pattern_with_update(self):
         prefix = self.__message_prefix + '_test_multiple_updates'
