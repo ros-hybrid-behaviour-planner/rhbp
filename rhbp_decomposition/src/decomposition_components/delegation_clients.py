@@ -204,7 +204,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
     tasks and cost evaluation.
     """
 
-    def __init__(self, manager, checking_prefix):
+    def __init__(self, manager):
         """
         Constructor for the client
 
@@ -212,7 +212,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         :type manager: Manager
         """
 
-        super(RHBPManagerDelegationClient, self).__init__(checking_prefix=checking_prefix)
+        super(RHBPManagerDelegationClient, self).__init__(checking_prefix=manager.prefix)
         self.__behaviour_manager = manager
         self._added_cost_evaluator = False
 
