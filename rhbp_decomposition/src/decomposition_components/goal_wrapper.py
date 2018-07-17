@@ -121,4 +121,7 @@ class RHBPGoalWrapper(GoalWrapperBase):
         :rtype: bool
         """
 
-        return self._goal.check_if_alive()
+        if self.goal_is_created():
+            return self._goal.check_if_alive()
+        else:
+            return True
