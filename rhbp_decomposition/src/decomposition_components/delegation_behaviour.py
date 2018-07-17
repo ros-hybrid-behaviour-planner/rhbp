@@ -16,7 +16,7 @@ class DelegationBehaviour(BehaviourBase):
     part of the delegated task.
     """
 
-    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, **kwargs):
+    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, delegation_depth_prefix=None, **kwargs):
         """
         Constructor
 
@@ -27,24 +27,36 @@ class DelegationBehaviour(BehaviourBase):
         :type plannerPrefix: str
         :param satisfaction_threshold: the satisfaction_threshold used for the
                 goal, that will be created by this behaviour
+        :type satisfaction_threshold: float
+        :param delegation_depth_prefix: (optional) if this is part of a
+                NetworkBehaviour or any other arrangement, so that for depth
+                checking a specific Manager should be considered that is not the
+                direct Manager of this Behaviour, give the prefix of that
+                Manager here, else leave it empty
+        :type delegation_depth_prefix: str
         :param kwargs: arguments passed to the Constructor of the BaseClass,
                 for documentation see the Constructor of BehaviourBase
         """
+
+        if delegation_depth_prefix is None:
+            checking_prefix = plannerPrefix
+        else:
+            checking_prefix = delegation_depth_prefix
 
         super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
         self._delegation_client = None
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
-        self._create_delegation_client()
+        self._create_delegation_client(checking_prefix=checking_prefix)
         self._attempt_unsuccessful = False
 
-    def _create_delegation_client(self):
+    def _create_delegation_client(self, checking_prefix):
         """
         Creates an instance of the delegation client, will be done by the
         Constructor
         """
 
-        self._delegation_client = RHBPDelegationClient()
+        self._delegation_client = RHBPDelegationClient(checking_prefix=checking_prefix)
 
     def __del__(self):
         """
@@ -166,7 +178,7 @@ class DelegableBehaviour(DelegationBehaviour):
     delegation, just like the DelegationBehaviour.
     """
 
-    def __init__(self, name, plannerPrefix, work_cost, satisfaction_threshold=1.0, **kwargs):
+    def __init__(self, name, plannerPrefix, work_cost, satisfaction_threshold=1.0, delegation_depth_prefix=None,  **kwargs):
         """
         Constructor
 
@@ -184,17 +196,17 @@ class DelegableBehaviour(DelegationBehaviour):
                 for documentation see the Constructor of BehaviourBase
         """
 
-        super(DelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, satisfaction_threshold=satisfaction_threshold, **kwargs)
+        super(DelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, satisfaction_threshold=satisfaction_threshold, delegation_depth_prefix=delegation_depth_prefix, **kwargs)
         self._own_cost = work_cost
         self._currently_doing_work_myself = False
 
-    def _create_delegation_client(self):
+    def _create_delegation_client(self, checking_prefix):
         """
         Creates an instance of the delegation client, will be done by the
         Constructor
         """
 
-        self._delegation_client = RHBPDelegableClient()
+        self._delegation_client = RHBPDelegableClient(checking_prefix=checking_prefix)
 
     def _quick_start_work(self):
         """

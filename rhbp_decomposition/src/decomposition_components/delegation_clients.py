@@ -18,9 +18,10 @@ class RHBPDelegationClient(DelegationClientBase):
 
     logger = rhbplogger
 
-    def __init__(self):
+    def __init__(self, checking_prefix):
         super(RHBPDelegationClient, self).__init__()
         self._waiting_delegations = []
+        self._checking_prefix = checking_prefix
 
     def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0):
         """
@@ -41,10 +42,15 @@ class RHBPDelegationClient(DelegationClientBase):
         if not self._active_manager:
             raise RuntimeError("Delegation without a registered DelegationManager")
 
+        if not self._delegation_manager.depth_checking_possible:
+            depth = self._delegation_manager.check_remote_depth(prefix=self._checking_prefix)
+        else:
+            depth = None
+
         new_goal_wrapper = self.build_goal_wrapper(conditions=conditions, goal_name=goal_name, satisfaction_threshold=satisfaction_threshold)
 
         try:
-            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper)
+            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper, known_depth=depth)
         except DelegationError:
             self.logger.logwarn("Attempted Delegation was not successful")
             raise
@@ -86,12 +92,12 @@ class RHBPDelegableClient(RHBPDelegationClient):
     themselves if needed (the DelegableBehaviour)
     """
 
-    def __init__(self):
+    def __init__(self, checking_prefix):
         """
         Constructor
         """
 
-        super(RHBPDelegableClient, self).__init__()
+        super(RHBPDelegableClient, self).__init__(checking_prefix=checking_prefix)
         self._work_function_dictionary = {}
 
     def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0, own_cost=-1, start_work_function=None):
@@ -125,10 +131,15 @@ class RHBPDelegableClient(RHBPDelegationClient):
         if own_cost >= 0 and start_work_function is None:
             raise RuntimeError("Delegation with set own cost but no given work_function")
 
+        if not self._delegation_manager.depth_checking_possible:
+            depth = self._delegation_manager.check_remote_depth(prefix=self._checking_prefix)
+        else:
+            depth = None
+
         new_goal_wrapper = self.build_goal_wrapper(conditions=conditions, goal_name=goal_name, satisfaction_threshold=satisfaction_threshold)
 
         try:
-            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper, own_cost=own_cost)
+            delegation_id = self.delegate_goal_wrapper(goal_wrapper=new_goal_wrapper, own_cost=own_cost, known_depth=depth)
         except DelegationError:
             self.logger.logwarn("Attempted Delegation was not successful")
             raise
@@ -193,7 +204,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
     tasks and cost evaluation.
     """
 
-    def __init__(self, manager):
+    def __init__(self, manager, checking_prefix):
         """
         Constructor for the client
 
@@ -201,8 +212,9 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         :type manager: Manager
         """
 
-        super(RHBPManagerDelegationClient, self).__init__()
+        super(RHBPManagerDelegationClient, self).__init__(checking_prefix=checking_prefix)
         self.__behaviour_manager = manager
+        self._added_cost_evaluator = False
 
     def register(self, delegation_manager, add_own_cost_evaluator=True):
         """
@@ -229,7 +241,17 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
 
         if add_own_cost_evaluator:
             new_cost_evaluator = self.get_new_cost_evaluator()
-            self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, manager_name=self.__behaviour_manager.prefix)
+            prefix = self.__behaviour_manager.prefix
+            self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, manager_name=prefix)
+            self._delegation_manager.start_depth_service(prefix=prefix)
+            self._added_cost_evaluator = True
+
+    def unregister(self):
+        if self._active_manager and self._added_cost_evaluator:
+            self._delegation_manager.stop_depth_service()
+            self._delegation_manager.remove_cost_function_evaluator()
+            self._added_cost_evaluator = False
+        super(RHBPManagerDelegationClient, self).unregister()
 
     def get_new_cost_evaluator(self):
         """
