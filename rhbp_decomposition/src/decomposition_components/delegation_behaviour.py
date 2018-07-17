@@ -16,6 +16,7 @@ class DelegationBehaviour(BehaviourBase):
     part of the delegated task.
     """
 
+    # noinspection PyPep8Naming
     def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, delegation_depth_prefix=None, **kwargs):
         """
         Constructor
@@ -178,6 +179,7 @@ class DelegableBehaviour(DelegationBehaviour):
     delegation, just like the DelegationBehaviour.
     """
 
+    # noinspection PyPep8Naming
     def __init__(self, name, plannerPrefix, work_cost, satisfaction_threshold=1.0, delegation_depth_prefix=None,  **kwargs):
         """
         Constructor
