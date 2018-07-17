@@ -66,6 +66,7 @@ class SimpleSensorTestSuite(unittest.TestCase):
 
         test_value = 1337
         test_value2 = "second"
+        test_initial_value = "initial"
 
         msg = PlannerStatus()
 
@@ -76,7 +77,7 @@ class SimpleSensorTestSuite(unittest.TestCase):
 
         pub_complex.publish(msg)
 
-        complex_sensor = TopicSensor(topic=complex_topic, message_attr='plan[1]')
+        complex_sensor = TopicSensor(topic=complex_topic, message_attr='plan[1]', initial_value=test_initial_value)
 
         very_complex_sensor = TopicSensor(topic=complex_topic, message_attr='goals[0].activation')
 
@@ -88,6 +89,14 @@ class SimpleSensorTestSuite(unittest.TestCase):
         self.assertEquals(test_value2, complex_sensor.value, "Complex test value does not match")
 
         self.assertEquals(test_value, very_complex_sensor.value, "Complex iterated nested test value does not match")
+
+        # empty list test
+        msg = PlannerStatus()
+        pub_complex.publish(msg)
+
+        complex_sensor.sync()
+
+        self.assertEquals(test_initial_value, complex_sensor.value, "Complex sensor value does not match initial value")
 
     def test_simple_sensor_aggregation(self):
         """

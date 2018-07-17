@@ -185,7 +185,7 @@ class TopicSensor(RawTopicSensor):
         :param topic: see :class:RawTopicSensor
         :param name: see :class:RawTopicSensor
         :param message_type: see :class:RawTopicSensor
-        :param initial_value: see :class:RawTopicSensor
+        :param initial_value: see :class:RawTopicSensor + this value is also used in case attributes are inaccessible
         :param message_attr: the message attribute of the msg to use, to access nested attributes, separate attributes
          by TopicSensor.ATTRIBUTE_SEPARATOR; access tuple/list/dict attribute elements with e.g. 'data[0]'
         :param create_log: see :class:RawTopicSensor
@@ -195,6 +195,7 @@ class TopicSensor(RawTopicSensor):
                                           initial_value=initial_value, create_log=create_log,
                                           print_updates=print_updates)
         self._message_attr = message_attr
+        self._message_attr_original = message_attr # store unchanged version for logging
         if TopicSensor.ATTRIBUTE_INDEX_BEGIN in message_attr:
             self._has_index_attr = True
         else:
@@ -220,23 +221,32 @@ class TopicSensor(RawTopicSensor):
             index = index_elem[1:-1]  # remove [] from result
             if index.isdigit():
                 index = int(index)
-            return getattr(value, attr)[index]
+                return getattr(value, attr)[index]
         else:  # fallback
             return getattr(value, attr)
 
     def subscription_callback(self, msg):
-        if self._is_nested_attr:
-            msg_value = msg
-            for nested_attr in self._message_attr:
-                if self._has_index_attr:  # we use this to avoid complex parsing if not necessary
-                    msg_value = self._get_index_attribute(msg_value, nested_attr)
-                else:
-                    msg_value = getattr(msg_value, nested_attr)
-        else:
-            if self._has_index_attr:
-                msg_value = self._get_index_attribute(msg, self._message_attr)
+        try:
+            if self._is_nested_attr:
+                msg_value = msg
+                for nested_attr in self._message_attr:
+                    if self._has_index_attr:  # we use this to avoid complex parsing if not necessary
+                        msg_value = self._get_index_attribute(msg_value, nested_attr)
+                    else:
+                        msg_value = getattr(msg_value, nested_attr)
             else:
-                msg_value = getattr(msg, self._message_attr)
+                if self._has_index_attr:
+                    msg_value = self._get_index_attribute(msg, self._message_attr)
+                else:
+                    msg_value = getattr(msg, self._message_attr)
+        except IndexError:
+            rhbplog.logwarn("%s: attribute %s index out of bounds, returning initial value!",
+                            self.name, self._message_attr_original)
+            msg_value = self._initial_value
+        except AttributeError:
+            rhbplog.logwarn("%s: MSG has no attribute %s, returning initial value!",
+                            self.name, self._message_attr_original)
+            msg_value = self._initial_value
         super(TopicSensor, self).subscription_callback(msg_value)
 
 
