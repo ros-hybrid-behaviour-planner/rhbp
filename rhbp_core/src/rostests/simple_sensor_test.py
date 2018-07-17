@@ -93,6 +93,7 @@ class SimpleSensorTestSuite(unittest.TestCase):
         # empty list test
         msg = PlannerStatus()
         pub_complex.publish(msg)
+        rospy.sleep(0.1)
 
         complex_sensor.sync()
 
