@@ -15,7 +15,6 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
         :return: 
         """
         tf.set_random_seed(0)
-        print("initialize new model", num_inputs, num_outputs, self.name)
         # These lines establish the feed-forward part of the network used to choose actions
         self.inputs1 = tf.placeholder(shape=[1, num_inputs], dtype=tf.float32, name="inputs1")
         W1 = tf.Variable(tf.random_uniform([num_inputs, self.hl1_variables], 0, 0.01))
@@ -71,10 +70,6 @@ class QLearningNeuralNetwork(ReinforcementAlgorithmBase):
         :param num_outputs: number of output values of the network
         :return: 
         """
-        print("load model")
-        # restore the session
-        # TODO load the modellllllll
-
         self.sess = tf.Session()
 
         # check for model with this dimensions

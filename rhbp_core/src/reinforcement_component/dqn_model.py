@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from tensorflow.contrib import slim
 from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
-from reinforcement_learning_config import NNConfig
+from rl_config import NNConfig
 
 
 class DQNModel(ReinforcementAlgorithmBase):
@@ -26,7 +26,6 @@ class DQNModel(ReinforcementAlgorithmBase):
         self.targetOps = None
         # buffer class for experience learning
         self.myBuffer = experience_buffer(self.model_config.buffer_size)
-        #self.myBuffer.fill_buffer(self.model_config.buffer_size)#todo delet elater
         self.counter = 0
         self.saver = None
         self.reward_saver=[]
@@ -43,9 +42,6 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param num_outputs: number of output values for the network
         :return: 
         """
-        #num_inputs = 138
-        tf.set_random_seed(0)
-        np.random.seed(0)
         self.reset_model_values()
         if not load_mode:
             tf.reset_default_graph()
@@ -68,7 +64,6 @@ class DQNModel(ReinforcementAlgorithmBase):
             self.sess.run(self.init)
             # run target operations
             self.updateTarget(self.targetOps, self.sess)
-            print("init mode",num_inputs,num_outputs)
             self.num_inputs = num_inputs
             self.num_outputs = num_outputs
 
@@ -122,7 +117,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         """
         if self.counter % self.model_config.steps_save == 1 and self.model_config.save:
             self.save_model(self.num_inputs,self.num_outputs)
-        #save the input tuple in buffer
+        # save the input tuple in buffer
         transformed_tuple  = np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4])
         self.myBuffer.add(transformed_tuple)
         # get fields from the input tuple
@@ -134,15 +129,12 @@ class DQNModel(ReinforcementAlgorithmBase):
         # get sample of buffer for training
         trainBatch = self.myBuffer.sample(self.model_config.batch_size)
         # feed resulting state and keep prob of 1 to predict action
-        #print(0,trainBatch[:,3])
         Q1 = self.sess.run(self.q_net.predict, feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 3]), self.q_net.keep_per: 1.0})
         # get q-values of target network with the resulting state
         Q2 = self.sess.run(self.target_net.Q_out,
                       feed_dict={self.target_net.inputs: np.vstack(trainBatch[:, 3]), self.target_net.keep_per: 1.0})
         # multiplier to add if the episode ended
         # makes reward 0 if episode ended. simulation specific
-        #end_multiplier = -(trainBatch[:, 4] - 1)
-        # print(trainBatch[:,4],end_multiplier)
         # target-q-values of batch for choosing prediction of q-network
         doubleQ = Q2[range(self.model_config.batch_size), Q1]  # target_q-values for the q-net predicted action
         # target q value calculation according to q-learning
@@ -180,8 +172,10 @@ class DQNModel(ReinforcementAlgorithmBase):
             sess.run(op)
 
 
- #Implementing the network itself
-class Q_Network():
+class Q_Network(object):
+    """
+    this class implements the neural network. It is called for the Q-Network, but also for the target network.
+    """
     def __init__(self,number_inputs,number_outputs,name="q"):
         self.name = name
         tf.set_random_seed(0)
@@ -234,7 +228,12 @@ class Q_Network():
 
 
 # class for revisiting experiences
-class experience_buffer():
+class experience_buffer(object):
+    """
+    the experience buffer saves all experiences. these experiences can later be revisited for training the model.
+    therefore the training batches do not correlate because not the experiences that follow on after another
+    are used for training
+    """
     def __init__(self, buffer_size=10000):
         self.buffer = []
         self.buffer_size = buffer_size

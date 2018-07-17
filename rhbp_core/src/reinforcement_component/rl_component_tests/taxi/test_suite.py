@@ -57,10 +57,10 @@ if __name__ == '__main__':
     filename_goals = "../../../../../../../../../.ros/goal_experiment_results.csv"
     filename = "../../../../../../../../../.ros/experiment_results.csv"
 
-    an = ExperimentAnalysis(filename=filename,filename_goals=filename_goals)
-    an.plot_sequences(start=334,min_num=10)
-    an.plot_left_over_time(start=64)
-    exit(0)
+    #an = ExperimentAnalysis(filename=filename,filename_goals=filename_goals)
+    #an.plot_sequences(start=334,min_num=10)
+    #an.plot_left_over_time(start=64)
+
     test_case_normal = TaxiTestNormal(algorithm=dqn)
 
     test_case_cond = TaxiTestConditions(algorithm=dqn)

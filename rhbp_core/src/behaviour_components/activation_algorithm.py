@@ -15,15 +15,12 @@ import subprocess
 
 from reinforcement_component.exploration_strategies import ExplorationStrategies
 from reinforcement_component.input_state_transformer import InputStateTransformer
-from reinforcement_component.test_environment import environment_test
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
-import numpy
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
-from rhbp_core.msg import InputState, ActivationState
+from rhbp_core.msg import InputState
 from rhbp_core.srv import GetActivation
-import roslaunch
 from reinforcement_component.rl_component import RLComponent
 
 class AbstractActivationAlgorithm(object):
@@ -702,8 +699,7 @@ ActivationAlgorithmFactory.register_algorithm("uniform", UniformActivationAlgori
 class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     """
     This activation algorithm changes the activation calculation formulas in respect to the base algorithm with
-    the goal of creating a more uniformly distributed activation result depending on the input values(wish, effect).
-    It is also not favouring certain conditions as the base algorithm, e.g. favouring a fulfilled wish over others.
+    including the reinforcement learning 
     """
 
     def __init__(self, manager, extensive_logging=False, create_log_files = False):

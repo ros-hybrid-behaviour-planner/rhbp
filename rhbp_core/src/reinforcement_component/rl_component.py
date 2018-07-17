@@ -1,15 +1,15 @@
-import matplotlib
-
-from reinforcement_component.exploration_strategies import ExplorationStrategies
-from reinforcement_component.test_environment import environment_test
-
 from q_learning_model import QLearningNeuralNetwork
 import rospy
 
 from reinforcement_component.dqn_model import DQNModel
-from rhbp_core.msg import InputState, ActivationState
+from rhbp_core.msg import ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
+
+
+class LearningAlgorithm(object):
+    DQN = "DQN"
+    QLearning = "QLearning"
 
 
 class RLComponent:
@@ -43,8 +43,8 @@ class RLComponent:
 
         try:
             request = request_msg.input_state
-            self.check_if_model_is_valid(request.num_inputs,request.num_outputs)
-            # save currrent input state and update the model
+            self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
+            # save current input state and update the model
             self.save_request(request)
             # update the last state
             self.last_state = request.input_state
@@ -64,7 +64,7 @@ class RLComponent:
             })
             return GetActivationResponse(activation_state)
         except Exception as e:
-            print(e.message)
+            rospy.logerr(e.message)
             return None
 
     def save_request(self, request):
@@ -75,11 +75,9 @@ class RLComponent:
         """
         if self.last_state is None:
             return
-        # print( request.input_state)
         last = numpy.array(self.last_state).reshape(([1, len(self.last_state)]))
         new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
         reward_tuple = (last, new, request.last_action, request.reward)
-        # print(reward_tuple)
 
         self.reward_list.append(reward_tuple)
         self.update_model()

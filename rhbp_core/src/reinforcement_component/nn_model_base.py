@@ -1,19 +1,12 @@
-import gym
-import numpy
-import numpy as np
-import random
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from input_state_transformer import SensorValueTransformer
 import os
 
-from reinforcement_component.reinforcement_learning_config import NNConfig
+from reinforcement_component.rl_config import NNConfig
 
 
 class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
-        print("init class mnn")
-        # pathes for saving the models
+        # paths for saving the models
         self.conf = NNConfig()
 
         self.model_path = self.conf.model_path + name + '-1000.meta'
@@ -40,7 +33,7 @@ class ReinforcementAlgorithmBase(object):
           :param num_outputs: 
           :return: 
           """
-        model_exists = self.check_if_model_exists(num_inputs,num_outputs)
+        model_exists = self.check_if_model_exists(num_inputs, num_outputs)
 
         if model_exists:
             self.load_model(num_inputs, num_outputs)  # TODO check if loaded model is still valid for in and output
@@ -53,7 +46,7 @@ class ReinforcementAlgorithmBase(object):
     def initialize_model(self, num_inputs, num_outputs):
         raise NotImplementedError
 
-    def check_if_model_exists(self,num_inputs,num_outputs):
+    def check_if_model_exists(self, num_inputs, num_outputs):
         """
         check if the model exists
         :return: True if the model is saved. False otherwise
@@ -63,7 +56,6 @@ class ReinforcementAlgorithmBase(object):
         self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs)
         try:
             model_exists = tf.train.checkpoint_exists(self.model_folder)
-            print("does the model exist?",model_exists)
             return model_exists
         except Exception as e:
             return False
@@ -84,7 +76,6 @@ class ReinforcementAlgorithmBase(object):
     def train_model(self, tuple):
         raise NotImplementedError
 
-
     def save_model(self, num_inputs, num_outputs):
         """
         saves the model 
@@ -100,4 +91,3 @@ class ReinforcementAlgorithmBase(object):
 
         # Save model weights to disk
         self.saver.save(self.sess, self.model_path)
-

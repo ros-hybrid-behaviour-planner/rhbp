@@ -18,18 +18,27 @@ from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 
 import utils.rhbp_logging
+
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
+
+
+class EncodingConstants(object):
+    """
+    choose here an appropriate encoding style
+    """
+    HOT_STATE = "hot_state"
+    NONE_STATE = "none"
 
 
 class RlExtension(object):
     """
     This Extension can be included in the Sensors. It determines how the true values of the sensors should be used the
     RL-algorithm.
-    # Encoding types = [ one_hot , none]
+    # Encoding types = [ hot_state , none]
     """
+
     def __init__(self, encoding="none", state_space=16,
                  include_in_rl=True):
-
         self.encoding = encoding
         self.state_space = state_space
         self.include_in_rl = include_in_rl
@@ -72,6 +81,7 @@ class Sensor(object):
         :return:
         """
         self._latestValue = newValue
+
     @property
     def value(self):
         return self._value
@@ -88,7 +98,7 @@ class Sensor(object):
     def optional(self, newValue):
         if not isinstance(newValue, bool):
             rhbplog.logwarn("Passed non-Bool value to 'optional' attribute of sensor %s. Parameter was %s", self._name,
-                          newValue)
+                            newValue)
         else:
             self._optional = newValue
 
@@ -147,7 +157,7 @@ class RawTopicSensor(Sensor):
             self._sub = rospy.Subscriber(self._topic_name, self._message_type, self.subscription_callback)
 
             if self._iShouldCreateLog:
-                self._logFile = LogFileWriter(path="",filename=self._name,extension=".log")
+                self._logFile = LogFileWriter(path="", filename=self._name, extension=".log")
                 self._logFile.write('{0}\n'.format(self._name))
         else:
             rhbplog.logerr("Could not determine message type of: " + self._topic_name)
@@ -156,7 +166,7 @@ class RawTopicSensor(Sensor):
         self.update(msg)
         if (self.__print_updates):
             rhbplog.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
-                           type(self._latestValue))
+                             type(self._latestValue))
         if self._iShouldCreateLog:
             self._logFile.append("{0:f}\t{1}\n".format(rospy.get_time(), self._latestValue))
 

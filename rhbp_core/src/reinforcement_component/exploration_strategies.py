@@ -1,9 +1,21 @@
 import numpy
 
-from reinforcement_component.reinforcement_learning_config import ExplorationConfig
+from reinforcement_component.rl_config import ExplorationConfig
 
 
 class ExplorationStrategies(object):
+    """
+    this class implements different strategies for exploring. 
+    The random exploration chooses always a random action. Therefore, this strategy is not practical to use. 
+    The e_greedy function makes use of a decreasing epsilon. Therefore, in the beginning is a higher probability 
+    for choosing random actions. It is a good strategy, but inferior to the e_greedy strategy with pre train.
+    The e_greedy_pre_train function let the programmer choose from where the epsilon starts, where it stops and how fast it drops.
+    This is crucial as these parameter are highly dependent on the scenario. Also it included a pre_train phase. In this phase 
+    only random actions are chosen. This is used for better training of the model as it does not restrict the model right away 
+    in one direction to optimize to.
+    Therefore, with DQN as the model, but also for most other models, the e_greedy method with a pre_train phase is the most suiting
+    exploration strategy.
+    """
     def __init__(self):
         self.config = ExplorationConfig()
         self.epsilon = self.config.startE
