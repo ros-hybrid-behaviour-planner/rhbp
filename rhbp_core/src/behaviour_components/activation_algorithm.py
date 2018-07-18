@@ -696,6 +696,19 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
 ActivationAlgorithmFactory.register_algorithm("uniform", UniformActivationAlgorithm)
 
 
+class RLActivationConfig(object):
+    """
+    sets parameter for the rlactivationalgorithm.
+    Includes parameter for normalizing, which class to use or boundaries for the activation
+    """
+    def __init__(self):
+        # gets set for not executable actions
+        self.min_activation = -1
+        #  gets set if the exploration choose random action
+        self.max_activation = 1
+        # values how much the rl activation influences the other components
+        self.weight_rl = rospy.get_param("weight_rl",0.0)
+
 class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
     """
     This activation algorithm changes the activation calculation formulas in respect to the base algorithm with
@@ -709,6 +722,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.rl_component=None
         # values how much the rl activation influences the other components
         self.weight_rl = 1.0
+        self.config = RLActivationConfig()
         # self.weight_rl = rospy.get_param("weight_rl",0)
         # set if the exploration choose random action
         self.max_activation = 100
@@ -842,6 +856,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # TODO normalize and include the weight.
         # TODO deal with neg. acti.: minmax norm. -> z = (x-min)/(max-min). highest value = 1 lowest = 0
         # TODO between -1 and 1 -> z = 2 * (x-min) / (max-min) -1
+        # TODO [a,b] : (b-a) (x-min) / (max-min) + a
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
         sum_activations = sum(self.activation_rl)
         # if the activation is not yet received the values are zero
@@ -849,8 +864,12 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             value=0
         else:
             value = self.activation_rl[index]
-            #value /= sum_activations
-            #value *= self.weight_rl
+            max = max(self.activation_rl)
+            min = min(self.activation_rl)
+            b = self.config.max_activation
+            a = self.config.min_activation
+            #value = (b - a) * (value - min) / (max - min) + a
+            #value *= self.config.weight_rl
             value= value + 10000  # plus 100 so in case all activations are negative still something gets chosen TODo remove factor
         return value
 
