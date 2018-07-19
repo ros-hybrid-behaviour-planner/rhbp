@@ -43,7 +43,7 @@ class RHBPClientsTest(unittest.TestCase):
 
         cost_eval = uut.get_new_cost_evaluator()
 
-        self.assertEqual(cost_eval._manager, self.mockedManager.plan_with_additional_goal)
+        self.assertEqual(cost_eval._manager, self.mockedManager)
         self.assertIsInstance(cost_eval, PDDLCostEvaluator)
 
     def test_manager_register_with_cost_eval(self):
@@ -51,7 +51,7 @@ class RHBPClientsTest(unittest.TestCase):
 
         uut.register(delegation_manager=self.mockedDM, add_own_cost_evaluator=True)
 
-        self.assertEqual(self.mockedDM.cfe._planning_function, self.mockedManager.plan_with_additional_goal)
+        self.assertEqual(self.mockedDM.cfe._manager, self.mockedManager)
         self.assertIsInstance(self.mockedDM.cfe, PDDLCostEvaluator)
         self.assertEqual(self.mockedDM.clients[0], uut._client_id)
         self.assertTrue(uut._active_manager)
