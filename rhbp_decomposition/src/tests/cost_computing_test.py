@@ -34,7 +34,7 @@ class CostComputingTest(unittest.TestCase):
 
         goal = bcr.get_goal()
 
-        cost_computer = PDDLCostEvaluator(planning_function=m.plan_with_additional_goal)
+        cost_computer = PDDLCostEvaluator(manager=m.plan_with_additional_goal)
 
         cost, possible = cost_computer.compute_cost_and_possibility(goal.fetchPDDL()[0].statement)
 

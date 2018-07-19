@@ -261,6 +261,6 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         :rtype: PDDLCostEvaluator
         """
 
-        new_cost_evaluator = PDDLCostEvaluator(planning_function=self.__behaviour_manager.plan_with_additional_goal)
+        new_cost_evaluator = PDDLCostEvaluator(manager=self.__behaviour_manager)
 
         return new_cost_evaluator

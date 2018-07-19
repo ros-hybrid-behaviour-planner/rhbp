@@ -9,16 +9,16 @@ class PDDLCostEvaluator(CostEvaluatorBase):
     PDDL-Planer of the RHBP-Manager
     """
 
-    def __init__(self, planning_function):
+    def __init__(self, manager):
         """
         Constructor
 
-        :param planning_function: functionpointer on a function, that
-                returns a PDDL plan and takes a goal-statement as input
+        :param manager: Manager that the cost is computed with
+        :type manager: Manager
         """
 
         super(PDDLCostEvaluator, self).__init__()
-        self._planning_function = planning_function
+        self._manager = manager
 
     def compute_cost_and_possibility(self, goal_representation):
         """
@@ -31,31 +31,50 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         :raises DelegationPlanningWarning: if planning failed
         """
 
-        possible = False
-        cost = -1
+        self._last_possibility = False
+        self._last_cost = -1
         try:
-            plan = self._planning_function(goal_representation)
-            if plan and "cost" in plan and plan["cost"] != -1.0:
-                possible = True
-                cost = self.__compute_cost(plan=plan)
+            # Make plans
+            full_plan = self._manager.plan_with_additional_goal(goal_statement=goal_representation)
+            simple_plan = self._manager.plan_this_single_goal(goal_statement=goal_representation)
+            # Check if planned successful
+            if not (full_plan and "cost" in full_plan and full_plan["cost"] != -1.0):
+                return self._last_cost, self._last_possibility
+            if not (simple_plan and "cost" in simple_plan and simple_plan["cost"] != -1.0):
+                return self._last_cost, self._last_possibility
+
+            self._last_possibility = True
+            self._last_cost = self.__compute_cost(full_plan=full_plan, simple_plan=simple_plan)
+
         except Exception as e:  # catch any exception
+            self._last_possibility = False
             raise DelegationPlanningWarning(str(e.message))
 
-        self._last_cost, self._last_possibility = cost, possible
+        return self._last_cost, self._last_possibility
 
-        return cost, possible
-
-    def __compute_cost(self, plan):
+    def __compute_cost(self, full_plan, simple_plan):
         """
         Extract all needed information out of the plan and
         computes cost
 
-        :param plan: proper PDDL plan
+        :param full_plan: PDDL plan for the goal and all currently active goals
+        :param simple_plan: PDDL plan for just the goal
         :return: the cost that was computed
         """
 
-        steps = plan["cost"]
+        base_plan = self._manager.plan
+        if base_plan and "cost" in base_plan and base_plan["cost"] != -1.0:
+            base_steps = base_plan["cost"]
+        else:
+            base_steps = 0
+
+        full_steps = full_plan["cost"]
+        simple_steps = simple_plan["cost"]
+
+        print(full_steps)
+        print(simple_steps)
+        print(base_steps)
 
         # TODO create smart heuristic for cost based on steps and possible other stuff
 
-        return steps
+        return full_steps
