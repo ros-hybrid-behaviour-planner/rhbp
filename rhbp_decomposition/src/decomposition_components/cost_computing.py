@@ -1,6 +1,7 @@
 
 from delegation_components.cost_evaluators import CostEvaluatorBase
 from delegation_components.delegation_errors import DelegationPlanningWarning
+from decomposition_components.delegation_behaviour import DelegationBehaviour
 
 
 class PDDLCostEvaluator(CostEvaluatorBase):
@@ -20,7 +21,7 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         super(PDDLCostEvaluator, self).__init__()
         self._manager = manager
 
-    def compute_cost_and_possibility(self, goal_representation):
+    def compute_cost_and_possibility(self, goal_representation, num_of_tasks=0):
         """
         Computes cost and possibility of a goal given its statement.
         This is accomplished by trying to plan with the PDDL-planing-function
@@ -71,6 +72,9 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         full_steps = full_plan["cost"]
         simple_steps = simple_plan["cost"]
 
+        num_delegations = self.determine_number_of_delegations(simple_plan)
+        print(num_delegations)
+        print simple_plan
         print(full_steps)
         print(simple_steps)
         print(base_steps)
@@ -78,3 +82,10 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         # TODO create smart heuristic for cost based on steps and possible other stuff
 
         return full_steps
+
+    def determine_number_of_delegations(self, plan):
+        delegation_behaviour_names = [b.name for b in self._manager.behaviours if b.behaviour_type == DelegationBehaviour.TYPE_STRING]
+        actions = plan["actions"]
+        used_delegation_behaviours = set([b for b in actions.values() if b in delegation_behaviour_names])
+        num_delegations = len(used_delegation_behaviours)
+        return num_delegations
