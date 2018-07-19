@@ -1,5 +1,6 @@
 
-from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPManagerDelegationClient, RHBPDelegableClient
+from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
+from decomposition_components.manager_client import RHBPManagerDelegationClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_tests.test_utils import MockedDelegationManager, FunctionPointerTester, MockedManager
 import unittest

@@ -1,6 +1,6 @@
 
 import behaviour_components.managers as core
-from decomposition_components.delegation_clients import RHBPManagerDelegationClient
+from decomposition_components.manager_client import RHBPManagerDelegationClient
 
 
 class Manager(core.Manager):
