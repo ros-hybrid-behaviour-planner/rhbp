@@ -837,8 +837,17 @@ class Manager(object):
             current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
             problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
             domain_pddl = copy(self.__last_domain_PDDL)
-        plan = self.planner.plan(domain_pddl, problem_pddl)
 
+        plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
+        return plan
+
+    def plan_this_goal(self, goal_statement):
+
+        with self._step_lock:
+            problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement)
+            domain_pddl = copy(self.__last_domain_PDDL)
+
+        plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
         return plan
 
     def __plan_with_registered_goals_callback(self, req):
