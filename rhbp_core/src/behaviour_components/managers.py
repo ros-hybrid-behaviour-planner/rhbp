@@ -684,7 +684,7 @@ class Manager(object):
 
             behaviour.manager = self
             self._behaviours.append(behaviour)
-            rhbplog.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
+            rhbplog.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name, behaviour.requires_execution_steps)
             self.__replanningNeeded = True
 
     def remove_goal(self, goal_name):
@@ -706,9 +706,9 @@ class Manager(object):
         :param request: service request
         :type request: AddBehaviour
         """
-        behaviour = Behaviour(name = request.name, planner_prefix=self._prefix, independentFromPlanner = request.independentFromPlanner,
-                              requires_execution_steps = request.requiresExecutionSteps,
-                              create_log_files = self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix)
+        behaviour = Behaviour(name=request.name, planner_prefix=self._prefix, independentFromPlanner=request.independentFromPlanner,
+                              requires_execution_steps=request.requiresExecutionSteps,
+                              create_log_files=self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix, behaviour_type=request.type)
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
 

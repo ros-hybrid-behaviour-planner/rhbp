@@ -16,6 +16,8 @@ class DelegationBehaviour(BehaviourBase):
     part of the delegated task.
     """
 
+    TYPE_STRING = "Delegation"
+
     # noinspection PyPep8Naming
     def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, delegation_depth_prefix=None, **kwargs):
         """

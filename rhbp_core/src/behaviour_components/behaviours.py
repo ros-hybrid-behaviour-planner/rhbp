@@ -33,7 +33,7 @@ class Behaviour(object):
 
     SERVICE_TIMEOUT = 2
 
-    def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix=""):
+    def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix="", behaviour_type="Base"):
         '''
         Constructor
         '''
@@ -59,6 +59,7 @@ class Behaviour(object):
         self._independentFromPlanner = independentFromPlanner
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps = requires_execution_steps
+        self._behaviour_type = behaviour_type
         Behaviour._instanceCounter += 1
 
         self._log_file_path_prefix = log_file_path_prefix
@@ -310,6 +311,10 @@ class Behaviour(object):
     @executionTime.setter
     def executionTime(self, value):
         self._executionTime = value
+
+    @property
+    def behaviour_type(self):
+        return self._behaviour_type
     
     def __str__(self):
         return self._name
@@ -327,6 +332,7 @@ class BehaviourBase(object):
     __metaclass__ = FinalInitCaller
 
     SERVICE_TIMEOUT = 5
+    TYPE_STRING = "Base"    # TODO find a better name
 
     def __init__(self, name, requires_execution_steps=False, **kwargs):
         """
@@ -418,7 +424,7 @@ class BehaviourBase(object):
                                     service_name, self._plannerPrefix)
 
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
-            register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps)
+            register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps, self.TYPE_STRING)
             self._registered = True
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())

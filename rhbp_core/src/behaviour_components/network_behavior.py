@@ -22,6 +22,7 @@ class NetworkBehaviour(BehaviourBase):
     """
 
     MANAGER_POSTFIX = "Manager"
+    TYPE_STRING = "Network"
 
     def __init__(self, name, requires_execution_steps=True,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
