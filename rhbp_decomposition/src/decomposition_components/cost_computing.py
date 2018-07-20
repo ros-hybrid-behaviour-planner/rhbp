@@ -10,6 +10,13 @@ class PDDLCostEvaluator(CostEvaluatorBase):
     PDDL-Planer of the RHBP-Manager
     """
 
+    TASK_CAPACITY_FACTOR = 0.1
+    WORKLOAD_PROPORTION_FACTOR = 0.1
+    ADDITIONAL_WORKLOAD_FACTOR = 0.1
+    ADDITIONAL_DEPTH_FACTOR = 0.1
+    COOPERATION_AMOUNT_FACTOR = 0.1
+
+
     def __init__(self, manager):
         """
         Constructor
@@ -77,12 +84,14 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         if base_plan and "cost" in base_plan and base_plan["cost"] != -1.0:
             base_steps = base_plan["cost"]
         else:
-            base_steps = 0
+            base_steps = 0.0
 
         full_steps = full_plan["cost"]
         simple_steps = simple_plan["cost"]
 
         num_delegations = self.determine_number_of_delegations(simple_plan)
+        new_delegations = 1.0 if num_delegations > 0 else 0.0
+        print("Information:")
         print(num_delegations)
         print(task_count)
         print(max_task_count)
@@ -92,13 +101,31 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         print(simple_steps)
         print(base_steps)
 
+        task_capacity_utilization = (1 + self.TASK_CAPACITY_FACTOR * float(task_count) / float(max_task_count))
+        workload_proportion = (1 + self.WORKLOAD_PROPORTION_FACTOR * simple_steps / full_steps)
+        additional_workload = (1 + self.ADDITIONAL_WORKLOAD_FACTOR * base_steps / full_steps)
+        additional_depth = (1 + self.ADDITIONAL_DEPTH_FACTOR * new_delegations * float(current_depth) / float(max_depth))
+        cooperation_amount = (1 + self.COOPERATION_AMOUNT_FACTOR * num_delegations / simple_steps)
+
+        print("Factors:")
+        print(task_capacity_utilization)
+        print(workload_proportion)
+        print(additional_workload)
+        print(additional_depth)
+        print(cooperation_amount)
+
+        cost = full_steps * task_capacity_utilization * workload_proportion * additional_workload * additional_depth * cooperation_amount
+        print("Cost:")
+        print(cost)
+
+
         # TODO create smart heuristic for cost based on steps and possible other stuff
 
-        return full_steps
+        return cost
 
     def determine_number_of_delegations(self, plan):
         delegation_behaviour_names = [b.name for b in self._manager.behaviours if b.behaviour_type == DelegationBehaviour.TYPE_STRING]
         actions = plan["actions"]
         used_delegation_behaviours = set([b for b in actions.values() if b in delegation_behaviour_names])
-        num_delegations = len(used_delegation_behaviours)
+        num_delegations = float(len(used_delegation_behaviours))
         return num_delegations
