@@ -1,3 +1,0 @@
-<launch>
-    <test pkg="task_decomposition_module" test-name="CostComputing" type="cost_computing_test.py" />
-</launch>

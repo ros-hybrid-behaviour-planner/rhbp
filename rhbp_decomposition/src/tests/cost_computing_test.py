@@ -1,49 +1,93 @@
-#! /usr/bin/env python2
-
 import unittest
-import rospy
-import rostest
 
-from behaviour_components.managers import Manager
 from decomposition_components.cost_computing import PDDLCostEvaluator
-from basic_sceanrio import BasicCookingRobot       # TODO change this
-
-PKG = "rhbp_decomposition"
-
-# TODO this test needs to be updated
+from delegation_components.delegation_errors import DelegationPlanningWarning
+from delegation_tests.test_utils import MockedManager
 
 
 class CostComputingTest(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs):
-        super(CostComputingTest, self).__init__(*args, **kwargs)
-        rospy.init_node("TestNode1")
+    def setUp(self):
+        self.manager = MockedManager()
+        self.uut = PDDLCostEvaluator(manager=self.manager)
+        self.uut.TASK_CAPACITY_FACTOR = 1
+        self.uut.WORKLOAD_PROPORTION_FACTOR = -0.5
+        self.uut.ADDITIONAL_WORKLOAD_FACTOR = 1
+        self.uut.ADDITIONAL_DEPTH_FACTOR = 1
+        self.uut.COOPERATION_AMOUNT_FACTOR = 1
+        self.uut.CONTRACTOR_NUMBER_FACTOR = 0.5
 
     def test_basic(self):
-        prefix = "test_manager"
+        self.assertEqual(self.uut.last_cost, -1)
+        self.assertEqual(self.uut.last_possibility, False)
 
-        m = Manager(prefix=prefix)
+    def test_plan_steps_getting(self):
+        base, full, simple = self.uut._get_plan_steps(full_plan=self.manager.plan_with_additional_goal(0), simple_plan=self.manager.plan_this_single_goal(0))
 
-        bcr = BasicCookingRobot(planner_prefix=prefix)
+        self.assertEqual(base, 2)
+        self.assertEqual(full, 4)
+        self.assertEqual(simple, 2)
 
-        m.add_goal(bcr.get_test_goal())
+    def test_number_of_delegations(self):
+        plan = dict()
+        delegations = self.uut._determine_number_of_delegations(plan=plan)
+        self.assertEqual(delegations, 0)
 
-        for i in range(7):
-            m.step()
-            rospy.sleep(1)
+        plan = self.manager.plan
+        delegations = self.uut._determine_number_of_delegations(plan=plan)
+        self.assertEqual(delegations, 1)
 
-        goal = bcr.get_goal()
+    def test_compute_cost(self):
+        full_plan = self.manager.plan_with_additional_goal(0)
+        simple_plan = self.manager.plan_this_single_goal(0)
+        task_count = 1
+        max_task_count = 4
+        depth = 2
+        max_depth = 8
+        members = ["Member1", "Member2"]
+        own_name = "Member1"
 
-        cost_computer = PDDLCostEvaluator(manager=m.plan_with_additional_goal)
+        cost = self.uut._compute_cost(full_plan=full_plan, simple_plan=simple_plan, task_count=task_count,
+                                      max_task_count=max_task_count, depth=depth, max_depth=max_depth,
+                                      members=members, own_name=own_name)
 
-        cost, possible = cost_computer.compute_cost_and_possibility(goal.fetchPDDL()[0].statement)
-
-        print ("Possibility:"+str(possible)+" , Cost:"+str(cost))
-
-        self.assertTrue(possible)
         self.assertLess(0, cost)
+        self.assertEqual(cost, 10.546875)  # result for these parameters
+
+    def test_compute_cost_and_possibility(self):
+        goal_representation = "doesnt matter for this test"
+        current_task_count = 1
+        max_task_count = 4
+        current_depth = 2
+        max_depth = 8
+        members = ["Member1", "Member2"]
+        own_name = "Member1"
+
+        cost, possibility = self.uut.compute_cost_and_possibility(goal_representation=goal_representation, current_task_count=current_task_count,
+                                                                  max_task_count=max_task_count, current_depth=current_depth,
+                                                                  max_depth=max_depth, members=members, own_name=own_name)
+
+        self.assertTrue(possibility)
+        self.assertLess(0, cost)
+        self.assertEqual(cost, 10.546875)  # result for these parameters
+        self.assertEqual(self.uut.last_cost, cost)
+        self.assertEqual(self.uut.last_possibility, possibility)
+
+        self.manager.failing_plans = True
+        cost, possibility = self.uut.compute_cost_and_possibility(goal_representation=goal_representation, current_task_count=current_task_count,
+                                                                  max_task_count=max_task_count, current_depth=current_depth,
+                                                                  max_depth=max_depth, members=members, own_name=own_name)
+
+        self.assertFalse(possibility)
+        self.assertEqual(cost, -1)
+        self.assertEqual(self.uut.last_cost, cost)
+        self.assertEqual(self.uut.last_possibility, possibility)
+
+        self.manager.plan_exception = True
+        self.assertRaises(DelegationPlanningWarning, self.uut.compute_cost_and_possibility,
+                          goal_representation, current_task_count, max_task_count,
+                          current_depth, max_depth, members, own_name)
 
 
 if __name__ == '__main__':
-    # Run this only with the launch file or with a passive node running
-    rostest.rosrun(PKG, 'CostComputingTest', CostComputingTest)
+    unittest.main()
