@@ -32,6 +32,12 @@ class AbstractActivationAlgorithm(object):
         self._manager = manager
         self._extensive_logging=extensive_logging
 
+    def step_preparation(self):
+        """
+        this callback can optionally be overwritten to run preparation for a step before all behaviours are processed
+        """
+        pass
+
     @abstractmethod
     def compute_behaviour_activation_step(self, ref_behaviour):
         """
@@ -58,6 +64,14 @@ class AbstractActivationAlgorithm(object):
         """
         Method for updating the algorithm configuration with named parameters
         :param kwargs:
+        """
+        pass
+
+    @abstractmethod
+    def is_planner_enabled(self):
+        """
+        Return if the planner is enabled in the current configuration
+        :return: True/False
         """
         pass
 
@@ -114,6 +128,15 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
     def __init__(self, manager, extensive_logging=False, create_log_files = False):
         super(BaseActivationAlgorithm, self).__init__(manager, extensive_logging=extensive_logging)
 
+        # some defaults but are usually overwritten directly with update_config
+        self._situation_bias = 1.0
+        self._plan_bias = 1.0
+        self._conflictor_bias = 1.0
+        self._goal_bias = 1.0
+        self._successor_bias = 1.0
+        self._predecessor_bias = 1.0
+        self._activation_decay = 0.9
+
     def update_config(self, **kwargs):
         """
         Update the bias/weight configuration
@@ -125,13 +148,27 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         :param predecessor_bias:
         :param activation_decay: This reduces accumulated activation if the situation does not fit any more
         """
-        self._situation_bias = kwargs['situation_bias']
-        self._plan_bias=kwargs['plan_bias']
-        self._conflictor_bias=kwargs['conflictor_bias']
-        self._goal_bias=kwargs['goal_bias']
-        self._successor_bias=kwargs['successor_bias']
-        self._predecessor_bias=kwargs['predecessor_bias']
-        self._activation_decay=kwargs['activation_decay']
+        self._situation_bias = kwargs.get('situationBias', self._situation_bias)
+        self._plan_bias = kwargs.get('planBias', self._plan_bias)
+        self._conflictor_bias = kwargs.get('conflictorBias', self._conflictor_bias)
+        self._goal_bias = kwargs.get('goalBias', self._goal_bias)
+        self._successor_bias = kwargs.get('successorBias', self._successor_bias)
+        self._predecessor_bias = kwargs.get('predecessorBias', self._predecessor_bias)
+        self._activation_decay = kwargs.get('activationDecay', self._activation_decay)
+
+        rhbplog.loginfo("Activation weights updated: \n"
+                        "situation_bias:%f\n"
+                        "plan_bias:%f\n"
+                        "goal_bias:%f\n"
+                        "successor_bias:%f\n"
+                        "predecessor_bias:%f\n"
+                        "conflictor_bias:%f\n"
+                        "activation_decay:%f\n", self._situation_bias, self._plan_bias, self._goal_bias,
+                        self._successor_bias, self._predecessor_bias, self._conflictor_bias, self._activation_decay
+                        )
+
+    def is_planner_enabled(self):
+        return self._plan_bias > 0.0
 
     def compute_behaviour_activation_step(self, ref_behaviour):
 

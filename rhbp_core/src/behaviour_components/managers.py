@@ -57,19 +57,15 @@ class Manager(object):
         self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of active behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
             else rospy.get_param("~activationThreshold", 7.0)  # not sure how to set this just yet.
-        self.__activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else None
+
+        # decay for the activation threshold per step, configurable with dynamic configure
+        self._activation_threshold_decay = 0.9
+
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
         # configures if all contained behaviour or only the executed behaviours are used to determine if the manager is
         # interruptable
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
-
-        self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
-        self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
-        self.__predecessor_bias = kwargs['predecessorBias'] if 'predecessorBias' in kwargs else None
-        self.__successor_bias = kwargs['successorBias'] if 'successorBias' in kwargs else None
-        self.__plan_bias = kwargs['planBias'] if 'planBias' in kwargs else None
-        self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
 
         self.__max_parallel_behaviours = kwargs['max_parallel_behaviours'] if 'max_parallel_behaviours' in kwargs else \
             rospy.get_param("~max_parallel_behaviours", sys.maxint)
@@ -99,8 +95,6 @@ class Manager(object):
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
-        # trigger update once in order to initialize algorithm properly
-        self._update_bias_parameters()
 
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
         self.__activated = activated
@@ -261,8 +255,8 @@ class Manager(object):
         5) The last planning attempt was unsuccessful
         '''
 
-        if rospy.get_param("~planBias", 1.0) == 0.0:
-            return # return if planner is disabled
+        if not self.activation_algorithm.is_planner_enabled():
+            return  # return if planner is disabled
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         domainPDDL = self._fetchPDDL(behaviours=self._activeBehaviours, goals=self._activeGoals)
@@ -376,8 +370,6 @@ class Manager(object):
 
                 currently_influenced_sensors = set()
 
-                activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
-
                 # perform the decision making based on the calculated activations
                 for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
                     ### now comes a series of tests that a behaviour must pass in order to get started ###
@@ -455,11 +447,11 @@ class Manager(object):
 
                 # Reduce or increase the activation threshold based on executed and started behaviours
                 if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-                    self._activationThreshold *= activation_threshold_decay
+                    self._activationThreshold *= self._activation_threshold_decay
                     rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                 elif amount_started_behaviours > 0:
                     rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-                    self._activationThreshold *= (1 / activation_threshold_decay)
+                    self._activationThreshold *= (1 / self._activation_threshold_decay)
 
                 executable_behaviours = [b for b in self._behaviours if b.executable]
                 if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
@@ -469,14 +461,13 @@ class Manager(object):
                     rhbplog.loginfo("No decision_taken repeating with adjusted threshold. New activation threshold: %f",
                                     self._activationThreshold)
 
-            self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
+            self._publish_planner_status(currently_influenced_sensors)
 
         self._stepCounter += 1
 
-    def _publish_planner_status(self, activation_threshold_decay, currently_influenced_sensors):
+    def _publish_planner_status(self, currently_influenced_sensors):
         """
         Collect all information for the plannerStatusMessage and publish it
-        :param activation_threshold_decay: current activationThresholdDecay
         :param currently_influenced_sensors: set() of currently influenced sensors
         """
         if self.__statusPublisher.get_num_connections() == 0:
@@ -515,7 +506,7 @@ class Manager(object):
             plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
-        plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
+        plannerStatusMessage.activationThresholdDecay = self._activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
         plannerStatusMessage.plan = self._plan
         plannerStatusMessage.plan_index = self._planExecutionIndex
@@ -553,7 +544,7 @@ class Manager(object):
         ### use the symbolic planner if necessary ###
         if plan_if_necessary:
             self._plan_if_necessary()
-        self._update_bias_parameters()
+        self.activation_algorithm.step_preparation()
         ### log behaviour stuff ###
         rhbplog.logdebug("########## BEHAVIOUR  STATES ##########")
         for behaviour in self._behaviours:
@@ -640,23 +631,6 @@ class Manager(object):
             itertools.chain.from_iterable([[item.get_pddl_effect_name() for item in x.correlations] for x in self.__executedBehaviours])))
         rhbplog.loginfo("currently influenced sensors: %s", currently_influenced_sensors)
         return currently_influenced_sensors
-
-    def _update_bias_parameters(self):
-        """
-        Check and update bias parameter values
-        """
-        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param("~conflictorBias", 1.0)
-        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
-        predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias",
-                                                                                                   1.0)
-        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
-        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
-        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
-        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay", 0.9)
-        self.activation_algorithm.update_config(situation_bias=situation_bias, plan_bias=plan_bias,
-                                                conflictor_bias=conflictor_bias, goal_bias=goal_bias,
-                                                successor_bias=successor_bias, predecessor_bias=predecessor_bias,
-                                                activation_decay=activation_decay)
 
     def _stop_behaviour(self, behaviour, reset_activation=True):
         """
@@ -770,9 +744,11 @@ class Manager(object):
         return ForceStartResponse()
 
     def _dynamic_reconfigure_callback(self, config, level):
-        # rospy.loginfo("""Reconfiugre Request: {int_param}, {double_param},\
-        #       {str_param}, {bool_param}, {size}""".format(**config))
-        rospy.logwarn(str(config))
+
+        self._activation_threshold_decay = config.get("activationThresholdDecay", self._activation_threshold_decay)
+
+        self.activation_algorithm.update_config(**config)
+
         return config
     
     @property
