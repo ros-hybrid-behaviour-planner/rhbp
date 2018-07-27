@@ -24,6 +24,8 @@ from utils.misc import LogFileWriter
 from copy import copy
 
 from dynamic_reconfigure.server import Server
+from dynamic_reconfigure.msg import Config as ConfigMsg
+from dynamic_reconfigure import encoding
 from rhbp_core.cfg import ManagerConfig
 
 import utils.rhbp_logging
@@ -35,6 +37,8 @@ class Manager(object):
     USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE = False
 
     MANAGER_DISCOVERY_TOPIC = "rhbp_discover"
+
+    dynamic_reconfigure_server = None
 
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
@@ -122,7 +126,11 @@ class Manager(object):
 
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
 
-        self.__dynamic_reconfigure = Server(ManagerConfig, self._dynamic_reconfigure_callback)
+        if not Manager.dynamic_reconfigure_server:  # only one server per node
+            Manager.dynamic_reconfigure_server = Server(ManagerConfig, self._dynamic_reconfigure_callback, namespace="~")
+        else:
+            self.__config_subscriber = rospy.Subscriber(Manager.dynamic_reconfigure_server.ns + 'parameter_updates',
+                                                        ConfigMsg, self._dynamic_reconfigure_listener_callback)
 
     def unregister(self):
         """
@@ -743,11 +751,36 @@ class Manager(object):
                 break
         return ForceStartResponse()
 
-    def _dynamic_reconfigure_callback(self, config, level):
+    def update_config(self, config):
+        """
+        Update configuration (e.g. called from dynamic reconfigure
+        :param config: dict with the new configuration
+        """
+        rospy.logwarn("Updated manager config %s", self._prefix)
 
         self._activation_threshold_decay = config.get("activationThresholdDecay", self._activation_threshold_decay)
 
         self.activation_algorithm.update_config(**config)
+
+    def _dynamic_reconfigure_listener_callback(self, config_msg):
+        """
+        callback for the dynamic_reconfigure update message
+        :param config_msg: msg
+        """
+
+        config = encoding.decode_config(msg=config_msg)
+
+        self.update_config(config=config)
+
+    def _dynamic_reconfigure_callback(self, config, level):
+        """
+        direct callback of the dynamic_reconfigure server
+        :param config: new config
+        :param level:
+        :return: adjusted config
+        """
+
+        self.update_config(config=config)
 
         return config
     
