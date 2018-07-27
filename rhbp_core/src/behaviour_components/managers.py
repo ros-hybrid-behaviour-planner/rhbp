@@ -23,6 +23,9 @@ from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
 from copy import copy
 
+from dynamic_reconfigure.server import Server
+from rhbp_core.cfg import ManagerConfig
+
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
@@ -124,6 +127,8 @@ class Manager(object):
                                                  queue_size=1, latch=True)
 
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
+
+        self.__dynamic_reconfigure = Server(ManagerConfig, self._dynamic_reconfigure_callback)
 
     def unregister(self):
         """
@@ -763,6 +768,12 @@ class Manager(object):
                 behaviour.manualStart = request.forceStart
                 break
         return ForceStartResponse()
+
+    def _dynamic_reconfigure_callback(self, config, level):
+        # rospy.loginfo("""Reconfiugre Request: {int_param}, {double_param},\
+        #       {str_param}, {bool_param}, {size}""".format(**config))
+        rospy.logwarn(str(config))
+        return config
     
     @property
     def activationThreshold(self):
