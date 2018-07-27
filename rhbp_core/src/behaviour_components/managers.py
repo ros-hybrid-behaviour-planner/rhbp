@@ -127,7 +127,8 @@ class Manager(object):
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
 
         if not Manager.dynamic_reconfigure_server:  # only one server per node
-            Manager.dynamic_reconfigure_server = Server(ManagerConfig, self._dynamic_reconfigure_callback, namespace="~")
+            Manager.dynamic_reconfigure_server = Server(ManagerConfig, self._dynamic_reconfigure_callback,
+                                                        namespace=self._service_prefix + "rhbp_manager/")
         else:
             self.__config_subscriber = rospy.Subscriber(Manager.dynamic_reconfigure_server.ns + 'parameter_updates',
                                                         ConfigMsg, self._dynamic_reconfigure_listener_callback)
@@ -756,8 +757,6 @@ class Manager(object):
         Update configuration (e.g. called from dynamic reconfigure
         :param config: dict with the new configuration
         """
-        rospy.logwarn("Updated manager config %s", self._prefix)
-
         self._activation_threshold_decay = config.get("activationThresholdDecay", self._activation_threshold_decay)
 
         self.activation_algorithm.update_config(**config)
