@@ -44,8 +44,8 @@ class BaseTestSuite(object):
         self.rewards_tuples = None
         # dqn parameters for random execution
         # self.pre_train = 32
-        self.startE = 0.1
-        self.endE = 0.1
+        self.startE = 1.0
+        self.endE = 0.05
         self.anneling_steps = 300000
         self.epsilon = self.startE
         self.stepDrop = (self.startE - self.endE) / self.anneling_steps
