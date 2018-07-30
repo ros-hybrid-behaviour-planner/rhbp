@@ -10,7 +10,8 @@ import pandas as pd
 from dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
     TaxiTestAllConditionsNew
 from dqn.taxi_dqn_normal import TaxiTestNormal, TaxiTestConditions, \
-    TaxiTestDecoded
+    TaxiTestDecoded, TaxiTestDecodedCond
+
 
 def compare_classes(envs,num_range,threshold,should_print):
     """

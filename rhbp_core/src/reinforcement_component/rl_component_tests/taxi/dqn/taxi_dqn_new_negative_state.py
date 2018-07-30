@@ -10,15 +10,16 @@ import unittest
 import rospy
 import rostest
 import roslaunch
-from reinforcement_component.rl_component import RLComponent
+#from reinforcement_component.rl_component import RLComponent
 import gym
 import numpy
 import pandas
 import matplotlib.pyplot as plt
-
-from reinforcement_component.rl_component_tests.taxi.dqn.test_base import BaseTestSuite
+from test_base import BaseTestSuite
 from rhbp_core.msg import InputState
 from rhbp_core.srv import GetActivation
+
+#from rhbp_core.src.reinforcement_component.rl_component_tests.taxi.dqn.test_base import BaseTestSuite
 
 PKG = 'knowledge_base'
 
@@ -111,6 +112,7 @@ class TaxiTestAllConditionsNew(TaxiTestConditionsNew):
         super(TaxiTestAllConditionsNew, self).__init__(algorithm,*args, **kwargs)
 
     def is_action_valid(self, s, a):
+
         locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
         row, col, passenger, dest = self.decode(s)
         if a == 4:

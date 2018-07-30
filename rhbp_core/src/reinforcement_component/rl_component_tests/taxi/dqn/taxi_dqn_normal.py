@@ -16,6 +16,7 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 
+from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestAllConditionsNew
 from reinforcement_component.rl_component_tests.taxi.dqn.test_base import BaseTestSuite
 from rhbp_core.msg import InputState
 from rhbp_core.srv import GetActivation
@@ -138,6 +139,59 @@ class TaxiTestDecoded(TaxiTestNormal):
         array = numpy.concatenate((array, self.one_hot(dest, 4)),axis=1)
         return array
 
+
+class TaxiTestDecodedCond(TaxiTestAllConditionsNew):
+    """
+    uses normal exploration strategy without condition (like. but decodes state into four variables with on_hot
+    """
+    def __init__(self,algorithm=0, *args, **kwargs):
+        super(TaxiTestDecodedCond, self).__init__(algorithm,*args, **kwargs)
+
+        self.num_inputs = 19
+
+    def get_array(self,s):
+        row,col,passenger,dest=self.decode(s)
+
+        array = self.one_hot(row, 5)
+        array = numpy.concatenate( (array,self.one_hot(col, 5)),axis=1)
+        array = numpy.concatenate((array, self.one_hot(passenger, 5)),axis=1)
+        array = numpy.concatenate((array, self.one_hot(dest, 4)),axis=1)
+        return array
+
+    def do_step(self,input):
+        # e-greedy random selection without restriction
+        row = numpy.argmax(input[0][0:5])
+        col  = numpy.argmax(input[0][5:10])
+        passenger  = numpy.argmax(input[0][10:15])
+        dest = numpy.argmax(input[0][15:19])
+        s = self.encode([row,col,passenger,dest])
+        negative_states = self.get_negative_states(s,input)
+        best_action = self.get_best_action(input, self.last_r, self.last_action,negative_states)
+        i = self.counter
+        self.counter += 1
+        # choose randomly best action
+        random_value = numpy.random.rand(1)
+        if random_value < self.epsilon or self.counter - 1 < self.pre_train:
+            best_action = numpy.random.randint(6)
+        # execute best action
+        while not self.is_action_valid(s, best_action):
+            minus_value = -100
+
+            #self.send_invalid_action_to_rl(self.get_array(s), minus_value, best_action)
+
+            self.activation_rl[best_action] = minus_value
+            best_action = numpy.argmax(self.activation_rl)
+
+        s1, r, d, _ = self.env.step(best_action)
+
+        # reduce epsilon
+        if self.epsilon > self.endE and self.counter - 1 > self.pre_train:
+            self.epsilon -= self.stepDrop
+
+        self.last_action = best_action
+
+
+        return s1,r,d
 
 
 if __name__ == '__main__':
