@@ -47,6 +47,10 @@ class ReinforcementAlgorithmBase(object):
             num_outputs) + '/' + self.name + '/rl-model' + self.name + "_" + str(
             num_inputs) + "_" + str(num_outputs) + '-1000.meta'
         self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs) + '/' + self.name
+        if not os.path.exists(self.model_folder):
+            os.makedirs(self.model_folder)
+        if not self.save_conf.load:
+            return False
         try:
             model_exists = tf.train.checkpoint_exists(self.model_folder)
             return model_exists
@@ -90,4 +94,7 @@ class ReinforcementAlgorithmBase(object):
         rospy.loginfo("model saved")
 
     def save_buffer(self):
+        raise NotImplementedError
+
+    def load_buffer(self):
         raise NotImplementedError

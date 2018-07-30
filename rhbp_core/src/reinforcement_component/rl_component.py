@@ -14,7 +14,7 @@ class RLComponent:
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation,
                                               self._get_activation_state_callback)
         # choose appropriate model
-        self.model = DQNModel(self.name, pre_train)
+        self.model = DQNModel(self.name)
 
         # save the last state
         self.last_state = None
@@ -52,6 +52,38 @@ class RLComponent:
             })
             return GetActivationResponse(activation_state)
         except Exception as e:
+            rospy.logerr(e.message)
+            return None
+
+
+    def get_activation_state_test(self, request,negative_states=[]):
+        """
+        uses same logic as the callback, but functions without a service. cann be called directly. used for testing
+        :param request: GetActivation 
+        :return: 
+        """
+        try:
+            self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
+            # save current input state and update the model
+            self.save_request(request)
+            # update the last state
+            self.last_state = request.input_state
+            for state in negative_states:
+                self.save_request(state)
+
+            # transform the input state and get activation
+            transformed_input = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+            activations = self.model.feed_forward(transformed_input)
+
+            # return the activation via the service
+            activations = activations.tolist()[0]
+            activation_state = ActivationState(**{
+                "name": self.name,  # this is sent for sanity check and planner status messages only
+                "activations": activations,
+            })
+            return activation_state
+        except Exception as e:
+            print(e)
             rospy.logerr(e.message)
             return None
 

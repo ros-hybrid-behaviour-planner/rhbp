@@ -4,22 +4,12 @@ Created on 07.12.2016
 
 @author: rieger, hrabia
 '''
-import time
-import unittest
 
-import rospy
-import rostest
-import roslaunch
-from reinforcement_component.rl_component import RLComponent
-import gym
 import numpy
-import pandas
-import matplotlib.pyplot as plt
+from taxi_dqn_new_negative_state import TaxiTestAllConditionsNew
 
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestAllConditionsNew
-from reinforcement_component.rl_component_tests.taxi.dqn.test_base import BaseTestSuite
+from test_base import BaseTestSuite
 from rhbp_core.msg import InputState
-from rhbp_core.srv import GetActivation
 
 PKG = 'knowledge_base'
 

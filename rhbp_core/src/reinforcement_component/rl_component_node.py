@@ -1,7 +1,7 @@
 import rospy
 
-from reinforcement_component.nn_model_base import QLearningNeuralNetwork
-from rhbp_core.msg import InputState, ActivationState
+from reinforcement_component.dqn_model import DQNModel
+from rhbp_core.msg import ActivationState
 from rhbp_core.srv import  GetActivation,GetActivationResponse
 import numpy
 
@@ -15,7 +15,7 @@ class RLComponent:
         self.is_model_init = False
         self.reward_list=[]
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation, self.get_activation_state_callback)
-        self.model = QLearningNeuralNetwork(self.name)
+        self.model = DQNModel(self.name)
         self.last_state = None
 
         self.number_outputs = -1

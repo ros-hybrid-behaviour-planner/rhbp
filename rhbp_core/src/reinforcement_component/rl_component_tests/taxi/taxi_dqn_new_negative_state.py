@@ -1,25 +1,8 @@
 #! /usr/bin/env python2
-'''
-Created on 07.12.2016
-
-@author: rieger, hrabia
-'''
-import time
-import unittest
-
 import rospy
-import rostest
-import roslaunch
-#from reinforcement_component.rl_component import RLComponent
-import gym
 import numpy
-import pandas
-import matplotlib.pyplot as plt
 from test_base import BaseTestSuite
 from rhbp_core.msg import InputState
-from rhbp_core.srv import GetActivation
-
-#from rhbp_core.src.reinforcement_component.rl_component_tests.taxi.dqn.test_base import BaseTestSuite
 
 PKG = 'knowledge_base'
 

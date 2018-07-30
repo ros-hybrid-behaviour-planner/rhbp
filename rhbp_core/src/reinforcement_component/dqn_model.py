@@ -15,18 +15,19 @@ import os
 from tensorflow.contrib import slim
 
 from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
-from rl_config import NNConfig, EvaluationConfig, SavingConfig
+from rl_config import NNConfig, EvaluationConfig, SavingConfig, DQNConfig, ExplorationConfig
 
 
 class DQNModel(ReinforcementAlgorithmBase):
     def __init__(self, name):
         super(DQNModel, self).__init__(name)
         # Set learning parameters
-        self.model_config = NNConfig()
+        self.model_config = DQNConfig()
+        self.nn_config = NNConfig()
         self.save_config = SavingConfig()
-        self.evaluation = Evaluation(self.save_config.model_path)
+        self.evaluation = Evaluation(self.model_folder)
         self.eval_config = EvaluationConfig()
-
+        self.exploration_config = ExplorationConfig()
         self.train_interval = self.model_config.train_interval
         self.pre_train_steps = self.model_config.pre_train  # Number of steps used before training updates begin.
         self.q_net = None
@@ -139,12 +140,15 @@ class DQNModel(ReinforcementAlgorithmBase):
         :param tuple: contains the last state, new state, last action and the resulting reward
         :return: 
         """
+        # save rewards
+        self.rewards_over_time.append(tuple[3])
+        # check if evaluation plots should be saved
         if self.counter % self.eval_config.eval_step_interval == 1:
             if self.eval_config.plot_loss:
-                self.evaluation.plot_losses()
+                self.evaluation.plot_losses(self.loss_over_time)
             if self.eval_config.plot_rewards:
-                self.evaluation.plot_rewards()
-
+                self.evaluation.plot_rewards(self.rewards_over_time)
+        # check if model should be saved
         if self.counter % self.save_config.steps_save == 1 and self.save_config.save:
             self.save_model()
         # save the input tuple in buffer
@@ -153,7 +157,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         # get fields from the input tuple
         self.counter += 1
         if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1 \
-                or self.counter > self.exploration_config.stop_training:
+                or self.counter > self.model_config.stop_training:
             return
         # We use Double-DQN training algorithm
         # get sample of buffer for training
@@ -173,7 +177,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         targetQ = trainBatch[:, 2] + (
             self.model_config.y * doubleQ)  # TODO add maybe here again doubleQ * endmultiplier. Nonte:works without as well
         # update the q-network model by giving the target-q-values, the input states and the chosen actions
-        _, loss = self.sess.run(self.q_net.updateModel, self.q_net.loss,
+        _, loss = self.sess.run([self.q_net.updateModel, self.q_net.loss],
                                 feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 0]), self.q_net.nextQ: targetQ,
                                            self.q_net.keep_per: 1.0, self.q_net.actions: trainBatch[:, 1]})
         # save the loss function value (squared error from q and targete value)
@@ -213,8 +217,8 @@ class Q_Network(object):
     """
 
     def __init__(self, number_inputs, number_outputs, name="q"):
+        self.nn_config = NNConfig()
         self.name = name
-        tf.set_random_seed(0)
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
         self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
@@ -229,8 +233,8 @@ class Q_Network(object):
         # self.hidden = slim.dropout(self.hidden, self.keep_per)
         # layer for computing the q_values
 
-        self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=tf.nn.relu,
-                                          biases_initializer=tf.random_uniform_initializer())
+        self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=None,
+                                          biases_initializer=None)
         # prediction is highest q-value
         self.predict = tf.argmax(self.Q_out, 1)
         # compute the softmax activations.
@@ -244,8 +248,8 @@ class Q_Network(object):
         self.nextQ = tf.placeholder(shape=[None], dtype=tf.float32)
         self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Q))
         # updating the weights of the model to minimize the loss function
-        # trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
-        trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
+        trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
+        #trainer = tf.train.AdamOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
         self.updateModel = trainer.minimize(self.loss)
 
 
@@ -261,8 +265,6 @@ class ExperienceBuffer(object):
         self.buffer = []
         self.buffer_size = buffer_size
         self.counter = 0
-        self.print_steps = False
-        self.sim_counter = 0
 
     def reset(self):
         """
@@ -301,23 +303,26 @@ class Evaluation(object):
 
     def __init__(self, model_folder):
         self.model_folder = model_folder
+        self.eval_config = EvaluationConfig()
 
-    def plot_rewards(self):
+    def plot_rewards(self, rewards_over_time):
         """
         plots and saves the rewards over time and the mean rewards
         :return: 
         """
         if not os.path.exists(self.model_folder):
             os.makedirs(self.model_folder)
-        df = pd.DataFrame(numpy.array(self.rewards_over_time), columns=["rewards"])
+        if len(rewards_over_time) == 0:
+            return
+        df = pd.DataFrame(numpy.array(rewards_over_time), columns=["rewards"])
         df.plot(style="o")
         plt.xlabel("steps")
         plt.savefig(self.model_folder + "/rewards_plot.png")
         plt.close()
         means = []
         batch = self.eval_config.eval_mean_size
-        for i in range(0, len(self.rewards_over_time) / batch):
-            means.append(numpy.mean(numpy.array(self.rewards_over_time)[batch * i:batch * (i + 1)]))
+        for i in range(0, len(rewards_over_time) / batch):
+            means.append(numpy.mean(numpy.array(rewards_over_time)[batch * i:batch * (i + 1)]))
         if len(means) == 0:
             return
         df = pd.DataFrame(means, columns=["mean_rewards"])
@@ -326,14 +331,16 @@ class Evaluation(object):
         plt.savefig(self.model_folder + "/means_rewards_plot.png")
         plt.close()
 
-    def plot_losses(self):
+    def plot_losses(self, loss_over_time):
         """
         plots and saves the loss error function. 
         :return: 
         """
         if not os.path.exists(self.model_folder):
             os.makedirs(self.model_folder)
-        df = pd.DataFrame(numpy.array(self.loss_over_time), columns=["loss error"])
+        if len(loss_over_time) == 0:
+            return
+        df = pd.DataFrame(numpy.array(loss_over_time), columns=["loss error"])
         df.plot(legend=False)
         plt.xlabel("training steps")
         plt.ylabel("loss error")
@@ -341,8 +348,8 @@ class Evaluation(object):
         plt.close()
         means = []
         batch = self.eval_config.eval_mean_size
-        for i in range(0, len(self.loss_over_time) / batch):
-            means.append(numpy.mean(numpy.array(self.loss_over_time)[batch * i:batch * (i + 1)]))
+        for i in range(0, len(loss_over_time) / batch):
+            means.append(numpy.mean(numpy.array(loss_over_time)[batch * i:batch * (i + 1)]))
         if len(means) == 0:
             return
         df = pd.DataFrame(means, columns=["mean loss error"])
