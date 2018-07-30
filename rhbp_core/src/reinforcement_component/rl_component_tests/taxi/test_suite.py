@@ -1,55 +1,70 @@
-"""
-this file evaluates the diffeerent algorithm , exploration techniques and action selections
-"""
+import matplotlib
+
+
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
+import numpy
+import pandas as pd
+
+from dqn.taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
     TaxiTestAllConditionsNew
-from reinforcement_component.rl_component_tests.taxi.dqn.taxi_dqn_normal import TaxiTestNormal, TaxiTestConditions, \
+from dqn.taxi_dqn_normal import TaxiTestNormal, TaxiTestConditions, \
     TaxiTestDecoded
-from src.rcs_ros_bridge.src.experiments_analyses import ExperimentAnalysis
-
-
-def plot_for_different_seed(num_range,env,threshold,should_print):
-    tuples = []
-    for i in range(1, num_range+1):
-        tuple = env.start_env(num_prints=100, threshold=threshold, random_seed=i, should_print=should_print)
-        tuples.append(tuple)
-    for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+" + seed= "+str(index))
-    plt.xlabel("time in steps")
-    plt.ylabel("reward")
-    plt.legend(loc=4)
-    plt.show()
-    for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+" + seed= "+str(index))
-    plt.xlabel("time in episodes")
-    plt.ylabel("reward")
-    plt.legend(loc=4)
-    plt.show()
 
 def compare_classes(envs,num_range,threshold,should_print):
+    """
+    runs the given environments and plots the results
+    :param envs: list of environments
+    :param num_range: number of times each environment should be run
+    :param threshold: stop environment until the average results reach this threshold
+    :param should_print: True if each step should be printed
+    :return: 
+    """
     tuples = []
+    df = pd.DataFrame(columns=["reward","steps","episodes","name"])
+    # start environments save results
     for num_env in range(len(envs)):
         for i in range(1, num_range+1):
             tuple = envs[num_env].start_env(num_prints=100, threshold=threshold, random_seed=i, should_print=should_print)
+            tuple[:,0] = numpy.round(tuple[:,0].astype(numpy.double).astype(numpy.int),0)
+
             tuples.append(tuple)
-
-    for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+"+ seed= "+str(index/len(envs)))
-        plt.plot(tuples[index][:, 1], tuples[index][:, 0], marker="o",
-                 label=str(tuples[index][0, 3]) + "+ seed= " + str(index / len(envs)))
-    plt.xlabel("time in steps")
+            df_new = pd.DataFrame(tuple,columns=["reward","steps","episodes","name"])
+            df = df.append(df_new)
+    # uncomment for reading data from a csv and plotting them
+    """ 
+    df = pd.read_csv("experiment_taxi_df"+str(0)+".csv",names=["reward","steps","episodes","name"])
+    df = df[df.name != "dqn0"]
+    df = df[df.name != "dqn1"]
+    """
+    df["reward"] = df["reward"].astype(int)
+    df["episodes"] = df["episodes"].astype(int)
+    df["reward"]=df["reward"].astype(str).astype(int)
+    df["steps"] = df["steps"].astype(str).astype(int)
+    df["episodes"] = df["episodes"].astype(str).astype(int)
+    df = df[df.episodes % 100 == 0]
+    df = df.drop("steps",1)
+    change_names_dict = {"dqn0":"dqn","test_agentTaxiTestAllConditionsNew0":"Hot_State_Encoding_Conditions","test_agentTaxiTestDecoded0":"Variable_Encoding","test_agentTaxiTestNormal0":"Hot_state_Encoding","test_agentTaxiTestDecodedCond0":"Variable_Encoding_Conditions","rhbp_variable_encoding":"RHBP_Variable_Encoding","taxi_rhbp":"RHBP_Hot_State_Encoding"}
+    df = df.replace({"name":change_names_dict})
+    ax = None
+    for algorithm in df.name.unique():
+        grouped_df = df.groupby(["name"]).get_group(algorithm).groupby("episodes")
+        average_df = grouped_df.mean()
+        std_df = grouped_df.std()["reward"].values.tolist()
+        unstack = average_df.unstack()
+        average_df=average_df.rename(index=str,columns={"reward":algorithm})
+        if ax is None:
+            ax = average_df.plot(legend=True, marker="o", yerr=std_df)
+            ax.legend()
+        else:
+            ax = average_df.plot(legend=True, marker="o", yerr=std_df,ax=ax)
+            ax.legend()
+    plt.xticks(numpy.arange(0,101,10), numpy.arange(0,10001,1000))
+    plt.legend(loc=0)
     plt.ylabel("reward")
-    plt.legend(loc=4)
-    plt.show()
-    for index in range(len(tuples)):
-        plt.plot(tuples[index][:, 2], tuples[index][:, 0], marker="o", label=str(tuples[index][0,3])+"+ seed= "+str(index/len(envs)))
-    plt.xlabel("time in episodes")
-    plt.ylabel("reward")
-    plt.legend(loc=4)
-    plt.show()
-
+    print("plotted")
+    plt.savefig("experiment_taxi_graph_episodes.png")
 
 if __name__ == '__main__':
     dqn = 0
@@ -57,9 +72,7 @@ if __name__ == '__main__':
     filename_goals = "../../../../../../../../../.ros/goal_experiment_results.csv"
     filename = "../../../../../../../../../.ros/experiment_results.csv"
 
-    #an = ExperimentAnalysis(filename=filename,filename_goals=filename_goals)
-    #an.plot_sequences(start=334,min_num=10)
-    #an.plot_left_over_time(start=64)
+    filename = "taxi_experiment_results.csv"
 
     test_case_normal = TaxiTestNormal(algorithm=dqn)
 
@@ -76,8 +89,7 @@ if __name__ == '__main__':
     test_case_new_cond = TaxiTestConditionsNew(algorithm=dqn)
 
     test_case_new_all_cond = TaxiTestAllConditionsNew(algorithm=dqn)
-    #plot_for_different_seed(4,test_case,0,False)
-    #plot_for_different_seed(5, test_case_cond, 0, False)
-    plot_for_different_seed(5, test_case_decoded, 0, True)
-    #compare_classes([test_case_normal,test_case_cond,test_case_normal_q,test_case_cond_q,test_case_decoded#
-    #                 ],1,0,False)
+
+    test_case_decoded_cond = TaxiTestDecodedCond(algorithm=dqn)
+
+    compare_classes([test_case_new_all_cond],1,40,True)
