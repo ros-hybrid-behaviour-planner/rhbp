@@ -1,15 +1,9 @@
-from q_learning_model import QLearningNeuralNetwork
 import rospy
 
 from reinforcement_component.dqn_model import DQNModel
 from rhbp_core.msg import ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
-
-
-class LearningAlgorithm(object):
-    DQN = "DQN"
-    QLearning = "QLearning"
 
 
 class RLComponent:
@@ -20,13 +14,7 @@ class RLComponent:
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation,
                                               self._get_activation_state_callback)
         # choose appropriate model
-        if algorithm == 0:
-            self.model = DQNModel(self.name, pre_train)
-        elif algorithm == 1:
-            self.model = QLearningNeuralNetwork(self.name)
-        else:
-            # in case wrong number always use dqn
-            self.model = DQNModel(self.name, pre_train)
+        self.model = DQNModel(self.name, pre_train)
 
         # save the last state
         self.last_state = None

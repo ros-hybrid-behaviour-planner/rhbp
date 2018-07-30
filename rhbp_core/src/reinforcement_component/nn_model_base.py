@@ -1,21 +1,16 @@
+import rospy
 import tensorflow as tf
 import os
-
-from reinforcement_component.rl_config import NNConfig
+from reinforcement_component.rl_config import SavingConfig
 
 
 class ReinforcementAlgorithmBase(object):
     def __init__(self, name):
         # paths for saving the models
-        self.conf = NNConfig()
-
-        self.model_path = self.conf.model_path + name + '-1000.meta'
-        self.model_folder = self.conf.model_directory
+        self.save_conf = SavingConfig()
+        self.model_path = self.save_conf.model_path + name + '-1000.meta'
+        self.model_folder = self.save_conf.model_directory
         self.name = name
-        # dimensions
-        self.num_inputs = 0
-        self.num_outputs = 0
-        self.num_hl = 0
         # model variables
         self.Qout = None
         self.predict = None
@@ -36,10 +31,7 @@ class ReinforcementAlgorithmBase(object):
         model_exists = self.check_if_model_exists(num_inputs, num_outputs)
 
         if model_exists:
-            self.load_model(num_inputs, num_outputs)  # TODO check if loaded model is still valid for in and output
-            # todo CHECK THAT IN THE BEGINNING MIGHT NOT ALL BEHAVIORS AND INPUTS
-            # todo DIRECTLY INITIALIZED. DONT PUT MODEL AWAY
-            # todo maybe save one model for each input/output number
+            self.load_model(num_inputs, num_outputs)
         else:
             self.initialize_model(num_inputs, num_outputs)
 
@@ -51,9 +43,10 @@ class ReinforcementAlgorithmBase(object):
         check if the model exists
         :return: True if the model is saved. False otherwise
         """
-        self.model_path = 'models/' + str(num_inputs) + '/' + str(num_outputs) + '/rl-model' + self.name + "_" + str(
+        self.model_path = 'models/' + str(num_inputs) + '/' + str(
+            num_outputs) + '/' + self.name + '/rl-model' + self.name + "_" + str(
             num_inputs) + "_" + str(num_outputs) + '-1000.meta'
-        self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs)
+        self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs) + '/' + self.name
         try:
             model_exists = tf.train.checkpoint_exists(self.model_folder)
             return model_exists
@@ -76,18 +69,25 @@ class ReinforcementAlgorithmBase(object):
     def train_model(self, tuple):
         raise NotImplementedError
 
-    def save_model(self, num_inputs, num_outputs):
+    def save_model(self):
         """
         saves the model 
-        :param num_inputs: 
-        :param num_outputs: 
         :return: 
         """
-        if not self.conf.save:
+        if not self.save_conf.save:
             return
 
         if not os.path.exists(self.model_folder):
             os.makedirs(self.model_folder)
 
         # Save model weights to disk
-        self.saver.save(self.sess, self.model_path)
+        # cut out last 5 character as they would be twice
+        self.saver.save(self.sess, self.model_path[0:-5])
+
+        if self.save_conf.save_buffer:
+            self.save_buffer()
+
+        rospy.loginfo("model saved")
+
+    def save_buffer(self):
+        raise NotImplementedError
