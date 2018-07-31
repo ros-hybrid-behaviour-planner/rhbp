@@ -14,20 +14,22 @@ import itertools
 import time
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
-from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
+from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
+    RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, Activate
 from .behaviours import Behaviour
 from .goals import GoalProxy
-from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, create_valid_pddl_name
+from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
+    create_valid_pddl_name
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
 from reinforcement_component.rl_component import RLComponent
 import utils.rhbp_logging
+
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
 
 class Manager(object):
-
     USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE = False
 
     MANAGER_DISCOVERY_TOPIC = "rhbp_discover"
@@ -40,12 +42,15 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, activated = True, use_only_running_behaviors_for_interRuptible = USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, activated=True,
+                 use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
+                 **kwargs):
         '''
         Constructor
         '''
-        self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
-        self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
+        self._prefix = kwargs[
+            "prefix"] if "prefix" in kwargs else ""  # if you have multiple planners in the same ROS environment use this to distinguish between the instances
+        self._sensors = []  # TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
         self._activeGoals = []  # pre-computed (in step()) list of operational goals
         self._behaviours = []
@@ -80,9 +85,9 @@ class Manager(object):
             self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix, filename="threshold", extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
 
-        self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
+        self.__replanningNeeded = False  # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
-        self.__sensorChanges = {} # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
+        self.__sensorChanges = {}  # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
         self._plan = {}
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
@@ -91,7 +96,7 @@ class Manager(object):
 
         # create activation algorithm
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
-        algorithm_name = "reinforcement" # TODO TODO change to make it with reinforcement
+        algorithm_name = "reinforcement"  # TODO TODO change to make it with reinforcement
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
         # trigger update once in order to initialize algorithm properly
@@ -113,14 +118,17 @@ class Manager(object):
         self.__addGoalService = rospy.Service(self._service_prefix + 'AddGoal', AddGoal, self.__add_goal_callback)
         self.__removeBehaviourService = rospy.Service(self._service_prefix + 'RemoveBehaviour', RemoveBehaviour,
                                                       self.__remove_behaviour_callback)
-        self.__removeGoalService = rospy.Service(self._service_prefix + 'RemoveGoal', RemoveGoal, self.__remove_goal_callback)
-        self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart, self.__manual_start_callback)
+        self.__removeGoalService = rospy.Service(self._service_prefix + 'RemoveGoal', RemoveGoal,
+                                                 self.__remove_goal_callback)
+        self.__manualStartService = rospy.Service(self._service_prefix + 'ForceStart', ForceStart,
+                                                  self.__manual_start_callback)
         self.__pauseService = rospy.Service(self._service_prefix + 'Pause', Empty, self.__pause_callback)
         self.__resumeService = rospy.Service(self._service_prefix + 'Resume', Empty, self.__resume_callback)
         self.__statusPublisher = rospy.Publisher(self._service_prefix + 'Planner/plannerStatus', PlannerStatus,
                                                  queue_size=1, latch=True)
 
-        self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
+        self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo,
+                                              queue_size=1)
 
     def unregister(self):
         """
@@ -152,7 +160,7 @@ class Manager(object):
         behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in self._activeBehaviours]
         self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in self._activeGoals}
         pddl = PDDL()
-        #Get relevant domain information from behaviour pddls
+        # Get relevant domain information from behaviour pddls
         for actionPDDL, statePDDL in behaviourPDDLs:
             pddl.statement += actionPDDL.statement
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
@@ -167,8 +175,8 @@ class Manager(object):
             pddl.functions = pddl.functions.union(actionPDDL.functions)
             pddl.functions = pddl.functions.union(statePDDL.functions)
         domainPDDLString = "(define (domain {0})\n".format(self._getDomainName())
-        #Update requirements if necessary
-        #Actually :fluents could just be :numeric-fluents, but this is not accepted by metric-ff
+        # Update requirements if necessary
+        # Actually :fluents could just be :numeric-fluents, but this is not accepted by metric-ff
         domainPDDLString += "(:requirements :strips :adl :equality :negation :conditional-effects :fluents)\n"
         domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
@@ -184,48 +192,53 @@ class Manager(object):
         mergedStatePDDL = init_missing_functions(pddl, mergedStatePDDL)
 
         # filter out negative predicates. FF can't handle them!
-        statePDDL = PDDL(statement = "\n\t\t".join(
-            filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
-        )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
+        statePDDL = PDDL(statement="\n\t\t".join(
+            filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None,
+                   tokenizePDDL(mergedStatePDDL.statement)))
+        )  # if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
         if self._create_log_files:
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename="pddl{0}Domain".format(self._stepCounter), extension=".pddl" )
+            domainLog = LogFileWriter(path=self.__log_file_path_prefix,
+                                      filename="pddl{0}Domain".format(self._stepCounter), extension=".pddl")
             domainLog.write(domainPDDLString)
 
         # compute changes
         self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
         self.__previousStatePDDL = statePDDL
         return domainPDDLString
-    
+
     def _create_problem_pddl(self, goals):
         '''
         This method creates the problem PDDL for a given set of goals.
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
         '''
-        goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(self._getDomainName(), self.__previousStatePDDL.statement) # at this point the "previous" is the current state PDDL
+        goalConditions = (self.__goalPDDLs[goal][0].statement for goal in
+                          goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+        problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(
+            self._getDomainName(),
+            self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(" ".join(goalConditions))
         problemPDDLString += ")\n"
 
         if self._create_log_files:
             filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
-            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
+            domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl")
             domainLog.write(problemPDDLString)
 
         return problemPDDLString
-    
+
     def _generate_priority_goal_sequences(self):
         '''
         This is a generator that generates goal sequences with descending priorities.
         It yields sorted lists with the most important goal at the front and strips away one element from the back at each iteration.
         After the most important goal was the only remaining element in the list the same process repeats for the second most important goals and so on.
         '''
-        sortedGoals = sorted(self._activeGoals, key=lambda x: x.priority, reverse = True)
+        sortedGoals = sorted(self._activeGoals, key=lambda x: x.priority, reverse=True)
         numElements = len(sortedGoals)
         for i in xrange(0, numElements, 1):
             for j in xrange(numElements, i, -1):
-                yield sortedGoals[i : j]
-    
+                yield sortedGoals[i: j]
+
     def _plan_if_necessary(self):
         '''
         this method plans using the symbolic planner it it is required to do so.
@@ -238,9 +251,9 @@ class Manager(object):
         '''
 
         if rospy.get_param("~planBias", 1.0) == 0.0:
-            return # return if planner is disabled
+            return  # return if planner is disabled
 
-        domainPDDL = self._fetchPDDL() # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
+        domainPDDL = self._fetchPDDL()  # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensorName, indicator in self.__sensorChanges.iteritems():
@@ -263,21 +276,31 @@ class Manager(object):
         # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
         if self._plan:
             for behaviour in self.__executedBehaviours:
-                if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
+                if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in [name for
+                                                                                                              index, name
+                                                                                                              in
+                                                                                                              self._plan[
+                                                                                                                  "actions"].iteritems()
+                                                                                                              if
+                                                                                                              index >= self._planExecutionIndex]:
                     unexpectedBehaviourFinished = True  # it was unexpected
                     break
-            if not unexpectedBehaviourFinished: # if we found a behaviour that executed that was not part of the plan (and not flagged independentromPlan) we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
-                for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())): # walk along the remaining plan
-                    for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
-                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:  # inspect the behaviour at the current index of the plan
-                            if self._planExecutionIndex == index: # if it was a planned behaviour and it finished
+            if not unexpectedBehaviourFinished:  # if we found a behaviour that executed that was not part of the plan (and not flagged independentromPlan) we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
+                for index in filter(lambda x: x >= self._planExecutionIndex,
+                                    sorted(self._plan["actions"].keys())):  # walk along the remaining plan
+                    for behaviour in self.__executedBehaviours:  # only those may be finished. the others were not even running
+                        if behaviour.name == self._plan["actions"][
+                            index] and behaviour.justFinished:  # inspect the behaviour at the current index of the plan
+                            if self._planExecutionIndex == index:  # if it was a planned behaviour and it finished
                                 self._planExecutionIndex += 1  # we are one step ahead in our plan
                             # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
                             elif not behaviour.independentFromPlanner:
                                 unexpectedBehaviourFinished = True  # it was unexpected
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
-            rhbplog.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
+            rhbplog.loginfo(
+                "### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s",
+                self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
             # now we need to make the best of our planning problem:
             # In cases where the full set of goals can't be reached because the planner does not find a solution a reduced set should be used.
             # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
@@ -297,10 +320,12 @@ class Manager(object):
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
                 except Exception as e:
                     rhbplog.logerr("PLANNER ERROR: %s", e)
-                    self.__replanningNeeded = True # in case of planning exceptions try again next iteration
+                    self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
         else:
-            rhbplog.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
-    
+            rhbplog.loginfo(
+                "### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s",
+                self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
+
     def send_discovery(self):
         """
         Send manager/planner discovery message
@@ -310,17 +335,6 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
-    def behaviour_to_index(self,name):
-        num = 0
-        for b in self._behaviours:
-            if b.name == name:
-                return num
-            num += 1
-        return None
-
-    def reset_step_counter(self):
-        self._stepCounter=0
-        numpy.random.seed(0)
     def step(self):
         if (self.pause_counter > 0) or (not self.__activated):
             return
@@ -331,7 +345,7 @@ class Manager(object):
         self.send_discovery()
 
         # initialize the rl model in the first step
-        #if not self.rl_component_initialized:
+        # if not self.rl_component_initialized:
         #    self.rl_component.start_learning()
         #    self.rl_component_initialized = True
         with self._step_lock:
@@ -351,38 +365,11 @@ class Manager(object):
             rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
             currently_influenced_sensors = set()
-            """
-            # random selection for exploration
-            random_chosen = False
-            #print(self.counter)
-            self.epsilon = 1. / ((self._stepCounter / 50) + 10)
-            random_value = numpy.random.rand(1)
-            #print(self._stepCounter,self.counter, self.epsilon,random_value,random_value<self.epsilon)
-            if  random_value < self.epsilon:
-                num=len(self._behaviours)
-                if num == 0:
-                    return
-                else:
-                    best_action = numpy.random.randint(len(self._behaviours))
-                #print(self._stepCounter,"chose random action ",best_action)
-                random_chosen=True
-                # if random chosen number is not executalbe, dont choose is
-                if not self._behaviours[best_action].executable:
-                    random_chosen = False
-            """
-            sorted_behaviour_list = sorted(self._behaviours, key = lambda x: x.activation, reverse = True)
 
+            sorted_behaviour_list = sorted(self._behaviours, key=lambda x: x.activation, reverse=True)
             for behaviour in sorted_behaviour_list:
-                # skip not randomly chosen actions
-                """
-                if random_chosen:
-                    if not best_action == self.behaviour_to_index(behaviour.name):
-                        if behaviour.isExecuting:
-                            self._stop_behaviour(behaviour, True)
-                        continue
-                """
                 ### now comes a series of tests that a behaviour must pass in order to get started ###
-                if not behaviour.active and not behaviour.manualStart: # it must be active
+                if not behaviour.active and not behaviour.manualStart:  # it must be active
                     rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
                     continue
                 # Behaviour is not already running and is not manually activated
@@ -422,12 +409,14 @@ class Manager(object):
                     rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
                     continue
                 if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
-                    rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
+                    rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)",
+                                    behaviour.name, behaviour.activation, self._activationThreshold)
                     continue
 
                 currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(
+                    behaviour, currently_influenced_sensors)
 
                 if behaviour_is_interferring_others:
                     continue
@@ -439,7 +428,8 @@ class Manager(object):
                 elif self.__max_parallel_behaviours > 0 and \
                                 (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
                                 >= self.__max_parallel_behaviours:
-                    rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
+                    rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS",
+                                     behaviour.name)
                     continue
 
                 ### if the behaviour got here it really is ready to be started ###
@@ -453,7 +443,7 @@ class Manager(object):
                 rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
             activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
-            activation_threshold_decay = 1.0 # TODO delete or include in rospy param
+            activation_threshold_decay = 1.0  # TODO delete or include in rospy param
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
             # Reduce or increase the activation threshold based on executed and started behaviours
@@ -571,7 +561,7 @@ class Manager(object):
         :param currently_influenced_sensors: list of the currently influenced sensors, will be updated if necessary
         :return: tuple(True if this behaviour is interfering and this cannot be resolved, maybe updated currently_influenced_sensors)
         """
-        #TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
+        # TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
 
         interfering_correlations = currently_influenced_sensors.intersection(
             set([item.get_pddl_effect_name() for item in behaviour.correlations]))
@@ -601,9 +591,10 @@ class Manager(object):
             if set(stoppable_behaviours) == set(already_running_behaviours_related_to_conflict):
 
                 rhbplog.loginfo("%s has conflicting correlations with behaviours %s (%s) that can be solved",
-                                behaviour.name, already_running_behaviours_related_to_conflict, interfering_correlations)
+                                behaviour.name, already_running_behaviours_related_to_conflict,
+                                interfering_correlations)
 
-                for conflictor in stoppable_behaviours: # stop another behaviour in order to resolve the conflict
+                for conflictor in stoppable_behaviours:  # stop another behaviour in order to resolve the conflict
                     rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s",
                                     behaviour.name, conflictor.name)
 
@@ -627,7 +618,8 @@ class Manager(object):
         """
         # TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
         currently_influenced_sensors = set(list(
-            itertools.chain.from_iterable([[item.get_pddl_effect_name() for item in x.correlations] for x in self.__executedBehaviours])))
+            itertools.chain.from_iterable(
+                [[item.get_pddl_effect_name() for item in x.correlations] for x in self.__executedBehaviours])))
         rhbplog.loginfo("currently influenced sensors: %s", currently_influenced_sensors)
         return currently_influenced_sensors
 
@@ -642,7 +634,8 @@ class Manager(object):
         successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
         plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
         situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
-        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay", 0.9)
+        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay",
+                                                                                                 0.9)
         self.activation_algorithm.update_config(situation_bias=situation_bias, plan_bias=plan_bias,
                                                 conflictor_bias=conflictor_bias, goal_bias=goal_bias,
                                                 successor_bias=successor_bias, predecessor_bias=predecessor_bias,
@@ -661,13 +654,14 @@ class Manager(object):
             rhbplog.logwarn("Tried to stop already stopped behaviour %s", behaviour.name)
         rhbplog.logdebug("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
 
-    def add_goal(self,goal):
+    def add_goal(self, goal):
         '''
         :param goal: The new goal
         :type goal: AbstractGoalRepresentation
         '''
         with self._step_lock:
-            self._goals = filter(lambda x: x.name != goal.name, self._goals) # kick out existing goals with the same name.
+            self._goals = filter(lambda x: x.name != goal.name,
+                                 self._goals)  # kick out existing goals with the same name.
             self._goals.append(goal)
             rhbplog.loginfo("A goal with name %s registered", goal.name)
             self.__replanningNeeded = True
@@ -690,17 +684,19 @@ class Manager(object):
         :type behaviour: Behaviour
         """
         with self._step_lock:
-            self._behaviours = filter(lambda x: x.name != behaviour.name, self._behaviours) # kick out existing behaviours with the same name.
+            self._behaviours = filter(lambda x: x.name != behaviour.name,
+                                      self._behaviours)  # kick out existing behaviours with the same name.
 
             behaviour.manager = self
             self._behaviours.append(behaviour)
-            rhbplog.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,behaviour.requires_execution_steps)
+            rhbplog.loginfo("A behaviour with name %s registered(steps=%r)", behaviour.name,
+                            behaviour.requires_execution_steps)
             self.__replanningNeeded = True
 
     def remove_goal(self, goal_name):
         with self._step_lock:
             self._goals = [g for g in self._goals if
-                                g.name != goal_name]  # kick out existing goals with that name.
+                           g.name != goal_name]  # kick out existing goals with that name.
             self.__replanningNeeded = True
 
     def remove_behaviour(self, behaviour_name):
@@ -715,9 +711,10 @@ class Manager(object):
         :param request: service request
         :type request: AddBehaviour
         """
-        behaviour = Behaviour(name = request.name, planner_prefix=self._prefix, independentFromPlanner = request.independentFromPlanner,
-                              requires_execution_steps = request.requiresExecutionSteps,
-                              create_log_files = self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix)
+        behaviour = Behaviour(name=request.name, planner_prefix=self._prefix,
+                              independentFromPlanner=request.independentFromPlanner,
+                              requires_execution_steps=request.requiresExecutionSteps,
+                              create_log_files=self._create_log_files, log_file_path_prefix=self.__log_file_path_prefix)
         self.add_behaviour(behaviour=behaviour)
         return AddBehaviourResponse()
 
@@ -747,14 +744,14 @@ class Manager(object):
     def __remove_behaviour_callback(self, request):
         self.remove_behaviour(behaviour_name=request.name)
         return RemoveBehaviourResponse()
-    
+
     def __manual_start_callback(self, request):
         for behaviour in self._behaviours:
             if behaviour.name == request.name:
                 behaviour.manualStart = request.forceStart
                 break
         return ForceStartResponse()
-    
+
     @property
     def activationThreshold(self):
         return self._activationThreshold
@@ -770,23 +767,23 @@ class Manager(object):
     @property
     def goals(self):
         return self._goals
-    
+
     @property
     def behaviours(self):
         return self._behaviours
-    
+
     @property
     def activeBehaviours(self):
         return self._activeBehaviours
-    
+
     @property
     def activeGoals(self):
         return self._activeGoals
-    
+
     @property
     def totalActivation(self):
         return self._totalActivation
-    
+
     @property
     def planExecutionIndex(self):
         return self._planExecutionIndex
@@ -794,7 +791,7 @@ class Manager(object):
     @property
     def activated(self):
         return self.__activated
-    
+
     @property
     def plan(self):
         if self._plan:
@@ -804,8 +801,8 @@ class Manager(object):
 
     def deactivate(self):
         self.__activated = False
-        #use while to avoid illegal state of non running behaviors in __executedBehaviors
-        while (len(self.__executedBehaviours)>0):
+        # use while to avoid illegal state of non running behaviors in __executedBehaviors
+        while (len(self.__executedBehaviours) > 0):
             behaviour = self.__executedBehaviours[0]
             self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
             behaviour.stop(True)

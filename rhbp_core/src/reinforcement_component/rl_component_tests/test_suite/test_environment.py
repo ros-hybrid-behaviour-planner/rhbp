@@ -1,6 +1,8 @@
+import random
 import time
 
 import numpy
+import pandas as pd
 
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.conditions import Condition
@@ -8,22 +10,17 @@ from behaviour_components.sensors import Sensor
 
 
 class TestBaseEnvironment(object):
-    # this class handels the communication with the environment and the rhbp components
     def __init__(self, env, manager, sensors):
         self.env = env
+        numpy.random.seed(0)
         self.manager = manager
         self.sensors = sensors
-        self.frequency = 0.005
+        self.frequency = 0.0002
         self.count = 0
         self.last_none = True
         self.manager.__activationDecay = 1.0
-
+        self.manager._activationThreshold = -1000.0
     def behaviour_to_index(self, name):
-        """
-        
-        :param name: 
-        :return: 
-        """
         num = 0
         for b in self.manager.behaviours:
             if b == name:
@@ -34,12 +31,8 @@ class TestBaseEnvironment(object):
     def start_simulation(self):
         while (True):
             time.sleep(self.frequency)
-            # print("dadadada")
             self.count += 1
 
-            # if self.count % 100 == 0:
-            # print(self.count)
-            # print(self.manager.behaviours)
             self.manager.step()
 
             executed_behaviors = self.manager.executedBehaviours
@@ -97,6 +90,7 @@ class TestFrozenLakeEnv(TestBaseEnvironment):
 class TestTaxiEnv(TestBaseEnvironment):
     def __init__(self, env, manager, sensors):
         super(TestTaxiEnv, self).__init__(env, manager, sensors)
+
         self.reward_sensor = sensors[5]
         self.sensor_row = sensors[0]
         self.sensor_col = sensors[1]
@@ -189,6 +183,7 @@ class BehaviorShell(BehaviourBase):
         print("init behavior", self.index)
 
     def do_step(self):
+        super(BehaviorShell, self).do_step()
         return
 
     def unregister(self, terminate_services=True):
@@ -268,7 +263,6 @@ class RewardSensor(Sensor):
         self.intervall = intervall
 
     def updates_evaluation(self, reward, bool, ignore=False):
-        # print("rewar dupdate")
         self.updates += 1
         if not ignore:
             self.reward += reward
@@ -280,5 +274,16 @@ class RewardSensor(Sensor):
                 print(self.updates, self.intervall, self.step, "average_rate:",
                       numpy.round(self.reward / float(self.step), 3), "last_rate:",
                       self.reward_last / float(self.step_last))
+                df = pd.DataFrame([[numpy.round(self.reward_last / float(self.step_last), 0), self.updates, self.step,
+                                    "taxi_rhbp_decoded"]])
+                self.write_data_frame(df)
                 self.reward_last = 0
                 self.step_last = 0
+
+    def write_data_frame(self, df):
+        num = random.randint(0, 6000000)
+        num = 0
+        filename = "experiment_taxi_df" + str(num) + ".csv"
+
+        with open(filename, "a") as myfile:
+            df.to_csv(myfile, header=False, index=False)

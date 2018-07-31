@@ -28,7 +28,6 @@ class RLComponent:
         :param request_msg: GetActivation 
         :return: 
         """
-
         try:
             request = request_msg.input_state
             self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
@@ -52,6 +51,7 @@ class RLComponent:
             })
             return GetActivationResponse(activation_state)
         except Exception as e:
+            print(e)
             rospy.logerr(e.message)
             return None
 

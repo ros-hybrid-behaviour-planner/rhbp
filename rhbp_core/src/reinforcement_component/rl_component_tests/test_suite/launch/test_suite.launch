@@ -20,11 +20,12 @@
         <arg name="agent_name" value="test_agent" />
         <arg name="sim" value="$(arg sim)" />
     </include>
+    <!--
     <include file="$(find rhbp_core)/src/reinforcement_component/rl_component_tests/test_suite/launch/manager_node.launch">
         <arg name="agent_name" value="test_agent" />
     </include>
 
-
+    -->
 
 
 

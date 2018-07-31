@@ -39,6 +39,7 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         :type msg: SimStart
         """
         self.environment_name = 'Taxi-v2'
+        #self.environment_name = 'Taxi-v2'
         self.init_environment(self.environment_name)
 
         self.locs = locs = [(0, 0), (0, 4), (4, 0), (4, 3)]
@@ -129,6 +130,7 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
                              conditions=[state_cond], priority=0,
                              plannerPrefix=self.prefix)
 
+
         # rewards and goals
         good_pick_off = Condition(reward_sensor,
                                   ThresholdActivator(thresholdValue=20))  # successful dropoff
@@ -151,7 +153,7 @@ class TaxiAgentRhbpUndecoded(RhbpAgentBase):
         the_goal4 = GoalBase(name="timestep_goal", permanent=True,
                              conditions=[timestep_action], priority=-1,
                              plannerPrefix=self.prefix)
-        # effects are irrelevant as they are not used by the rl component and the planer is not sued at all
+
         direct_to_goal_effect2 = Effect(sensor_name=good_pick_off.getFunctionNames()[0], indicator=1.0,
                                        sensor_type=float)  #
 

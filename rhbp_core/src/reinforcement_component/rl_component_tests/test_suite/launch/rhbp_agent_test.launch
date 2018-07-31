@@ -1,0 +1,12 @@
+<launch>
+    <arg name="agent_name" default="a1" />
+    <arg name="sim" default="0" />
+    <node pkg="rhbp_core" type="rhbp_agent_test.py"
+        name="rhbp_agent_$(arg agent_name)" output="screen"
+        >
+            <param name="agent_name" value="$(arg agent_name)" />
+            <param name="sim" value="$(arg sim)" />
+
+    </node>
+
+</launch>

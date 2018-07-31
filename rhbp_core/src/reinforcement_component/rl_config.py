@@ -105,3 +105,23 @@ class ExplorationConfig(object):
             self.anneling_steps = 300000  # steps until it reache endE
             # function that describes the stepDrop changing epsilon
             self.stepDrop = (self.startE - self.endE) / self.anneling_steps
+
+
+class TransitionConfig(object):
+    """
+    used to set parameter which set the transitioning from rhbp to the rl component
+    """
+
+    def __init__(self):
+        try:
+            self.use_wishes = rospy.get_param("~use_wishes", False)
+            self.use_true_values = rospy.get_param("~use_true_values", True)
+            self.max_activation = rospy.get_param("~max_activation", 1)
+            self.min_activation = rospy.get_param("~min_activation", -1)
+            self.weight_rl = rospy.get_param("~weight_rl", 1.0)
+        except Exception:
+            self.use_wishes = False
+            self.use_true_values = True
+            self.max_activation = 1
+            self.min_activation = -1
+            self.weight_rl = 1.0

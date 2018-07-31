@@ -1,7 +1,9 @@
 import tensorflow as tf
 import numpy
+import time
 
 from behaviour_components.sensors import EncodingConstants
+from reinforcement_component.rl_config import TransitionConfig
 from rhbp_core.msg import SensorValue
 
 
@@ -95,6 +97,7 @@ class InputStateTransformer:
 
     def __init__(self, manager):
         self._manager = manager
+        self.conf = TransitionConfig()
 
     def calculate_reward(self):
         """
@@ -102,8 +105,6 @@ class InputStateTransformer:
         a reward value. 
         :return: 
         """
-        # TODO think about better logic maybe
-        # todo use wishes instead of fulfillment
         reward_value = 0
         for goal in self._manager.activeGoals:
             goal_value = goal.fulfillment * goal.priority
@@ -139,18 +140,14 @@ class InputStateTransformer:
         this function uses the wishes and sensors to create the input vectors
         :return: input vector
         """
-
         # init input array with first row of zeros
         input_array = numpy.zeros([1, 1])
-
         # extend input array with the sensors from conditions/behaviours
         input_array, sensor_input = self.transform_behaviours(input_array)
         # extend input array with the sensors from goals
-        input_array = self.transform_goals(input_array, sensor_input)
-
+        input_array = self.transform_goals(sensor_input,input_array)
         # cut first dummy line
         input_array = input_array[1:]
-
         return input_array
 
     def transform_behaviours(self, input_array):
@@ -159,22 +156,20 @@ class InputStateTransformer:
         :param input_array: the input aray to be extended
         :return: the extended input array
         """
-        # todo let config decide if wish or true vlaues included
-        use_wishes = False
-        use_true_value = True
+        use_wishes = self.conf.use_wishes
+        use_true_value = self.conf.use_true_values
         # extend array with input vector from wishes
+        sensor_input = {}
+        # get sensor values from conditions via the behaviours
         for behaviour in self._manager.behaviours:
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             if use_wishes:
                 for wish in behaviour.wishes:
                     wish_row = numpy.array([wish.indicator]).reshape([1, 1])
                     input_array = numpy.concatenate([input_array, wish_row])
-        sensor_input = {}
-        # get sensor values from conditions via the behaviours
-        for behaviour in self._manager.behaviours:
             for sensor_value in behaviour.sensor_values:
                 if not sensor_input.has_key(sensor_value.name) and use_true_value:
-                    # encode or ignore the value regarding configuraiton in RLExtension
+                    # encode or ignore the value regarding configuration in RLExtension
                     if not sensor_value.include_in_rl:
                         continue
                     if sensor_value.encoding == EncodingConstants.HOT_STATE:
@@ -193,9 +188,8 @@ class InputStateTransformer:
         :param input_array: the inputs from the behaviour sensors
         :return: the updated input array. includes now the sensors of goals
         """
-        use_wishes = False
-        use_true_value = True
-        # todo let config decide if wish or true vlaues included
+        use_wishes = self.conf.use_wishes
+        use_true_value = self.conf.use_true_values
         # get sensors from goals
         for goal in self._manager._goals:
             for sensor_value in goal.sensor_values:
