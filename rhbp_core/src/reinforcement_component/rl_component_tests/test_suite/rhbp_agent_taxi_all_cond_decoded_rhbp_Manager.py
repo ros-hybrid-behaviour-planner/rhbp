@@ -3,15 +3,13 @@
 # it contains the agents variables, topics subscriber and publisher, as well as the regarding callback function
 # Although the job_execution process is start in this file
 from __future__ import division # force floating point division when using plain /
-from agent_modules_tests import *
-from behaviour_components.activators import BooleanActivator, StringActivator, ThresholdActivator, GreedyActivator, \
-    LinearActivator, EqualActivator
+from behaviour_components.activators import BooleanActivator, ThresholdActivator
 from behaviour_components.condition_elements import Effect
-from behaviour_components.conditions import Negation, Condition, MultiSensorCondition, Disjunction, Conjunction
+from behaviour_components.conditions import Negation, Condition, Disjunction, Conjunction
 from behaviour_components.sensors import *
-from behaviour_components.goals import OfflineGoal,GoalBase
-from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_base import RhbpAgentBase
-from rcs_ros_bridge.msg import SimStart,  GenericAction,PlayMode, Goals,Flags,Lines
+from behaviour_components.goals import GoalBase
+from rhbp_agent_base import RhbpAgentBase
+from rcs_ros_bridge.msg import SimStart
 
 import rospy
 
@@ -29,7 +27,6 @@ class TaxiAgentManagerAllRHBPDecoded(RhbpAgentBase):
         self.env.seed(0)
         state = self.env.reset()
         self.state_sensor.update(state)
-        # self.manager.step()
         print("init env in state", state)
         self.test_env.start_simulation()
 

@@ -38,11 +38,9 @@ class RLComponent:
             negative_states = request_msg.negative_states
             for state in negative_states:
                 self.save_request(state)
-
             # transform the input state and get activation
             transformed_input = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
             activations = self.model.feed_forward(transformed_input)
-
             # return the activation via the service
             activations = activations.tolist()[0]
             activation_state = ActivationState(**{
@@ -137,8 +135,11 @@ class RLComponent:
 
         self.number_outputs = num_outputs
 
+        self.last_state = None
+
         self.model.start_nn(num_inputs, num_outputs)
 
         self.reward_list = []
 
         self.is_model_init = True
+

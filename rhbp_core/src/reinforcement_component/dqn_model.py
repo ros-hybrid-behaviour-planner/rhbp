@@ -159,6 +159,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         if self.counter < self.pre_train_steps or self.counter % self.train_interval != 1 \
                 or self.counter > self.model_config.stop_training:
             return
+
         # We use Double-DQN training algorithm
         # get sample of buffer for training
         trainBatch = self.myBuffer.sample(self.model_config.batch_size)
@@ -185,7 +186,6 @@ class DQNModel(ReinforcementAlgorithmBase):
         # update the target network
         self.updateTarget(self.targetOps, self.sess)
         # save rewards and get new state
-
     def updateTargetGraph(self, tfVars, tau):
         """
         returns a list of operations coming from the trainable variables

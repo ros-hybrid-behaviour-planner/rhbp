@@ -174,7 +174,6 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         return current_activation_step
 
     def commit_behaviour_activation(self, ref_behaviour):
-
         activation = ref_behaviour.activation * self._activation_decay + ref_behaviour.current_activation_step
         if activation < 0.0:
             activation = 0.0
@@ -756,7 +755,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.min_activation = -100  # todo get from config
         # step counter is used for exploration
         self._step_counter = 0
-
+        # setting the activation decay.
+        self._activation_decay = self.config.activation_decay
         self.input_transformer = InputStateTransformer(manager)
         if self.weight_rl > 0.0:
             self.start_rl_class()
@@ -829,6 +829,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         is_correct, num_inputs, num_outputs, input_state, reward, last_action_index = self.check_if_input_state_correct()
         # if input state is incorect return
         if not is_correct:
+            print("not correctz")
             return
         # create an input state message for sending it to the rl_node
         input_state_msg = InputState()
@@ -900,6 +901,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         """
         # when rl has all influence only compute it.
         # todo take this out
+        """
         if self.weight_rl >= 1.0:
             try:
                 # TODO reduce factor
@@ -910,17 +912,26 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             except Exception as e:
                 print(e.message)
                 return 0
-
+        """
+        if self.weight_rl >1999:
+            print("d")
         else:  # otherwise use all influences
 
-            activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
-            activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
-            inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
-            activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
-            activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
-            inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
-            activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+            #activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
+            #activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
+            #inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
+            #activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
+            #activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
+            #inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
+            #activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
             rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
+            activation_precondition = 0
+            activation_goals = 0
+            inhibition_goals = 0
+            activation_predecessors = 0
+            activation_successors = 0
+            inhibition_conflictors = 0
+            activation_plan = 0
 
             rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
             rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
@@ -950,7 +961,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         """
         # include BaseActivation functions
         super(ReinforcementLearningActivationAlgorithm, self).update_config(**kwargs)
-
+        self._activation_decay = self.config.activation_decay
         num_actions = len(self._manager._behaviours)
         # if the rl activation is not used dont calculate the values and set all to zero
         if self.weight_rl <= 0:

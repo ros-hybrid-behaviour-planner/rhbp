@@ -114,14 +114,18 @@ class TransitionConfig(object):
 
     def __init__(self):
         try:
-            self.use_wishes = rospy.get_param("~use_wishes", False)
-            self.use_true_values = rospy.get_param("~use_true_values", True)
-            self.max_activation = rospy.get_param("~max_activation", 1)
-            self.min_activation = rospy.get_param("~min_activation", -1)
-            self.weight_rl = rospy.get_param("~weight_rl", 1.0)
+            self.use_wishes = rospy.get_param("~use_wishes", False)  # if the transformer should use wishes as input
+            self.use_true_values = rospy.get_param("~use_true_values",
+                                                   True)  # if the transformer should use conditions as input
+            self.max_activation = rospy.get_param("~max_activation", 1)  # maximal activation
+            self.min_activation = rospy.get_param("~min_activation", 0)  # minimal activation
+            self.weight_rl = rospy.get_param("~weight_rl", 1.0)  # weight of the rl component
+            self.activation_decay = rospy.get_param("~activation_decay",
+                                                    0.0)  # how much to way the current activation for the next activation step
         except Exception:
             self.use_wishes = False
             self.use_true_values = True
             self.max_activation = 1
-            self.min_activation = -1
+            self.min_activation = 0
             self.weight_rl = 1.0
+            self.activation_decay = 0.0

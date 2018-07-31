@@ -6,7 +6,7 @@ from behaviour_components.condition_elements import Effect
 from behaviour_components.conditions import Negation, Condition, Disjunction, Conjunction
 from behaviour_components.sensors import *
 from behaviour_components.goals import GoalBase
-from reinforcement_component.rl_component_tests.test_suite.rhbp_agent_base import RhbpAgentBase
+from rhbp_agent_base import RhbpAgentBase
 from rcs_ros_bridge.msg import SimStart
 
 import rospy
