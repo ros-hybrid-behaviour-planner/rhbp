@@ -51,6 +51,7 @@ class DelegationBehaviour(BehaviourBase):
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
         self._create_delegation_client(checking_prefix=checking_prefix)
+        self._delegation_conditions = []
         self._attempt_unsuccessful = False
 
     def _create_delegation_client(self, checking_prefix):
@@ -130,6 +131,8 @@ class DelegationBehaviour(BehaviourBase):
                 condition = create_condition_from_effect(effect=effect, sensor=sensor)
                 conditions.append(condition)
 
+        conditions.extend(self._delegation_conditions)
+
         return conditions
 
     def stop(self):
@@ -165,6 +168,15 @@ class DelegationBehaviour(BehaviourBase):
 
         super(DelegationBehaviour, self).add_effect(effect=effect)
         self._correlation_sensors[effect] = sensor
+
+    def add_condition_for_delegation(self, condition):
+        """
+        Adds this condition to the goal, that will be delegated
+
+        :param condition: a condition
+        """
+
+        self._delegation_conditions.append(condition)
 
 
 class DelegableBehaviour(DelegationBehaviour):
