@@ -249,7 +249,7 @@ class Q_Network(object):
         self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Q))
         # updating the weights of the model to minimize the loss function
         trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
-        #trainer = tf.train.AdamOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
+        # trainer = tf.train.AdamOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
         self.updateModel = trainer.minimize(self.loss)
 
 

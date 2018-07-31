@@ -16,11 +16,12 @@ class ExplorationStrategies(object):
     Therefore, with DQN as the model, but also for most other models, the e_greedy method with a pre_train phase is the most suiting
     exploration strategy.
     """
+
     def __init__(self):
         self.config = ExplorationConfig()
         self.epsilon = self.config.startE
 
-    def e_greedy_pre_train(self,counter, num_actions):
+    def e_greedy_pre_train(self, counter, num_actions):
         """
         this function chooses a random action, with a decreasing epsilon and a pretrain phase.
          In the pre train phase only random actions are choosen
@@ -37,7 +38,7 @@ class ExplorationStrategies(object):
             changed = True
         if self.epsilon > self.config.endE and counter > self.config.pre_train and num_actions > 0:
             self.epsilon -= self.config.stepDrop
-        #print("epsilon", self.epsilon,counter)
+        # print("epsilon", self.epsilon,counter)
         return changed, best_action
 
     def e_greedy(self, counter, num_actions):
@@ -59,7 +60,7 @@ class ExplorationStrategies(object):
             changed = True
         return changed, best_action
 
-    def random(self,num_actions):
+    def random(self, num_actions):
         """
         this function just chooses random actions
         :param num_actions:  number of possible actions
@@ -67,4 +68,4 @@ class ExplorationStrategies(object):
         """
         changed = True
         best_action = numpy.random.randint(num_actions)
-        return changed,best_action
+        return changed, best_action

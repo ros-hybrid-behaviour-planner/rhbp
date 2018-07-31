@@ -25,7 +25,7 @@ class RLComponent:
     def _get_activation_state_callback(self, request_msg):
         """
         answers the service and responds with the activations
-        :param request: GetActivation 
+        :param request_msg: GetActivation 
         :return: 
         """
 
@@ -55,11 +55,11 @@ class RLComponent:
             rospy.logerr(e.message)
             return None
 
-
-    def get_activation_state_test(self, request,negative_states=[]):
+    def get_activation_state_test(self, request, negative_states=[]):
         """
         uses same logic as the callback, but functions without a service. cann be called directly. used for testing
         :param request: GetActivation 
+        :param negative_states: not in use
         :return: 
         """
         try:
@@ -83,7 +83,6 @@ class RLComponent:
             })
             return activation_state
         except Exception as e:
-            print(e)
             rospy.logerr(e.message)
             return None
 
