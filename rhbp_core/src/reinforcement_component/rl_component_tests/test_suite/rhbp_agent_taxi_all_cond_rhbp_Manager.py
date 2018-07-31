@@ -29,7 +29,6 @@ class TaxiAgentManagerAllRHBP(RhbpAgentBase):
         self.env.seed(0)
         state = self.env.reset()
         self.state_sensor.update(state)
-        # self.manager.step()
         print("init env in state", state)
         self.test_env.start_simulation()
 
@@ -49,7 +48,6 @@ class TaxiAgentManagerAllRHBP(RhbpAgentBase):
         :type msg: SimStart
         """
         self.environment_name = 'Taxi-v2'
-        #self.environment_name = 'Taxi-v2'
         self.init_environment(self.environment_name)
 
 

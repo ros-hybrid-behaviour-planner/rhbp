@@ -1,16 +1,11 @@
 import matplotlib
-import rospy
-
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 import numpy
 import pandas as pd
-
-from taxi_dqn_new_negative_state import TaxiTestConditionsNew, \
-    TaxiTestAllConditionsNew
-from taxi_dqn_normal import TaxiTestNormal, TaxiTestConditions, \
-    TaxiTestDecoded, TaxiTestDecodedCond
+from taxi_dqn_new_negative_state import TaxiTestAllConditionsNew
+from taxi_dqn_normal import TaxiTestNormal, TaxiTestDecoded, TaxiTestDecodedCond
 
 
 def compare_classes(envs, num_range, threshold, should_print):
@@ -34,6 +29,7 @@ def compare_classes(envs, num_range, threshold, should_print):
             tuples.append(tuple)
             df_new = pd.DataFrame(tuple, columns=["reward", "steps", "episodes", "name"])
             df = df.append(df_new)
+        df.to_csv("experiment_taxi_df0.csv", index=False, header=False)
     # uncomment for reading data from a csv and plotting them
     """ 
     df = pd.read_csv("experiment_taxi_df"+str(0)+".csv",names=["reward","steps","episodes","name"])
@@ -61,7 +57,7 @@ def compare_classes(envs, num_range, threshold, should_print):
         grouped_df = df.groupby(["name"]).get_group(algorithm).groupby("episodes")
         average_df = grouped_df.mean()
         std_df = grouped_df.std()["reward"].values.tolist()
-        unstack = average_df.unstack()
+        average_df.unstack()
         average_df = average_df.rename(index=str, columns={"reward": algorithm})
         if ax is None:
             ax = average_df.plot(legend=True, marker="o", yerr=std_df)
@@ -70,7 +66,7 @@ def compare_classes(envs, num_range, threshold, should_print):
             ax = average_df.plot(legend=True, marker="o", yerr=std_df, ax=ax)
             ax.legend()
     # make plot nicer and safe it
-    plt.xticks(numpy.arange(0, 101, 10), numpy.arange(0, 10001, 1000))
+    # plt.xticks(numpy.arange(0, 101, 10), numpy.arange(0, 10001, 1000))
     plt.legend(loc=0)
     plt.ylabel("reward")
     print("plotted")
@@ -79,18 +75,13 @@ def compare_classes(envs, num_range, threshold, should_print):
 
 if __name__ == '__main__':
     dqn = 0
-    filename = "taxi_experiment_results.csv"
 
     test_case_normal = TaxiTestNormal(algorithm=dqn)
 
-    test_case_cond = TaxiTestConditions(algorithm=dqn)
-
     test_case_decoded = TaxiTestDecoded(algorithm=dqn)
-
-    test_case_new_cond = TaxiTestConditionsNew(algorithm=dqn)
 
     test_case_new_all_cond = TaxiTestAllConditionsNew(algorithm=dqn)
 
     test_case_decoded_cond = TaxiTestDecodedCond(algorithm=dqn)
 
-    compare_classes([test_case_new_all_cond], 1, 0, True)
+    compare_classes([test_case_normal, test_case_new_all_cond, test_case_decoded, test_case_decoded_cond], 1, 0, True)

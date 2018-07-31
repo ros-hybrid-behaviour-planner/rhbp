@@ -26,7 +26,7 @@ class DQNConfig(object):
             # Set learning parameters
             self.y = rospy.get_param("~y", 0.99)  # Discount factor.
             self.tau = rospy.get_param("~tau", 0.001)  # Amount to update target network at each step.
-            self.batch_size = rospy.get_param("~batch_size", 15)  # Size of training batch
+            self.batch_size = rospy.get_param("~batch_size", 32)  # Size of training batch
             self.buffer_size = rospy.get_param("~buffer_size", 50000)  # size of the experience learning buffer
             self.train_interval = rospy.get_param("~train_interval", 5)  # train the model every train_interval steps
             self.stop_training = rospy.get_param("~stop_training",
@@ -35,7 +35,7 @@ class DQNConfig(object):
         except Exception:
             self.y = 0.99  # Discount factor.
             self.tau = 0.001  # Amount to update target network at each step.
-            self.batch_size = 15  # Size of training batch
+            self.batch_size = 32  # Size of training batch
             self.buffer_size = 5000  # size of the experience learning buffer
             self.train_interval = 5  # train the model every train_interval steps
             self.stop_training = 6000000  # steps after the model does not get trained anymore
@@ -51,15 +51,15 @@ class SavingConfig(object):
         try:
             self.model_path = rospy.get_param("~model_path", 'models/rl-model')  # path of the saved model
             self.model_directory = rospy.get_param("~model_directory", './models')  # directory of the saved model
-            self.save = rospy.get_param("~save", True)  # if the model should be saved
-            self.save_buffer = rospy.get_param("~save_buffer", True)  # if the buffer should be saved
+            self.save = rospy.get_param("~save", False)  # if the model should be saved
+            self.save_buffer = rospy.get_param("~save_buffer", False)  # if the buffer should be saved
             self.steps_save = rospy.get_param("~steps_save", 100000)  # interval for saving model
             self.load = rospy.get_param("~load", False)  # if the model should be loaded
         except Exception:
             self.model_path = 'models/rl-model'  # path of the saved model
             self.model_directory = './models'  # directory of the saved model
-            self.save = True  # if the model should be saved
-            self.save_buffer = True  # if the buffer should be saved
+            self.save = False  # if the model should be saved
+            self.save_buffer = False  # if the buffer should be saved
             self.steps_save = 100000  # interval for saving model
             self.load = False  # if the model should be loaded
 
