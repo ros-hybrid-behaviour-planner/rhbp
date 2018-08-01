@@ -122,6 +122,8 @@ class TransitionConfig(object):
             self.weight_rl = rospy.get_param("~weight_rl", 1.0)  # weight of the rl component
             self.activation_decay = rospy.get_param("~activation_decay",
                                                     0.0)  # how much to way the current activation for the next activation step
+            self.use_negative_states = rospy.get_param("~use_negative_states",
+                                                    True)
         except Exception:
             self.use_wishes = False
             self.use_true_values = True
@@ -129,3 +131,4 @@ class TransitionConfig(object):
             self.min_activation = 0
             self.weight_rl = 1.0
             self.activation_decay = 0.0
+            self.use_negative_states = True

@@ -49,7 +49,6 @@ class RLComponent:
             })
             return GetActivationResponse(activation_state)
         except Exception as e:
-            print(e)
             rospy.logerr(e.message)
             return None
 
@@ -142,4 +141,3 @@ class RLComponent:
         self.reward_list = []
 
         self.is_model_init = True
-

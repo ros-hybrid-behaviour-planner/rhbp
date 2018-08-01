@@ -450,7 +450,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                 self._manager.plan["actions"].keys())):  # walk along the plan starting at where we are
             if self._manager.plan["actions"][index] == own_pddl_name:  # if we are on the plan
                 return (
-                1 / (index - self._manager.planExecutionIndex + 1) * self._plan_bias, index)  # index in zero-based
+                    1 / (index - self._manager.planExecutionIndex + 1) * self._plan_bias, index)  # index in zero-based
         return (0.0, -1)
 
     def _matching_effect_indicators(self, ref_behaviour, effect_name):
@@ -556,7 +556,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                     if correlation_indicator * wish_indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
 
                         total_inhibition = -(
-                        wish_indicator ** 2 + correlation_indicator ** 2) * self._conflictor_bias  # TODO somehow strange that we use the conflictor bias here
+                            wish_indicator ** 2 + correlation_indicator ** 2) * self._conflictor_bias  # TODO somehow strange that we use the conflictor bias here
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s "
@@ -712,7 +712,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                     # non-zero correlation to it)
                     elif wish_indicator * effect_indicator == 0.0 and wish_indicator == 0:
                         total_inhibition = -effect_indicator ** 2 * (
-                        behaviour.activation / self._manager.totalActivation) \
+                            behaviour.activation / self._manager.totalActivation) \
                                            * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
@@ -829,7 +829,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         is_correct, num_inputs, num_outputs, input_state, reward, last_action_index = self.check_if_input_state_correct()
         # if input state is incorect return
         if not is_correct:
-            print("not correctz")
             return
         # create an input state message for sending it to the rl_node
         input_state_msg = InputState()
@@ -842,16 +841,17 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # find negative state (not executable behaviors)
         num_actions = len(self._manager._behaviours)
         negative_states = []
-        for action_index in range(num_actions):
-            # if random chosen number is not executable, give minus reward and sent it to rl component
-            if not self._manager._behaviours[action_index].executable:
-                negative_state = InputState()
-                negative_state.input_state = input_state
-                negative_state.num_outputs = num_outputs
-                negative_state.num_inputs = num_inputs
-                negative_state.reward = self.min_activation
-                negative_state.last_action = action_index
-                negative_states.append(negative_state)
+        if self.config.use_negative_states:
+            for action_index in range(num_actions):
+                # if random chosen number is not executable, give minus reward and sent it to rl component
+                if not self._manager._behaviours[action_index].executable:
+                    negative_state = InputState()
+                    negative_state.input_state = input_state
+                    negative_state.num_outputs = num_outputs
+                    negative_state.num_inputs = num_inputs
+                    negative_state.reward = self.min_activation
+                    negative_state.last_action = action_index
+                    negative_states.append(negative_state)
 
         # start service to get the activations from the model
         self.fetch_activation(input_state_msg, negative_states)
@@ -875,7 +875,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             self.activation_rl = list(activation_result.activation_state.activations)
         except rospy.ServiceException as e:
             rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
-            print(e.message)
 
     def get_rl_activation_for_ref(self, ref_behaviour):
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
@@ -888,9 +887,8 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             min = np.min(self.activation_rl)
             b = self.config.max_activation
             a = self.config.min_activation
-            # value = (b - a) * (value - min) / (max - min) + a
-            # value *= self.config.weight_rl
-            value = value + 10000  # plus 100 so in case all activations are negative still something gets chosen TODo remove factor
+            value = (b - a) * (value - min) / (max - min) + a
+            value *= self.config.weight_rl
         return value
 
     def compute_behaviour_activation_step(self, ref_behaviour):
@@ -900,57 +898,34 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         :return: 
         """
         # when rl has all influence only compute it.
-        # todo take this out
-        """
-        if self.weight_rl >= 1.0:
-            try:
-                # TODO reduce factor
-                current_activation_step = self.get_rl_activation_for_ref(ref_behaviour) * 10000
-                ref_behaviour.current_activation_step = 0
-                ref_behaviour.activation = current_activation_step
-                return current_activation_step
-            except Exception as e:
-                print(e.message)
-                return 0
-        """
-        if self.weight_rl >1999:
-            print("d")
-        else:  # otherwise use all influences
 
-            #activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
-            #activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
-            #inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
-            #activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
-            #activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
-            #inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
-            #activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
-            rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
-            activation_precondition = 0
-            activation_goals = 0
-            inhibition_goals = 0
-            activation_predecessors = 0
-            activation_successors = 0
-            inhibition_conflictors = 0
-            activation_plan = 0
+        activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
+        activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
+        inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
+        activation_predecessors = self.get_activation_from_predecessors(ref_behaviour)[0]
+        activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
+        inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
+        activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
+        rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
 
-            rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
-            rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
-            rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
-            rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
-            rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
-            rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
-            rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
-            rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
-            current_activation_step = activation_precondition \
-                                      + activation_goals \
-                                      + inhibition_goals \
-                                      + activation_predecessors \
-                                      + activation_successors \
-                                      + inhibition_conflictors \
-                                      + activation_plan \
-                                      + rl_activation
-            ref_behaviour.current_activation_step = current_activation_step
-            return current_activation_step
+        rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
+        rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
+        rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
+        rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
+        rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
+        rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
+        rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
+        rhbplog.loginfo("\t%s: activation from rl: %s", ref_behaviour, rl_activation)
+        current_activation_step = activation_precondition \
+                                  + activation_goals \
+                                  + inhibition_goals \
+                                  + activation_predecessors \
+                                  + activation_successors \
+                                  + inhibition_conflictors \
+                                  + activation_plan \
+                                  + rl_activation
+        ref_behaviour.current_activation_step = current_activation_step
+        return current_activation_step
 
     def update_config(self, **kwargs):
         """
@@ -971,7 +946,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         self.get_activation_from_rl_node()
         # return if no activations received
         if len(self.activation_rl) == 0:
-            print("no activation found")
             return
 
         # check if exploration chooses randomly best action
