@@ -1,0 +1,4 @@
+InputState input_state
+InputState[] negative_states
+---
+ActivationState activation_state

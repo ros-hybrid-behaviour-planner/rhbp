@@ -54,6 +54,11 @@ add_message_files(
   Status.msg
   PlannerStatus.msg
   DiscoverInfo.msg
+  ConditionValue.msg
+  ConditionState.msg
+  InputState.msg
+  ActivationState.msg
+  SensorValue.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -62,6 +67,7 @@ add_service_files(
   AddBehaviour.srv
   AddGoal.srv
   GetStatus.srv
+  GetState.srv
   RemoveBehaviour.srv
   RemoveGoal.srv
   ForceStart.srv
@@ -71,6 +77,8 @@ add_service_files(
   TopicUpdateSubscribe.srv
   SetStepping.srv
   GetStepping.srv
+  GetActivation.srv
+  TrainBatches.srv
 )
 
 ## Generate actions in the 'action' folder

@@ -18,13 +18,10 @@ class ManagerNode(object):
     """
 
     def __init__(self, manager_prefix=""):
-
         rospy.init_node('behaviourPlannerManager', log_level=rospy.WARN)
-
         prefix = rospy.get_param("~prefix", manager_prefix)
         self._manager = Manager(prefix=prefix)
         self.rate = rospy.Rate(rospy.get_param("~frequency", 1))
-
         self.automatic_stepping = rospy.get_param("~automatic_stepping", True)
 
         if not self.automatic_stepping:
@@ -99,14 +96,11 @@ class ManagerNode(object):
 
 
 if __name__ == '__main__':
-
     prefix = ""
-
     for arg in sys.argv:
         if arg.startswith('prefix:='):
             prefix = arg[len('prefix:='):]
             break
-
     node = ManagerNode(manager_prefix=prefix)
 
     try:

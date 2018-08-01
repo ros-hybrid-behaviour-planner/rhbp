@@ -24,12 +24,12 @@ Tests the integration of the DynamicSensor into ROS
 
 
 class MaxValueSensor(DynamicSensor):
-    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics=1000, default_value=0,
+    def __init__(self, pattern_prefix, service_prefix, expiration_time_values_of_removed_topics=1000, initial_value=0,
                  topic_type=None):
         super(MaxValueSensor, self).__init__(pattern=pattern_prefix,
                                              topic_listener_name=service_prefix,
                                              expiration_time_values_of_removed_topics=expiration_time_values_of_removed_topics,
-                                             default_value=default_value, topic_type=topic_type)
+                                             initial_value=initial_value, topic_type=topic_type)
         self.last_received_topic = None
 
     def _aggregate_values(self, values):
@@ -213,7 +213,7 @@ class DynamicSensorTest(unittest.TestCase):
         prefix = '/' + self.__message_prefix + 'testDefaultAggreagtion'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = DynamicSensor(pattern=prefix, optional=False, default_value=0,
+        sensor = DynamicSensor(pattern=prefix, optional=False, initial_value=0,
                                topic_listener_name=service_prefix)
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
         topic2 = DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
@@ -234,7 +234,7 @@ class DynamicSensorTest(unittest.TestCase):
         prefix = '/' + self.__message_prefix + 'testSubscribingLimit'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = DynamicSensor(pattern=prefix, optional=False, default_value=0,
+        sensor = DynamicSensor(pattern=prefix, optional=False, initial_value=0,
                                topic_listener_name=service_prefix, subscribe_only_first=True)
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic1', 1)
         DynamicSensorTest.create_topic_and_publish(topic_listener, prefix + 'Topic2', 2)
@@ -273,7 +273,7 @@ class DynamicSensorTest(unittest.TestCase):
         prefix = '/' + self.__message_prefix + 'testDefaultValue'
         service_prefix = prefix + 'Service'
         topic_listener = TopicListenerMock(service_prefix=service_prefix)
-        sensor = MaxValueSensor(pattern_prefix=prefix, default_value=default_value,
+        sensor = MaxValueSensor(pattern_prefix=prefix, initial_value=default_value,
                                 service_prefix=service_prefix, expiration_time_values_of_removed_topics=0)
         sensor.sync()
         self.assertEqual(default_value, sensor.value, 'the default value is not used')
@@ -334,7 +334,7 @@ class DynamicSensorTest(unittest.TestCase):
         sensor = DynamicSensor(pattern=prefix,
                                topic_listener_name=service_prefix,
                                expiration_time_values_of_removed_topics=-1,
-                               default_value=Int32(-1), topic_type=Int32)
+                               initial_value=Int32(-1), topic_type=Int32)
         sensor.sync()
         self.assertEqual(Int32(-1), sensor.value)
 

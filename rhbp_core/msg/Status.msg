@@ -14,3 +14,4 @@ bool independentFromPlanner
 int32 priority
 bool activated
 bool executable
+SensorValue[] sensor_values

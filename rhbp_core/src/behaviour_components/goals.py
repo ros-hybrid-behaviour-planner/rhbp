@@ -14,6 +14,7 @@ from abc import ABCMeta, abstractmethod
 import rospy
 from std_msgs.msg import Bool
 
+from reinforcement_component.input_state_transformer import SensorValueTransformer
 from rhbp_core.msg import Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse, RemoveGoal
@@ -22,7 +23,7 @@ from behaviour_components.conditions import Condition
 from .conditions import Conditonal
 from .condition_elements import Wish
 from .pddl import PDDL, mergeStatePDDL
-from .sensors import SimpleTopicSensor
+from .sensors import TopicSensor
 from utils.misc import FinalInitCaller
 from utils.deprecation import deprecated
 
@@ -342,6 +343,7 @@ class GoalProxy(AbstractGoalRepresentation):
             self.activated = status.activated
             self.priority = status.priority
             self.satisfaction_threshold = status.threshold
+            self.sensor_values = status.sensor_values
             if self._name != status.name:
                 rhbplog.logerr("%s fetched a status message from a different goal: %s. This cannot happen!",
                              self._name,
@@ -408,6 +410,8 @@ class GoalBase(Goal):
         self._permanent = permanent
         self._planner_prefix = plannerPrefix
         self._registered = False  # keeps track of goal registration state
+        self.preconditions = conditions
+        self._sensor_transformer = SensorValueTransformer()
 
     def _init_services(self):
         super(GoalBase, self)._init_services()
@@ -501,8 +505,11 @@ class GoalBase(Goal):
             return None
 
     def _get_status_callback(self, request):
+
+
         try:
             self.updateComputation(request.current_step)
+            sensor_values = self._sensor_transformer.get_sensor_values(self.preconditions)
             self._active = self._activated
             status = Status(**{
                 "name": self._name,
@@ -511,7 +518,8 @@ class GoalBase(Goal):
                 "active": self._active,
                 "activated": self._activated,
                 "priority": self._priority,
-                "threshold": self._satisfaction_threshold
+                "threshold": self._satisfaction_threshold,
+                "sensor_values": sensor_values
             })
             return GetStatusResponse(status)
         except Exception:
@@ -593,8 +601,8 @@ class PublisherGoal(GoalBase):
         if not self.__condition:
             condition_name = self._name + "_condition"
             sensor_name = self._name + "_sensor"
-            sensor = SimpleTopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
-                                       initial_value=self._activated)
+            sensor = TopicSensor(name=sensor_name, topic=self.__topic_name, message_type=Bool,
+                                 initial_value=self._activated)
             activator = BooleanActivator(desiredValue=True)
             self.__condition = Condition(name=condition_name, sensor=sensor, activator=activator)
         return self.__condition

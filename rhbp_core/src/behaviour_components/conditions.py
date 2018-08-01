@@ -21,6 +21,7 @@ from .condition_elements import Wish
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions')
 
+
 class Conditonal(object):
     '''
     This is the base class for conditions or anything that spreads activations.
@@ -128,7 +129,7 @@ class Disjunction(Conditonal):
         self._name = kwargs["name"] if "name" in kwargs else "Disjunction {0}".format(Conditonal._instanceCounter)
         self._conditions = list(args)
         self._satisfaction = 0
-    
+
     def addCondition(self, condition):
         '''
         This method adds an precondition to the disjunction.
@@ -335,7 +336,7 @@ class Negation(Conditonal):
         self._name = "Negation {0}".format(Conditonal._instanceCounter)
         assert isinstance(conditional, Conditonal), "Only Conditionals can be negated"
         self._condition = conditional
-
+        self._name = "not_"+self._condition._name
     def sync(self):
         self._condition.sync()
 
@@ -425,7 +426,6 @@ class Condition(Conditonal):
 
         self._normalizedSensorValue = 0
         self._satisfaction = 0
-
         Condition._instanceCounter += 1
 
     def sync(self):

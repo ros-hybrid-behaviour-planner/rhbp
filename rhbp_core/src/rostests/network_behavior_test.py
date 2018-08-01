@@ -18,7 +18,7 @@ from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
 from behaviour_components.network_behavior import NetworkBehaviour
 from behaviour_components.condition_elements import Effect
-from behaviour_components.sensors import SimpleTopicSensor
+from behaviour_components.sensors import TopicSensor
 from std_msgs.msg import Int32
 
 from tests.common import IncreaserBehavior
@@ -49,7 +49,7 @@ class TestNetworkBehaviour(unittest.TestCase):
         method_prefix = self.__message_prefix + "/test_multiple_embedded_network_behaviors"
 
         topic_name = method_prefix + '/Topic'
-        sensor = SimpleTopicSensor(topic=topic_name, message_type=Int32, initial_value=0)
+        sensor = TopicSensor(topic=topic_name, message_type=Int32, initial_value=0)
         condition = Condition(sensor, ThresholdActivator(thresholdValue=3))
 
         planner_prefix = method_prefix + "/Manager"
