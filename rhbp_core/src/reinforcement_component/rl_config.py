@@ -75,8 +75,8 @@ class EvaluationConfig(object):
                                                       500)  # intervall for plotting current results
             self.eval_mean_size = rospy.get_param("~eval_mean_size",
                                                   5000)  # number of plotting mean for loss and rewards
-            self.plot_rewards = rospy.get_param("~plot_rewards", True)  # if rewards should be plotted
-            self.plot_loss = rospy.get_param("~plot_loss", True)  # if loss should be plotted
+            self.plot_rewards = rospy.get_param("~plot_rewards", False)  # if rewards should be plotted
+            self.plot_loss = rospy.get_param("~plot_loss", False)  # if loss should be plotted
         except Exception:
             self.eval_step_interval = 10000  # intervall for plotting current results
             self.eval_mean_size = 5000  # number of plotting mean for loss and rewards
@@ -124,6 +124,7 @@ class TransitionConfig(object):
                                                     0.0)  # how much to way the current activation for the next activation step
             self.use_negative_states = rospy.get_param("~use_negative_states",
                                                     True)
+            self.use_node = rospy.get_param("~use_node", True) # if a own node should be used for the rl_component
         except Exception:
             self.use_wishes = False
             self.use_true_values = True
@@ -132,3 +133,4 @@ class TransitionConfig(object):
             self.weight_rl = 1.0
             self.activation_decay = 0.0
             self.use_negative_states = True
+            self.use_node = True

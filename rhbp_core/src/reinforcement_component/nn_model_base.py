@@ -1,7 +1,7 @@
 import rospy
 import tensorflow as tf
 import os
-from reinforcement_component.rl_config import SavingConfig
+from rl_config import SavingConfig
 
 
 class ReinforcementAlgorithmBase(object):

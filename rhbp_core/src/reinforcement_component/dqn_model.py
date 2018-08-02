@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import os
 from tensorflow.contrib import slim
 
-from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
+from nn_model_base import ReinforcementAlgorithmBase
 from rl_config import NNConfig, EvaluationConfig, SavingConfig, DQNConfig, ExplorationConfig
 
 
