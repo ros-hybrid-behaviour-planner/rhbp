@@ -1,17 +1,24 @@
+#! /usr/bin/env python2
+"""
+the rl component as a node. functions as a bridge between manager and rl-algo
+@author: lehmann
+"""
 import rospy
 
-from reinforcement_component.dqn_model import DQNModel
+from dqn_model import DQNModel
 from rhbp_core.msg import ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
 
 
-class RLComponent:
-    def __init__(self, name, algorithm=0, pre_train=32):
-
-        self.name = name
+class RLComponentNode(object):
+    def __init__(self):
+        # gets name as a ros parameter
+        self.name = rospy.get_param("~name")
+        # True if the models is set up
         self.is_model_init = False
-        self._getStateService = rospy.Service(name + 'GetActivation', GetActivation,
+        # service for communicating the activations
+        self._getStateService = rospy.Service(self.name + 'GetActivation', GetActivation,
                                               self._get_activation_state_callback)
         # choose appropriate model
         self.model = DQNModel(self.name)
@@ -19,6 +26,7 @@ class RLComponent:
         # save the last state
         self.last_state = None
 
+        # default values of dimensions
         self.number_outputs = -1
         self.number_inputs = -1
 
@@ -116,7 +124,7 @@ class RLComponent:
 if __name__ == '__main__':
     try:
         rospy.init_node('rl_node', anonymous=True)
-        rl_component = RLComponent("test_agent")
+        rl_component = RLComponentNode()
 
         rospy.spin()
 

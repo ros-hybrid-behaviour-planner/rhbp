@@ -11,7 +11,6 @@ import numpy
 import rospy
 import itertools
 
-import time
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, Correlation, Wish, DiscoverInfo
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
@@ -23,7 +22,6 @@ from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predi
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
-from reinforcement_component.rl_component import RLComponent
 import utils.rhbp_logging
 
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
@@ -50,7 +48,7 @@ class Manager(object):
         '''
         self._prefix = kwargs[
             "prefix"] if "prefix" in kwargs else ""  # if you have multiple planners in the same ROS environment use this to distinguish between the instances
-        self._sensors = []  # TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
+        self._sensors = []
         self._goals = []
         self._activeGoals = []  # pre-computed (in step()) list of operational goals
         self._behaviours = []
@@ -442,8 +440,7 @@ class Manager(object):
                 amount_started_behaviours += 1
                 rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
-            activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
-            activation_threshold_decay = 1.0  # TODO delete or include in rospy param
+            activation_threshold_decay = rospy.get_param("~activationThresholdDecay", 1.0)
             self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
 
             # Reduce or increase the activation threshold based on executed and started behaviours

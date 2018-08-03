@@ -1,3 +1,11 @@
+"""
+class for implementing the dqn model. including savign the model,
+metrics for measuring the success, the experience buffer and neural network
+@author: lehmann
+# inspired by awjuliani
+"""
+
+
 import matplotlib
 import rospy
 
@@ -14,7 +22,7 @@ import matplotlib.pyplot as plt
 import os
 from tensorflow.contrib import slim
 
-from reinforcement_component.nn_model_base import ReinforcementAlgorithmBase
+from nn_model_base import ReinforcementAlgorithmBase
 from rl_config import NNConfig, EvaluationConfig, SavingConfig, DQNConfig, ExplorationConfig
 
 
@@ -59,8 +67,8 @@ class DQNModel(ReinforcementAlgorithmBase):
         if not load_mode:
             tf.reset_default_graph()
         # initialize two networks. q-network and target q-network
-        self.q_net = Q_Network(num_inputs, num_outputs)
-        self.target_net = Q_Network(num_inputs, num_outputs)
+        self.q_net = QNetwork(num_inputs, num_outputs)
+        self.target_net = QNetwork(num_inputs, num_outputs)
         self.init = tf.global_variables_initializer()
         # returns all variables created with trainable=True
         trainables = tf.trainable_variables()
@@ -211,7 +219,7 @@ class DQNModel(ReinforcementAlgorithmBase):
             sess.run(op)
 
 
-class Q_Network(object):
+class QNetwork(object):
     """
     this class implements the neural network. It is called for the Q-Network, but also for the target network.
     """
@@ -248,8 +256,10 @@ class Q_Network(object):
         self.nextQ = tf.placeholder(shape=[None], dtype=tf.float32)
         self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Q))
         # updating the weights of the model to minimize the loss function
-        trainer = tf.train.GradientDescentOptimizer(learning_rate=0.0005)
-        # trainer = tf.train.AdamOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
+        if self.nn_config.use_adam_optimizer:
+            trainer = tf.train.AdamOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
+        else:
+            trainer = tf.train.GradientDescentOptimizer(learning_rate=self.nn_config.learning_rate_optimizer)
         self.updateModel = trainer.minimize(self.loss)
 
 

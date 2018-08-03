@@ -1,6 +1,11 @@
+"""
+implements the different exploration strategies
+@author: lehmann
+"""
+
 import numpy
 
-from reinforcement_component.rl_config import ExplorationConfig
+from rl_config import ExplorationConfig
 
 
 class ExplorationStrategies(object):

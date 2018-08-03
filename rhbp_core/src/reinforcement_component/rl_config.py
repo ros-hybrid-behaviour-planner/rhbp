@@ -1,3 +1,7 @@
+"""
+The different configuration parameters. They get Whether here set or as ros parameters
+@author: lehmann
+"""
 import rospy
 
 
@@ -10,10 +14,14 @@ class NNConfig(object):
 
     def __init__(self):
         try:
+            # True if AdamOptimizer should be used. Uses GradientDescentOptimizer otherwise
+            self.use_adam_optimizer = rospy.get_param("~use_adam_optimizer", False)
             self.learning_rate_optimizer = rospy.get_param("~learning_rate_optimizer",
-                                                           0.0001)  # learning rate of the optimizer
-        except Exception:
+                                                           0.0005)  # learning rate of the optimizer
+
+        except Exception:  # catches if no RosService was found
             self.learning_rate_optimizer = 0.0001
+            self.use_adam_optimizer = False
 
 
 class DQNConfig(object):
@@ -27,7 +35,7 @@ class DQNConfig(object):
             self.y = rospy.get_param("~y", 0.99)  # Discount factor.
             self.tau = rospy.get_param("~tau", 0.001)  # Amount to update target network at each step.
             self.batch_size = rospy.get_param("~batch_size", 32)  # Size of training batch
-            self.buffer_size = rospy.get_param("~buffer_size", 50000)  # size of the experience learning buffer
+            self.buffer_size = rospy.get_param("~buffer_size", 5000)  # size of the experience learning buffer
             self.train_interval = rospy.get_param("~train_interval", 5)  # train the model every train_interval steps
             self.stop_training = rospy.get_param("~stop_training",
                                                  6000000)  # steps after the model does not get trained anymore
@@ -75,7 +83,8 @@ class EvaluationConfig(object):
                                                       500)  # intervall for plotting current results
             self.eval_mean_size = rospy.get_param("~eval_mean_size",
                                                   5000)  # number of plotting mean for loss and rewards
-            self.plot_rewards = rospy.get_param("~plot_rewards", True)  # if rewards should be plotted
+
+            self.plot_rewards = rospy.get_param("~plot_rewards", False)  # if rewards should be plotted
             self.plot_loss = rospy.get_param("~plot_loss", True)  # if loss should be plotted
         except Exception:
             self.eval_step_interval = 10000  # intervall for plotting current results
@@ -123,7 +132,8 @@ class TransitionConfig(object):
             self.activation_decay = rospy.get_param("~activation_decay",
                                                     0.0)  # how much to way the current activation for the next activation step
             self.use_negative_states = rospy.get_param("~use_negative_states",
-                                                    True)
+                                                       True)
+            self.use_node = rospy.get_param("~use_node", False)  # if a own node should be used for the rl_component
         except Exception:
             self.use_wishes = False
             self.use_true_values = True
@@ -132,3 +142,4 @@ class TransitionConfig(object):
             self.weight_rl = 1.0
             self.activation_decay = 0.0
             self.use_negative_states = True
+            self.use_node = False

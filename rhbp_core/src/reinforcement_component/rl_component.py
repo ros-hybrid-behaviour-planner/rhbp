@@ -1,16 +1,27 @@
+"""
+the rl component as a class. functions as a bridge between manager and rl-algo
+@author: lehmann
+"""
 import rospy
-
 from reinforcement_component.dqn_model import DQNModel
 from rhbp_core.msg import ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy
 
 
-class RLComponent:
+class RLComponent(object):
     def __init__(self, name, algorithm=0, pre_train=32):
-
+        """
+        
+        :param name: name of the rl_component
+        :param algorithm: old parameter still in for older test versions. Not in use 
+        :param pre_train: old parameter still in for older test versions. Not in use 
+        """
+        # name of the rl_component
         self.name = name
+        # True if the model wwas set up
         self.is_model_init = False
+        # Service for communicating the activations
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation,
                                               self._get_activation_state_callback)
         # choose appropriate model
@@ -18,7 +29,7 @@ class RLComponent:
 
         # save the last state
         self.last_state = None
-
+        # the dimensions of the model
         self.number_outputs = -1
         self.number_inputs = -1
 

@@ -1,7 +1,8 @@
-import tensorflow as tf
+"""
+transforms values from rhbp to rl-values
+@author: lehmann
+"""
 import numpy
-import time
-
 from behaviour_components.sensors import EncodingConstants
 from reinforcement_component.rl_config import TransitionConfig
 from rhbp_core.msg import SensorValue
@@ -90,7 +91,7 @@ class SensorValueTransformer(object):
         return list_of_sensor_values
 
 
-class InputStateTransformer:
+class InputStateTransformer(object):
     """
     this class gets called in the activation algorithm and transform the rhbp components into the InputStateMessage
     """

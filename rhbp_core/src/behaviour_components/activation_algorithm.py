@@ -742,47 +742,56 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
 
     def __init__(self, manager, extensive_logging=False, create_log_files=False):
         super(ReinforcementLearningActivationAlgorithm, self).__init__(manager, extensive_logging=extensive_logging)
+
+        # saves list with the activations
         self.activation_rl = []
+        # timeout until trying to reach the service gets stopped
         self.SERVICE_TIMEOUT = 5
-        self.rl_component = None
-        # values how much the rl activation influences the other components
-        self.weight_rl = 1.0
         self.config = TransitionConfig()
-        # self.weight_rl = rospy.get_param("weight_rl",0)
+        # values how much the rl activation influences the other components
+        self.weight_rl = self.config.weight_rl
         # set if the exploration choose random action
-        self.max_activation = 100
+        self.max_activation = self.config.max_activation
         # gets set for not executable actions
-        self.min_activation = -100  # todo get from config
+        self.min_activation = self.config.min_activation
         # step counter is used for exploration
         self._step_counter = 0
         # setting the activation decay.
         self._activation_decay = self.config.activation_decay
+        # transforms rhbp values to rl values
         self.input_transformer = InputStateTransformer(manager)
+        # the rl component
+        self.rl_component = None
+        # adrress of the rl node
+        self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
+        # start only rl_component if needed
         if self.weight_rl > 0.0:
-            self.start_rl_class()
-            # self.start_rl_node()
-
-        self.exploration_strategies = ExplorationStrategies()  # implements different exploration strategies
+            # select if a own node should be started for the rl_component
+            if self.config.use_node:
+                self.start_rl_node()
+            else:
+                self.start_rl_class()
+        # implements different exploration strategies
+        self.exploration_strategies = ExplorationStrategies()
 
     def start_rl_class(self):
         """
         starts the rl_component as a class
         :return: 
         """
-        self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
+        rospy.loginfo("starting rl_component as a class")
         self.rl_component = RLComponent(name=self.rl_address)
 
     def start_rl_node(self):
         """
         start the rl_component as a node
         """
-        package = 'reinforcement_component'
-        executable = 'rl_component_node.py'
-
-        self.rl_address = self._manager._prefix.replace("/Manager", "_rl_node")
-
-        command = "rosrun {0} {1}".format(package, executable)
+        rospy.loginfo("starting rl_component as a node")
+        package = 'rhbp_core'
+        executable = 'src/reinforcement_component/rl_component_node.py'
+        command = "rosrun {0} {1} _name:={2}".format(package, executable,self.rl_address)
         p = subprocess.Popen(command, shell=True)
+
         state = p.poll()
         if state is None:
             rospy.loginfo("process is running fine")
@@ -867,7 +876,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
             rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
-            self._handle_service_timeout()
+            rospy.logerr("GetActivation service not found")
             return 0
         try:
             getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
