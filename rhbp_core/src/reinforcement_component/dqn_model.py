@@ -108,7 +108,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         # restore the session
         self.sess = tf.Session()
         # check for model with this dimensions
-        self.saver = tf.train.import_meta_graph(self.save_config.model_path)
+        self.saver = tf.train.import_meta_graph(self.model_path)
         self.initialize_model(num_inputs, num_outputs, load_mode=False)
         self.saver.restore(self.sess, tf.train.latest_checkpoint(self.model_folder))
         self.load_buffer()
