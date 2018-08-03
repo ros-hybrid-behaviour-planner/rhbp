@@ -5,7 +5,6 @@ metrics for measuring the success, the experience buffer and neural network
 # inspired by awjuliani
 """
 
-
 import matplotlib
 import rospy
 
@@ -184,7 +183,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         doubleQ = Q2[range(self.model_config.batch_size), Q1]  # target_q-values for the q-net predicted action
         # target q value calculation according to q-learning
         targetQ = trainBatch[:, 2] + (
-            self.model_config.y * doubleQ)  # TODO add maybe here again doubleQ * endmultiplier. Nonte:works without as well
+            self.model_config.y * doubleQ)
         # update the q-network model by giving the target-q-values, the input states and the chosen actions
         _, loss = self.sess.run([self.q_net.updateModel, self.q_net.loss],
                                 feed_dict={self.q_net.inputs: np.vstack(trainBatch[:, 0]), self.q_net.nextQ: targetQ,
@@ -194,6 +193,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         # update the target network
         self.updateTarget(self.targetOps, self.sess)
         # save rewards and get new state
+
     def updateTargetGraph(self, tfVars, tau):
         """
         returns a list of operations coming from the trainable variables
@@ -230,7 +230,6 @@ class QNetwork(object):
         # These lines establish the feed-forward part of the network used to choose actions
         # these describe the observation (input),
         self.inputs = tf.placeholder(shape=[None, number_inputs], dtype=tf.float32)
-        # self.inputs = tf.cast(self.inputs,tf.float32)
         self.Temp = tf.placeholder(shape=None, dtype=tf.float32)
         self.keep_per = tf.placeholder(shape=None, dtype=tf.float32)
         # the layers that define the nn
@@ -238,7 +237,6 @@ class QNetwork(object):
         self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh,
                                            biases_initializer=None)
         # drop tensors out and scales others by probability of self.keep_per
-        # self.hidden = slim.dropout(self.hidden, self.keep_per)
         # layer for computing the q_values
 
         self.Q_out = slim.fully_connected(self.hidden, number_outputs, activation_fn=None,
