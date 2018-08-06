@@ -265,6 +265,20 @@ class Manager(object):
         changesWereExpected = True
         for sensor_name, indicator in self.__sensorChanges.iteritems():
             changeWasExpected = False
+            print self.prefix
+
+            if self._plan:
+                # check if the change is from the behaviour in current executionindex
+                planned_name = self._plan["actions"][self._planExecutionIndex]
+                for behaviour in self._behaviours:
+                    if behaviour.name == planned_name:
+                        for item in behaviour.correlations:
+                            if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
+                                # behaviour worked as expected
+                                # TODO make sure behaviour worked enough?
+                                self._planExecutionIndex += 1
+                        break
+
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
                     # the observed change happened because of the running behaviour (at least the behaviour is
