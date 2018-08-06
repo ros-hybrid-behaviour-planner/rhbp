@@ -84,6 +84,9 @@ class RHBPDelegationClient(DelegationClientBase):
         # This should never happen
         self.logger.logerr(msg="Unexpected need to start work for the delegation "+str(delegation_id)+" in the DelegationClient with the ID "+str(self.id))
 
+    def delegation_successful(self, delegation_id):
+        pass    # TODO inform behaviour that its done
+
 
 class RHBPDelegableClient(RHBPDelegationClient):
     """

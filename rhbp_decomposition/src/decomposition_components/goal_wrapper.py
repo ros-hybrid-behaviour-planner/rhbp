@@ -125,3 +125,10 @@ class RHBPGoalWrapper(GoalWrapperBase):
             return self._goal.check_if_alive()
         else:
             return True
+
+    def check_goal_finished(self):
+
+        if self.goal_is_created():
+            return not self._goal.active
+        else:
+            return False
