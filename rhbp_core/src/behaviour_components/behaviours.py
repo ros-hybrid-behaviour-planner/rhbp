@@ -427,7 +427,7 @@ class BehaviourBase(object):
     def unregister(self, terminate_services=True):
         """
         Remove/Unregister behaviour from the manager
-        :param terminate_services: True for shuting down all service interfaces as well
+        :param terminate_services: True for shutting down all service interfaces as well
         """
         self._active = False
         try:
