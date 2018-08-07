@@ -47,7 +47,6 @@ class DelegationBehaviour(BehaviourBase):
             checking_prefix = delegation_depth_prefix
 
         super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
-        self._delegation_client = None
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
         self._create_delegation_client(checking_prefix=checking_prefix)
@@ -96,11 +95,18 @@ class DelegationBehaviour(BehaviourBase):
     def _delegate(self):
         conditions = self._get_conditions_for_delegation()
         try:
-            self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions,
+                                             satisfaction_threshold=self._satisfaction_threshold,
+                                             success_function=self._deactivate_myself)
             self._attempt_unsuccessful = False
         except DelegationError:
             rhbplog.logwarn("Attempted Delegation was not successful. Will retry next step!")
             self._attempt_unsuccessful = True
+
+    def _deactivate_myself(self):
+        rhbplog.loginfo("DelegationBehaviour "+self.name+" was successful with the delegation, stopping own execution")
+        self.set_activated(activated=False)
+        self.set_activated(activated=True)
 
     def do_step(self):
         """
@@ -244,7 +250,10 @@ class DelegableBehaviour(DelegationBehaviour):
         if self._delegation_client.check_if_registered():
             conditions = self._get_conditions_for_delegation()
             try:
-                self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions, satisfaction_threshold=self._satisfaction_threshold, own_cost=self._own_cost, start_work_function=self._quick_start_work)
+                self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions,
+                                                 satisfaction_threshold=self._satisfaction_threshold,
+                                                 own_cost=self._own_cost, start_work_function=self._quick_start_work,
+                                                 success_function=self._deactivate_myself)
             except Exception as e:
                 rhbplog.logwarn("Attempted Delegation was not successful (error-msg: "+str(e.message)+")\n\t-->Will do work myself!")
                 self._quick_start_work()

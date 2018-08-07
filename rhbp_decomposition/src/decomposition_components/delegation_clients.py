@@ -21,8 +21,9 @@ class RHBPDelegationClient(DelegationClientBase):
         super(RHBPDelegationClient, self).__init__()
         self._waiting_delegations = []
         self._checking_prefix = checking_prefix
+        self._success_function_dict = dict()
 
-    def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0):
+    def delegate(self, goal_name, conditions=None, success_function=None, satisfaction_threshold=1.0):
         """
         Tries to delegate a goal with given parameters
 
@@ -53,6 +54,9 @@ class RHBPDelegationClient(DelegationClientBase):
         except DelegationError:
             self.logger.logwarn("Attempted Delegation was not successful")
             raise
+
+        if success_function is not None:
+            self._set_success_function(delegation_id=delegation_id, success_function=success_function)
 
         self.logger.loginfo("Delegation has local ID " + str(delegation_id))
         return delegation_id
@@ -85,7 +89,17 @@ class RHBPDelegationClient(DelegationClientBase):
         self.logger.logerr(msg="Unexpected need to start work for the delegation "+str(delegation_id)+" in the DelegationClient with the ID "+str(self.id))
 
     def delegation_successful(self, delegation_id):
-        pass    # TODO inform behaviour that its done
+        try:
+            if self._success_function_dict.__contains__(delegation_id):
+                func = self._success_function_dict[delegation_id]
+                func()
+            return
+        except Exception as e:
+            self.logger.logerr(msg="Error in success_function for delegation with ID "+str(delegation_id)
+                                   + "; Error message:\""+str(e.message)+"\"; Will continue doing work.")
+
+    def _set_success_function(self, delegation_id, success_function):
+        self._success_function_dict[delegation_id] = success_function
 
 
 class RHBPDelegableClient(RHBPDelegationClient):
@@ -102,7 +116,7 @@ class RHBPDelegableClient(RHBPDelegationClient):
         super(RHBPDelegableClient, self).__init__(checking_prefix=checking_prefix)
         self._work_function_dictionary = {}
 
-    def delegate(self, goal_name, conditions=None, satisfaction_threshold=1.0, own_cost=-1, start_work_function=None):
+    def delegate(self, goal_name, conditions=None, success_function=None, satisfaction_threshold=1.0, own_cost=-1, start_work_function=None):
         """
         Tries to delegate a goal with given parameters, gives a proposal
         themselves if given a positive own cost
@@ -145,6 +159,9 @@ class RHBPDelegableClient(RHBPDelegationClient):
         except DelegationError:
             self.logger.logwarn("Attempted Delegation was not successful")
             raise
+
+        if success_function is not None:
+            self._set_success_function(delegation_id=delegation_id, success_function=success_function)
 
         if own_cost >= 0:
             self._add_work_function(delegation_id=delegation_id, start_work_function=start_work_function)
