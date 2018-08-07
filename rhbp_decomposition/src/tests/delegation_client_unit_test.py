@@ -82,7 +82,7 @@ class RHBPClientsTest(unittest.TestCase):
         fpt = FunctionPointerTester()
         own_cost = 2.3
 
-        self.assertRaises(RuntimeError, uut.delegate, goal_name, conditions, threshold, own_cost)
+        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost)
 
         delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost, start_work_function=fpt.function)
 
@@ -100,7 +100,7 @@ class RHBPClientsTest(unittest.TestCase):
         conditions = ["test_conditions"]
         threshold = 0.9
 
-        self.assertRaises(RuntimeError, uut.delegate, goal_name, conditions, threshold, own_cost)
+        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost)
 
         delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost, start_work_function=fpt.function)
 
