@@ -118,7 +118,7 @@ class DQNModel(ReinforcementAlgorithmBase):
         loading the experience buffer
         :return: 
         """
-        size = self.conf.buffer_size
+        size = self.model_config.buffer_size
         filename = self.model_folder + "/buffer_" + str(size) + ".txt"
         try:
             with open(filename, "rb") as fp:
@@ -235,7 +235,7 @@ class QNetwork(object):
         # the layers that define the nn
         # one_hot_inputs = tf.one_hot(self.inputs,number_inputs,dtype=tf.float32)
         self.hidden = slim.fully_connected(self.inputs, 64, activation_fn=tf.nn.tanh,
-                                           biases_initializer=None)
+                                           biases_initializer=tf.random_uniform_initializer())
         # drop tensors out and scales others by probability of self.keep_per
         # layer for computing the q_values
 

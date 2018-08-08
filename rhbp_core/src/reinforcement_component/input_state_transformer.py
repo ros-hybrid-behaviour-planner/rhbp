@@ -110,7 +110,6 @@ class InputStateTransformer(object):
         for goal in self._manager.activeGoals:
             goal_value = goal.fulfillment * goal.priority
             reward_value += goal_value
-
         return reward_value
 
     def behaviour_to_index(self, name):

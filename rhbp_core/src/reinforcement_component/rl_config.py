@@ -15,13 +15,13 @@ class NNConfig(object):
     def __init__(self):
         try:
             # True if AdamOptimizer should be used. Uses GradientDescentOptimizer otherwise
-            self.use_adam_optimizer = rospy.get_param("~use_adam_optimizer", False)
+            self.use_adam_optimizer = rospy.get_param("~use_adam_optimizer", True)
             self.learning_rate_optimizer = rospy.get_param("~learning_rate_optimizer",
-                                                           0.0005)  # learning rate of the optimizer
+                                                           0.001)  # learning rate of the optimizer
 
         except Exception:  # catches if no RosService was found
-            self.learning_rate_optimizer = 0.0001
-            self.use_adam_optimizer = False
+            self.learning_rate_optimizer = 0.001
+            self.use_adam_optimizer = True
 
 
 class DQNConfig(object):
@@ -35,19 +35,19 @@ class DQNConfig(object):
             self.y = rospy.get_param("~y", 0.99)  # Discount factor.
             self.tau = rospy.get_param("~tau", 0.001)  # Amount to update target network at each step.
             self.batch_size = rospy.get_param("~batch_size", 32)  # Size of training batch
-            self.buffer_size = rospy.get_param("~buffer_size", 5000)  # size of the experience learning buffer
+            self.buffer_size = rospy.get_param("~buffer_size", 10000)  # size of the experience learning buffer
             self.train_interval = rospy.get_param("~train_interval", 5)  # train the model every train_interval steps
             self.stop_training = rospy.get_param("~stop_training",
                                                  6000000)  # steps after the model does not get trained anymore
-            self.pre_train = rospy.get_param("~pre_train", 1000)  # no training before this many steps
+            self.pre_train = rospy.get_param("~pre_train", 100)  # no training before this many steps
         except Exception:
             self.y = 0.99  # Discount factor.
             self.tau = 0.001  # Amount to update target network at each step.
             self.batch_size = 32  # Size of training batch
-            self.buffer_size = 5000  # size of the experience learning buffer
+            self.buffer_size = 10000  # size of the experience learning buffer
             self.train_interval = 5  # train the model every train_interval steps
             self.stop_training = 6000000  # steps after the model does not get trained anymore
-            self.pre_train = 1000  # no training before this many steps
+            self.pre_train = 100  # no training before this many steps
 
 
 class SavingConfig(object):
@@ -59,17 +59,17 @@ class SavingConfig(object):
         try:
             self.model_path = rospy.get_param("~model_path", 'models/rl-model')  # path of the saved model
             self.model_directory = rospy.get_param("~model_directory", './models')  # directory of the saved model
-            self.save = rospy.get_param("~save", False)  # if the model should be saved
-            self.save_buffer = rospy.get_param("~save_buffer", False)  # if the buffer should be saved
-            self.steps_save = rospy.get_param("~steps_save", 100000)  # interval for saving model
-            self.load = rospy.get_param("~load", False)  # if the model should be loaded
+            self.save = rospy.get_param("~save", True)  # if the model should be saved
+            self.save_buffer = rospy.get_param("~save_buffer", True)  # if the buffer should be saved
+            self.steps_save = rospy.get_param("~steps_save", 10000)  # interval for saving model
+            self.load = rospy.get_param("~load", True)  # if the model should be loaded
         except Exception:
             self.model_path = 'models/rl-model'  # path of the saved model
             self.model_directory = './models'  # directory of the saved model
-            self.save = False  # if the model should be saved
-            self.save_buffer = False  # if the buffer should be saved
-            self.steps_save = 100000  # interval for saving model
-            self.load = False  # if the model should be loaded
+            self.save = True  # if the model should be saved
+            self.save_buffer = True  # if the buffer should be saved
+            self.steps_save = 10000  # interval for saving model
+            self.load = True  # if the model should be loaded
 
 
 class EvaluationConfig(object):
@@ -101,17 +101,17 @@ class ExplorationConfig(object):
     def __init__(self):
         try:
             # let the model choose random actions and dont train for these number of steps
-            self.pre_train = rospy.get_param("~pre_train", 1000)
-            self.startE = rospy.get_param("~startE", 1.00)
+            self.pre_train = rospy.get_param("~pre_train", 000)
+            self.startE = rospy.get_param("~startE", 0.50)
             self.endE = rospy.get_param("~endE", 0.01)
-            self.anneling_steps = rospy.get_param("~anneling_steps", 300000)  # steps until it reache endE
+            self.anneling_steps = rospy.get_param("~anneling_steps", 100000)  # steps until it reache endE
             # function that describes the stepDrop changing epsilon
             self.stepDrop = (self.startE - self.endE) / self.anneling_steps
         except Exception:
-            self.pre_train = 1000
-            self.startE = 1.00
+            self.pre_train = 000
+            self.startE = 0.00
             self.endE = 0.0
-            self.anneling_steps = 300000  # steps until it reache endE
+            self.anneling_steps = 10000  # steps until it reache endE
             # function that describes the stepDrop changing epsilon
             self.stepDrop = (self.startE - self.endE) / self.anneling_steps
 

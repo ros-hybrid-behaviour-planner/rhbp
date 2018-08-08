@@ -40,7 +40,9 @@ class RLComponent(object):
         :return: 
         """
         try:
+
             request = request_msg.input_state
+            #print(request.input_state,request.reward)
             self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
             # save current input state and update the model
             self.save_request(request)
@@ -60,6 +62,7 @@ class RLComponent(object):
             })
             return GetActivationResponse(activation_state)
         except Exception as e:
+            print(e)
             rospy.logerr(e.message)
             return None
 

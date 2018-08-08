@@ -248,7 +248,7 @@ class Manager(object):
         5) The last planning attempt was unsuccessful
         '''
 
-        if rospy.get_param("~planBias", 1.0) == 0.0:
+        if rospy.get_param("~planBias", 0.0) == 0.0:
             return  # return if planner is disabled
 
         domainPDDL = self._fetchPDDL()  # this also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
@@ -624,15 +624,15 @@ class Manager(object):
         """
         Check and update bias parameter values
         """
-        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param("~conflictorBias", 1.0)
-        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
+        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param("~conflictorBias", 0.0)
+        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 0.0)
         predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias",
-                                                                                                   1.0)
-        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
-        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
-        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
+                                                                                                   0.0)
+        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 0.0)
+        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 0.0)
+        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 0.0)
         activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay",
-                                                                                                 0.9)
+                                                                                                 0.0)
         self.activation_algorithm.update_config(situation_bias=situation_bias, plan_bias=plan_bias,
                                                 conflictor_bias=conflictor_bias, goal_bias=goal_bias,
                                                 successor_bias=successor_bias, predecessor_bias=predecessor_bias,
