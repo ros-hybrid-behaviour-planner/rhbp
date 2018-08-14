@@ -743,6 +743,10 @@ class BehaviourBase(object):
     def _set_execution_timeout_callback(self, request):
         self._executionTimeout = request.value
         return SetIntegerResponse()
+
+    @property
+    def preconditions(self):
+        return self._preconditions
     
     @property
     def correlations(self):

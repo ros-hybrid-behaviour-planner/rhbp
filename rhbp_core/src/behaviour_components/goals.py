@@ -288,6 +288,10 @@ class Goal(object):
     def name(self):
         return self._name
 
+    @property
+    def conditions(self):
+        return  self._conditions
+
 
 class GoalProxy(AbstractGoalRepresentation):
     '''

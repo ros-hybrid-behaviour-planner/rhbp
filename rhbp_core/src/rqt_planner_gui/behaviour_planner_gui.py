@@ -316,7 +316,7 @@ class Overview(Plugin):
                                      "stepCounter": msg.stepCounter
                                     }) 
         except Exception as e:
-            rospy.logerr("%s", e)
+            rospy.logerr("plannerStatusCallback:%s", e)
     
     @property
     def plannerPrefix(self):

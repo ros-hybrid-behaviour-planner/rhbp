@@ -105,6 +105,15 @@ class Sensor(object):
     def name(self, newName):
         self._name = newName
 
+    def unregister(self):
+        """
+        Overwrite for any explicit cleanup operations
+        """
+        pass
+        
+    def __del__(self):
+        self.unregister()
+
 
 class RawTopicSensor(Sensor):
     """
@@ -163,7 +172,7 @@ class RawTopicSensor(Sensor):
     def topic_name(self):
         return self._topic_name
 
-    def __del__(self):
+    def unregister(self):
         self._sub.unregister()
 
 
