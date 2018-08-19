@@ -7,8 +7,12 @@ import rospy
 
 class DecompositionGoal(GoalBase):
 
-    def __init__(self, *args, **kwargs):
-        super(DecompositionGoal, self).__init__(*args, **kwargs)
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
+                 activated=True):
+        super(DecompositionGoal, self).__init__(name=name, permanent=permanent,
+                                                conditions=conditions, plannerPrefix=plannerPrefix,
+                                                priority=priority, satisfaction_threshold=satisfaction_threshold,
+                                                activated=activated)
         self._failed_alive_check = False
 
     def __del__(self):

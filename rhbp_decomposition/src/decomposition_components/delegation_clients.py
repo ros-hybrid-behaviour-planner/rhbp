@@ -17,7 +17,7 @@ class RHBPDelegationClient(DelegationClientBase):
 
     logger = rhbplogger
 
-    def __init__(self, checking_prefix):
+    def __init__(self, checking_prefix=None):
         super(RHBPDelegationClient, self).__init__()
         self._waiting_delegations = []
         self._checking_prefix = checking_prefix
@@ -42,7 +42,7 @@ class RHBPDelegationClient(DelegationClientBase):
         if not self._active_manager:
             raise RuntimeError("Delegation without a registered DelegationManager")
 
-        if not self._delegation_manager.depth_checking_possible:
+        if (not self._delegation_manager.depth_checking_possible) and (self._checking_prefix is not None):
             depth = self._delegation_manager.check_remote_depth(prefix=self._checking_prefix)
         else:
             depth = None
@@ -108,7 +108,7 @@ class RHBPDelegableClient(RHBPDelegationClient):
     themselves if needed (the DelegableBehaviour)
     """
 
-    def __init__(self, checking_prefix):
+    def __init__(self, checking_prefix=None):
         """
         Constructor
         """
@@ -147,7 +147,7 @@ class RHBPDelegableClient(RHBPDelegationClient):
         if own_cost >= 0 and start_work_function is None:
             raise RuntimeError("Delegation with set own cost but no given work_function")
 
-        if not self._delegation_manager.depth_checking_possible:
+        if (not self._delegation_manager.depth_checking_possible) and (self._checking_prefix is not None):
             depth = self._delegation_manager.check_remote_depth(prefix=self._checking_prefix)
         else:
             depth = None
