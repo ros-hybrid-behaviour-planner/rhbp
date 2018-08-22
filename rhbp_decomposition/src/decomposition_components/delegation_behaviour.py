@@ -157,7 +157,7 @@ class DelegationBehaviour(BehaviourBase):
         :type effect: Effect
         """
 
-        rhbplog.logwarn(msg="Effect added via add_effect to a DelegationBehaviour wont be actually part of the delegated goal")
+        rhbplog.logdebug(msg="Effect added via add_effect to a DelegationBehaviour wont be actually part of the delegated goal")
 
         super(DelegationBehaviour, self).add_effect(effect=effect)
 
@@ -181,6 +181,9 @@ class DelegationBehaviour(BehaviourBase):
 
         :param condition: a condition
         """
+
+        rhbplog.logdebug(msg="There has to be a suiting Effect added to this DelegationBehaviour," +
+                             "if this condition for delegation should be considered by the planner as effect")
 
         self._delegation_conditions.append(condition)
 
