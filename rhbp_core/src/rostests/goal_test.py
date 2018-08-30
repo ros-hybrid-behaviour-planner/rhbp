@@ -117,7 +117,7 @@ class TestGoals(unittest.TestCase):
 
         goal_proxy = m.goals[0]
         goal_proxy.fetchStatus(2)
-        self.assertFalse(goal_proxy.activated, 'Goal still activated')
+        self.assertFalse(goal_proxy.enabled, 'Goal still enabled')
         # manually updating this conditions because it is not registered somewhere
         goal_activated_condition.sync()
         goal_activated_condition.updateComputation()

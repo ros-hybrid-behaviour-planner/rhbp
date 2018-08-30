@@ -344,7 +344,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Correlations</string>
+            <string>Effects</string>
            </property>
           </widget>
          </item>
@@ -370,7 +370,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Activated</string>
+            <string>Enabled</string>
            </property>
           </widget>
          </item>

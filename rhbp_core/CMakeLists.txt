@@ -62,7 +62,7 @@ add_service_files(
   RemoveBehaviour.srv
   RemoveGoal.srv
   ForceStart.srv
-  Activate.srv
+  Enable.srv
   SetInteger.srv
   GetPDDL.srv
   TopicUpdateSubscribe.srv

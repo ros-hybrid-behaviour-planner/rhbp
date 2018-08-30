@@ -12,7 +12,7 @@ import itertools
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import Status
-from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Activate, ActivateResponse, SetInteger, \
+from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse, Enable, EnableResponse, SetInteger, \
     SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
@@ -22,14 +22,20 @@ from utils.deprecation import deprecated
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
 
+
 class Behaviour(object):
     '''
     This is the internal representation of a behaviour node
     '''
 
-    EXECUTION_STEP_SERVICE_POSTFIX = 'ExecutionStep'
+    SERVICE_NAME_EXECUTION_STEP = 'ExecutionStep'
+    SERVICE_NAME_GET_STATUS = 'GetStatus'
+    SERVICE_NAME_FETCH_PDDL = 'PDDL'
+    SERVICE_NAME_START = 'Start'
+    SERVICE_NAME_STOP = 'Stop'
+    SERVICE_NAME_STEP = 'Step'
     
-    _instanceCounter = 0 # static counter to get distinguishable names
+    _instanceCounter = 0  # static counter to get distinguishable names
 
     SERVICE_TIMEOUT = 2
 
@@ -51,7 +57,7 @@ class Behaviour(object):
         self._active = True         # This indicates (if True) that there have been no serious issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
         self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
-        self._activated = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
+        self._enabled = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
         self._executionTimeout = -1 # The maximum allowed execution steps. If set to -1 infinite. We get it via getStatus service of actual behaviour node
         self._executionTime = -1    # The time the behaviour is running (in steps)
         self._reset_activation = True
@@ -71,8 +77,8 @@ class Behaviour(object):
                              traceback.format_exc())
 
         if (self.__requires_execution_steps):
-            rospy.wait_for_service(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX)
-            self.__execution_step_service = rospy.ServiceProxy(self._service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX,
+            rospy.wait_for_service(self._service_prefix + Behaviour.SERVICE_NAME_EXECUTION_STEP)
+            self.__execution_step_service = rospy.ServiceProxy(self._service_prefix + Behaviour.SERVICE_NAME_EXECUTION_STEP,
                                                                Empty)
         else:
             self.__execution_step_service = None
@@ -92,14 +98,16 @@ class Behaviour(object):
         This method fetches the status from the actual behaviour node via GetStatus service call
         '''
         self._justFinished = False
+        service_name = self._service_prefix + Behaviour.SERVICE_NAME_GET_STATUS
         try:
-            rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'GetStatus')
-            rospy.wait_for_service(self._service_prefix + 'GetStatus', timeout=self.SERVICE_TIMEOUT)
+
+            rhbplog.logdebug("Waiting for service %s", service_name)
+            rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
         except rospy.ROSException:
             self._handle_service_timeout()
             return
         try:
-            getStatusRequest = rospy.ServiceProxy(self._service_prefix + 'GetStatus', GetStatus)
+            getStatusRequest = rospy.ServiceProxy(service_name, GetStatus)
             status = getStatusRequest(current_step=current_step).status
             self._activationFromPreconditions = status.activation
             self._correlations = [Effect.from_msg(correlation) for correlation in status.correlations]
@@ -116,7 +124,7 @@ class Behaviour(object):
             self._active = status.active
             self._priority = status.priority
             self._interruptable = status.interruptable
-            self._activated = status.activated
+            self._enabled = status.enabled
             self._executionTimeout = status.executionTimeout
             if self._name != status.name:
                 rhbplog.logerr("%s fetched a status message from a different behaviour: %s. This cannot happen!", self._name, status.name)
@@ -128,7 +136,7 @@ class Behaviour(object):
 
     def _handle_service_timeout(self):
         """
-        basically deactivate the behaviour in case a service has timeout
+        basically disable the behaviour in case a service has timeout
         """
         rhbplog.logerr("ROS service timeout of behaviour '%s': %s. Activation will be reset", self._name,
                      traceback.format_exc())
@@ -142,10 +150,11 @@ class Behaviour(object):
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
         It returns a tuple of (action_pddl, state_pddl).
         '''
-        rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'PDDL')
-        rospy.wait_for_service(self._service_prefix + 'PDDL')
+        service_name = self._service_prefix + Behaviour.SERVICE_NAME_FETCH_PDDL
+        rhbplog.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
         try:
-            getPDDLRequest = rospy.ServiceProxy(self._service_prefix + 'PDDL', GetPDDL)
+            getPDDLRequest = rospy.ServiceProxy(service_name, GetPDDL)
             pddl = getPDDLRequest()
             return (PDDL(statement=pddl.actionStatement, predicates=pddl.actionPredicates, functions=pddl.actionFunctions), \
                    PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates, functions=pddl.stateFunctions))
@@ -160,14 +169,15 @@ class Behaviour(object):
         assert not self._isExecuting
         self._isExecuting = True
         self._executionTime = 0
+        service_name = self._service_prefix + Behaviour.SERVICE_NAME_START
         try:
             try:
-                rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'Start')
-                rospy.wait_for_service(self._service_prefix + 'Start')
+                rhbplog.logdebug("Waiting for service %s", service_name)
+                rospy.wait_for_service(service_name)
             except rospy.ROSException:
                 self._handle_service_timeout()
                 return
-            startRequest = rospy.ServiceProxy(self._service_prefix + 'Start', Empty)
+            startRequest = rospy.ServiceProxy(service_name, Empty)
             startRequest()
             rhbplog.loginfo("Started %s", self._name)
         except rospy.ServiceException:
@@ -181,17 +191,18 @@ class Behaviour(object):
         '''
         assert self._isExecuting
         self._executionTime = -1
+        service_name = self._service_prefix + Behaviour.SERVICE_NAME_STOP
         if reset_activation:
             self.reset_activation()
 
         try:
             try:
-                rhbplog.logdebug("Waiting for service %s", self._service_prefix + 'Stop')
-                rospy.wait_for_service(self._service_prefix + 'Stop')
+                rhbplog.logdebug("Waiting for service %s", service_name)
+                rospy.wait_for_service(service_name)
             except rospy.ROSException:
                 self._handle_service_timeout()
                 return
-            stopRequest = rospy.ServiceProxy(self._service_prefix + 'Stop', Empty)
+            stopRequest = rospy.ServiceProxy(service_name, Empty)
             stopRequest()
             self._isExecuting = False
             rhbplog.logdebug("Stopped %s", self._name)
@@ -277,8 +288,8 @@ class Behaviour(object):
         self._active = value
     
     @property
-    def activated(self):
-        return self._activated
+    def enabled(self):
+        return self._enabled
 
     @property
     def operational(self):
@@ -286,7 +297,7 @@ class Behaviour(object):
         defines if the behaviour should be considered by the manager
         :return:
         """
-        return self.active and self.activated
+        return self.active and self.enabled
     
     @property
     def priority(self):
@@ -341,7 +352,7 @@ class BehaviourBase(object):
         """
         Constructor
         """
-        self._name = name # a unique name is mandatory
+        self._name = name  # a unique name is mandatory
         # This are the preconditions for the behaviour. They may not be used but the default implementations of
         # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
@@ -370,10 +381,9 @@ class BehaviourBase(object):
         # flag is set (TODO: think about this again)
         self._executionTimeout = kwargs["executionTimeout"] if "executionTimeout" in kwargs else -1
         # if anything in the behaviour is not initialized or working properly this must be set to False and communicated
-        # via getStatus service. The value of this variable is set to self._activated at the start of each status poll
-        # and should be set to False in case of errors.
+        # via getStatus service. The value of this variable should be set to False in case of errors.
         self._active = True
-        self._activated = True  # The activate Service sets the value of this property.
+        self._enabled = True  # The enable Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
 
         self._init_services()
@@ -386,7 +396,7 @@ class BehaviourBase(object):
         self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self._get_status_callback)
         self._startService = rospy.Service(service_prefix + 'Start', Empty, self._start_callback)
         self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self._stop_callback)
-        self._activateService = rospy.Service(service_prefix + 'Activate', Activate, self._activate_callback)
+        self._enable_service = rospy.Service(service_prefix + 'Enable', Enable, self._enable_callback)
         self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self._pddl_callback)
         self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self._set_priority_callback)
         self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
@@ -395,7 +405,7 @@ class BehaviourBase(object):
         self._registered = False  # keeps track of behaviour registration state
 
         if self._requires_execution_steps:
-            self.__execution_step_service = rospy.Service(service_prefix + Behaviour.EXECUTION_STEP_SERVICE_POSTFIX, Empty,
+            self.__execution_step_service = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_EXECUTION_STEP, Empty,
                                                           self.do_step_callback)
         else:
             self.__execution_step_service = None
@@ -457,7 +467,7 @@ class BehaviourBase(object):
             self._getStatusService.shutdown()
             self._startService.shutdown()
             self._stopService.shutdown()
-            self._activateService.shutdown()
+            self._enable_service.shutdown()
             self._pddlService.shutdown()
             self._priorityService.shutdown()
             self._executionTimeoutService.shutdown()
@@ -651,7 +661,7 @@ class BehaviourBase(object):
                                "active"       : self._active, # if any of the above methods failed this property has been set to False by now
                                "priority"     : self._priority,
                                "interruptable": self._is_interruptible(),
-                               "activated"    : self._activated
+                               "enabled"    : self._enabled
                               })
             return GetStatusResponse(status)
         except Exception:
@@ -693,20 +703,31 @@ class BehaviourBase(object):
         else:
             rhbplog.logwarn("Passed wrong object, requires Effect")
 
-    def set_activated(self, activated, stop_running=True):
+    def set_enabled(self, enabled, stop_running=True):
         """
-        Set behaviour to activated or deactivated
+        Set behaviour to enabled or disable
         Should be called manually if the behaviour is not
-        interruptable and has finished its task
-        :param activated: activation state
-        :type activated: bool
-        :return:
+        interruptable and has finished its task until it is manually enabled again
+        :param enabled: True to enable, False to disable
+        :type enabled: bool
+        :param stop_running: trigger stop callback and set _isExecuting to false
         """
-        self._activated = activated
-        if self._activated is False and self._isExecuting and stop_running:
+        self._enabled = enabled
+        if self._enabled is False and self._isExecuting and stop_running:
             self.stop()
             self._isExecuting = False
-    
+
+    def finish(self, stop_running=True):
+        """
+        Should be called manually if the behaviour is not
+        interruptable and has finished its task for the moment, can be activated automatically to a later stage in
+        contrast to set_enabled(False)
+        :param stop_running: trigger stop callback and set _isExecuting to false
+        """
+        self._isExecuting = False
+        if stop_running:
+            self.stop()
+
     def _start_callback(self, dummy):
         '''
         This method should switch the behaviour on.
@@ -735,13 +756,13 @@ class BehaviourBase(object):
                          traceback.format_exc())
             return None
     
-    def _activate_callback(self, request):
+    def _enable_callback(self, request):
         '''
         This method activates or deactivates the behaviour.
         This method must not block.
         '''
-        self.set_activated(request.active)
-        return ActivateResponse()
+        self.set_enabled(request.active)
+        return EnableResponse()
 
     def _set_priority_callback(self, request):
         self._priority = request.value

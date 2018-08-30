@@ -48,7 +48,7 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, activated=True, use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, enabled=True, use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         '''
         Constructor
         '''
@@ -103,7 +103,7 @@ class Manager(object):
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
 
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
-        self.__activated = activated
+        self.__enable = enabled
 
         self.init_services_topics()
 
@@ -353,7 +353,7 @@ class Manager(object):
         :param guarantee_decision: Repeat activation algorithm threshold adjustments until at least one behaviour can
                                    be activated and enough executable behaviours are available
         """
-        if not force and ((self.pause_counter > 0) or (not self.__activated)):
+        if not force and ((self.pause_counter > 0) or (not self.__enable)):
             return
 
         if self._create_log_files:  # debugging only
@@ -491,7 +491,7 @@ class Manager(object):
             statusMessage.name = goal.name
             statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]
             statusMessage.active = goal.active
-            statusMessage.activated = goal.activated
+            statusMessage.enabled = goal.enabled
             statusMessage.satisfaction = goal.fulfillment
             statusMessage.priority = goal.priority
             plannerStatusMessage.goals.append(statusMessage)
@@ -510,7 +510,7 @@ class Manager(object):
             statusMessage.priority = behaviour.priority
             statusMessage.interruptable = behaviour.interruptable
             statusMessage.independentFromPlanner = behaviour.independentFromPlanner
-            statusMessage.activated = behaviour.activated
+            statusMessage.enabled = behaviour.enabled
             statusMessage.active = behaviour.active
             statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
@@ -540,16 +540,16 @@ class Manager(object):
         ### collect information about goals ###
         for goal in self._goals:
             goal.fetchStatus(self._stepCounter)
-            rhbplog.logdebug("%s: activated: %s, operational: %s, fulfillment: %f, wishes %s", goal.name, goal.activated,
+            rhbplog.logdebug("%s: enabled: %s, operational: %s, fulfillment: %f, wishes %s", goal.name, goal.enabled,
                              goal.operational, goal.fulfillment, goal.wishes)
             # Deactivate non-permanent and satisfied goals
-            if goal.activated and not goal.isPermanent and goal.satisfied:
-                goal.activated = False
-                rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
+            if goal.enabled and not goal.isPermanent and goal.satisfied:
+                goal.enabled = False
+                rhbplog.logdebug("Set 'enabled' of %s goal to False", goal.name)
         ### do housekeeping ###
         # operational goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
         # goals to be fulfilled and operational in general (status ok, communication works)
-        self._operational_goals = [x for x in self._goals if x.activated and x.active]
+        self._operational_goals = [x for x in self._goals if x.enabled and x.active]
         self._operational_behaviours = [x for x in self._behaviours if x.operational]
 
         ### use the symbolic planner if necessary ###
@@ -799,13 +799,17 @@ class Manager(object):
     
     @property
     def behaviours(self):
+        """
+        all registered behaviours
+        :return: list(Behaviour)
+        """
         return self._behaviours
     
     @property
     def operational_behaviours(self):
         """
         operational behaviours (enabled and properly working)
-        :return: list()
+        :return: list(Behaviour)
         """
         return self._operational_behaviours
     
@@ -813,7 +817,7 @@ class Manager(object):
     def operational_goals(self):
         """
         operational goals (enabled, not yet fulfilled and properly working)
-        :return: list()
+        :return: list(Behaviour)
         """
         return self._operational_goals
 
@@ -826,8 +830,8 @@ class Manager(object):
         return self._planExecutionIndex
 
     @property
-    def activated(self):
-        return self.__activated
+    def enabled(self):
+        return self.__enable
 
     @property
     def paused(self):
@@ -840,26 +844,26 @@ class Manager(object):
         else:
             return None
 
-    def deactivate(self):
-        self.__activated = False
-        #use while to avoid illegal state of non running behaviors in __executedBehaviors
-        while (len(self.__executedBehaviours)>0):
+    def disable(self):
+        self.__enable = False
+        # use while to avoid illegal state of non running behaviors in __executedBehaviors
+        while len(self.__executedBehaviours) > 0:
             behaviour = self.__executedBehaviours[0]
             self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
             behaviour.stop(True)
         for behaviour in self._behaviours:
             behaviour.reset_activation()
 
-    def activate(self):
-        self.__activated = True
+    def enable(self):
+        self.__enable = True
 
     def is_interruptible(self):
-        if (self.__use_only_running_behaviors_for_interruptible):
+        if self.__use_only_running_behaviors_for_interruptible:
             relevant_behaviors = self.__executedBehaviours
         else:
             relevant_behaviors = self._behaviours
         for behavior in relevant_behaviors:
-            if (not behavior.interruptable):
+            if not behavior.interruptable:
                 return False
         return True
 
@@ -908,9 +912,9 @@ class Manager(object):
                 goals = self.__currently_pursued_goals
                 force_state_update = req.force_state_update
             else:
-                # manager did not plan before we just use all activated(not yet fulfilled) goals
+                # manager did not plan before we just use all enabled(not yet fulfilled) goals
                 # and force a state update
-                goals = [x for x in self._goals if x.activated]
+                goals = [x for x in self._goals if x.enabled]
                 force_state_update = True
             response.plan_sequence = self.plan_with_registered_goals(goals=goals, force_state_update=force_state_update)
 

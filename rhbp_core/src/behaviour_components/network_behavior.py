@@ -49,7 +49,7 @@ class NetworkBehaviour(BehaviourBase):
         manager_args = {}
         manager_args.update(kwargs)
         manager_args['prefix'] = self.get_manager_prefix()
-        self.__manager = Manager(activated=False,
+        self.__manager = Manager(enabled=False,
                                  use_only_running_behaviors_for_interRuptible=only_running_for_deciding_interruptible,
                                  **manager_args)
 
@@ -145,7 +145,7 @@ class NetworkBehaviour(BehaviourBase):
         super(NetworkBehaviour, self).updateComputation(manager_step)
 
         # only trigger the update if not already activated because then it would be executed anyhow
-        if self.always_update_activation and not self.__manager.activated:
+        if self.always_update_activation and not self.__manager.enabled:
             self.__manager.update_activation(plan_if_necessary=False)
 
         if not self._isExecuting:
@@ -155,10 +155,10 @@ class NetworkBehaviour(BehaviourBase):
         self.__manager.step(guarantee_decision=self.guarantee_decision)
 
     def start(self):
-        self.__manager.activate()
+        self.__manager.enable()
 
     def stop(self):
-        self.__manager.deactivate()
+        self.__manager.disable()
 
     def _is_interruptible(self):
         return self.__manager.is_interruptible()
