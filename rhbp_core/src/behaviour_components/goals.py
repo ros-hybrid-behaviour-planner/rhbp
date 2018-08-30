@@ -43,14 +43,14 @@ class AbstractGoalRepresentation(object):
         self._isPermanent = permanent
         self._priority = priority
         self._satisfaction_threshold = satisfaction_threshold
-        self.__wishes = []
+        self._wishes = []
         self._fulfillment = 0.0
-        self._active = active  # This indicates (if True) that there have been no severe issues in the actual goal node
-        # and the goal can be expected to be operational. If the actual goal reports ready == False
+        self._active = active  # This indicates (if True) that there have been no serious issues in the actual goal node
+        # and the goal can be expected to be operational. If the actual goal reports _active == False
         # we will ignore it in activation computation.
-        self._activated = activated  # This member only exists as proxy for the corresponding actual goal's property.
-        # It is here because of the comprehensive status message,
-        # published each step by the manager for rqt
+        self._activated = activated  # True if the goal is not yet fulfilled. This member only exists as proxy for the
+        # corresponding actual goal's property.
+        # It is here because of the comprehensive status message, published each step by the manager for rqt
 
     @property
     def name(self):
@@ -79,14 +79,14 @@ class AbstractGoalRepresentation(object):
         """
         :return: list of (Wish())
         """
-        return self.__wishes
+        return self._wishes
 
     @wishes.setter
     def wishes(self, wishes):
         '''
         :param wishes: list of (Wish())
         '''
-        self.__wishes = wishes
+        self._wishes = wishes
 
     @property
     def active(self):
@@ -103,6 +103,14 @@ class AbstractGoalRepresentation(object):
     @activated.setter
     def activated(self, value):
         self._activated = value
+
+    @property
+    def operational(self):
+        """
+        defines if the goal should be considered by the manager
+        :return:
+        """
+        return self.active and self.activated
 
     @property
     def fulfillment(self):
@@ -540,7 +548,6 @@ class GoalBase(Goal):
     def _get_status_callback(self, request):
         try:
             self.updateComputation(request.current_step)
-            self._active = self._activated
             status = Status(**{
                 "name": self._name,
                 "satisfaction": self.computeSatisfaction(),
@@ -585,10 +592,12 @@ class OfflineGoal(AbstractGoalRepresentation):
 
     def fetchStatus(self, current_step):
         self.__goal.updateComputation(current_step)
-        self.fulfillment = self.__goal.computeSatisfaction()
-        self.wishes = [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
+        self._fulfillment = self.__goal.computeSatisfaction()
+        self._wishes = [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
         self._priority = self.__goal.priority
-        self.active = self.__goal.activated
+        self._active = self.__goal.active
+        self._activated = self.__goal.activated
+        self._satisfaction_threshold = self.__goal.satisfaction_threshold
 
     def fetchPDDL(self):
         goal_statements = self.__goal.getGoalStatements()
@@ -644,4 +653,3 @@ class PublisherGoal(GoalBase):
         super(PublisherGoal, self)._cleanup_topics_services()
         if hasattr(self, "__pub") and self.__pub:
             self.__pub.unregister()
-

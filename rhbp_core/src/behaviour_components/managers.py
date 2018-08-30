@@ -55,10 +55,12 @@ class Manager(object):
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
         self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
-        self._activeGoals = []  # pre-computed (in step()) list of operational goals
+        # pre-computed (in step()) list of not yet fulfilled goals that are working fine
+        self._operational_goals = []
         self._behaviours = []
-        self._activeBehaviours = []  # pre-computed (in step()) list of operational behaviours
-        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of active behaviours
+        # pre-computed (in step()) list of operational behaviours that are working fine
+        self._operational_behaviours = []
+        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of operational behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
             else rospy.get_param("~activationThreshold", 7.0)  # not sure how to set this just yet.
 
@@ -247,7 +249,7 @@ class Manager(object):
         It yields sorted lists with the most important goal at the front and strips away one element from the back at each iteration.
         After the most important goal was the only remaining element in the list the same process repeats for the second most important goals and so on.
         '''
-        sortedGoals = sorted(self._activeGoals, key=lambda x: x.priority, reverse = True)
+        sortedGoals = sorted(self._operational_goals, key=lambda x: x.priority, reverse=True)
         numElements = len(sortedGoals)
         for i in xrange(0, numElements, 1):
             for j in xrange(numElements, i, -1):
@@ -268,7 +270,7 @@ class Manager(object):
             return  # return if planner is disabled
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
-        domainPDDL = self._fetchPDDL(behaviours=self._activeBehaviours, goals=self._activeGoals)
+        domainPDDL = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensor_name, indicator in self.__sensorChanges.iteritems():
@@ -368,7 +370,7 @@ class Manager(object):
             while True:  # do while loop for guarantee_decision
 
                 rhbplog.loginfo("############## ACTIONS ###############")
-                # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active
+                # actually, operational_behaviours should be enough as search space but if the behaviour implementer resets active
                 # before isExecuting we are safe this way
                 self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
                 amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
@@ -455,7 +457,7 @@ class Manager(object):
                     rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
                 # Reduce or increase the activation threshold based on executed and started behaviours
-                if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
+                if len(self.__executedBehaviours) == 0 and len(self._operational_behaviours) > 0:
                     self._activationThreshold *= self._activation_threshold_decay
                     rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                 elif amount_started_behaviours > 0:
@@ -530,7 +532,7 @@ class Manager(object):
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
             behaviour.fetchStatus(self._stepCounter)
-            if behaviour.active:
+            if behaviour.operational:
                 self._totalActivation += behaviour.activation
         if self._totalActivation == 0.0:
             self._totalActivation = 1.0  # the behaviours are going to divide by this value so make sure it is non-zero
@@ -538,17 +540,17 @@ class Manager(object):
         ### collect information about goals ###
         for goal in self._goals:
             goal.fetchStatus(self._stepCounter)
-            rhbplog.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment,
-                             goal.wishes)
+            rhbplog.logdebug("%s: activated: %s, operational: %s, fulfillment: %f, wishes %s", goal.name, goal.activated,
+                             goal.operational, goal.fulfillment, goal.wishes)
             # Deactivate non-permanent and satisfied goals
-            if goal.active and not goal.isPermanent and goal.satisfied:
+            if goal.activated and not goal.isPermanent and goal.satisfied:
                 goal.activated = False
                 rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
-                goal.active = False  # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
         ### do housekeeping ###
-        # active goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
-        self._activeGoals = [x for x in self._goals if x.active]
-        self._activeBehaviours = [x for x in self._behaviours if x.active]
+        # operational goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
+        # goals to be fulfilled and operational in general (status ok, communication works)
+        self._operational_goals = [x for x in self._goals if x.activated and x.active]
+        self._operational_behaviours = [x for x in self._behaviours if x.operational]
 
         ### use the symbolic planner if necessary ###
         if plan_if_necessary:
@@ -560,7 +562,7 @@ class Manager(object):
             ### do the activation computation ###
             self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
             rhbplog.logdebug("%s", behaviour.name)
-            rhbplog.logdebug("\tactive %s", behaviour.active)
+            rhbplog.logdebug("\toperational %s", behaviour.operational)
             rhbplog.logdebug("\twishes %s", behaviour.wishes)
             rhbplog.logdebug(
                 "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
@@ -800,13 +802,21 @@ class Manager(object):
         return self._behaviours
     
     @property
-    def activeBehaviours(self):
-        return self._activeBehaviours
+    def operational_behaviours(self):
+        """
+        operational behaviours (enabled and properly working)
+        :return: list()
+        """
+        return self._operational_behaviours
     
     @property
-    def activeGoals(self):
-        return self._activeGoals
-    
+    def operational_goals(self):
+        """
+        operational goals (enabled, not yet fulfilled and properly working)
+        :return: list()
+        """
+        return self._operational_goals
+
     @property
     def totalActivation(self):
         return self._totalActivation
@@ -856,11 +866,11 @@ class Manager(object):
     def plan_with_additional_goal(self, goal_statement):
         """
         Uses the PDDL-planer to make a plan for the last used combination of
-        active goals and one additional goal statement
+        operational goals and one additional goal statement
 
         :param goal_statement: a proper PDDL goal statement
         :type goal_statement: str
-        :return: a PDDL plan for active goals + goal statement
+        :return: a PDDL plan for currently pursued goals + goal statement
         """
 
         with self._step_lock:
@@ -898,8 +908,9 @@ class Manager(object):
                 goals = self.__currently_pursued_goals
                 force_state_update = req.force_state_update
             else:
-                # manager did not plan before we just use all available goals and force a state update
-                goals = [x for x in self._goals if x.active]
+                # manager did not plan before we just use all activated(not yet fulfilled) goals
+                # and force a state update
+                goals = [x for x in self._goals if x.activated]
                 force_state_update = True
             response.plan_sequence = self.plan_with_registered_goals(goals=goals, force_state_update=force_state_update)
 
@@ -908,7 +919,7 @@ class Manager(object):
     def plan_with_registered_goals(self, goals, force_state_update=False):
         """
         Planning directly with the symbolic planner and the latest known states (last decision step())
-        :param goals: Goal objects that will be used for planning, if list is empty all active goals are used
+        :param goals: Goal objects that will be used for planning, if list is empty all operational goals are used
         :param force_state_update: If True the state (sensor values) of Goals and Behaviours will be refreshed before
                 planning
         :raises RuntimeError if manager has never stepped before
@@ -917,9 +928,9 @@ class Manager(object):
         with self._step_lock:
             if not self.__last_domain_PDDL or force_state_update:
                 # first get the goals and behaviours we want to use for planning
-                behaviours = [x for x in self._behaviours if x.active]
+                behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals if not specified
-                goals = goals if len(goals) > 0 else [x for x in self._goals if x.active]
+                goals = goals if len(goals) > 0 else [x for x in self._goals if x.operational]
                 domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
             else:
                 domain_pddl = copy(self.__last_domain_PDDL)

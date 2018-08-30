@@ -48,7 +48,7 @@ class Behaviour(object):
         self._preconditionSatisfaction = 0.0    # We get it via getStatus service of actual behaviour node
         self._interruptable = True  # We get it via getStatus service of actual behaviour node
         self._readyThreshold = 0.0  # This is the threshold that the preconditionSatisfaction must reach in order for this behaviour to be executable. We get this value via getStatus service of actual behaviour node.
-        self._active = True         # This indicates (if True) that there have been no severe issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
+        self._active = True         # This indicates (if True) that there have been no serious issues in the actual behaviour node and the behaviour can be expected to be operational. If the actual behaviour reports active == False we will ignore it in activation computation.
         self._priority = 0          # The priority indicators are unsigned ints. The higher the more important
         self._manualStart = False   # If True the behaviour is started and cannot be switched off by the planner
         self._activated = True      # This member only exists as proxy for the corresponding actual behaviour's property. It is here because of the comprehensive status message published each step by the manager for rqt
@@ -279,6 +279,14 @@ class Behaviour(object):
     @property
     def activated(self):
         return self._activated
+
+    @property
+    def operational(self):
+        """
+        defines if the behaviour should be considered by the manager
+        :return:
+        """
+        return self.active and self.activated
     
     @property
     def priority(self):
@@ -365,7 +373,7 @@ class BehaviourBase(object):
         # via getStatus service. The value of this variable is set to self._activated at the start of each status poll
         # and should be set to False in case of errors.
         self._active = True
-        self._activated = True # The activate Service sets the value of this property.
+        self._activated = True  # The activate Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
 
         self._init_services()
@@ -629,7 +637,6 @@ class BehaviourBase(object):
         try:
             #update everything before generating the status message
             self.updateComputation(request.current_step)
-            self._active = self._activated
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             # this would eliminate the doubled calculation of it
             status = Status(**{
