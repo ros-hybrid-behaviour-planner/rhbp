@@ -102,7 +102,7 @@ class TestManager(unittest.TestCase):
 
         enable_sensor = Sensor(name='enable_sensor', initial_value=True)
         enable_cond = Condition(enable_sensor, BooleanActivator())
-        non_interruptable_behaviour.addPrecondition(enable_cond)
+        non_interruptable_behaviour.add_precondition(enable_cond)
 
         goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix, permanent=True)
         goal.add_condition(non_interruptable_condition)
@@ -127,7 +127,7 @@ class TestManager(unittest.TestCase):
 
         #disable precondition of interruptable behaviour and check if it is disabled as well
 
-        interruptable_behaviour.addPrecondition(enable_cond)
+        interruptable_behaviour.add_precondition(enable_cond)
 
         for x in range(0, 1, 1):
             m.step()

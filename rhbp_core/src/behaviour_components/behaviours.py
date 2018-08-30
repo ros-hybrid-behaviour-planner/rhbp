@@ -354,7 +354,7 @@ class BehaviourBase(object):
         """
         self._name = name  # a unique name is mandatory
         # This are the preconditions for the behaviour. They may not be used but the default implementations of
-        # computeActivation(), computeSatisfaction(), and computeWishes work them. See addPrecondition()
+        # computeActivation(), computeSatisfaction(), and computeWishes work them. See add_precondition()
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
         # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning:
