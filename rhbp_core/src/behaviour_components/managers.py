@@ -267,7 +267,7 @@ class Manager(object):
             changeWasExpected = False
             print self.prefix
 
-            if self._plan:
+            if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
                 # check if the change is from the behaviour in current executionindex
                 planned_name = self._plan["actions"][self._planExecutionIndex]
                 for behaviour in self._behaviours:
