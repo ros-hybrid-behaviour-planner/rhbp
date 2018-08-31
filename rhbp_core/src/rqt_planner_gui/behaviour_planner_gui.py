@@ -1,6 +1,6 @@
 ## rqt widget showing global behaviour planner attributes and providing a container for behaviour widgets
 #Created on 10.08.2015
-#@author: stephan wypler
+#@author: wypler, hrabia
 
 import os
 import rospy
@@ -16,6 +16,7 @@ from rhbp_core.srv import SetStepping, GetStepping, GetPaused
 from PyQt5.QtCore import pyqtSignal
 from behaviour_components.managers import Manager
 from threading import Lock
+import traceback
 
 
 class Overview(Plugin):
@@ -176,7 +177,10 @@ class Overview(Plugin):
                     self.addBehaviourRequest.emit(b.name)
                     rospy.logdebug("Added behaviour %s", b.name)
                 else:
-                    self.__behaviour_widgets[b.name].refresh(b)
+                    try:
+                        self.__behaviour_widgets[b.name].refresh(b)
+                    except KeyError:
+                        pass  # doing nothing because this only happens if an update takes too long
                 updated_behaviour_names.append(b.name)
 
             # check if we have to delete a behaviour widget
@@ -199,7 +203,10 @@ class Overview(Plugin):
                     self.addGoalRequest.emit(g.name)
                     rospy.logdebug("Added goal %s", g.name)
                 else:
-                    self.__goal_widgets[g.name].refresh(g)
+                    try:
+                        self.__goal_widgets[g.name].refresh(g)
+                    except KeyError:
+                        pass  # doing nothing because this only happens if an update takes too long
                 updated_goal_names.append(g.name)
 
             # check if we have to delete a goal widget
@@ -316,7 +323,7 @@ class Overview(Plugin):
                                      "stepCounter": msg.stepCounter
                                     }) 
         except Exception as e:
-            rospy.logerr("plannerStatusCallback:%s", e)
+            rospy.logerr("plannerStatusCallback:%s", traceback.format_exc())
     
     @property
     def plannerPrefix(self):
