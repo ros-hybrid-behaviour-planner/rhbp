@@ -2,21 +2,29 @@
 
     <env name="ROS_PYTHON_LOG_CONFIG_FILE" value="$(find rhbp_core)/launch/python_logging.conf"/>
 
+    <arg name="prefix" default="" /> <!-- RHBP manager prefix-->
+
     <node pkg="rhbp_core" type="planner_node.py" name="behaviour_planner_node" output="screen">
+        <param name="prefix" type="string" value="$(arg prefix)" />
+        <param name="automatic_stepping" type="bool" value="true"/>
+        <param name="frequency" type="double" value="1.0" />
+    </node>
+
+    <!-- RHBP manager configuration is separated from the node
+         because it uses a special namespace 'prefix/rhbp_manager'-->
+    <group ns="$(arg prefix)/rhbp_manager">
         <param name="situationBias" type="double" value="0.7" />
         <param name="predecessorBias" type="double" value="1.0" />
         <param name="successorBias" type="double" value="1.0" />
         <param name="conflictorBias" type="double" value="1.0" />
         <param name="goalBias" type="double" value="0.7" />
         <param name="planBias" type="double" value="0.3" />
-        <param name="frequency" type="double" value="1.0" />
         <param name="activationThreshold" type="double" value="7.0" />
-        <param name="prefix" type="string" value="" />
         <param name="createLogFiles" type="bool" value="true"/>
-        <param name="automatic_stepping" type="bool" value="true"/>
         <param name="activation_algorithm" type="string" value="default"/>
         <param name="max_parallel_behaviours" type="int" value="-1"/> <!--Comment or negative for unlimited-->
-    </node>
+    </group>
+
 </launch>
 
 <!-- working (and better than expected!)

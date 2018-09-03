@@ -48,11 +48,15 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, enabled=True, use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, enabled=True,
+                 use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
+                 **kwargs):
         '''
         Constructor
         '''
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
+        self._param_prefix = self._prefix + '/rhbp_manager'
+
         self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
         # pre-computed (in step()) list of not yet fulfilled goals that are working fine
@@ -62,7 +66,7 @@ class Manager(object):
         self._operational_behaviours = []
         self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of operational behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
-            else rospy.get_param("~activationThreshold", 7.0)  # not sure how to set this just yet.
+            else rospy.get_param(self._param_prefix + "/activationThreshold", 7.0)  # not sure how to set this just yet.
 
         # decay for the activation threshold per step, configurable with dynamic configure
         self._activation_threshold_decay = 0.9
@@ -74,7 +78,9 @@ class Manager(object):
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
 
         self.__max_parallel_behaviours = kwargs['max_parallel_behaviours'] if 'max_parallel_behaviours' in kwargs else \
-            rospy.get_param("~max_parallel_behaviours", sys.maxint)
+            rospy.get_param(self._param_prefix + "/max_parallel_behaviours", sys.maxint)
+
+        rhbplog.loginfo("Using max_parallel_behaviours:%d", self.__max_parallel_behaviours)
 
         self._stepCounter = 0
 
@@ -85,6 +91,7 @@ class Manager(object):
         if self._create_log_files:
             self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix, filename="threshold", extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
+            rhbplog.loginfo("Writing additional logfiles to: %s", self.__log_file_path_prefix)
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
@@ -98,7 +105,9 @@ class Manager(object):
         self.planner = MetricFF()
 
         # create activation algorithm
-        algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
+        algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else \
+            rospy.get_param(self._param_prefix + "/activation_algorithm", 'default')
+
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
 
@@ -108,6 +117,8 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
+
+        rhbplog.loginfo("RHBP manager with prefix '%s' is started.", self._prefix)
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -130,7 +141,7 @@ class Manager(object):
 
         if not Manager.dynamic_reconfigure_server:  # only one server per node
             Manager.dynamic_reconfigure_server = Server(ManagerConfig, self._dynamic_reconfigure_callback,
-                                                        namespace=self._service_prefix + "rhbp_manager/")
+                                                        namespace="/" + self._param_prefix)
         else:
             self.__config_subscriber = rospy.Subscriber(Manager.dynamic_reconfigure_server.ns + 'parameter_updates',
                                                         ConfigMsg, self._dynamic_reconfigure_listener_callback)
