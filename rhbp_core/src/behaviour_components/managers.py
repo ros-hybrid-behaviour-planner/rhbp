@@ -282,12 +282,35 @@ class Manager(object):
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         domainPDDL = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
+
+
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
+
+        rhbplog.logwarn("Changes: %s", self.__sensorChanges)
+
         for sensor_name, indicator in self.__sensorChanges.iteritems():
             changeWasExpected = False
+
+            if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
+
+                rhbplog.logwarn(self._plan["actions"].values())
+
+                # check if the change is from the behaviour in current executionindex
+                planned_name = self._plan["actions"][self._planExecutionIndex]
+                for behaviour in self._behaviours:
+                    if behaviour.name == planned_name:
+                        for item in behaviour.correlations:
+                            if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
+                                # behaviour worked as expected
+                                # TODO make sure behaviour worked enough?
+                                # this does not yet mean that the change was expected, could also be induced externally
+                                self._planExecutionIndex += 1
+                        break
+
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
+                    rhbplog.logwarn("Behaviour: %s, Correlations: %s, Indicator: %f", behaviour.name, item.get_pddl_effect_name(), item.indicator)
                     # the observed change happened because of the running behaviour (at least the behaviour is
                     # correlated to the changed sensor in the correct way)
                     if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
@@ -296,8 +319,10 @@ class Manager(object):
                 if changeWasExpected:
                     break
             if not changeWasExpected:
+                rhbplog.logwarn("Change '%s':%f was not expected", sensor_name, indicator)
                 changesWereExpected = False
                 break
+
         # the next part is a little plan execution monitoring
         # it tracks progress on the plan and finds out if something unexpected finished.
         unexpectedBehaviourFinished = False
@@ -316,6 +341,9 @@ class Manager(object):
                             # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
                             elif not behaviour.independentFromPlanner:
                                 unexpectedBehaviourFinished = True  # it was unexpected
+
+        rhbplog.logwarn("planIndex: %s, unexpectedBehaviourFinished:%s, changesWereExpected:%s",self._planExecutionIndex, unexpectedBehaviourFinished, changesWereExpected)
+
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
             rhbplog.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
@@ -526,11 +554,12 @@ class Manager(object):
             statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
             plannerStatusMessage.behaviours.append(statusMessage)
-        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
+        plannerStatusMessage.runningBehaviours = [b.name for b in self.__executedBehaviours]
         plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
         plannerStatusMessage.activationThresholdDecay = self._activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
-        plannerStatusMessage.plan = self._plan
+        if self._plan and "actions" in self._plan:
+            plannerStatusMessage.plan = self._plan['actions'].values()
         plannerStatusMessage.plan_index = self._planExecutionIndex
         self.__statusPublisher.publish(plannerStatusMessage)
 
@@ -892,8 +921,17 @@ class Manager(object):
             current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
             problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
             domain_pddl = copy(self.__last_domain_PDDL)
-        plan = self.planner.plan(domain_pddl, problem_pddl)
 
+        plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
+        return plan
+
+    def plan_this_single_goal(self, goal_statement):
+
+        with self._step_lock:
+            problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement)
+            domain_pddl = copy(self.__last_domain_PDDL)
+
+        plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
         return plan
 
     def __plan_with_registered_goals_callback(self, req):
