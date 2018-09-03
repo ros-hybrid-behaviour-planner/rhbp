@@ -64,7 +64,7 @@ class DelegationGoal(DecompositionGoal):
     suited agent
     """
 
-    def __init__(self, name, delegation_manager, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0, activated=True):
+    def __init__(self, name, delegation_manager, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0, enabled=True):
         """
         Constructor
 
@@ -80,14 +80,14 @@ class DelegationGoal(DecompositionGoal):
         :type priority: int
         :param satisfaction_threshold: satisfaction_threshold of this goal
         :type satisfaction_threshold: float
-        :param activated: whether this goal is activated or not at beginning
-        :type activated: bool
+        :param enabled: whether this goal is activated or not at beginning
+        :type enabled: bool
         """
 
         self._contractor_found = False
         super(DelegationGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
                                              plannerPrefix="TBD", priority=priority,
-                                             satisfaction_threshold=satisfaction_threshold, activated=activated)
+                                             satisfaction_threshold=satisfaction_threshold, enabled=enabled)
         self._client = RHBPDelegationClient()
         self._client.register(delegation_manager=delegation_manager)
         self._goal_wrapper = None
