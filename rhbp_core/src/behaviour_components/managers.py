@@ -23,6 +23,11 @@ from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
 from copy import copy
 
+from dynamic_reconfigure.server import Server
+from dynamic_reconfigure.msg import Config as ConfigMsg
+from dynamic_reconfigure import encoding
+from rhbp_core.cfg import ManagerConfig
+
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
@@ -33,6 +38,8 @@ class Manager(object):
 
     MANAGER_DISCOVERY_TOPIC = "rhbp_discover"
 
+    dynamic_reconfigure_server = None
+
     '''
     This is the manager class that keeps track of all elements in the network (behaviours, goals, sensors).
     Behaviours need this to know what sensors exist in the world and how they are correlated their measurement.
@@ -41,35 +48,39 @@ class Manager(object):
     Also global constants like activation thresholds are stored here.
     '''
 
-    def __init__(self, activated=True, use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, enabled=True,
+                 use_only_running_behaviors_for_interRuptible=USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
+                 **kwargs):
         '''
         Constructor
         '''
         self._prefix = kwargs["prefix"] if "prefix" in kwargs else "" # if you have multiple planners in the same ROS environment use this to distinguish between the instances
+        self._param_prefix = self._prefix + '/rhbp_manager'
+
         self._sensors = [] #TODO this is actually not used at all in the moment, only behaviour know the sensors and activators
         self._goals = []
-        self._activeGoals = []  # pre-computed (in step()) list of operational goals
+        # pre-computed (in step()) list of not yet fulfilled goals that are working fine
+        self._operational_goals = []
         self._behaviours = []
-        self._activeBehaviours = []  # pre-computed (in step()) list of operational behaviours
-        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of active behaviours
+        # pre-computed (in step()) list of operational behaviours that are working fine
+        self._operational_behaviours = []
+        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of operational behaviours
         self._activationThreshold = kwargs["activationThreshold"] if "activationThreshold" in kwargs \
-            else rospy.get_param("~activationThreshold", 7.0)  # not sure how to set this just yet.
-        self.__activationDecay = kwargs["activationDecay"] if "activationDecay" in kwargs else None
+            else rospy.get_param(self._param_prefix + "/activationThreshold", 7.0)  # not sure how to set this just yet.
+
+        # decay for the activation threshold per step, configurable with dynamic configure
+        self._activation_threshold_decay = 0.9
+
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
             "~createLogFiles", False)  # not sure how to set this just yet.
         # configures if all contained behaviour or only the executed behaviours are used to determine if the manager is
         # interruptable
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
 
-        self.__conflictor_bias = kwargs['conflictorBias'] if 'conflictorBias' in kwargs else None
-        self.__goal_bias = kwargs['goalBias'] if 'goalBias' in kwargs else None
-        self.__predecessor_bias = kwargs['predecessorBias'] if 'predecessorBias' in kwargs else None
-        self.__successor_bias = kwargs['successorBias'] if 'successorBias' in kwargs else None
-        self.__plan_bias = kwargs['planBias'] if 'planBias' in kwargs else None
-        self.__situation_bias = kwargs['situationBias'] if 'situationBias' in kwargs else None
-
         self.__max_parallel_behaviours = kwargs['max_parallel_behaviours'] if 'max_parallel_behaviours' in kwargs else \
-            rospy.get_param("~max_parallel_behaviours", sys.maxint)
+            rospy.get_param(self._param_prefix + "/max_parallel_behaviours", sys.maxint)
+
+        rhbplog.loginfo("Using max_parallel_behaviours:%d", self.__max_parallel_behaviours)
 
         self._stepCounter = 0
 
@@ -80,6 +91,7 @@ class Manager(object):
         if self._create_log_files:
             self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix, filename="threshold", extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
+            rhbplog.loginfo("Writing additional logfiles to: %s", self.__log_file_path_prefix)
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
@@ -93,18 +105,20 @@ class Manager(object):
         self.planner = MetricFF()
 
         # create activation algorithm
-        algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
+        algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else \
+            rospy.get_param(self._param_prefix + "/activation_algorithm", 'default')
+
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
-        # trigger update once in order to initialize algorithm properly
-        self._update_bias_parameters()
 
         self.pause_counter = 0  # counts pause requests, step is only executed at pause_counter = 0
-        self.__activated = activated
+        self.__enable = enabled
 
         self.init_services_topics()
 
         self.__executedBehaviours = []
+
+        rhbplog.loginfo("RHBP manager with prefix '%s' is started.", self._prefix)
 
     def init_services_topics(self):
         self._service_prefix = self._prefix + '/'
@@ -124,6 +138,13 @@ class Manager(object):
                                                  queue_size=1, latch=True)
 
         self.__pub_discover = rospy.Publisher(name=Manager.MANAGER_DISCOVERY_TOPIC, data_class=DiscoverInfo, queue_size=1)
+
+        if not Manager.dynamic_reconfigure_server:  # only one server per node
+            Manager.dynamic_reconfigure_server = Server(ManagerConfig, self._dynamic_reconfigure_callback,
+                                                        namespace="/" + self._param_prefix)
+        else:
+            self.__config_subscriber = rospy.Subscriber(Manager.dynamic_reconfigure_server.ns + 'parameter_updates',
+                                                        ConfigMsg, self._dynamic_reconfigure_listener_callback)
 
     def unregister(self):
         """
@@ -239,7 +260,7 @@ class Manager(object):
         It yields sorted lists with the most important goal at the front and strips away one element from the back at each iteration.
         After the most important goal was the only remaining element in the list the same process repeats for the second most important goals and so on.
         '''
-        sortedGoals = sorted(self._activeGoals, key=lambda x: x.priority, reverse = True)
+        sortedGoals = sorted(self._operational_goals, key=lambda x: x.priority, reverse=True)
         numElements = len(sortedGoals)
         for i in xrange(0, numElements, 1):
             for j in xrange(numElements, i, -1):
@@ -256,11 +277,11 @@ class Manager(object):
         5) The last planning attempt was unsuccessful
         '''
 
-        if rospy.get_param("~planBias", 1.0) == 0.0:
-            return # return if planner is disabled
+        if not self.activation_algorithm.is_planner_enabled():
+            return  # return if planner is disabled
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
-        domainPDDL = self._fetchPDDL(behaviours=self._activeBehaviours, goals=self._activeGoals)
+        domainPDDL = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
         for sensor_name, indicator in self.__sensorChanges.iteritems():
@@ -350,12 +371,14 @@ class Manager(object):
         msg.manager_prefix = self._prefix
         self.__pub_discover.publish(msg)
 
-    def step(self, force=False):
+    def step(self, force=False, guarantee_decision=False):
         """
         Execute one decision-making step
         :param force: set to True to force the stepping regardless of pause and activation states
+        :param guarantee_decision: Repeat activation algorithm threshold adjustments until at least one behaviour can
+                                   be activated and enough executable behaviours are available
         """
-        if not force and ((self.pause_counter > 0) or (not self.__activated)):
+        if not force and ((self.pause_counter > 0) or (not self.__enable)):
             return
 
         if self._create_log_files:  # debugging only
@@ -369,111 +392,118 @@ class Manager(object):
 
             self.update_activation()
 
-            rhbplog.loginfo("############## ACTIONS ###############")
-            # actually, activeBehaviours should be enough as search space but if the behaviour implementer resets active
-            # before isExecuting we are safe this way
-            self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
-            amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
-            amount_started_behaviours = 0
-            amount_currently_selected_behaviours = 0
+            while True:  # do while loop for guarantee_decision
 
-            rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
+                rhbplog.loginfo("############## ACTIONS ###############")
+                # actually, operational_behaviours should be enough as search space but if the behaviour implementer resets active
+                # before isExecuting we are safe this way
+                self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
+                amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
+                amount_started_behaviours = 0
+                amount_currently_selected_behaviours = 0
 
-            currently_influenced_sensors = set()
+                rhbplog.loginfo("currently running behaviours: %s", self.__executedBehaviours)
 
-            # perform the decision making based on the calculated activations
-            for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
-                ### now comes a series of tests that a behaviour must pass in order to get started ###
-                if not behaviour.active and not behaviour.manualStart: # it must be active
-                    rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
-                    continue
-                # Behaviour is not already running and is not manually activated
-                if behaviour.isExecuting:
-                    # It is important to remember that only interruptable behaviours can be stopped by the manager
-                    if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
-                            and behaviour.interruptable and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
-                        self._stop_behaviour(behaviour, True)
-                        self.__replanningNeeded = True  # this is unusual so we trigger replanning
-                    elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
-                        self._stop_behaviour(behaviour, True)
-                    elif behaviour.activation < self._activationThreshold and behaviour.interruptable \
-                            and not behaviour.manualStart:
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
-                                        behaviour.name, behaviour.activation, self._activationThreshold)
-                        self._stop_behaviour(behaviour, False)
-                    elif self.__max_parallel_behaviours > 0 and behaviour.interruptable and \
-                            amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
-                            and not behaviour.manualStart:
-                        # if we try to stop non-interruptable behaviours and we have already to many behaviours running
-                        # this should be resolved in the next decision-making round
-                        rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
-                        self._stop_behaviour(behaviour, False)
-                    else:
-                        rhbplog.logdebug("'%s' will not be started because it is already executing", behaviour.name)
-                        behaviour.executionTime += 1
+                currently_influenced_sensors = set()
 
-                        if behaviour.manualStart:
-                            amount_of_manually_startable_behaviours -= 1
+                # perform the decision making based on the calculated activations
+                for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
+                    ### now comes a series of tests that a behaviour must pass in order to get started ###
+                    if not behaviour.active and not behaviour.manualStart: # it must be active
+                        rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
+                        continue
+                    # Behaviour is not already running and is not manually activated
+                    if behaviour.isExecuting:
+                        # It is important to remember that only interruptable behaviours can be stopped by the manager
+                        if behaviour.executionTimeout != -1 and behaviour.executionTime >= behaviour.executionTimeout \
+                                and behaviour.interruptable and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because it timed out", behaviour.name)
+                            self._stop_behaviour(behaviour, True)
+                            self.__replanningNeeded = True  # this is unusual so we trigger replanning
+                        elif not behaviour.executable and behaviour.interruptable and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because it is not executable anymore", behaviour.name)
+                            self._stop_behaviour(behaviour, True)
+                        elif behaviour.activation < self._activationThreshold and behaviour.interruptable \
+                                and not behaviour.manualStart:
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too low activation %f < %f",
+                                            behaviour.name, behaviour.activation, self._activationThreshold)
+                            self._stop_behaviour(behaviour, False)
+                        elif self.__max_parallel_behaviours > 0 and behaviour.interruptable and \
+                                amount_currently_selected_behaviours >= self.__max_parallel_behaviours \
+                                and not behaviour.manualStart:
+                            # if we try to stop non-interruptable behaviours and we have already to many behaviours running
+                            # this should be resolved in the next decision-making round
+                            rhbplog.loginfo("STOP BEHAVIOUR '%s' because of too many executed behaviours", behaviour.name)
+                            self._stop_behaviour(behaviour, False)
+                        else:
+                            rhbplog.logdebug("'%s' will not be started because it is already executing", behaviour.name)
+                            behaviour.executionTime += 1
 
-                        amount_currently_selected_behaviours += 1
+                            if behaviour.manualStart:
+                                amount_of_manually_startable_behaviours -= 1
 
-                        if behaviour.requires_execution_steps:
-                            behaviour.do_step()
-                    continue
-                if not behaviour.executable and not behaviour.manualStart:  # it must be executable
-                    rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
-                    continue
-                if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
-                    rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
-                    continue
+                            amount_currently_selected_behaviours += 1
 
-                currently_influenced_sensors = self._get_currently_influenced_sensors()
+                            if behaviour.requires_execution_steps:
+                                behaviour.do_step()
+                        continue
+                    if not behaviour.executable and not behaviour.manualStart:  # it must be executable
+                        rhbplog.loginfo("%s will not be started because it is not executable", behaviour.name)
+                        continue
+                    if behaviour.activation < self._activationThreshold and not behaviour.manualStart:  # it must have high-enough activation
+                        rhbplog.loginfo("%s will not be started because it has not enough activation (%f < %f)", behaviour.name, behaviour.activation, self._activationThreshold)
+                        continue
 
-                behaviour_is_interferring_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+                    currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                if behaviour_is_interferring_others:
-                    continue
+                    behaviour_is_interfering_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
 
-                if behaviour.manualStart:
-                    rhbplog.loginfo("BEHAVIOUR %s IS STARTED BECAUSE OF MANUAL REQUEST", behaviour.name)
-                # Do not execute more behaviours than allowed, behaviours are ordered by descending activation hence
-                # we prefer behaviours with higher activation
-                elif self.__max_parallel_behaviours > 0 and \
-                                (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
-                                >= self.__max_parallel_behaviours:
-                    rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
-                    continue
+                    if behaviour_is_interfering_others:
+                        continue
 
-                ### if the behaviour got here it really is ready to be started ###
-                rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
-                behaviour.start()
+                    if behaviour.manualStart:
+                        rhbplog.loginfo("BEHAVIOUR %s IS STARTED BECAUSE OF MANUAL REQUEST", behaviour.name)
+                    # Do not execute more behaviours than allowed, behaviours are ordered by descending activation hence
+                    # we prefer behaviours with higher activation
+                    elif self.__max_parallel_behaviours > 0 and \
+                                    (amount_currently_selected_behaviours + amount_of_manually_startable_behaviours) \
+                                    >= self.__max_parallel_behaviours:
+                        rhbplog.logdebug("BEHAVIOUR %s IS NOT STARTED BECAUSE OF TOO MANY PARALLEL BEHAVIOURS", behaviour.name)
+                        continue
 
-                amount_currently_selected_behaviours += 1
+                    ### if the behaviour got here it really is ready to be started ###
+                    rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
+                    behaviour.start()
 
-                self.__executedBehaviours.append(behaviour)
-                amount_started_behaviours += 1
-                rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
+                    amount_currently_selected_behaviours += 1
 
-            activation_threshold_decay = rospy.get_param("~activationThresholdDecay", .8)
+                    self.__executedBehaviours.append(behaviour)
+                    amount_started_behaviours += 1
+                    rhbplog.loginfo("now running behaviours: %s", self.__executedBehaviours)
 
-            self._publish_planner_status(activation_threshold_decay, currently_influenced_sensors)
+                # Reduce or increase the activation threshold based on executed and started behaviours
+                if len(self.__executedBehaviours) == 0 and len(self._operational_behaviours) > 0:
+                    self._activationThreshold *= self._activation_threshold_decay
+                    rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+                elif amount_started_behaviours > 0:
+                    rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
+                    self._activationThreshold *= (1 / self._activation_threshold_decay)
 
-            # Reduce or increase the activation threshold based on executed and started behaviours
-            if len(self.__executedBehaviours) == 0 and len(self._activeBehaviours) > 0:
-                self._activationThreshold *= activation_threshold_decay
-                rhbplog.loginfo("REDUCING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-            elif amount_started_behaviours > 0:
-                rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
-                self._activationThreshold *= (1 / activation_threshold_decay)
+                executable_behaviours = [b for b in self._behaviours if b.executable]
+                if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
+                    # at least one behaviour is executing or there is no executable behaviour available
+                    break
+                else:
+                    rhbplog.loginfo("No decision_taken repeating with adjusted threshold. New activation threshold: %f",
+                                    self._activationThreshold)
+
+            self._publish_planner_status(currently_influenced_sensors)
 
         self._stepCounter += 1
 
-    def _publish_planner_status(self, activation_threshold_decay, currently_influenced_sensors):
+    def _publish_planner_status(self, currently_influenced_sensors):
         """
         Collect all information for the plannerStatusMessage and publish it
-        :param activation_threshold_decay: current activationThresholdDecay
         :param currently_influenced_sensors: set() of currently influenced sensors
         """
         if self.__statusPublisher.get_num_connections() == 0:
@@ -486,7 +516,7 @@ class Manager(object):
             statusMessage.name = goal.name
             statusMessage.wishes = [w.get_wish_msg() for w in goal.wishes]
             statusMessage.active = goal.active
-            statusMessage.activated = goal.activated
+            statusMessage.enabled = goal.enabled
             statusMessage.satisfaction = goal.fulfillment
             statusMessage.priority = goal.priority
             plannerStatusMessage.goals.append(statusMessage)
@@ -505,14 +535,14 @@ class Manager(object):
             statusMessage.priority = behaviour.priority
             statusMessage.interruptable = behaviour.interruptable
             statusMessage.independentFromPlanner = behaviour.independentFromPlanner
-            statusMessage.activated = behaviour.activated
+            statusMessage.enabled = behaviour.enabled
             statusMessage.active = behaviour.active
             statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
             plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
         plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
-        plannerStatusMessage.activationThresholdDecay = activation_threshold_decay
+        plannerStatusMessage.activationThresholdDecay = self._activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
         plannerStatusMessage.plan = self._plan
         plannerStatusMessage.plan_index = self._planExecutionIndex
@@ -527,46 +557,49 @@ class Manager(object):
         ### collect information about behaviours ###
         for behaviour in self._behaviours:
             behaviour.fetchStatus(self._stepCounter)
-            if behaviour.active:
+            if behaviour.operational:
                 self._totalActivation += behaviour.activation
         if self._totalActivation == 0.0:
-            self._totalActivation = 1.0  # the behaviours are going to divide by this so make sure it is non-zero
+            self._totalActivation = 1.0  # the behaviours are going to divide by this value so make sure it is non-zero
         rhbplog.logdebug("############# GOAL STATES #############")
         ### collect information about goals ###
         for goal in self._goals:
             goal.fetchStatus(self._stepCounter)
-            rhbplog.logdebug("%s: active: %s, fulfillment: %f, wishes %s", goal.name, goal.active, goal.fulfillment,
-                             goal.wishes)
+            rhbplog.logdebug("%s: enabled: %s, operational: %s, fulfillment: %f, wishes %s", goal.name, goal.enabled,
+                             goal.operational, goal.fulfillment, goal.wishes)
             # Deactivate non-permanent and satisfied goals
-            if goal.active and not goal.isPermanent and goal.satisfied:
-                goal.activated = False
-                rhbplog.logdebug("Set Activated of %s goal to False", goal.name)
-                goal.active = False  # this needs to be set locally because the effect of the Activate service call above is only "visible" by GetStatus service calls in the future but we need it to be deactivated NOW
+            if goal.enabled and not goal.isPermanent and goal.satisfied:
+                goal.enabled = False
+                rhbplog.logdebug("Set 'enabled' of %s goal to False", goal.name)
         ### do housekeeping ###
-        # active goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
-        self._activeGoals = [x for x in self._goals if x.active]
-        self._activeBehaviours = [x for x in self._behaviours if x.active]
+        # operational goals and behaviours have to be determined BEFORE computeActivation() of the behaviours is called
+        # goals to be fulfilled and operational in general (status ok, communication works)
+        self._operational_goals = [x for x in self._goals if x.enabled and x.active]
+        self._operational_behaviours = [x for x in self._behaviours if x.operational]
 
         ### use the symbolic planner if necessary ###
         if plan_if_necessary:
             self._plan_if_necessary()
-        self._update_bias_parameters()
+        self.activation_algorithm.step_preparation()
         ### log behaviour stuff ###
         rhbplog.logdebug("########## BEHAVIOUR  STATES ##########")
         for behaviour in self._behaviours:
             ### do the activation computation ###
             self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
             rhbplog.logdebug("%s", behaviour.name)
-            rhbplog.logdebug("\tactive %s", behaviour.active)
+            rhbplog.logdebug("\toperational %s", behaviour.operational)
             rhbplog.logdebug("\twishes %s", behaviour.wishes)
             rhbplog.logdebug(
                 "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
+        self.calculate_final_behaviour_activations()
+        rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
+
+    def calculate_final_behaviour_activations(self):
         ### commit the activation computed in this step ###
         for behaviour in self._behaviours:
             self.activation_algorithm.commit_behaviour_activation(ref_behaviour=behaviour)
             rhbplog.logdebug("activation of %s after this step: %f", behaviour.name, behaviour.activation)
-        rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
 
     def handle_interfering_correlations(self, behaviour, currently_influenced_sensors):
         """
@@ -634,23 +667,6 @@ class Manager(object):
             itertools.chain.from_iterable([[item.get_pddl_effect_name() for item in x.correlations] for x in self.__executedBehaviours])))
         rhbplog.loginfo("currently influenced sensors: %s", currently_influenced_sensors)
         return currently_influenced_sensors
-
-    def _update_bias_parameters(self):
-        """
-        Check and update bias parameter values
-        """
-        conflictor_bias = self.__conflictor_bias if self.__conflictor_bias else rospy.get_param("~conflictorBias", 1.0)
-        goal_bias = self.__goal_bias if self.__goal_bias else rospy.get_param("~goalBias", 1.0)
-        predecessor_bias = self.__predecessor_bias if self.__predecessor_bias else rospy.get_param("~predecessorBias",
-                                                                                                   1.0)
-        successor_bias = self.__successor_bias if self.__successor_bias else rospy.get_param("~successorBias", 1.0)
-        plan_bias = self.__plan_bias if self.__plan_bias else rospy.get_param("~planBias", 1.0)
-        situation_bias = self.__situation_bias if self.__situation_bias else rospy.get_param("~situationBias", 1.0)
-        activation_decay = self.__activationDecay if self.__activationDecay else rospy.get_param("~activationDecay", 0.9)
-        self.activation_algorithm.update_config(situation_bias=situation_bias, plan_bias=plan_bias,
-                                                conflictor_bias=conflictor_bias, goal_bias=goal_bias,
-                                                successor_bias=successor_bias, predecessor_bias=predecessor_bias,
-                                                activation_decay=activation_decay)
 
     def _stop_behaviour(self, behaviour, reset_activation=True):
         """
@@ -762,6 +778,37 @@ class Manager(object):
                 behaviour.manualStart = request.forceStart
                 break
         return ForceStartResponse()
+
+    def update_config(self, config):
+        """
+        Update configuration (e.g. called from dynamic reconfigure
+        :param config: dict with the new configuration
+        """
+        self._activation_threshold_decay = config.get("activationThresholdDecay", self._activation_threshold_decay)
+
+        self.activation_algorithm.update_config(**config)
+
+    def _dynamic_reconfigure_listener_callback(self, config_msg):
+        """
+        callback for the dynamic_reconfigure update message
+        :param config_msg: msg
+        """
+
+        config = encoding.decode_config(msg=config_msg)
+
+        self.update_config(config=config)
+
+    def _dynamic_reconfigure_callback(self, config, level):
+        """
+        direct callback of the dynamic_reconfigure server
+        :param config: new config
+        :param level:
+        :return: adjusted config
+        """
+
+        self.update_config(config=config)
+
+        return config
     
     @property
     def activationThreshold(self):
@@ -777,16 +824,28 @@ class Manager(object):
     
     @property
     def behaviours(self):
+        """
+        all registered behaviours
+        :return: list(Behaviour)
+        """
         return self._behaviours
     
     @property
-    def activeBehaviours(self):
-        return self._activeBehaviours
+    def operational_behaviours(self):
+        """
+        operational behaviours (enabled and properly working)
+        :return: list(Behaviour)
+        """
+        return self._operational_behaviours
     
     @property
-    def activeGoals(self):
-        return self._activeGoals
-    
+    def operational_goals(self):
+        """
+        operational goals (enabled, not yet fulfilled and properly working)
+        :return: list(Behaviour)
+        """
+        return self._operational_goals
+
     @property
     def totalActivation(self):
         return self._totalActivation
@@ -796,8 +855,8 @@ class Manager(object):
         return self._planExecutionIndex
 
     @property
-    def activated(self):
-        return self.__activated
+    def enabled(self):
+        return self.__enable
 
     @property
     def paused(self):
@@ -814,37 +873,37 @@ class Manager(object):
     def prefix(self):
         return self._prefix
 
-    def deactivate(self):
-        self.__activated = False
-        #use while to avoid illegal state of non running behaviors in __executedBehaviors
-        while (len(self.__executedBehaviours)>0):
+    def disable(self):
+        self.__enable = False
+        # use while to avoid illegal state of non running behaviors in __executedBehaviors
+        while len(self.__executedBehaviours) > 0:
             behaviour = self.__executedBehaviours[0]
             self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
             behaviour.stop(True)
         for behaviour in self._behaviours:
             behaviour.reset_activation()
 
-    def activate(self):
-        self.__activated = True
+    def enable(self):
+        self.__enable = True
 
     def is_interruptible(self):
-        if (self.__use_only_running_behaviors_for_interruptible):
+        if self.__use_only_running_behaviors_for_interruptible:
             relevant_behaviors = self.__executedBehaviours
         else:
             relevant_behaviors = self._behaviours
         for behavior in relevant_behaviors:
-            if (not behavior.interruptable):
+            if not behavior.interruptable:
                 return False
         return True
 
     def plan_with_additional_goal(self, goal_statement):
         """
         Uses the PDDL-planer to make a plan for the last used combination of
-        active goals and one additional goal statement
+        operational goals and one additional goal statement
 
         :param goal_statement: a proper PDDL goal statement
         :type goal_statement: str
-        :return: a PDDL plan for active goals + goal statement
+        :return: a PDDL plan for currently pursued goals + goal statement
         """
 
         with self._step_lock:
@@ -891,8 +950,9 @@ class Manager(object):
                 goals = self.__currently_pursued_goals
                 force_state_update = req.force_state_update
             else:
-                # manager did not plan before we just use all available goals and force a state update
-                goals = [x for x in self._goals if x.active]
+                # manager did not plan before we just use all enabled(not yet fulfilled) goals
+                # and force a state update
+                goals = [x for x in self._goals if x.enabled]
                 force_state_update = True
             response.plan_sequence = self.plan_with_registered_goals(goals=goals, force_state_update=force_state_update)
 
@@ -901,7 +961,7 @@ class Manager(object):
     def plan_with_registered_goals(self, goals, force_state_update=False):
         """
         Planning directly with the symbolic planner and the latest known states (last decision step())
-        :param goals: Goal objects that will be used for planning, if list is empty all active goals are used
+        :param goals: Goal objects that will be used for planning, if list is empty all operational goals are used
         :param force_state_update: If True the state (sensor values) of Goals and Behaviours will be refreshed before
                 planning
         :raises RuntimeError if manager has never stepped before
@@ -910,9 +970,9 @@ class Manager(object):
         with self._step_lock:
             if not self.__last_domain_PDDL or force_state_update:
                 # first get the goals and behaviours we want to use for planning
-                behaviours = [x for x in self._behaviours if x.active]
+                behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals if not specified
-                goals = goals if len(goals) > 0 else [x for x in self._goals if x.active]
+                goals = goals if len(goals) > 0 else [x for x in self._goals if x.operational]
                 domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
             else:
                 domain_pddl = copy(self.__last_domain_PDDL)

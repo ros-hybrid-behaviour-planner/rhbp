@@ -2,7 +2,7 @@
 """
 Created on 13.04.2015
 
-@author: stephan, hrabia
+@author: wypler, hrabia
 """
 import sys
 import rospy
@@ -19,7 +19,7 @@ class ManagerNode(object):
 
     def __init__(self, manager_prefix=""):
 
-        rospy.init_node('behaviourPlannerManager', log_level=rospy.WARN)
+        rospy.init_node('planner_node', log_level=rospy.WARN)
 
         prefix = rospy.get_param("~prefix", manager_prefix)
         self._manager = Manager(prefix=prefix)

@@ -4,9 +4,12 @@
 
 import unittest
 
+import collections
+
 from behaviour_components.activation_algorithm import ActivationAlgorithmFactory,BaseActivationAlgorithm
 
 from behaviour_components.managers import Manager
+
 
 from mock import patch
 from rospy.rostime import Time
@@ -18,7 +21,11 @@ class ActivationAlgorithmTestSuite(unittest.TestCase):
         self._rospy_patcher = patch('rospy.Time.now')
         self._rospy_patcher.start()
         self._rospy_patcher.return_value = Time(0, 0)
-        self.manager = Manager()
+
+        DynamicReconfigureServer = collections.namedtuple('DynamicReconfigureServer', 'ns')
+
+        Manager.dynamic_reconfigure_server = DynamicReconfigureServer(ns="UNUSED")
+        self.manager = Manager(activationThreshold=7, createLogFiles=False, max_parallel_behaviours=1)
 
     def tearDown(self):
 

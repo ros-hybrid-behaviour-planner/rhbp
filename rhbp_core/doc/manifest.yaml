@@ -22,7 +22,7 @@ package_type: package
 repo_url: ''
 srvs:
 - ForceStart
-- Activate
+- Enable
 - RemoveBehaviour
 - GetPDDL
 - GetStatus

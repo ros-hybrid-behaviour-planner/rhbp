@@ -41,7 +41,8 @@ class KnowledgeBaseFactCache(object):
         self.__last_updated_fact = tuple()
 
         try:
-            rospy.wait_for_service(self.__example_service_name, timeout=10)
+            initial_timeout = timeout if timeout else 5 # use here also provided timeout for initial non crucial waiting
+            rospy.wait_for_service(self.__example_service_name, initial_timeout)
             self.__register_for_updates()
         except rospy.ROSException:
             rhbplog.logwarn(
@@ -57,6 +58,7 @@ class KnowledgeBaseFactCache(object):
         rospy.Subscriber(removed_topic_name, FactRemoved, self.__handle_remove_update)
         rospy.Subscriber(update_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
+        rospy.sleep(0.1)  # Short sleep guarantees that we do not miss updates (triggering publisher queue processing)
         self.__initialized = True
         rhbplog.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 
@@ -89,14 +91,17 @@ class KnowledgeBaseFactCache(object):
     def __handle_fact_update(self, fact_updated):
         tuple_fact_new = tuple(fact_updated.new)
         with self.__value_lock:
+
             if tuple_fact_new not in self.__contained_facts:
                 self.__contained_facts.append(tuple_fact_new)
 
             for removed_fact in fact_updated.removed:
-                try:
-                    self.__contained_facts.remove(tuple(removed_fact.content))
-                except ValueError:
-                    pass
+                tuple_fact_old = tuple(removed_fact.content)
+                if tuple_fact_old != tuple_fact_new:
+                    try:
+                        self.__contained_facts.remove(tuple_fact_old)
+                    except ValueError:
+                        pass
         self._cache_updated(tuple_fact_new)
         self._notify_listeners()
 

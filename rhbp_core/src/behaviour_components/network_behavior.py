@@ -27,6 +27,7 @@ class NetworkBehaviour(BehaviourBase):
     def __init__(self, name, requires_execution_steps=True,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
                  correlations=None, always_update_activation=False,
+                 guarantee_decision=False,
                  **kwargs):
         """
         :param correlations: tuple <Effect>
@@ -34,6 +35,8 @@ class NetworkBehaviour(BehaviourBase):
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
         :param always_update_activation: if set to True the entire activation calculation of the sub manager is updated on each behaviour computation update
+        :param guarantee_decision: if there are executable behaviours in the local network, adjust the thresholds until
+               at least one behaviour is selected
         :param kwargs: args for the manager, except the prefix arg
         """
         super(NetworkBehaviour, self).__init__(name=name, requires_execution_steps=requires_execution_steps, **kwargs)
@@ -43,10 +46,11 @@ class NetworkBehaviour(BehaviourBase):
                             "see 'only_running_for_deciding_interruptible'")
         self.requires_execution_steps = requires_execution_steps
         self.always_update_activation = always_update_activation
+        self.guarantee_decision = guarantee_decision
         manager_args = {}
         manager_args.update(kwargs)
         manager_args['prefix'] = self.get_manager_prefix()
-        self.__manager = Manager(activated=False,
+        self.__manager = Manager(enabled=False,
                                  use_only_running_behaviors_for_interRuptible=only_running_for_deciding_interruptible,
                                  **manager_args)
 
@@ -142,20 +146,20 @@ class NetworkBehaviour(BehaviourBase):
         super(NetworkBehaviour, self).updateComputation(manager_step)
 
         # only trigger the update if not already activated because then it would be executed anyhow
-        if self.always_update_activation and not self.__manager.activated:
+        if self.always_update_activation and not self.__manager.enabled:
             self.__manager.update_activation(plan_if_necessary=False)
 
         if not self._isExecuting:
             self.__manager.send_discovery()
 
     def do_step(self):
-        self.__manager.step()
+        self.__manager.step(guarantee_decision=self.guarantee_decision)
 
     def start(self):
-        self.__manager.activate()
+        self.__manager.enable()
 
     def stop(self):
-        self.__manager.deactivate()
+        self.__manager.disable()
 
     def _is_interruptible(self):
         return self.__manager.is_interruptible()

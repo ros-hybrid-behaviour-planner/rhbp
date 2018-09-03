@@ -11,11 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   ffp
+  dynamic_reconfigure
 )
-
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -65,7 +62,7 @@ add_service_files(
   RemoveBehaviour.srv
   RemoveGoal.srv
   ForceStart.srv
-  Activate.srv
+  Enable.srv
   SetInteger.srv
   GetPDDL.srv
   TopicUpdateSubscribe.srv
@@ -103,10 +100,9 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/Manager.cfg
+)
 
 ###################################
 ## catkin specific configuration ##

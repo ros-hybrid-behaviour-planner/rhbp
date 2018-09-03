@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
-from rhbp_core.srv import Activate, ForceStart, SetInteger
+from rhbp_core.srv import Enable, ForceStart, SetInteger
 from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
@@ -35,7 +35,7 @@ class BehaviourWidget(QWidget):
         self.__deleted = True
     
     def updateGUI(self, newValues):
-        self.activatedCheckbox.setChecked(newValues["activated"])
+        self.activatedCheckbox.setChecked(newValues["enabled"])
         self.satisfactionDoubleSpinBox.setValue(newValues["satisfaction"])
         self.satisfactionDoubleSpinBox.setToolTip("{0}".format(newValues["satisfaction"]))
         self.activeLabel.setText(newValues["active"])
@@ -63,7 +63,7 @@ class BehaviourWidget(QWidget):
         """
         assert self._name == msg.name
         self.updateGUIsignal.emit({
-                                   "activated" : msg.activated,
+                                   "enabled" : msg.enabled,
                                    "satisfaction" : msg.satisfaction,
                                    "active" : str(msg.active),
                                    #TODO information could be extended here
@@ -91,12 +91,12 @@ class BehaviourWidget(QWidget):
         return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
     
     def activationCallback(self, status):
-        service_name = self._get_service_prefix() + 'Activate'
+        service_name = self._get_service_prefix() + 'Enable'
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
-        activateRequest = rospy.ServiceProxy(service_name, Activate)
+        activateRequest = rospy.ServiceProxy(service_name, Enable)
         activateRequest(status)
-        rospy.logdebug("Set activated of %s to %s", self._name, status)
+        rospy.logdebug("Set enabled of %s to %s", self._name, status)
         
     def forceStartCallback(self, status):
         service_name = self._overviewPlugin.plannerPrefix + '/'+ 'ForceStart'

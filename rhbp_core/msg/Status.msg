@@ -11,5 +11,5 @@ bool active
 bool interruptable
 bool independentFromPlanner
 int32 priority
-bool activated
+bool enabled
 bool executable

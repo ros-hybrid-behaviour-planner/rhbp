@@ -24,7 +24,7 @@ When they finish executing their accumulated activation is reset to 0 to give ot
 
 Before we continue with how the activation of each behaviour gets calculated at every iteration (up to the point necessary to know for a developer) and how the interface between the planner and behaviours is designed and can be used we must have a look at other properties of a behaviour not relevant for activation calculation but for the planner to decide whether it can start (or has to interrupt) a particular behaviour.
 Those properties are:
-* Whether it is activated (users may deactivate a behaviour to exclude it from the planning process).
+* Whether it is enabled (users may disable a behaviour to exclude it from the planning process).
 * What its effects are. This is expressed by the behaviour's correlations: a dictionary with (sensor_activator_tuple) names as keys and an indicator as value. The value range is real and the allowed interval is [-1, 1]. Interpretations of this value are very intuitive in some situations and sometimes a bit harder: When the affected (sensor) value is ordinal then a positive correlation value indicates that the sensor value will rise when the behaviour executes and vice versa for a negative correlation value. In cases where there is no order only the positive part of the scale is used to express the influence of the behaviour on this property. For example, a behaviour that moves the robot has influence on the pose so its correlation to the pose sensor is 1. The correlations are used by the planner to detect conflicts that would arise when multiple behaviours that affect the same properties would operate at the same time.
 * Whether it is interruptible. This is important in combination with the following attribute (priority).
 * Its priority. The priority of a behaviour is a positive integer starting at 0 (default). The higher the value the more important the behaviour is. In situations where multiple executable behaviours have conflicting correlations the one with highest priority interrupts those with less priority if and only if the inferior behaviours are interruptible.
@@ -34,7 +34,7 @@ Those properties are:
 
 The previous section indicates that the planner actually checks more than just the activation value before launching a behaviour.
 At first the behaviours are sorted by activation in descending order. The the planner examines every behaviour and checks the following conditions:
-1. If a behaviour is active. Active means activated and there have been no internal issues that could render the behaviour inactive.
+1. If a behaviour is active. Active means enabled and there have been no internal issues that could render the behaviour inactive.
 2. If it is already executing. If so, it won't get started again
 3. If it is executable (precondition satisfaction larger than *readyThreshold*)
 4. If its activation is high enough (activation larger than *activationThreshold*)

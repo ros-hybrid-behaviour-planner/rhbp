@@ -54,11 +54,13 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         """
         sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_basic', 'pos', '*', '*'),
                                  knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
         sensor.sync()
         self.assertFalse(sensor.value)
 
         update_stamp = sensor._value_cache.update_time
         self.__client.push((self.__message_prefix, 'test_basic', 'pos', '42', '0'))
+        rospy.sleep(0.1)
         while update_stamp == sensor._value_cache.update_time:
             rospy.sleep(0.1)
 
@@ -73,9 +75,10 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
 
         sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_remove', 'pos', '*', '*'),
                                  knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
         update_stamp = sensor._value_cache.update_time
         self.__client.push(test_tuple)
-
+        rospy.sleep(0.1)
         while update_stamp == sensor._value_cache.update_time:
             rospy.sleep(0.1)
         sensor.sync()
@@ -103,6 +106,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         sensor_pattern = (self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', '*')
         sensor = KnowledgeFactNumberSensor(pattern=sensor_pattern, initial_value=initial_value,
                                            knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
 
         sensor.sync()
         self.assertEquals(sensor.value, initial_value)

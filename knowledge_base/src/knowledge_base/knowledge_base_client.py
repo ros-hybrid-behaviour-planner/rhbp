@@ -157,7 +157,7 @@ class KnowledgeBaseClient(object):
         :param fact: array or tuple  of strings. No placeholders are allowed
         """
         if self.__ensure_initialization():
-            self.__push_service(fact)
+            return self.__push_service(fact).successful
         else:
             return None
 

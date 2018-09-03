@@ -235,15 +235,15 @@ class TupleSpaceTestSuite(unittest.TestCase):
 
         self.assertFalse(
             self.__client.update((self.__message_prefix, 'unsuccess', '1'), new_fact, push_without_existing=False),
-            'Old fact does not exist, but update was successfull')
-        rospy.sleep(0.1)
+            'Old fact does not exist, but update was successful')
+        rospy.sleep(0.5)
         self.__check_mocks_empty(all_informers)
         self.__check_content((prefix, '*', '*'), not_influenced)
 
         self.assertTrue(
             self.__client.update((self.__message_prefix, 'not_existing', '1'), new_fact, push_without_existing=True),
-            'Old fact does not exists and update was not successfull')
-        rospy.sleep(0.1)
+            'Old fact does not exists and update was not successful')
+        rospy.sleep(0.5)
 
         self.assertEqual(1, len(informer_added.add_msg),
                          'Error at receiving add message: ' + str(len(informer_added.add_msg)))
@@ -322,9 +322,9 @@ class TupleSpaceTestSuite(unittest.TestCase):
         informer_added = UpdateSubscriberMock(mock_name='added', client=self.__client, pattern=(prefix, 'new', '*'))
         informer_removed = UpdateSubscriberMock(mock_name='removed', client=self.__client, pattern=(prefix, 'old', '*'))
         informer_updated = UpdateSubscriberMock(mock_name='updated', client=self.__client, pattern=(prefix, '*', '*'))
-        informer_second_target = UpdateSubscriberMock(mock_name='seccond', client=self.__client,
-                                                      pattern=(prefix, 'seccond_target', '*'))
-        informer_not_influenced = UpdateSubscriberMock(mock_name='not_influended', client=self.__client,
+        informer_second_target = UpdateSubscriberMock(mock_name='second', client=self.__client,
+                                                      pattern=(prefix, 'second_target', '*'))
+        informer_not_influenced = UpdateSubscriberMock(mock_name='not_influenced', client=self.__client,
                                                        pattern=(prefix, 'not_influenced', '*'))
         all_informers = [informer_added, informer_removed, informer_updated, informer_second_target,
                          informer_not_influenced]
@@ -336,10 +336,16 @@ class TupleSpaceTestSuite(unittest.TestCase):
                          'Error at receiving remove message: ' + str(len(informer_removed.remove_msg)))
         self.assertEqual(old_fact, tuple(informer_removed.remove_msg[0].fact))
         informer_removed.remove_msg = []
-        self.assertEqual(1, len(informer_updated.remove_msg),
-                         'Error at receiving second remove message: ' + str(len(informer_removed.remove_msg)))
-        self.assertEqual(old_fact, tuple(informer_updated.remove_msg[0].fact))
-        informer_updated.remove_msg = []
+
+        self.assertEqual(1, len(informer_updated.update_msg),
+                         'Error at receiving update message: ' + str(len(informer_updated.update_msg)))
+        self.assertEqual(old_fact, tuple(informer_updated.update_msg[0].removed[0].content))
+        informer_updated.update_msg = []
+
+        self.assertEqual(1, len(informer_added.add_msg),
+                         'Error at receiving add message: ' + str(len(informer_added.add_msg)))
+        self.assertEqual(new_fact, tuple(informer_added.add_msg[0].content))
+        informer_added.add_msg = []
 
         self.__check_mocks_empty(all_informers)
         self.__check_content((prefix, '*', '*'), new_fact, not_influenced)
