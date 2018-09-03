@@ -287,14 +287,14 @@ class Manager(object):
         # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
         changesWereExpected = True
 
-        rhbplog.logwarn("Changes: %s", self.__sensorChanges)
+        rhbplog.logdebug("Changes: %s", self.__sensorChanges)
 
         for sensor_name, indicator in self.__sensorChanges.iteritems():
             changeWasExpected = False
 
             if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
 
-                rhbplog.logwarn(self._plan["actions"].values())
+                #rhbplog.logdebug(self._plan["actions"].values())
 
                 # check if the change is from the behaviour in current executionindex
                 planned_name = self._plan["actions"][self._planExecutionIndex]
@@ -310,7 +310,7 @@ class Manager(object):
 
             for behaviour in self.__executedBehaviours:
                 for item in behaviour.correlations:
-                    rhbplog.logwarn("Behaviour: %s, Correlations: %s, Indicator: %f", behaviour.name, item.get_pddl_effect_name(), item.indicator)
+                    #rhbplog.logdebug("Behaviour: %s, Correlations: %s, Indicator: %f", behaviour.name, item.get_pddl_effect_name(), item.indicator)
                     # the observed change happened because of the running behaviour (at least the behaviour is
                     # correlated to the changed sensor in the correct way)
                     if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
@@ -319,7 +319,7 @@ class Manager(object):
                 if changeWasExpected:
                     break
             if not changeWasExpected:
-                rhbplog.logwarn("Change '%s':%f was not expected", sensor_name, indicator)
+                rhbplog.logdebug("Change '%s':%f was not expected", sensor_name, indicator)
                 changesWereExpected = False
                 break
 
@@ -342,7 +342,7 @@ class Manager(object):
                             elif not behaviour.independentFromPlanner:
                                 unexpectedBehaviourFinished = True  # it was unexpected
 
-        rhbplog.logwarn("planIndex: %s, unexpectedBehaviourFinished:%s, changesWereExpected:%s",self._planExecutionIndex, unexpectedBehaviourFinished, changesWereExpected)
+        rhbplog.logdebug("planIndex: %s, unexpectedBehaviourFinished:%s, changesWereExpected:%s",self._planExecutionIndex, unexpectedBehaviourFinished, changesWereExpected)
 
         # now, we know whether we need to plan again or not
         if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
