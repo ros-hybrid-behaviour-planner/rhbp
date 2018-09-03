@@ -11,7 +11,9 @@
     </node>
 
     <!-- RHBP manager configuration is separated from the node
-         because it uses a special namespace 'prefix/rhbp_manager'-->
+         because it uses a special namespace 'prefix/rhbp_manager'
+         Limits of parameters which are accessible in dynamic_reconfigure are set in cfg/Manager.cfg
+         -->
     <group ns="$(arg prefix)/rhbp_manager">
         <param name="situationBias" type="double" value="0.7" />
         <param name="predecessorBias" type="double" value="1.0" />
