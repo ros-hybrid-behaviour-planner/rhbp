@@ -12,19 +12,19 @@ class Manager(core.Manager):
     For additional documentation see the rhbp_core Manager
     """
 
-    def __init__(self, activated=True, use_only_running_behaviors_for_interRuptible=core.Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, enabled=True, use_only_running_behaviors_for_interRuptible=core.Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
         """
         Constructor
 
         For additional documentation see the rhbp_core Manager
         """
 
-        super(Manager, self).__init__(activated=activated, use_only_running_behaviors_for_interRuptible=use_only_running_behaviors_for_interRuptible, **kwargs)
+        super(Manager, self).__init__(enabled=enabled, use_only_running_behaviors_for_interRuptible=use_only_running_behaviors_for_interRuptible, **kwargs)
 
         # needs to know the manager for potential usage of methods
         self.__delegation_client = RHBPManagerDelegationClient(manager=self)
 
-    def step(self, force=False):
+    def step(self, force=False, guarantee_decision=False):
         """
         Like the core Manager.step() with additional stepping of the delegation
         unit
@@ -34,7 +34,7 @@ class Manager(core.Manager):
         :type force: bool
         """
 
-        super(Manager, self).step(force=force)
+        super(Manager, self).step(force=force, guarantee_decision=guarantee_decision)
 
         # Let the DelegationManager do a step
         self.__delegation_client.do_step()  # TODO think about the position of this (step_lock y/n)

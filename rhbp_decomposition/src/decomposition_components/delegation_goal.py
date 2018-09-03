@@ -203,4 +203,3 @@ class DelegationGoal(DecompositionGoal):
         """
 
         return self._contractor_found
-

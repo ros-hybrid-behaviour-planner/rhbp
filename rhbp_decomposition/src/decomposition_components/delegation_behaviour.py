@@ -105,8 +105,7 @@ class DelegationBehaviour(BehaviourBase):
 
     def _deactivate_myself(self):
         rhbplog.loginfo("DelegationBehaviour "+self.name+" was successful with the delegation, stopping own execution")
-        self.set_activated(activated=False)
-        self.set_activated(activated=True)
+        self.finish(stop_running=True)
 
     def do_step(self):
         """
