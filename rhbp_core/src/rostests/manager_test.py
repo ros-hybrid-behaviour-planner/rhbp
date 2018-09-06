@@ -12,7 +12,7 @@ import unittest
 import rospy
 import rostest
 from behaviour_components.activators import BooleanActivator, GreedyActivator
-from behaviour_components.conditions import Condition
+from behaviour_components.conditions import Condition, Conjunction
 from behaviour_components.goals import GoalBase
 from behaviour_components.managers import Manager
 from behaviour_components.behaviours import BehaviourBase
@@ -266,8 +266,11 @@ class TestManager(unittest.TestCase):
         self.assertListEqual(res.plan_sequence, expected_plan_seq)
 
     def test_guarantee_decision(self):
+        """
+        Testing guarantee_decision parameter of manager.step()
+        """
 
-        method_prefix = self.__message_prefix + "test_handle_interfering_correlations"
+        method_prefix = self.__message_prefix + "test_guarantee_decision"
         planner_prefix = method_prefix + "Manager"
         manager = Manager(activationThreshold=7.0, prefix=planner_prefix)
 
@@ -285,6 +288,66 @@ class TestManager(unittest.TestCase):
         manager.step(guarantee_decision=True)
         self.assertTrue(behaviour_1._isExecuting,
                         "Behaviour 1 is not executed even though a decision was forced")
+
+    def test_plan_monitoring(self):
+        """
+        Testing plan monitoring and replanning management
+        """
+
+        method_prefix = self.__message_prefix + "test_plan_monitoring"
+        planner_prefix = method_prefix + "Manager"
+        manager = Manager(activationThreshold=7.0, prefix=planner_prefix, max_parallel_behaviours=1)
+
+        sensor_1 = Sensor(name="Sensor1", initial_value=False)
+
+        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1.add_effect(Effect(sensor_1.name, 1))
+
+        sensor_2 = Sensor(name="Sensor2", initial_value=False)
+
+        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2.add_effect(Effect(sensor_2.name, 1))
+
+        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        # adding precondition to get a reference to the sensor in the manager
+        behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
+        behaviour_3.add_effect(Effect(sensor_2.name, 1))
+
+        goal1 = GoalBase(name="Test_Goal1", conditions=[Conjunction(
+                         Condition(sensor_1, BooleanActivator(desiredValue=True)),
+                         Condition(sensor_2, BooleanActivator(desiredValue=False),
+                        ))], plannerPrefix=planner_prefix, permanent=True)
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+
+        sensor_1.update(True)  # faking effect of behaviour1, all changes are induced by the behaviour, no replanning
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+        self.assertTrue(manager._are_all_sensor_changes_from_executed_behaviours())
+        manager._planExecutionIndex -= 1  # we have to manipulate here because it was incremented
+        self.assertTrue(manager._are_effects_of_planned_behaviour_realised())
+        manager._planExecutionIndex += 1
+
+        sensor_2.update(True)  # faking additional external effect
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+        self.assertFalse(manager._are_all_sensor_changes_from_executed_behaviours())
+        self.assertTrue(manager._executed_behaviours_influenced_as_expected())
+        self.assertFalse(manager._are_effects_of_planned_behaviour_realised())
+
+        sensor_1.update(False)
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+        # behaviour1 should set sensor1 to True if it is running but the contrary happened
+        self.assertFalse(manager._executed_behaviours_influenced_as_expected())
 
 
 if __name__ == '__main__':

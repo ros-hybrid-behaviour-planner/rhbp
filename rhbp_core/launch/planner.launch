@@ -25,6 +25,9 @@
         <param name="createLogFiles" type="bool" value="true"/>
         <param name="activation_algorithm" type="string" value="default"/>
         <param name="max_parallel_behaviours" type="int" value="-1"/> <!--Comment or negative for unlimited-->
+        <param name="plan_monitoring_all_sensor_changes_by_behaviours" type="bool" value="true"/>
+        <param name="plan_monitoring_behaviour_missing_influence" type="bool" value="true"/>
+        <param name="plan_monitoring_unexpected_behaviour_finished" type="bool" value="true"/>
     </group>
 
 </launch>
