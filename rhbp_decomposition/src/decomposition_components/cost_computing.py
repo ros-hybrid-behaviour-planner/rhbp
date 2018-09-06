@@ -13,10 +13,10 @@ class PDDLCostEvaluator(CostEvaluatorBase):
     PDDL-Planer of the RHBP-Manager
     """
 
-    TASK_CAPACITY_FACTOR = 1
+    TASK_UTILIZATION_FACTOR = 1
     WORKLOAD_PROPORTION_FACTOR = -0.025
     ADDITIONAL_WORKLOAD_FACTOR = 1
-    ADDITIONAL_DEPTH_FACTOR = 1
+    ADDITIONAL_DELEGATION_FACTOR = 1
     COOPERATION_AMOUNT_FACTOR = 1
     CONTRACTOR_NUMBER_FACTOR = 0.1
 
@@ -111,10 +111,10 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         new_contractor = 0.0 if own_name in members else 1.0
         contractor_count = float(len(members))
 
-        task_capacity_utilization = (1 + self.TASK_CAPACITY_FACTOR * float(task_count) / float(max_task_count))
+        task_capacity_utilization = (1 + self.TASK_UTILIZATION_FACTOR * float(task_count) / float(max_task_count))
         workload_proportion = (1 + self.WORKLOAD_PROPORTION_FACTOR * simple_steps / full_steps)
         additional_workload = (1 + self.ADDITIONAL_WORKLOAD_FACTOR * base_steps / full_steps)
-        additional_depth = (1 + self.ADDITIONAL_DEPTH_FACTOR * new_delegations * float(depth) / float(max_depth))
+        additional_depth = (1 + self.ADDITIONAL_DELEGATION_FACTOR * new_delegations * float(depth) / float(max_depth))
         cooperation_amount = (1 + self.COOPERATION_AMOUNT_FACTOR * num_delegations / simple_steps)
         contractor_number = (1 + self.CONTRACTOR_NUMBER_FACTOR * new_contractor * (1 - contractor_count / (depth + 1)))
 

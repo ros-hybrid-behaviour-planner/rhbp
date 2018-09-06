@@ -7,6 +7,8 @@ import rospy
 
 class DecompositionGoal(GoalBase):
 
+    # plannerPrefix has to be called that
+    # noinspection PyPep8Naming
     def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
                  enabled=True):
         super(DecompositionGoal, self).__init__(name=name, permanent=permanent,
@@ -133,6 +135,6 @@ class RHBPGoalWrapper(GoalWrapperBase):
     def check_goal_finished(self):
 
         if self.goal_is_created():
-            return not self._goal.active
+            return not self._goal.enabled
         else:
             return False

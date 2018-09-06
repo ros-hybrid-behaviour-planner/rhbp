@@ -110,7 +110,7 @@ class GoalWrapperTest(unittest.TestCase):
         """
         Tests check_alive
         """
-        
+
         test_wrapper = RHBPGoalWrapper(name="terminate_goal", conditions=[self.test_condition])
 
         self.assertTrue(test_wrapper.check_if_still_alive())
