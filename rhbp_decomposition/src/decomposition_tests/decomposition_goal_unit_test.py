@@ -1,16 +1,25 @@
+"""
+Unit tests for the decomposition goal
+
+Needs a running ROSCORE!
+
+@author: Mengers
+"""
+
 import unittest
 import rospy
-
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import TopicSensor
 from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator
 from std_msgs.msg import Bool
-
 from decomposition_components.goal_wrapper import DecompositionGoal
 
 
 class DecompositionGoalTest(unittest.TestCase):
+    """
+    Unit tests for the DecompositionGoal
+    """
 
     def setUp(self):
         rospy.init_node("TestNode")
@@ -25,6 +34,10 @@ class DecompositionGoalTest(unittest.TestCase):
         self.manager.unregister()
 
     def test_check_alive(self):
+        """
+        Tests the check_if_alive function
+        """
+
         uut = DecompositionGoal(name=self.goal_name, plannerPrefix=self.manager_name, conditions=self.conditions, satisfaction_threshold=self.satisfaction_threshold)
         self.assertTrue(uut.check_if_alive())
         self.manager.unregister()

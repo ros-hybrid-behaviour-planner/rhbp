@@ -1,21 +1,25 @@
+"""
+Unit tests for the RHBPGoalWrapper
+
+Needs a running ROSCORE!
+
+@author: Mengers
+"""
+
 import unittest
 import rospy
-
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import TopicSensor
 from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator
 from behaviour_components.goals import OfflineGoal
 from std_msgs.msg import Bool
-
 from decomposition_components.goal_wrapper import RHBPGoalWrapper
 
 
 class GoalWrapperTest(unittest.TestCase):
     """
-    Tests the RHBPGoalWrapper
-
-    NEEDS A RUNNING ROSCORE
+    Unit tests for the RHBPGoalWrapper
     """
 
     @classmethod
@@ -30,6 +34,10 @@ class GoalWrapperTest(unittest.TestCase):
         cls.manager_name = "Test_manager"
 
     def test_basic_setter_getter(self):
+        """
+        Tests basic properties
+        """
+
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
 
         self.assertEqual(test_wrapper.goal_name, "test_goal")
@@ -38,12 +46,20 @@ class GoalWrapperTest(unittest.TestCase):
         self.assertRaises(RuntimeError, test_wrapper.get_goal)
 
     def test_goal_representation(self):
+        """
+        Tests goal representation
+        """
+
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
 
         string = self.test_condition.getPreconditionPDDL(1.0).statement
         self.assertEqual(test_wrapper.get_goal_representation(), string)
 
     def test_sending_goal(self):
+        """
+        Tests sending of goals
+        """
+
         test_wrapper = RHBPGoalWrapper(name="test_goal", conditions=[self.test_condition])
 
         test_wrapper.send_goal(name=self.manager_name)
@@ -67,6 +83,10 @@ class GoalWrapperTest(unittest.TestCase):
         test_wrapper._goal.unregister()
 
     def test_terminating_goal(self):
+        """
+        Tests terminating of goals
+        """
+
         test_wrapper = RHBPGoalWrapper(name="terminate_goal", conditions=[self.test_condition])
 
         test_wrapper.send_goal(name=self.manager_name)
@@ -87,6 +107,10 @@ class GoalWrapperTest(unittest.TestCase):
         self.assertFalse(manager_has_goal)
 
     def test_check_alive(self):
+        """
+        Tests check_alive
+        """
+        
         test_wrapper = RHBPGoalWrapper(name="terminate_goal", conditions=[self.test_condition])
 
         self.assertTrue(test_wrapper.check_if_still_alive())

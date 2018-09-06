@@ -1,27 +1,43 @@
-import unittest
+"""
+Unit tests for the PDDLCostEvaluator
 
+@author: Mengers
+"""
+
+import unittest
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_errors import DelegationPlanningWarning
-from delegation_tests.test_utils import MockedManager
+from decomposition_tests.test_utils import MockedManager
 
 
 class CostComputingTest(unittest.TestCase):
+    """
+    Unit tests for the PDDLCostEvaluator
+    """
 
     def setUp(self):
         self.manager = MockedManager()
         self.uut = PDDLCostEvaluator(manager=self.manager)
-        self.uut.TASK_CAPACITY_FACTOR = 1
+        self.uut.TASK_UTILIZATION_FACTOR = 1
         self.uut.WORKLOAD_PROPORTION_FACTOR = -0.5
         self.uut.ADDITIONAL_WORKLOAD_FACTOR = 1
-        self.uut.ADDITIONAL_DEPTH_FACTOR = 1
+        self.uut.ADDITIONAL_DELEGATION_FACTOR = 1
         self.uut.COOPERATION_AMOUNT_FACTOR = 1
         self.uut.CONTRACTOR_NUMBER_FACTOR = 0.5
 
     def test_basic(self):
+        """
+        Tests basic properties
+        """
+
         self.assertEqual(self.uut.last_cost, -1)
         self.assertEqual(self.uut.last_possibility, False)
 
     def test_plan_steps_getting(self):
+        """
+        Tests the getting of plan steps
+        """
+
         base, full, simple = self.uut._get_plan_steps(full_plan=self.manager.plan_with_additional_goal(0), simple_plan=self.manager.plan_this_single_goal(0))
 
         self.assertEqual(base, 2)
@@ -29,6 +45,10 @@ class CostComputingTest(unittest.TestCase):
         self.assertEqual(simple, 2)
 
     def test_number_of_delegations(self):
+        """
+        Tests the number of delegations in a plan
+        """
+
         plan = dict()
         delegations = self.uut._determine_number_of_delegations(plan=plan)
         self.assertEqual(delegations, 0)
@@ -38,6 +58,10 @@ class CostComputingTest(unittest.TestCase):
         self.assertEqual(delegations, 1)
 
     def test_compute_cost(self):
+        """
+        Tests the computing of cost
+        """
+
         full_plan = self.manager.plan_with_additional_goal(0)
         simple_plan = self.manager.plan_this_single_goal(0)
         task_count = 1
@@ -55,6 +79,10 @@ class CostComputingTest(unittest.TestCase):
         self.assertEqual(cost, 10.546875)  # result for these parameters
 
     def test_compute_cost_and_possibility(self):
+        """
+        Tests full compute cost and possibility function
+        """
+
         goal_representation = "doesnt matter for this test"
         current_task_count = 1
         max_task_count = 4

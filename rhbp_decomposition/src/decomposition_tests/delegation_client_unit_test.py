@@ -1,12 +1,21 @@
+"""
+Unit tests for the RHBPDelegationClient variations
+
+@author: Mengers
+"""
 
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
 from decomposition_components.manager_client import RHBPManagerDelegationClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
-from delegation_tests.test_utils import MockedDelegationManager, FunctionPointerTester, MockedManager
+from delegation_tests.test_utils import MockedDelegationManager
+from decomposition_tests.test_utils import MockedManager, FunctionPointerTester
 import unittest
 
 
 class RHBPClientsTest(unittest.TestCase):
+    """
+    Unit tests for the RHBPDelegationClient variations
+    """
 
     def setUp(self):
         self.mockedDM = MockedDelegationManager()
@@ -14,6 +23,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.checking_prefix = "test_prefix"
 
     def test_delegate(self):
+        """
+        Tests delegate of the RHBPDelegationClient
+        """
+
         uut = RHBPDelegationClient(checking_prefix=self.checking_prefix)
 
         goal_name = "test_goal"
@@ -30,6 +43,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(self.mockedDM.goal_wrapper._satisfaction_threshold, threshold)
 
     def test_manager_register_without_cost_eval(self):
+        """
+        Tests manager register, no cost eval
+        """
+
         uut = RHBPManagerDelegationClient(manager=self.mockedManager)
 
         uut.register(delegation_manager=self.mockedDM, add_own_cost_evaluator=False)
@@ -40,6 +57,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(uut._delegation_manager, self.mockedDM)
 
     def test_new_cost_evaluator(self):
+        """
+        Tests cost eval adding
+        """
+
         uut = RHBPManagerDelegationClient(manager=self.mockedManager)
 
         cost_eval = uut.get_new_cost_evaluator()
@@ -48,6 +69,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertIsInstance(cost_eval, PDDLCostEvaluator)
 
     def test_manager_register_with_cost_eval(self):
+        """
+        Tests manager register, cost eval added
+        """
+
         uut = RHBPManagerDelegationClient(manager=self.mockedManager)
 
         uut.register(delegation_manager=self.mockedDM, add_own_cost_evaluator=True)
@@ -60,6 +85,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(self.mockedDM.start_service_prefix, self.mockedManager.prefix)
 
     def test_delegable_delegate(self):
+        """
+        Tests delegable delegate
+        """
+
         uut = RHBPDelegableClient(checking_prefix=self.checking_prefix)
 
         goal_name = "test_goal"
@@ -92,6 +121,10 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertEqual(uut._work_function_dictionary[delegation_id], fpt.function)
 
     def test_work_function_dict(self):
+        """
+        Tests work functions of DelegableClient
+        :return:
+        """
         uut = RHBPDelegableClient(checking_prefix=self.checking_prefix)
         uut.register(delegation_manager=self.mockedDM)
         fpt = FunctionPointerTester()
