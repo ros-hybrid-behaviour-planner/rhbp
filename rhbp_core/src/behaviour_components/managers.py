@@ -476,6 +476,7 @@ class Manager(object):
         effect_realised = False
         if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
             planned_name = self._plan["actions"][self._planExecutionIndex]
+            planned_executed_behaviour = None
             for behaviour in self.__executedBehaviours:
                 if behaviour.name == planned_name:
                     planned_executed_behaviour = behaviour
