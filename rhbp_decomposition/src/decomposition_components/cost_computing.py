@@ -1,9 +1,14 @@
+"""
+The PDDLCostEvaluator that uses the PDDL-Planer of the RHBP for the plans
 
-from delegation_components.cost_evaluators import CostEvaluatorBase
+@author: Mengers
+"""
+
+from delegation_components.cost_evaluators import CostEvaluatorBase, CostParameters
 from delegation_components.delegation_errors import DelegationPlanningWarning
 from decomposition_components.delegation_behaviour import DelegationBehaviour
-
 import utils.rhbp_logging
+# DelegationLogger for rhbplogger
 rhbplogger = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
 
 
@@ -12,13 +17,6 @@ class PDDLCostEvaluator(CostEvaluatorBase):
     Cost function evaluator for DelegationManager using the symbolic
     PDDL-Planer of the RHBP-Manager
     """
-
-    TASK_UTILIZATION_FACTOR = 1
-    WORKLOAD_PROPORTION_FACTOR = -0.025
-    ADDITIONAL_WORKLOAD_FACTOR = 1
-    ADDITIONAL_DELEGATION_FACTOR = 1
-    COOPERATION_AMOUNT_FACTOR = 1
-    CONTRACTOR_NUMBER_FACTOR = 0.1
 
     def __init__(self, manager):
         """
@@ -31,77 +29,37 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         super(PDDLCostEvaluator, self).__init__()
         self._manager = manager
 
-    def compute_cost_and_possibility(self, goal_representation, current_task_count, max_task_count, current_depth, max_depth, members, own_name):
+    def _plan_and_extract_parameters(self, goal_representation, own_name, members, depth, max_depth, task_count, max_task_count):
         """
-        Computes cost and possibility of a goal given its statement.
-        This is accomplished by trying to plan with the PDDL-planner of the
-        manager and using the plans to extract possibility and cost
+        Makes the plans using the planer and determines the parameters needed
+        for the cost function
 
-        :param goal_representation: PDDL representation of the goal (goal-statement)
-        :type goal_representation: str
-        :param current_task_count: number of tasks currently running
-        :type current_task_count: int
-        :param max_task_count: maximum number of tasks
-        :type max_task_count: int
-        :param current_depth: current depth of this task
-        :type current_depth: int
-        :param max_depth: maximum depth for tasks
-        :type max_depth: int
-        :param members: list of the names of current members of this delegation
-        :type members: list(str)
-        :param own_name: name of this unit (like the names in members)
+        :param goal_representation: representation of the goal
+        :type goal_representation: PDDL goal-statement
+        :param own_name: name of the corresponding DelegationManager
         :type own_name: str
-        :return: Cost, Possibility for this goal
-        :rtype: float, bool
-        :raises DelegationPlanningWarning: if planning failed
-        """
-
-        self._last_possibility = False
-        self._last_cost = -1
-        try:
-            # Make plans
-            full_plan = self._manager.plan_with_additional_goal(goal_statement=goal_representation)
-            simple_plan = self._manager.plan_this_single_goal(goal_statement=goal_representation)
-            # Check if planned successful
-            if not (full_plan and "cost" in full_plan and full_plan["cost"] != -1.0):
-                return self._last_cost, self._last_possibility
-            if not (simple_plan and "cost" in simple_plan and simple_plan["cost"] != -1.0):
-                return self._last_cost, self._last_possibility
-
-            self._last_possibility = True
-            self._last_cost = self._compute_cost(full_plan=full_plan, simple_plan=simple_plan,
-                                                 task_count=current_task_count, max_task_count=max_task_count,
-                                                 depth=current_depth, max_depth=max_depth,
-                                                 members=members, own_name=own_name)
-
-        except Exception as e:  # catch any exception
-            self._last_possibility = False
-            raise DelegationPlanningWarning(str(e.message))
-
-        return self._last_cost, self._last_possibility
-
-    def _compute_cost(self, full_plan, simple_plan, task_count, max_task_count, depth, max_depth, members, own_name):
-        """
-        Extract all needed information out of the plan and computes cost
-
-        :param full_plan: PDDL plan for the goal and all currently active goals
-        :type full_plan: PDDL plan (dict)
-        :param simple_plan: PDDL plan for just the goal
-        :type simple_plan: PDDL plan (dict)
-        :param task_count: number of tasks currently running
-        :type task_count: int
-        :param max_task_count: maximum number of tasks
-        :type max_task_count: int
-        :param depth: current depth of this task
+        :param members: list of current members of this delegation
+        :type members: list
+        :param depth: current depth of this delegation
         :type depth: int
-        :param max_depth: maximum depth for tasks
+        :param max_depth: max depth for this DelegationManager
         :type max_depth: int
-        :param members: list of the names of current members of this delegation
-        :type members: list(str)
-        :param own_name: name of this unit (like the names in members)
-        :type own_name: str
-        :return: the cost that was computed
+        :param task_count: current task count for this DelegationManager
+        :type task_count: int
+        :param max_task_count: max task count for this DelegationManager
+        :type max_task_count: int
+        :return: extracted parameters for the cost function
+        :rtype: CostParameters
         """
+
+        # Make plans
+        full_plan = self._manager.plan_with_additional_goal(goal_statement=goal_representation)
+        simple_plan = self._manager.plan_this_single_goal(goal_statement=goal_representation)
+        # Check if planned successful
+        if not (full_plan and "cost" in full_plan and full_plan["cost"] != -1.0):
+            raise DelegationPlanningWarning("Full plan unsuccessful!")
+        if not (simple_plan and "cost" in simple_plan and simple_plan["cost"] != -1.0):
+            raise DelegationPlanningWarning("Simple plan unsuccessful!")
 
         base_steps, full_steps, simple_steps = self._get_plan_steps(full_plan, simple_plan)
 
@@ -109,28 +67,50 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         new_delegations = 1.0 if num_delegations > 0 else 0.0
 
         new_contractor = 0.0 if own_name in members else 1.0
-        contractor_count = float(len(members))
+        contractor_count = len(members)
 
-        task_capacity_utilization = (1 + self.TASK_UTILIZATION_FACTOR * float(task_count) / float(max_task_count))
-        workload_proportion = (1 + self.WORKLOAD_PROPORTION_FACTOR * simple_steps / full_steps)
-        additional_workload = (1 + self.ADDITIONAL_WORKLOAD_FACTOR * base_steps / full_steps)
-        additional_depth = (1 + self.ADDITIONAL_DELEGATION_FACTOR * new_delegations * float(depth) / float(max_depth))
-        cooperation_amount = (1 + self.COOPERATION_AMOUNT_FACTOR * num_delegations / simple_steps)
-        contractor_number = (1 + self.CONTRACTOR_NUMBER_FACTOR * new_contractor * (1 - contractor_count / (depth + 1)))
+        parameters = CostParameters(name=own_name, base_steps=base_steps, full_steps=full_steps,
+                                    simple_steps=simple_steps, depth=depth, max_depth=max_depth,
+                                    new_contractor=new_contractor, contractor_count=contractor_count,
+                                    new_delegations=new_delegations, num_delegations=num_delegations,
+                                    task_count=task_count, max_task_count=max_task_count)
 
-        cost = full_steps * task_capacity_utilization * workload_proportion * additional_workload * additional_depth * cooperation_amount * contractor_number
+        return parameters
 
-        rhbplogger.loginfo(own_name+": Computed cost for accomplishing the goal from following factors:"
-                           + "\n\tSteps of full plan "+str(full_steps)
-                           + "\n\tTask Capacity Utilization "+str(task_capacity_utilization)
-                           + "\n\tWorkload Proportion "+str(workload_proportion)
-                           + "\n\tAdditional Workload "+str(additional_workload)
-                           + "\n\tAdditional Delegation Depth "+str(additional_depth)
-                           + "\n\tCooperation Amount "+str(cooperation_amount)
-                           + "\n\tNumber of Contractors "+str(contractor_number)
-                           + "\nResulting Cost (product of the above): "+str(cost))
+    def _log_cost_computed(self, name, cost, full_steps, task_capacity_utilization, workload_proportion,
+                           additional_workload, additional_depth, cooperation_amount, contractor_number):
+        """
+        Logs the information about the cost computed
 
-        return cost
+        :param name: name of this DelegationManager
+        :type name: str
+        :param cost: cost computed
+        :type cost: float
+        :param full_steps: steps of the full plan
+        :type full_steps: int
+        :param task_capacity_utilization: task_capacity_utilization-factor value
+        :type task_capacity_utilization: float
+        :param workload_proportion:workload_proportion-factor value
+        :type workload_proportion: float
+        :param additional_workload:additional_workload-factor value
+        :type additional_workload: float
+        :param additional_depth:additional_depth-factor value
+        :type additional_depth: float
+        :param cooperation_amount:cooperation_amount-factor value
+        :type cooperation_amount: float
+        :param contractor_number:contractor_number-factor value
+        :type contractor_number: float
+        """
+
+        rhbplogger.loginfo(name + ": Computed cost for accomplishing the goal from following factors:"
+                           + "\n\tSteps of full plan " + str(full_steps)
+                           + "\n\tTask Capacity Utilization " + str(task_capacity_utilization)
+                           + "\n\tWorkload Proportion " + str(workload_proportion)
+                           + "\n\tAdditional Workload " + str(additional_workload)
+                           + "\n\tAdditional Delegation Depth " + str(additional_depth)
+                           + "\n\tCooperation Amount " + str(cooperation_amount)
+                           + "\n\tNumber of Contractors " + str(contractor_number)
+                           + "\nResulting Cost (product of the above): " + str(cost))
 
     def _get_plan_steps(self, full_plan, simple_plan):
         """
@@ -164,7 +144,7 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         :param plan: a PDDL plan
         :type plan: PDDL plan (dict)
         :return: number of distinct used DelegationBehaviours
-        :rtype: float
+        :rtype: int
         """
 
         if not (plan and "actions" in plan):
@@ -173,5 +153,5 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         delegation_behaviour_names = [b.name for b in self._manager.behaviours if b.behaviour_type == DelegationBehaviour.TYPE_STRING]
         actions = plan["actions"]
         used_delegation_behaviours = set([b for b in actions.values() if b in delegation_behaviour_names])
-        num_delegations = float(len(used_delegation_behaviours))
+        num_delegations = len(used_delegation_behaviours)
         return num_delegations

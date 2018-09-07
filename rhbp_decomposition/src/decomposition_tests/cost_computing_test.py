@@ -7,6 +7,7 @@ Unit tests for the PDDLCostEvaluator
 import unittest
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_errors import DelegationPlanningWarning
+from delegation_components.cost_evaluators import CostParameters
 from decomposition_tests.test_utils import MockedManager
 
 
@@ -18,6 +19,7 @@ class CostComputingTest(unittest.TestCase):
     def setUp(self):
         self.manager = MockedManager()
         self.uut = PDDLCostEvaluator(manager=self.manager)
+        # setting for these parameters
         self.uut.TASK_UTILIZATION_FACTOR = 1
         self.uut.WORKLOAD_PROPORTION_FACTOR = -0.5
         self.uut.ADDITIONAL_WORKLOAD_FACTOR = 1
@@ -57,13 +59,12 @@ class CostComputingTest(unittest.TestCase):
         delegations = self.uut._determine_number_of_delegations(plan=plan)
         self.assertEqual(delegations, 1)
 
-    def test_compute_cost(self):
+    def test_plan_and_extraxt_paramters(self):
         """
-        Tests the computing of cost
+        Tests the plan_and_extract_parameters function
         """
 
-        full_plan = self.manager.plan_with_additional_goal(0)
-        simple_plan = self.manager.plan_this_single_goal(0)
+        goal_rep = "test goal"
         task_count = 1
         max_task_count = 4
         depth = 2
@@ -71,12 +72,37 @@ class CostComputingTest(unittest.TestCase):
         members = ["Member1", "Member2"]
         own_name = "Member1"
 
-        cost = self.uut._compute_cost(full_plan=full_plan, simple_plan=simple_plan, task_count=task_count,
-                                      max_task_count=max_task_count, depth=depth, max_depth=max_depth,
-                                      members=members, own_name=own_name)
+        resulting_paramters = self.uut._plan_and_extract_parameters(goal_representation=goal_rep, own_name=own_name,
+                                                                    members=members, depth=depth, max_depth=max_depth,
+                                                                    task_count=task_count, max_task_count=max_task_count)
+
+        # resulting parameter test
+        self.assertEqual(resulting_paramters.name, own_name)
+        self.assertEqual(resulting_paramters.base_steps, 2)
+        self.assertEqual(resulting_paramters.full_steps, 4)
+        self.assertEqual(resulting_paramters.simple_steps, 2)
+        self.assertEqual(resulting_paramters.depth, depth)
+        self.assertEqual(resulting_paramters.max_depth, max_depth)
+        self.assertEqual(resulting_paramters.new_contractor, 0)
+        self.assertEqual(resulting_paramters.contractor_count, len(set(members)))
+        self.assertEqual(resulting_paramters.new_delegations, 1)
+        self.assertEqual(resulting_paramters.num_delegations, 1)
+        self.assertEqual(resulting_paramters.task_count, task_count)
+        self.assertEqual(resulting_paramters.max_task_count, max_task_count)
+
+    def test_cost_evaluate(self):
+        """
+        Tests the computing of cost
+        """
+
+        test_parameters = CostParameters(base_steps=2, full_steps=4, simple_steps=2, depth=2, max_depth=8,
+                                         new_contractor=0, contractor_count=2, new_delegations=1,
+                                         num_delegations=1, task_count=1, max_task_count=4)
+
+        cost = self.uut.cost_evaluate(parameters=test_parameters)
 
         self.assertLess(0, cost)
-        self.assertEqual(cost, 10.546875)  # result for these parameters
+        self.assertEqual(cost, 10.546875)  # result for these exact parameters
 
     def test_compute_cost_and_possibility(self):
         """
@@ -102,14 +128,12 @@ class CostComputingTest(unittest.TestCase):
         self.assertEqual(self.uut.last_possibility, possibility)
 
         self.manager.failing_plans = True
-        cost, possibility = self.uut.compute_cost_and_possibility(goal_representation=goal_representation, current_task_count=current_task_count,
-                                                                  max_task_count=max_task_count, current_depth=current_depth,
-                                                                  max_depth=max_depth, members=members, own_name=own_name)
+        self.assertRaises(DelegationPlanningWarning, self.uut.compute_cost_and_possibility, goal_representation=goal_representation,
+                          current_task_count=current_task_count, max_task_count=max_task_count, current_depth=current_depth,
+                          max_depth=max_depth, members=members, own_name=own_name)
 
-        self.assertFalse(possibility)
-        self.assertEqual(cost, -1)
-        self.assertEqual(self.uut.last_cost, cost)
-        self.assertEqual(self.uut.last_possibility, possibility)
+        self.assertEqual(self.uut.last_cost, -1)
+        self.assertFalse(self.uut.last_possibility)
 
         self.manager.plan_exception = True
         self.assertRaises(DelegationPlanningWarning, self.uut.compute_cost_and_possibility,
