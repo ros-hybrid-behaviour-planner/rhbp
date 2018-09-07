@@ -64,7 +64,7 @@ class TestManager(unittest.TestCase):
                                                  name=method_prefix + "SetTrue3", plannerPrefix=planner_prefix,
                                                  independentFromPlanner=False)
 
-        goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
+        goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
 
         for x in range(0, 3, 1):
@@ -104,7 +104,7 @@ class TestManager(unittest.TestCase):
         enable_cond = Condition(enable_sensor, BooleanActivator())
         non_interruptable_behaviour.add_precondition(enable_cond)
 
-        goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix, permanent=True)
+        goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix, permanent=True)
         goal.add_condition(non_interruptable_condition)
         goal.add_condition(interruptable_condition)
 
@@ -160,7 +160,7 @@ class TestManager(unittest.TestCase):
         # add a conflict here "-1"
         behaviour1.add_effect(Effect(sensor_name=sensor2.name, indicator=-1, sensor_type=int))
 
-        goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix, permanent=True)
+        goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix, permanent=True)
         goal.add_condition(condition1)
         goal.add_condition(condition2)
 
@@ -185,7 +185,7 @@ class TestManager(unittest.TestCase):
         behaviour1.priority = 0  # reset priority
 
         # Manipulate activation of behaviour 2 with an extra goal, wish is positively influencing
-        goal2 = GoalBase(method_prefix + 'ExtraGoal', plannerPrefix=planner_prefix, permanent=True)
+        goal2 = GoalBase(method_prefix + 'ExtraGoal', planner_prefix=planner_prefix, permanent=True)
         goal2.add_condition(condition2)  # this condition is targeted by behaviour 2
 
         rospy.sleep(0.1)
@@ -217,10 +217,10 @@ class TestManager(unittest.TestCase):
         behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
 
         goal1 = GoalBase(name="Test_Goal1", conditions=[Condition(sensor_3, BooleanActivator())],
-                        plannerPrefix=planner_prefix)
+                         planner_prefix=planner_prefix)
 
         goal2 = GoalBase(name="Test_Goal2", conditions=[Condition(sensor_2, BooleanActivator())],
-                        plannerPrefix=planner_prefix)
+                         planner_prefix=planner_prefix)
 
         # test plannning without prior decision step
         plan_seq = manager.plan_with_registered_goals([manager.goals[0]])
@@ -255,7 +255,7 @@ class TestManager(unittest.TestCase):
         sensor_4 = Sensor(name="Sensor4", initial_value=False)
 
         goal3 = GoalBase(name="Test_Goal3", conditions=[Condition(sensor_4, BooleanActivator())],
-                         plannerPrefix=planner_prefix)
+                         planner_prefix=planner_prefix)
 
         expected_plan_seq = []
 
@@ -279,7 +279,7 @@ class TestManager(unittest.TestCase):
         behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
 
         goal1 = GoalBase(name="Test_Goal1", conditions=[Condition(sensor_3, BooleanActivator())],
-                         plannerPrefix=planner_prefix)
+                         planner_prefix=planner_prefix)
 
         manager.step()
         self.assertFalse(behaviour_1._isExecuting,
@@ -316,7 +316,7 @@ class TestManager(unittest.TestCase):
         goal1 = GoalBase(name="Test_Goal1", conditions=[Conjunction(
                          Condition(sensor_1, BooleanActivator(desiredValue=True)),
                          Condition(sensor_2, BooleanActivator(desiredValue=False),
-                        ))], plannerPrefix=planner_prefix, permanent=True)
+                        ))], planner_prefix=planner_prefix, permanent=True)
 
         manager.step(guarantee_decision=True)
         self.assertTrue(behaviour_1._isExecuting,
@@ -376,7 +376,7 @@ class TestManager(unittest.TestCase):
         goal1 = GoalBase(name="Test_Goal1", conditions=[Conjunction(
                          Condition(sensor_1, ThresholdActivator(1)),
                          Condition(sensor_2, ThresholdActivator(0),
-                        ))], plannerPrefix=planner_prefix, permanent=True)
+                        ))], planner_prefix=planner_prefix, permanent=True)
 
         manager.step(guarantee_decision=True)
         self.assertTrue(behaviour_1._isExecuting,
