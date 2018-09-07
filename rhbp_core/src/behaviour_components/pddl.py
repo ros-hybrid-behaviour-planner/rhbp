@@ -6,6 +6,7 @@ Created on 06.10.2015
 from __future__ import division # force floating point division when using plain /
 import re
 import rospy
+from copy import copy
 
 functionRegex = re.compile(r'\s*\(\s*=\s*\(\s*([a-zA-Z0-9_\.-]+)\s*\)\s*([-+]?[0-9]*\.?[0-9]+)\s*\)\s*')
 predicateRegex = re.compile(r'\s*\(\s*((not)\s*\()?\s*([a-zA-Z0-9_\.-]+)\s*\)?\s*\)\s*')
@@ -173,23 +174,45 @@ def parseStatePDDL(pddl):
     return state
             
         
-def getStatePDDLchanges(oldPDDL, newPDDL):
-    '''
+def getStatePDDLchanges(oldState, newState):
+    """
     This function creates a {sensor name <string> : indicator <float [-1 - 1]} dictionary of state changes.
-    '''
+    :param oldPDDL: parsed old state PDDL
+    :param newPDDL: parsed current state PDDL
+    :return: dict(tuple(str, float))
+    """
     changes = {}
-    oldState = parseStatePDDL(oldPDDL)
-    newState = parseStatePDDL(newPDDL)
     for (sensorName, value) in newState.iteritems():
+        # skip internal costs sensor
+        if sensorName == 'costs':
+            continue
         if sensorName in oldState:
-            if isinstance(value, bool): # it is a predicate
+            if isinstance(value, bool):  # it is a predicate
                 if oldState[sensorName] == True and value == False:
                     changes[sensorName] = -1.0
                 if oldState[sensorName] == False and value == True:
                     changes[sensorName] = 1.0
-            else: # it must be float then
+            else:  # it must be float then
                 if value != oldState[sensorName]:
                     changes[sensorName] = value - oldState[sensorName]
+        else:
+            if isinstance(value, bool):  # it is a predicate
+                changes[sensorName] = 1 if value else -1
+            else:  # it must be float then
+                changes[sensorName] = value
+    return changes
+
+
+def aggregate_sensor_changes(old_changes, new_changes):
+    '''
+    This function creates a {sensor name <string> : indicator <float [-1 - 1]} dictionary of aggregated state changes.
+    '''
+    changes = copy(old_changes)
+    for (sensorName, value) in new_changes.iteritems():
+        if sensorName in old_changes:
+            changes[sensorName] = old_changes[sensorName] + value
+        else:
+            changes[sensorName] = value
     return changes
 
 

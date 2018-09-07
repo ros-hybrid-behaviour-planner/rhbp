@@ -30,10 +30,13 @@ class Behaviour(object):
 
     SERVICE_NAME_EXECUTION_STEP = 'ExecutionStep'
     SERVICE_NAME_GET_STATUS = 'GetStatus'
-    SERVICE_NAME_FETCH_PDDL = 'PDDL'
+    SERVICE_NAME_GET_PDDL = 'PDDL'
     SERVICE_NAME_START = 'Start'
     SERVICE_NAME_STOP = 'Stop'
     SERVICE_NAME_STEP = 'Step'
+    SERVICE_NAME_ENABLE = 'Enable'
+    SERVICE_NAME_EXECUTION_TIMEOUT = 'ExecutionTimeout'
+    SERVICE_NAME_PRIORITY = 'Priority'
     
     _instanceCounter = 0  # static counter to get distinguishable names
 
@@ -151,7 +154,7 @@ class Behaviour(object):
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
         It returns a tuple of (action_pddl, state_pddl).
         '''
-        service_name = self._service_prefix + Behaviour.SERVICE_NAME_FETCH_PDDL
+        service_name = self._service_prefix + Behaviour.SERVICE_NAME_GET_PDDL
         rhbplog.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
         try:
@@ -209,7 +212,7 @@ class Behaviour(object):
             rhbplog.logdebug("Stopped %s", self._name)
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'stop' of behaviour '%s': %s", self._name, traceback.format_exc())
-        self._isExecuting = True # I should possibly set this at the end of try block but if that fails we are screwed anyway
+            self._isExecuting = True  # not successfully stopped, hence its still running
 
     def reset_activation(self):
         self._reset_activation = True
@@ -363,6 +366,7 @@ class BehaviourBase(object):
         # computeActivation(), computeSatisfaction(), and computeWishes work them. See add_precondition()
         self._preconditions = kwargs["preconditions"] if "preconditions" in kwargs else []
         self._isExecuting = False  # Set this to True if this behaviour is selected for execution.
+
         # Stores sensor correlations in list form. Expects a list of utils.Effect objects with following meaning:
         #  effect_name -> name of affected sensor, indicator -> value between -1 and 1 encoding how this sensor  is
         # affected.1 Means high positive correlation to the value or makes it become True, -1 the opposite and 0 does
@@ -399,14 +403,18 @@ class BehaviourBase(object):
         Init all required ROS services that are provided by the behaviour
         """
         service_prefix = self._plannerPrefix + '/' + self._name + '/'
-        self._getStatusService = rospy.Service(service_prefix + 'GetStatus', GetStatus, self._get_status_callback)
-        self._startService = rospy.Service(service_prefix + 'Start', Empty, self._start_callback)
-        self._stopService = rospy.Service(service_prefix + 'Stop', Empty, self._stop_callback)
-        self._enable_service = rospy.Service(service_prefix + 'Enable', Enable, self._enable_callback)
-        self._pddlService = rospy.Service(service_prefix + 'PDDL', GetPDDL, self._pddl_callback)
-        self._priorityService = rospy.Service(service_prefix + 'Priority', SetInteger, self._set_priority_callback)
-        self._executionTimeoutService = rospy.Service(service_prefix + 'ExecutionTimeout', SetInteger,
-                                                      self._set_execution_timeout_callback)
+        self._getStatusService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_GET_STATUS, GetStatus,
+                                               self._get_status_callback)
+        self._startService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_START, Empty, self._start_callback)
+        self._stopService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_STOP, Empty, self._stop_callback)
+        self._enable_service = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_ENABLE, Enable,
+                                             self._enable_callback)
+        self._pddlService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_GET_PDDL, GetPDDL,
+                                          self._pddl_callback)
+        self._priorityService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_PRIORITY, SetInteger,
+                                              self._set_priority_callback)
+        self._executionTimeoutService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_EXECUTION_TIMEOUT,
+                                                      SetInteger, self._set_execution_timeout_callback)
 
         self._registered = False  # keeps track of behaviour registration state
 

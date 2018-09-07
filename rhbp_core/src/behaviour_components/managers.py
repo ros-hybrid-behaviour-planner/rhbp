@@ -17,7 +17,7 @@ from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalRe
 from .behaviours import Behaviour
 from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
-    create_valid_pddl_name
+    create_valid_pddl_name, aggregate_sensor_changes, parseStatePDDL
 from .planner import MetricFF
 from .activation_algorithm import ActivationAlgorithmFactory
 from utils.misc import LogFileWriter
@@ -95,7 +95,16 @@ class Manager(object):
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
+        self.__previous_parsed_state_pddl = {}
         self.__sensorChanges = {} # this dictionary stores all sensor changes between two steps in the form {sensor name <string> : indicator <float>}. Note: the float is not scaled [-1.0 to 1.0] but shows a direction (positive or negative).
+        self.__aggregated_sensor_changes = {} # This dictionary stores the accumlated changes for one step of the PDDL planner
+
+        # Flags for the properties that are considered for triggering replanning, they are configurable via
+        # dynamic reconfigure
+        self._plan_monitoring_all_sensor_changes_by_behaviours = True
+        self._plan_monitoring_behaviour_missing_influence = True
+        self._plan_monitoring_unexpected_behaviour_finished = True
+
         self._plan = {}
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
@@ -199,27 +208,37 @@ class Manager(object):
         domainPDDLString += "(:predicates\n    " + "\n    ".join("({0})".format(x) for x in pddl.predicates) + ")\n"
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
         domainPDDLString += pddl.statement + ")"
-        mergedStatePDDL = PDDL()
+        merged_state_pddl = PDDL()
         for _actionPDDL, statePDDL in behaviourPDDLs:
-            mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+            merged_state_pddl = mergeStatePDDL(statePDDL, merged_state_pddl)
         for v in self.__goalPDDLs.itervalues():
             if not v is None:
                 _goalPDDL, statePDDL = v
-                mergedStatePDDL = mergeStatePDDL(statePDDL, mergedStatePDDL)
+                merged_state_pddl = mergeStatePDDL(statePDDL, merged_state_pddl)
 
-        mergedStatePDDL = init_missing_functions(pddl, mergedStatePDDL)
+        merged_state_pddl = init_missing_functions(pddl, merged_state_pddl)
+
+        # we parse the PDDL before negative predicates are filtered out
+        new_parsed_state_pddl = parseStatePDDL(merged_state_pddl)
 
         # filter out negative predicates. FF can't handle them!
         statePDDL = PDDL(statement="\n\t\t".join(
-            filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(mergedStatePDDL.statement)))
+            filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(merged_state_pddl.statement)))
         )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
 
         # compute changes
-        self.__sensorChanges = getStatePDDLchanges(self.__previousStatePDDL, statePDDL)
+        new_sensor_changes = getStatePDDLchanges(self.__previous_parsed_state_pddl, new_parsed_state_pddl)
+        self.__aggregated_sensor_changes = aggregate_sensor_changes(old_changes=self.__sensorChanges,
+                                                                    new_changes=new_sensor_changes)
+        self.__sensorChanges = new_sensor_changes
         self.__previousStatePDDL = statePDDL
+        self.__previous_parsed_state_pddl = new_parsed_state_pddl
         self.__last_domain_PDDL = domainPDDLString
         return domainPDDLString
-    
+
+    def _reset_sensor_changes(self):
+        self.__aggregated_sensor_changes = {}
+
     def _create_problem_pddl(self, goals):
         '''
         This method creates the problem PDDL for a given set of goals.
@@ -267,101 +286,228 @@ class Manager(object):
                 yield sortedGoals[i:j]
     
     def _plan_if_necessary(self):
-        '''
-        this method plans using the symbolic planner it it is required to do so.
+        """
+        this method plans using the symbolic planner if it is required to do so.
         Replanning is required whenever any or many of the following conditions is/are met:
         1) Behaviours or Goals have been added or removed
-        2) The state of the world has changed an this change is not caused by the next behaviour in the plan
+        2) An interruptable behaviour timed out
+        3) The last planning attempt was unsuccessful
+
+        Additionally, following properties can also initiate replanning if their flags are enabled. Configuration is
+        possible with dynamic reconfigure respectively from the launch file.
+        1) The state of the world has changed an this change is not caused by the current behaviour in the plan
+            Flag: self._plan_monitoring_all_sensor_changes_by_behaviours.
+        2) The expected effect (direction of change) of executed behaviours did not take place
+            Flag: self._plan_monitoring_behaviour_missing_influence
         3) An unexpected behaviour was running (not head of the plan or flagged as independentFromPlanner)
-        4) An interruptable behaviour timed out
-        5) The last planning attempt was unsuccessful
-        '''
+            Flag: self._plan_monitoring_unexpected_behaviour_finished
+        """
 
         if not self.activation_algorithm.is_planner_enabled():
             return  # return if planner is disabled
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
-        domainPDDL = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
-        # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
-        changesWereExpected = True
-        for sensor_name, indicator in self.__sensorChanges.iteritems():
-            changeWasExpected = False
-            print self.prefix
+        domain_pddl = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
 
-            if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
-                # check if the change is from the behaviour in current executionindex
-                planned_name = self._plan["actions"][self._planExecutionIndex]
-                for behaviour in self._behaviours:
-                    if behaviour.name == planned_name:
-                        for item in behaviour.correlations:
-                            if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
-                                # behaviour worked as expected
-                                # TODO make sure behaviour worked enough?
-                                self._planExecutionIndex += 1
-                        break
+        rhbplog.logdebug("Changes: %s", self.__sensorChanges)
 
-            for behaviour in self.__executedBehaviours:
-                for item in behaviour.correlations:
-                    # the observed change happened because of the running behaviour (at least the behaviour is
-                    # correlated to the changed sensor in the correct way)
-                    if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
-                        changeWasExpected = True
-                        break
-                if changeWasExpected:
-                    break
-            if not changeWasExpected:
-                changesWereExpected = False
-                break
-        # the next part is a little plan execution monitoring
-        # it tracks progress on the plan and finds out if something unexpected finished.
-        unexpectedBehaviourFinished = False
-        # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
-        if self._plan:
-            for behaviour in self.__executedBehaviours:
-                if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
-                    unexpectedBehaviourFinished = True  # it was unexpected
-                    break
-            if not unexpectedBehaviourFinished: # if we found a behaviour that executed that was not part of the plan (and not flagged independentromPlan) we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
-                for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())): # walk along the remaining plan
-                    for behaviour in self.__executedBehaviours: # only those may be finished. the others were not even running
-                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:  # inspect the behaviour at the current index of the plan
-                            if self._planExecutionIndex == index: # if it was a planned behaviour and it finished
-                                self._planExecutionIndex += 1  # we are one step ahead in our plan
-                            # otherwise and if the behaviour was not allowed to act reactively on its own (flagged as independentFromPlanner)
-                            elif not behaviour.independentFromPlanner:
-                                unexpectedBehaviourFinished = True  # it was unexpected
+        planned_behaviour_effects_realised = self._are_effects_of_planned_behaviour_realised()
+
+        if planned_behaviour_effects_realised:
+            self._planExecutionIndex += 1
+            self._reset_sensor_changes()
+
+        if self._plan_monitoring_all_sensor_changes_by_behaviours:
+            if not self.__replanningNeeded:  # we do not have to test this if replanning is required anyhow
+                all_changes_were_not_expected = not self._are_all_sensor_changes_from_executed_behaviours()
+            else:
+                all_changes_were_not_expected = None
+        else:
+            all_changes_were_not_expected = False
+
+        if self._plan_monitoring_behaviour_missing_influence:
+            if not self.__replanningNeeded:  # we do not have to test this if replanning is required anyhow
+                executed_behaviours_missing_effect_influence = not self._executed_behaviours_influenced_as_expected()
+            else:
+                executed_behaviours_missing_effect_influence = None
+        else:
+            executed_behaviours_missing_effect_influence = False
+
+        # here we have to do the processing to handle the plan index increment
+        unexpected_behaviour_finished = self._finished_unexpected_behaviour(
+            increment_planning_step=not planned_behaviour_effects_realised)  # don't increment if successfully realised
+
+        if not self._plan_monitoring_unexpected_behaviour_finished:
+            unexpected_behaviour_finished = False
+
         # now, we know whether we need to plan again or not
-        if self.__replanningNeeded or unexpectedBehaviourFinished or not changesWereExpected:
-            rhbplog.loginfo("### PLANNING ### because\nreplanning was needed: %s\nchanges were unexpected: %s\nunexpected behaviour finished: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished)
-            # now we need to make the best of our planning problem:
-            # In cases where the full set of goals can't be reached because the planner does not find a solution a reduced set should be used.
-            # The reduction will eliminate goals of inferiour priority until the highest priority goal is tried alone.
-            # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in descending order until a reachable goal is found.
-            for goalSequence in self._generate_priority_goal_sequences():
-                problemPDDL = ""
-                try:
-                    rhbplog.logdebug("trying to reach goals %s", goalSequence)
-                    problemPDDL = self._create_problem_pddl(goalSequence)
+        if self.__replanningNeeded or unexpected_behaviour_finished or all_changes_were_not_expected \
+            or executed_behaviours_missing_effect_influence:
+            rhbplog.logdebug("### PLANNING ### because replanning needed: %s\n"
+                            "planIndex: %s, unexpected_behaviour_finished:%s, all_changes_were_not_expected:%s, "
+                            "planned_behaviour_effects_realised: %s, executed_behaviours_missing_influence:%s",
+                            self.__replanningNeeded, self._planExecutionIndex, unexpected_behaviour_finished,
+                            all_changes_were_not_expected, planned_behaviour_effects_realised,
+                            executed_behaviours_missing_effect_influence)
 
-                    tmpPlan = self.planner.plan(domainPDDL, problemPDDL)
-                    if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
-                        rhbplog.loginfo("FOUND PLAN: %s", tmpPlan)
-                        self._plan = tmpPlan
+            # now we need to make the best of our planning problem (Trying to fulfill as many goals as possible):
+            # In cases where the full set of goals can't be reached because the planner does not find a solution a
+            # reduced set is used.
+            # The reduction will eliminate goals of inferior priority until the highest priority goal is tried alone.
+            # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in
+            # descending order until a reachable goal is found.
+            for goal_sequence in self._generate_priority_goal_sequences():
+                problem_pddl = ""
+                try:
+                    rhbplog.logdebug("trying to reach goals %s", goal_sequence)
+                    problem_pddl = self._create_problem_pddl(goal_sequence)
+
+                    tmp_plan = self.planner.plan(domain_pddl, problem_pddl)
+                    if tmp_plan and "cost" in tmp_plan and tmp_plan["cost"] != -1.0:
+                        rhbplog.loginfo("FOUND PLAN: %s", tmp_plan)
+                        self._plan = tmp_plan
                         self.__replanningNeeded = False
                         self._planExecutionIndex = 0
-                        self.__currently_pursued_goals = goalSequence
+                        self._reset_sensor_changes()
+                        self.__currently_pursued_goals = goal_sequence
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
                     if self._create_log_files:
-                        self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
+                        self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
                 except Exception as e:
                     rhbplog.logerr("PLANNER ERROR: %s. Generating PDDL log files for step %d", e, self._stepCounter)
                     self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
-                    self._log_pddl_files(domainPDDL, problemPDDL, goalSequence)
+                    self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
         else:
-            rhbplog.loginfo("### NOT PLANNING: replanning was needed: %s;changes were unexpected: %s;unexpected behaviour finished: %s; current plan execution index: %s", self.__replanningNeeded, not changesWereExpected, unexpectedBehaviourFinished, self._planExecutionIndex)
-    
+            rhbplog.loginfo("### NOT PLANNING ### because replanning needed: %s\n"
+                            "planIndex: %s, unexpected_behaviour_finished:%s, all_changes_were_not_expected:%s, "
+                            "planned_behaviour_effects_realised: %s, executed_behaviours_missing_influence:%s",
+                            self.__replanningNeeded, self._planExecutionIndex, unexpected_behaviour_finished,
+                            all_changes_were_not_expected, planned_behaviour_effects_realised,
+                            executed_behaviours_missing_effect_influence)
+
+    def _finished_unexpected_behaviour(self, increment_planning_step):
+        """
+        # The method tracks progress on the plan and finds out if an unexpected behaviour finished.
+        # plus if an expected behaviour finished the self._planExecutionIndex will be incremented if the parameter
+        increment_planning_step==True
+        :param increment_planning_step: set to True if the self._planExecutionIndex should be incremented
+        :return: True if an unexpected behaviour finished
+        """
+        unexpected_behaviour_finished = False
+        # make sure the finished behaviour was part of the plan at all (otherwise it is unexpected)
+        if self._plan:
+            for behaviour in self.__executedBehaviours:
+                if behaviour.justFinished and not behaviour.independentFromPlanner and behaviour.name not in \
+                       [name for index, name in self._plan["actions"].iteritems() if index >= self._planExecutionIndex]:
+                    unexpected_behaviour_finished = True  # it was unexpected
+                    break
+            # if we found a behaviour that executed that was not part of the plan (and not flagged independentFromPlan)
+            # we can stop here, otherwise we have to ensure that the behaviours finished in correct order.
+            if not unexpected_behaviour_finished:
+                # walk along the remaining plan
+                for index in filter(lambda x: x >= self._planExecutionIndex, sorted(self._plan["actions"].keys())):
+                    # only those may be finished. the others were not even running
+                    for behaviour in self.__executedBehaviours:
+                        # inspect the behaviour at the current index of the plan
+                        if behaviour.name == self._plan["actions"][index] and behaviour.justFinished:
+                            # if it was a planned behaviour and it finished
+                            if increment_planning_step and self._planExecutionIndex == index:
+                                self._planExecutionIndex += 1  # we are one step ahead in our plan
+                                self._reset_sensor_changes()
+                            # otherwise and if the behaviour was not allowed to act reactively on its own
+                            # (flagged as independentFromPlanner)
+                            elif not behaviour.independentFromPlanner:
+                                unexpected_behaviour_finished = True  # it was unexpected
+        return unexpected_behaviour_finished
+
+    def _executed_behaviours_influenced_as_expected(self):
+        """
+        check if all modelled effects of the executed behaviours are reflected in the sensor changes.
+        :return: False if one of the modelled effects is not listed in the current sensor changes
+        """
+
+        for behaviour in self.__executedBehaviours:
+            for item in behaviour.correlations:
+                if item.indicator == 0:
+                    continue  # does not make much sense to model an effect of 0 but in case.
+
+                sensor_name = item.get_pddl_effect_name()
+                sensor_change_indicator = self.__sensorChanges.get(sensor_name, None)
+                # none would indicate that we currently not tracking this sensor in any condition and hence do not
+                # have information about it
+                if not sensor_change_indicator:
+                    continue
+                elif item.indicator * sensor_change_indicator <= 0:
+                    current_state = self.__previous_parsed_state_pddl.get(sensor_name, None)
+                    # test if sensor is a boolean predicated that is already in the desired state
+                    if current_state and isinstance(current_state, bool):
+                        if current_state and item.indicator > 0 or not current_state and item.indicator <= 0:
+                            continue
+                    return False
+        return True
+
+    def _are_all_sensor_changes_from_executed_behaviours(self):
+        """
+        check if all sensor changes are induced by executed behaviours
+        no change is also considered as an expected change
+        :return: False if at least one sensor change (direction of change) is not modeled as effect of an executed behaviour
+        """
+        # now check whether we expected the world to change so by comparing the observed changes to the correlations of the running behaviours
+        all_changes_were_expected = True
+        for sensor_name, indicator in self.__sensorChanges.iteritems():
+            change_was_expected = False
+
+            for behaviour in self.__executedBehaviours:
+                for item in behaviour.correlations:
+                    # rhbplog.logdebug("Behaviour: %s, Correlations: %s, Indicator: %f", behaviour.name, item.get_pddl_effect_name(), item.indicator)
+                    # the observed change happened because of the running behaviour (at least the behaviour is
+                    # correlated to the changed sensor in the correct way)
+                    if item.get_pddl_effect_name() == sensor_name and item.indicator * indicator > 0:
+                        change_was_expected = True
+                        break
+                if change_was_expected:
+                    break
+            if not change_was_expected:
+                rhbplog.logdebug("Change '%s':%f was not expected", sensor_name, indicator)
+                all_changes_were_expected = False
+                break
+        return all_changes_were_expected
+
+    def _are_effects_of_planned_behaviour_realised(self):
+        """
+        check if the currently planned behaviour did its job
+        :return: True if all expected/modelled effects of the currently planned behaviour have been realised
+        """
+        effect_realised = False
+        if self._plan and "actions" in self._plan and self._planExecutionIndex in self._plan["actions"]:
+            planned_name = self._plan["actions"][self._planExecutionIndex]
+            planned_executed_behaviour = None
+            for behaviour in self.__executedBehaviours:
+                if behaviour.name == planned_name:
+                    planned_executed_behaviour = behaviour
+                    break
+            if planned_executed_behaviour:
+                for item in planned_executed_behaviour.correlations:
+                    sensor_name = item.get_pddl_effect_name()
+                    aggregated_sensor_change = self.__aggregated_sensor_changes.get(sensor_name, 0)
+
+                    if item.indicator < aggregated_sensor_change:
+
+                        current_state = self.__previous_parsed_state_pddl.get(sensor_name, None)
+                        # test if sensor is a boolean predicated that is already in the desired state
+                        if current_state and isinstance(current_state, bool):
+                            if current_state and item.indicator > 0 or not current_state and item.indicator <= 0:
+                                effect_realised = True
+                                continue
+
+                        effect_realised = False
+                        break
+                    else:
+                        effect_realised = True
+        return effect_realised
+
     def send_discovery(self):
         """
         Send manager/planner discovery message
@@ -540,18 +686,19 @@ class Manager(object):
             statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
             plannerStatusMessage.behaviours.append(statusMessage)
-        plannerStatusMessage.runningBehaviours = map(lambda x: x.name, self.__executedBehaviours)
+        plannerStatusMessage.runningBehaviours = [b.name for b in self.__executedBehaviours]
         plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
         plannerStatusMessage.activationThresholdDecay = self._activation_threshold_decay
         plannerStatusMessage.stepCounter = self._stepCounter
-        plannerStatusMessage.plan = self._plan
+        if self._plan and "actions" in self._plan:
+            plannerStatusMessage.plan = self._plan['actions'].values()
         plannerStatusMessage.plan_index = self._planExecutionIndex
         self.__statusPublisher.publish(plannerStatusMessage)
 
     def update_activation(self, plan_if_necessary=True):
         """
         Update all information about behaviours and goals and update the activation calculation
-        :param plan_if_necessary: enable or disable the check for required planning
+        :param plan_if_necessary: enable or disable potentially required planning
         """
         self._totalActivation = 0.0
         ### collect information about behaviours ###
@@ -785,6 +932,13 @@ class Manager(object):
         :param config: dict with the new configuration
         """
         self._activation_threshold_decay = config.get("activationThresholdDecay", self._activation_threshold_decay)
+
+        self._plan_monitoring_all_sensor_changes_by_behaviours = config.get(
+            "plan_monitoring_all_sensor_changes_by_behaviours", self._plan_monitoring_all_sensor_changes_by_behaviours)
+        self._plan_monitoring_behaviour_missing_influence = config.get(
+            "plan_monitoring_behaviour_missing_influence", self._plan_monitoring_behaviour_missing_influence)
+        self._plan_monitoring_unexpected_behaviour_finished = config.get(
+            "plan_monitoring_unexpected_behaviour_finished", self._plan_monitoring_unexpected_behaviour_finished)
 
         self.activation_algorithm.update_config(**config)
 
