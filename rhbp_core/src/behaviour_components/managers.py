@@ -286,15 +286,22 @@ class Manager(object):
                 yield sortedGoals[i:j]
     
     def _plan_if_necessary(self):
-        '''
-        this method plans using the symbolic planner it it is required to do so.
+        """
+        this method plans using the symbolic planner if it is required to do so.
         Replanning is required whenever any or many of the following conditions is/are met:
         1) Behaviours or Goals have been added or removed
-        2) The state of the world has changed an this change is not caused by the next behaviour in the plan
+        2) An interruptable behaviour timed out
+        3) The last planning attempt was unsuccessful
+
+        Additionally, following properties can also initiate replanning if their flags are enabled. Configuration is
+        possible with dynamic reconfigure respectively from the launch file.
+        1) The state of the world has changed an this change is not caused by the current behaviour in the plan
+            Flag: self._plan_monitoring_all_sensor_changes_by_behaviours.
+        2) The expected effect (direction of change) of executed behaviours did not take place
+            Flag: self._plan_monitoring_behaviour_missing_influence
         3) An unexpected behaviour was running (not head of the plan or flagged as independentFromPlanner)
-        4) An interruptable behaviour timed out
-        5) The last planning attempt was unsuccessful
-        '''
+            Flag: self._plan_monitoring_unexpected_behaviour_finished
+        """
 
         if not self.activation_algorithm.is_planner_enabled():
             return  # return if planner is disabled
@@ -349,29 +356,29 @@ class Manager(object):
             # The reduction will eliminate goals of inferior priority until the highest priority goal is tried alone.
             # If that cannot be reached the search goes backwards and tries all other goals with lower priorities in
             # descending order until a reachable goal is found.
-            for goalSequence in self._generate_priority_goal_sequences():
-                problemPDDL = ""
+            for goal_sequence in self._generate_priority_goal_sequences():
+                problem_pddl = ""
                 try:
-                    rhbplog.logdebug("trying to reach goals %s", goalSequence)
-                    problemPDDL = self._create_problem_pddl(goalSequence)
+                    rhbplog.logdebug("trying to reach goals %s", goal_sequence)
+                    problem_pddl = self._create_problem_pddl(goal_sequence)
 
-                    tmpPlan = self.planner.plan(domain_pddl, problemPDDL)
-                    if tmpPlan and "cost" in tmpPlan and tmpPlan["cost"] != -1.0:
-                        rhbplog.loginfo("FOUND PLAN: %s", tmpPlan)
-                        self._plan = tmpPlan
+                    tmp_plan = self.planner.plan(domain_pddl, problem_pddl)
+                    if tmp_plan and "cost" in tmp_plan and tmp_plan["cost"] != -1.0:
+                        rhbplog.loginfo("FOUND PLAN: %s", tmp_plan)
+                        self._plan = tmp_plan
                         self.__replanningNeeded = False
                         self._planExecutionIndex = 0
                         self._reset_sensor_changes()
-                        self.__currently_pursued_goals = goalSequence
+                        self.__currently_pursued_goals = goal_sequence
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
                     if self._create_log_files:
-                        self._log_pddl_files(domain_pddl, problemPDDL, goalSequence)
+                        self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
                 except Exception as e:
                     rhbplog.logerr("PLANNER ERROR: %s. Generating PDDL log files for step %d", e, self._stepCounter)
                     self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
-                    self._log_pddl_files(domain_pddl, problemPDDL, goalSequence)
+                    self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
         else:
             rhbplog.loginfo("### NOT PLANNING ### because replanning needed: %s\n"
                             "planIndex: %s, unexpected_behaviour_finished:%s, all_changes_were_not_expected:%s, "

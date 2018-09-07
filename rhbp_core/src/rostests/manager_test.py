@@ -11,7 +11,7 @@ import unittest
 
 import rospy
 import rostest
-from behaviour_components.activators import BooleanActivator, GreedyActivator
+from behaviour_components.activators import BooleanActivator, GreedyActivator, ThresholdActivator
 from behaviour_components.conditions import Condition, Conjunction
 from behaviour_components.goals import GoalBase
 from behaviour_components.managers import Manager
@@ -348,6 +348,59 @@ class TestManager(unittest.TestCase):
                         "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
         # behaviour1 should set sensor1 to True if it is running but the contrary happened
         self.assertFalse(manager._executed_behaviours_influenced_as_expected())
+
+    def test_plan_monitoring_float_sensors(self):
+        """
+        Testing plan monitoring and replanning management
+        """
+
+        method_prefix = self.__message_prefix + "test_plan_monitoring_float_sensors"
+        planner_prefix = method_prefix + "Manager"
+        manager = Manager(activationThreshold=7.0, prefix=planner_prefix, max_parallel_behaviours=1)
+
+        sensor_1 = Sensor(name="Sensor1", initial_value=0)
+
+        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1.add_effect(Effect(sensor_1.name, 1, sensor_type=float))
+
+        sensor_2 = Sensor(name="Sensor2", initial_value=0)
+
+        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2.add_effect(Effect(sensor_2.name, 1, sensor_type=float))
+
+        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        # adding precondition to get a reference to the sensor in the manager
+        behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
+        behaviour_3.add_effect(Effect(sensor_2.name, 1, sensor_type=float))
+
+        goal1 = GoalBase(name="Test_Goal1", conditions=[Conjunction(
+                         Condition(sensor_1, ThresholdActivator(1)),
+                         Condition(sensor_2, ThresholdActivator(0),
+                        ))], plannerPrefix=planner_prefix, permanent=True)
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+
+        sensor_1.update(0.5)  # faking partial effect of behaviour1, all changes are induced by behaviour, no replanning
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+        self.assertTrue(manager._are_all_sensor_changes_from_executed_behaviours())
+        self.assertFalse(manager._are_effects_of_planned_behaviour_realised())  # we did not yet reach the full effect
+        self.assertTrue(manager._executed_behaviours_influenced_as_expected())
+
+        sensor_1.update(1.0)  # faking partial effect of behaviour1, all changes are induced by behaviour, no replanning
+
+        manager.step(guarantee_decision=True)
+        self.assertTrue(behaviour_1._isExecuting,
+                        "Behaviour 1 is not executed even though a decision was forced and it would fulfill the plan")
+        self.assertTrue(manager._are_all_sensor_changes_from_executed_behaviours())
+        self.assertTrue(manager._executed_behaviours_influenced_as_expected())
+        manager._planExecutionIndex -= 1  # we have to manipulate here because it was incremented
+        self.assertTrue(manager._are_effects_of_planned_behaviour_realised())
+        manager._planExecutionIndex += 1
 
 
 if __name__ == '__main__':
