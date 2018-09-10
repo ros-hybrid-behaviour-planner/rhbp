@@ -1,58 +1,13 @@
+"""
+DelegationGoal and the GoalWrapper used by the goal
+
+@author: Mengers
+"""
 
 from decomposition_components.delegation_clients import RHBPDelegationClient
 from decomposition_components.goal_wrapper import RHBPGoalWrapper, DecompositionGoal
 from delegation_components.delegation_manager import DelegationManager
 from behaviour_components.goals import rhbplog
-
-
-class RunningGoalWrapper(RHBPGoalWrapper):
-    """
-    Wrapper for a already running RHBP goal (GoalBase), that implements
-    start_with_contractor and terminate_goal
-    Goal should not be registered at construction of wrapper
-    """
-
-    def __init__(self, goal, conditions):
-        """
-        Constructor
-
-        :param goal: unregistered RHBP goal that will be wrapped by this
-        :type goal: GoalBase
-        :param conditions: list of conditions of the goal (should be exactly the
-                same as the conditions of the goal)
-        :type conditions: list
-        """
-
-        super(RunningGoalWrapper, self).__init__(name=goal.name, conditions=conditions,
-                                                 satisfaction_threshold=goal.satisfaction_threshold)
-        self._goal = goal
-
-    def __del__(self):
-        """
-        Destructor
-        """
-
-        del self._conditions
-
-    def send_goal(self, name=""):
-        """
-        Transfers the planner prefix of a Manager to this goal, so that it will
-        register there
-
-        :param name: plannerPrefix of a Manager in the system
-        :type name: str
-        """
-
-        self._goal.start_with_contractor(planner_prefix=name)
-        self._created_goal = True
-
-    def terminate_goal(self):
-        """
-        Makes sure the goal unregsiters
-        """
-
-        self._created_goal = False
-        self._goal.terminate_goal()
 
 
 class DelegationGoal(DecompositionGoal):
@@ -107,7 +62,7 @@ class DelegationGoal(DecompositionGoal):
 
     def _init_services(self):
         """
-        Initializes services, if a contractorhas been found
+        Initializes services, if a contractor has been found
         """
 
         if not self._contractor_found:
@@ -166,6 +121,10 @@ class DelegationGoal(DecompositionGoal):
         Finishes the process of determining the right agent in the system for
         this goal
 
+        This can be used in a While-Loop, but use rospy.wait() for some time
+        between the finish_auction() calls (give the messages enough time,
+        depending on system specs)
+
         :return: Whether the process was successful or not
         :rtype: bool
         """
@@ -178,14 +137,18 @@ class DelegationGoal(DecompositionGoal):
             self._client.do_step()
 
         if not self._contractor_found:
-            rhbplog.logwarn("Auction was not finished successful (see other logging), you can try again to finish after some additional time")
+            rhbplog.logwarn("Auction was not finished successful (see DelegationManager logging)!" +
+                            " You can try again to finish the auction after some additional time")
+        else:
+            self._auction_running = False
+            rhbplog.loginfo("Contractor has been found for this DelegationGoal: " + self._planner_prefix)
 
         return self._contractor_found
 
     @property
     def auction_running(self):
         """
-        Whether or not the auction is running
+        Whether or not the auction for this goal is running
 
         :return: whether or not the auction is running
         :rtype: bool
@@ -196,10 +159,62 @@ class DelegationGoal(DecompositionGoal):
     @property
     def contractor_found(self):
         """
-        Whether or not a contractor has been found
+        Whether or not a contractor has been found for this goal
 
         :return: whether or not a contractor has been found
         :rtype: bool
         """
 
         return self._contractor_found
+
+
+class RunningGoalWrapper(RHBPGoalWrapper):
+    """
+    Wrapper for a already running RHBP goal (GoalBase), that implements
+    start_with_contractor and terminate_goal
+
+    Goal should not be registered at the time of the construction of this
+    wrapper
+    """
+
+    def __init__(self, goal, conditions):
+        """
+        Constructor
+
+        :param goal: unregistered RHBP goal that will be wrapped by this
+        :type goal: GoalBase
+        :param conditions: list of conditions of the goal (should be exactly the
+                same as the conditions of the goal)
+        :type conditions: list
+        """
+
+        super(RunningGoalWrapper, self).__init__(name=goal.name, conditions=conditions,
+                                                 satisfaction_threshold=goal.satisfaction_threshold)
+        self._goal = goal
+
+    def __del__(self):
+        """
+        Destructor
+        """
+
+        del self._conditions
+
+    def send_goal(self, name=""):
+        """
+        Transfers the planner prefix of a Manager to this goal, so that it will
+        register there
+
+        :param name: plannerPrefix of a Manager in the system
+        :type name: str
+        """
+
+        self._goal.start_with_contractor(planner_prefix=name)
+        self._created_goal = True
+
+    def terminate_goal(self):
+        """
+        Makes sure the goal unregisters
+        """
+
+        self._created_goal = False
+        self._goal.terminate_goal()
