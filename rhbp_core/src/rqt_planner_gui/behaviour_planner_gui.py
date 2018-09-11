@@ -219,9 +219,12 @@ class Overview(Plugin):
     def step_push_button_callback(self):
         service_name = self.__plannerPrefix + '/step'
         rospy.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name, timeout=1)
-        stepRequest = rospy.ServiceProxy(service_name, Empty)
-        stepRequest()
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            stepRequest = rospy.ServiceProxy(service_name, Empty)
+            stepRequest()
+        except rospy.exceptions.ROSException:
+            rospy.logdebug("Service %s not available", service_name)
 
     def _automatic_stepping_checkbox_Callback(self, status):
         self._widget.stepPushButton.setEnabled(not status)
