@@ -137,13 +137,13 @@ class RHBPClientsTest(unittest.TestCase):
 
         delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost, start_work_function=fpt.function)
 
-        uut.start_work(delegation_id=delegation_id)
+        uut.start_work_for_delegation(delegation_id=delegation_id)
         self.assertTrue(fpt.function_called)
 
-        self.assertRaises(KeyError, uut.start_work, delegation_id+1)
+        self.assertRaises(KeyError, uut.start_work_for_delegation, delegation_id + 1)
 
         uut.terminate_delegation(delegation_id=delegation_id)
-        self.assertRaises(KeyError, uut.start_work, delegation_id)
+        self.assertRaises(KeyError, uut.start_work_for_delegation, delegation_id)
 
 
 if __name__ == '__main__':
