@@ -19,14 +19,12 @@ class DelegationGoal(DecompositionGoal):
     suited agent
     """
 
-    def __init__(self, name, delegation_manager, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0, enabled=True):
+    def __init__(self, name, permanent=False, conditions=None, priority=0, satisfaction_threshold=1.0, enabled=True):
         """
         Constructor
 
         :param name: name of the goal
         :type name: str
-        :param delegation_manager: DelegationManager used by this goal
-        :type delegation_manager: DelegationManager
         :param permanent: whether this goal is permanent
         :type permanent: bool
         :param conditions: conditions of this goal
@@ -44,7 +42,6 @@ class DelegationGoal(DecompositionGoal):
                                              plannerPrefix="TBD", priority=priority,
                                              satisfaction_threshold=satisfaction_threshold, enabled=enabled)
         self._client = RHBPDelegationClient()
-        self._client.register(delegation_manager=delegation_manager)
         self._goal_wrapper = None
         self._delegation_id = -1
         self._auction_running = False

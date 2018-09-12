@@ -1,9 +1,9 @@
 
 from delegation_components.delegation_clients import DelegationClientBase
-
+from delegation_components.delegation_manager import DelegationManager
 from decomposition_components.goal_wrapper import RHBPGoalWrapper
 from delegation_components.delegation_errors import DelegationError
-
+import rospy
 
 import utils.rhbp_logging
 rhbplogger = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
@@ -16,9 +16,17 @@ class RHBPDelegationClient(DelegationClientBase):
     """
 
     logger = rhbplogger
+    used_delegation_manager = None
 
     def __init__(self, checking_prefix=None):
         super(RHBPDelegationClient, self).__init__()
+
+        if not RHBPDelegationClient.used_delegation_manager:
+            rhbplogger.loginfo("Creating a new DelegationManager with the name \"" + str(rospy.get_name()) + "\"")
+            RHBPDelegationClient.used_delegation_manager = DelegationManager(instance_name=rospy.get_name(), max_tasks=0)
+
+        self.register(delegation_manager=RHBPDelegationClient.used_delegation_manager)
+        self._active_manager = True
         self._waiting_delegations = []
         self._checking_prefix = checking_prefix
         self._success_function_dict = dict()

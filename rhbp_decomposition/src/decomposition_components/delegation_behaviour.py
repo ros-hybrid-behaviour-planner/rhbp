@@ -70,16 +70,6 @@ class DelegationBehaviour(BehaviourBase):
         self._delegation_client.__del__()
         del self._correlation_sensors[:]
 
-    def register_delegation_manager(self, delegation_manager):
-        """
-        Registers a DelegationManager at the client used by this behaviour
-
-        :param delegation_manager: an instance of the DelegationManager
-        :type delegation_manager: DelegationManager
-        """
-
-        self._delegation_client.register(delegation_manager=delegation_manager)
-
     def start(self):
         """
         Does start a delegation with all known effects, that have a known
@@ -191,7 +181,7 @@ class DelegableBehaviour(DelegationBehaviour):
     """
     Like the DelegationBehaviour, but there is the possibility to do the work
     here locally. The decision whether it will be done locally or will be
-    delegated is done by the DelegationManager of the task_decomposition_module
+    delegated is done by the DelegationManager of the delegation_module
     based on the given own_cost in comparision to the proposals made by possible
     contractors.
 
