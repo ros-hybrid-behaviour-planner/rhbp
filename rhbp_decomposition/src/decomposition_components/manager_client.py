@@ -1,3 +1,9 @@
+"""
+Special kind of DelegationClient used by RHBP Managers
+
+@author: Mengers
+"""
+
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from decomposition_components.delegation_clients import RHBPDelegationClient
 from delegation_components.delegation_manager import DelegationManager
@@ -22,11 +28,17 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         self._added_cost_evaluator = False
 
     def make_cost_computable(self):
+        """
+        Makes sure that a cost evaluator for this manager will be added to the
+        DelegationManager. If that DelegationManager is already taken, a new one
+        will be created
+        """
+
         if self._added_cost_evaluator:
             return
 
         if not self._active_manager or self._delegation_manager.cost_computable:
-            self._delegation_manager = DelegationManager(instance_name=self.__behaviour_manager.prefix, max_tasks=20)
+            self._create_own_delegation_manager()
 
         new_cost_evaluator = self.get_new_cost_evaluator()
         prefix = self.__behaviour_manager.prefix
@@ -34,12 +46,29 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         self._delegation_manager.start_depth_service(prefix=prefix)
         self._added_cost_evaluator = True
 
+    def _create_own_delegation_manager(self):
+        """
+        Creates a new DelegationManager just for this Client
+        """
+
+        self._delegation_manager = DelegationManager(instance_name=self.__behaviour_manager.prefix, max_tasks=20)
+
     def remove_cost_computable(self):
+        """
+        Removes the CostEvaluator that this client constructed from the
+        DelegationManager
+        """
+
         if self._added_cost_evaluator:
             self._delegation_manager.remove_cost_function_evaluator()
             self._added_cost_evaluator = False
 
     def unregister(self):
+        """
+        Unregisters this Client from the DelegationManager and removes the
+        CostEvaluator
+        """
+        
         if self._active_manager and self._added_cost_evaluator:
             self._delegation_manager.stop_depth_service()
             self._delegation_manager.remove_cost_function_evaluator()

@@ -40,8 +40,7 @@ class RHBPDelegationClient(DelegationClientBase):
 
         # create a new DelegationManager, if there is none
         if not RHBPDelegationClient.used_delegation_manager:
-            self.logger.loginfo("Creating a new DelegationManager with the name \"" + str(rospy.get_name()) + "\"")
-            RHBPDelegationClient.used_delegation_manager = DelegationManager(instance_name=rospy.get_name(), max_tasks=0)
+            self._create_delegation_manager()
 
         # register the DelegationManager
         super(RHBPDelegationClient, self).register(delegation_manager=RHBPDelegationClient.used_delegation_manager)
@@ -50,6 +49,15 @@ class RHBPDelegationClient(DelegationClientBase):
 
         self._waiting_delegations = []
         self._success_function_dict = dict()
+
+    def _create_delegation_manager(self):
+        """
+        Creates a new instance of the DelegationManager to be used by the all
+        clients
+        """
+
+        self.logger.loginfo("Creating a new DelegationManager with the name \"" + str(rospy.get_name()) + "\"")
+        RHBPDelegationClient.used_delegation_manager = DelegationManager(instance_name=rospy.get_name())
 
     def __del__(self):
         """
@@ -98,6 +106,18 @@ class RHBPDelegationClient(DelegationClientBase):
 
         self.logger.loginfo("Delegation has local ID " + str(delegation_id))
         return delegation_id
+
+    def terminate_delegation(self, delegation_id):
+        """
+        Terminates the delegation with the given ID
+
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        """
+
+        super(RHBPDelegationClient, self).terminate_delegation(delegation_id=delegation_id)
+        if self._success_function_dict.keys().__contains__(delegation_id):
+            del self._success_function_dict[delegation_id]
 
     def delegation_successful(self, delegation_id):
         """
@@ -338,5 +358,3 @@ class RHBPDelegableClient(RHBPDelegationClient):
         """
 
         self._work_function_dictionary[delegation_id] = start_work_function
-
-
