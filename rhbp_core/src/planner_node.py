@@ -26,6 +26,7 @@ class ManagerNode(object):
         self.rate = rospy.Rate(rospy.get_param("~frequency", 1))
 
         self.automatic_stepping = rospy.get_param("~automatic_stepping", True)
+        self.guarantee_decision = rospy.get_param("~guarantee_decision", False)
 
         if not self.automatic_stepping:
             rospy.logwarn("Started in manual stepping mode")
@@ -81,7 +82,7 @@ class ManagerNode(object):
         :param request:
         """
         if not self.automatic_stepping or self._manager.paused:
-            self._manager.step(force=True)
+            self._manager.step(force=True, guarantee_decision=self.guarantee_decision)
         else:
             rospy.logwarn("No manual stepping if automatic stepping is enabled and manager is not paused")
         return EmptyResponse()
