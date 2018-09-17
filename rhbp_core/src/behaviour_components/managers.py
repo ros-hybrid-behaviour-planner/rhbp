@@ -591,6 +591,7 @@ class Manager(object):
                             amount_currently_selected_behaviours += 1
 
                             if behaviour.requires_execution_steps:
+                                rospy.logerr("Manager(%s):: behaviour %s >>>>>>>>>>> do_step()",self._prefix, behaviour.name)
                                 behaviour.do_step()
                         continue
                     if not behaviour.executable and not behaviour.manualStart:  # it must be executable
@@ -619,7 +620,9 @@ class Manager(object):
 
                     ### if the behaviour got here it really is ready to be started ###
                     rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
-                    behaviour.start()
+                    behaviour.start()                                
+                    rospy.logerr("Manager(%s):: behaviour %s >>>>>>>>>>> start()",self._prefix, behaviour.name)
+
 
                     amount_currently_selected_behaviours += 1
 
