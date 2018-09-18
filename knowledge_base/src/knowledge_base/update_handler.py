@@ -136,10 +136,60 @@ class KnowledgeBaseFactCache(object):
         with self.__value_lock:
             return not (len(self.__contained_facts) == 0)
 
+    def does_sub_fact_exist(self, pattern):
+        """
+        Returns whether a fact contained in this KnowledgeBaseFactCache and additionally matching the
+        given pattern exists.
+        :param pattern: the pattern to look for
+        :return: True if a cached fact matches the given pattern, else False
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            for f in self.__contained_facts:
+                for i in range(0, len(pattern) - 1):
+                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                        break
+                else:
+                    return True
+
     def get_all_matching_facts(self):
         self.__ensure_initialization()
         with self.__value_lock:
             return copy.deepcopy(self.__contained_facts)
+
+    def get_matching_sub_fact(self, pattern):
+        """
+        Returns the first fact that matches the given pattern, which should be a subset (i.e. more specific)
+        of the pattern used during initialization of this KnowledgeBaseFactCache.
+        :param pattern: the pattern to look for
+        :return: the first contained fact matching the given pattern
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            for f in self.__contained_facts:
+                for i in range(0, len(pattern) - 1):
+                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                        break
+                else:
+                    return copy.deepcopy(f)
+
+    def get_all_matching_sub_facts(self, pattern):
+        """
+        Returns all facts that match the given pattern, which should be a subset (i.e. more specific) of the pattern
+        used during initialization of this KnowledgeBaseFactCache.
+        :param pattern: the pattern that facts should match
+        :return: a list of contained facts matching the pattern
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            result = []
+            for f in self.__contained_facts:
+                for i in range(0, len(pattern)-1):
+                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                        break
+                else:
+                    result.append(copy.deepcopy(f))
+            return result
 
     def _notify_listeners(self):
         """
@@ -188,4 +238,3 @@ class KnowledgeBaseFactCache(object):
         :return: fact
         """
         return self.__last_updated_fact
-
