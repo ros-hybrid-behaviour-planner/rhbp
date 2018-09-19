@@ -151,6 +151,7 @@ class KnowledgeBaseFactCache(object):
                         break
                 else:
                     return True
+        return False
 
     def get_all_matching_facts(self):
         self.__ensure_initialization()
