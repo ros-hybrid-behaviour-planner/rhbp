@@ -1,3 +1,9 @@
+"""
+Manager for the RHBP that has to be used by Nodes that want to include the
+rhbp_decomposition capabilities
+
+@author: Mengers
+"""
 
 import behaviour_components.managers as core
 from decomposition_components.manager_client import RHBPManagerDelegationClient
@@ -13,14 +19,18 @@ class Manager(core.Manager):
     """
 
     # noinspection PyPep8Naming
-    def __init__(self, enabled=True, use_only_running_behaviors_for_interRuptible=core.Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE, **kwargs):
+    def __init__(self, enabled=True,
+                 use_only_running_behaviors_for_interRuptible=core.Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
+                 **kwargs):
         """
         Constructor
 
         For additional documentation see the rhbp_core Manager
         """
 
-        super(Manager, self).__init__(enabled=enabled, use_only_running_behaviors_for_interRuptible=use_only_running_behaviors_for_interRuptible, **kwargs)
+        super(Manager, self).__init__(enabled=enabled,
+                                      use_only_running_behaviors_for_interRuptible=use_only_running_behaviors_for_interRuptible,
+                                      **kwargs)
 
         self._delegation_client = RHBPManagerDelegationClient(manager=self)
         self._participating_in_auctions = False
@@ -33,12 +43,16 @@ class Manager(core.Manager):
         :param force: set to True to force the stepping regardless of pause
                 and activation states
         :type force: bool
+        :param guarantee_decision: Repeat activation algorithm threshold
+                adjustments until at least one behaviour can be activated
+                and enough executable behaviours are available
+        :type guarantee_decision: bool
         """
 
         super(Manager, self).step(force=force, guarantee_decision=guarantee_decision)
 
         # Let the DelegationManager do a step
-        self._delegation_client.do_step()  # TODO think about the position of this (step_lock y/n)
+        self._delegation_client.do_step()
 
     def remove_goal(self, goal_name):
         """
@@ -55,19 +69,41 @@ class Manager(core.Manager):
         self._delegation_client.notify_goal_removal(goal_name=goal_name)
 
     def participate_in_auctions(self):
+        """
+        Enables this Manager to participate in auctions
+        """
+
         self._delegation_client.make_cost_computable()
         self._participating_in_auctions = True
 
     def stop_participating_in_auctions(self):
+        """
+        Disables this Manager to participate in auctions
+        """
+
         self._delegation_client.remove_cost_computable()
         self._participating_in_auctions = False
 
     @property
     def participating_in_auctions(self):
+        """
+        Whether this Manager can participate in auctions or not
+
+        :return: Whether this Manager can participate in auctions or not
+        :rtype: bool
+        """
+
         return self._participating_in_auctions
 
     @participating_in_auctions.setter
     def participating_in_auctions(self, value):
+        """
+        Whether this Manager should participate in auctions or not
+
+        :param value: Whether this Manager should participate in auctions or not
+        :type value: bool
+        """
+
         if self._participating_in_auctions and not value:
             self.stop_participating_in_auctions()
 

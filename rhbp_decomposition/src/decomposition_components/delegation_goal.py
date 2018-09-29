@@ -1,5 +1,5 @@
 """
-DelegationGoal and the GoalWrapper used by the goal
+DelegationGoal and the GoalWrapper used by the DelegationGoal
 
 @author: Mengers
 """
@@ -77,27 +77,7 @@ class DelegationGoal(DecompositionGoal):
 
         super(DelegationGoal, self).register()
 
-    def start_with_contractor(self, planner_prefix):
-        """
-        Starts services and registers with the given planner
-        
-        :param planner_prefix: prefix of the planner, that will have this goal
-                now
-        :type planner_prefix: str
-        """
-
-        self._planner_prefix = planner_prefix
-        self._contractor_found = True
-        self._init_services()
-        self.register()
-
-    def terminate_goal(self):
-        """
-        Unregisters this goal, but checks if it is registered before
-        """
-
-        if hasattr(self, '_registered') and self._registered:
-            self.unregister(terminate_services=True)
+    # ------ Additional Interface of the DelegationGoal ------
 
     def start_auction(self):
         """
@@ -141,6 +121,32 @@ class DelegationGoal(DecompositionGoal):
             rhbplog.loginfo("Contractor has been found for this DelegationGoal: " + self._planner_prefix)
 
         return self._contractor_found
+
+    def start_with_contractor(self, planner_prefix):
+        """
+        Starts services and registers with the given Manager
+
+        Can be used to ignore any auctions and simply use the given Manager
+
+        :param planner_prefix: prefix of the Manager, that will have this goal
+                now
+        :type planner_prefix: str
+        """
+
+        self._planner_prefix = planner_prefix
+        self._contractor_found = True
+        self._init_services()
+        self.register()
+
+    def terminate_goal(self):
+        """
+        Unregisters this goal, but checks if it is registered before
+        """
+
+        if hasattr(self, '_registered') and self._registered:
+            self.unregister(terminate_services=True)
+
+    # ------ Properties ------
 
     @property
     def auction_running(self):

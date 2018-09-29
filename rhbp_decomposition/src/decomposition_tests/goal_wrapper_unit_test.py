@@ -28,8 +28,8 @@ class GoalWrapperTest(unittest.TestCase):
         super(GoalWrapperTest, cls).setUpClass()
         rospy.init_node("test_node")
         cls.manager = Manager(prefix="Test_manager")
-        sensor = TopicSensor(name="test_sensor", topic="sensor_topic", message_type=Bool, initial_value=False)
-        cls.test_condition = Condition(sensor, BooleanActivator())
+        cls.sensor = TopicSensor(name="test_sensor", topic="/sensor_topic", message_type=Bool, initial_value=False)
+        cls.test_condition = Condition(cls.sensor, BooleanActivator())
         cls.comparison_goal = OfflineGoal(name="comparison_goal", planner_prefix="Test_manager")
         cls.manager_name = "Test_manager"
 
@@ -125,6 +125,22 @@ class GoalWrapperTest(unittest.TestCase):
         self.manager.init_services_topics()
 
         test_wrapper._goal.unregister()
+
+    def test_check_finished(self):
+        """
+        Tests check_finished
+        """
+
+        test_wrapper = RHBPGoalWrapper(name="check_finished", conditions=[self.test_condition])
+
+        self.assertFalse(test_wrapper.check_goal_finished())
+
+        test_wrapper.send_goal(name=self.manager_name)
+        self.assertFalse(test_wrapper.check_goal_finished())
+
+        goal = test_wrapper.get_goal()
+        goal.enabled = False
+        self.assertTrue(test_wrapper.check_goal_finished())
 
 
 if __name__ == '__main__':

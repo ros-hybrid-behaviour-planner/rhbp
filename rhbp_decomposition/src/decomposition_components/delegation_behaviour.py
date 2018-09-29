@@ -1,3 +1,8 @@
+"""
+DelegationBehaviour and DelegableBehaviour
+
+@author: Mengers
+"""
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
@@ -11,7 +16,7 @@ class DelegationBehaviour(BehaviourBase):
     A behaviour that will delegate a task containing all effects, that this
     behaviour has, after it was started.
 
-    Needs no implementation of the functions start, stop, do_step, but needs
+    Needs NO implementation of the functions start, stop, do_step, but needs
     Effects added via the function add_effect_for_delegation(), if they shall be
     part of the delegated task.
     """
@@ -19,7 +24,8 @@ class DelegationBehaviour(BehaviourBase):
     TYPE_STRING = "Delegation"
 
     # noinspection PyPep8Naming
-    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0, delegation_depth_prefix=None, **kwargs):
+    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0,
+                 delegation_depth_prefix=None, **kwargs):
         """
         Constructor
 
@@ -46,20 +52,15 @@ class DelegationBehaviour(BehaviourBase):
         else:
             checking_prefix = delegation_depth_prefix
 
-        super(DelegationBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, requires_execution_steps=True, **kwargs)
+        super(DelegationBehaviour, self).__init__(name=name,
+                                                  plannerPrefix=plannerPrefix,
+                                                  requires_execution_steps=True,
+                                                  **kwargs)
         self._correlation_sensors = {}
         self._satisfaction_threshold = satisfaction_threshold
         self._create_delegation_client(checking_prefix=checking_prefix)
         self._delegation_conditions = []
         self._attempt_unsuccessful = False
-
-    def _create_delegation_client(self, checking_prefix):
-        """
-        Creates an instance of the delegation client, will be done by the
-        Constructor
-        """
-
-        self._delegation_client = RHBPDelegationClient(checking_prefix=checking_prefix)
 
     def __del__(self):
         """
@@ -70,43 +71,39 @@ class DelegationBehaviour(BehaviourBase):
         self._delegation_client.__del__()
         del self._correlation_sensors[:]
 
-    def start(self):
+    # ------ Internal Methods ------
+
+    def _create_delegation_client(self, checking_prefix):
         """
-        Does start a delegation with all known effects, that have a known
-        corresponding sensor to them, as conditions for the goal
+        Creates an instance of the delegation client, will be done by the
+        Constructor
         """
 
-        if not self._delegation_client.check_if_registered():
-            rhbplog.logerr("DelegationBehaviour %s started without a registered DelegationManager. Will do nothing!", self.name)
-            return
-
-        self._delegate()
+        self._delegation_client = RHBPDelegationClient(checking_prefix=checking_prefix)
 
     def _delegate(self):
+        """
+        Starts the delegation with all current effects as conditions for the goal
+        """
+
         conditions = self._get_conditions_for_delegation()
         try:
             self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions,
                                              satisfaction_threshold=self._satisfaction_threshold,
-                                             success_function=self._deactivate_myself)
+                                             success_function=self._finish_after_success)
             self._attempt_unsuccessful = False
         except DelegationError:
             rhbplog.logwarn("Attempted Delegation was not successful. Will retry next step!")
             self._attempt_unsuccessful = True
 
-    def _deactivate_myself(self):
-        rhbplog.loginfo("DelegationBehaviour "+self.name+" was successful with the delegation, stopping own execution")
+    def _finish_after_success(self):
+        """
+        Stops own execution after a successful delegation
+        """
+
+        rhbplog.loginfo("DelegationBehaviour " + self.name
+                        + " was successful with the delegation, stopping own execution")
         self.finish(stop_running=True)
-
-    def do_step(self):
-        """
-        Makes sure the auction will step, if an auction is active
-        """
-
-        if self._attempt_unsuccessful:
-            self._delegate()
-            return
-
-        self._delegation_client.do_step()
 
     def _get_conditions_for_delegation(self):
         """
@@ -123,12 +120,29 @@ class DelegationBehaviour(BehaviourBase):
             # only effects with matching sensors become conditions
             if self._correlation_sensors.keys().__contains__(effect):
                 sensor = self._correlation_sensors[effect]
-                condition = create_condition_from_effect(effect=effect, sensor=sensor)
+                condition = create_condition_from_effect(effect=effect,
+                                                         sensor=sensor)
                 conditions.append(condition)
 
         conditions.extend(self._delegation_conditions)
 
         return conditions
+
+    # ------ Start, Stop, Do_Step ------
+
+    def start(self):
+        """
+        Does start a delegation with all known effects, that have a known
+        corresponding sensor to them, as conditions for the goal
+        """
+
+        if not self._delegation_client.check_if_registered():
+            rhbplog.logerr("DelegationBehaviour %s started without" 
+                           "a registered DelegationManager. Will do nothing!",
+                           self.name)
+            return
+
+        self._delegate()
 
     def stop(self):
         """
@@ -136,6 +150,19 @@ class DelegationBehaviour(BehaviourBase):
         """
 
         self._delegation_client.terminate_all_delegations()
+
+    def do_step(self):
+        """
+        Makes sure the auction will step, if an auction is active
+        """
+
+        if self._attempt_unsuccessful:
+            self._delegate()
+            return
+
+        self._delegation_client.do_step()
+
+    # ------ Adding Effects and delegation conditions ------
 
     def add_effect(self, effect):
         """
@@ -146,7 +173,8 @@ class DelegationBehaviour(BehaviourBase):
         :type effect: Effect
         """
 
-        rhbplog.logdebug(msg="Effect added via add_effect to a DelegationBehaviour wont be actually part of the delegated goal")
+        rhbplog.logdebug(msg="Effect added via add_effect to a DelegationBehaviour" 
+                             "wont be actually part of the delegated goal")
 
         super(DelegationBehaviour, self).add_effect(effect=effect)
 
@@ -192,7 +220,9 @@ class DelegableBehaviour(DelegationBehaviour):
     """
 
     # noinspection PyPep8Naming
-    def __init__(self, name, plannerPrefix, work_cost, satisfaction_threshold=1.0, delegation_depth_prefix=None,  **kwargs):
+    def __init__(self, name, plannerPrefix, work_cost,
+                 satisfaction_threshold=1.0, delegation_depth_prefix=None,
+                 **kwargs):
         """
         Constructor
 
@@ -206,13 +236,25 @@ class DelegableBehaviour(DelegationBehaviour):
         :type work_cost: float
         :param satisfaction_threshold: the satisfaction_threshold used for the
                 goal, that will be created by this behaviour
+        :type satisfaction_threshold: float
+        :param delegation_depth_prefix: (optional) if this is part of a
+                NetworkBehaviour or any other arrangement, so that for depth
+                checking a specific Manager should be considered that is not the
+                direct Manager of this Behaviour, give the prefix of that
+                Manager here, else leave it empty
+        :type delegation_depth_prefix: str
         :param kwargs: arguments passed to the Constructor of the BaseClass,
                 for documentation see the Constructor of BehaviourBase
         """
 
-        super(DelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix, satisfaction_threshold=satisfaction_threshold, delegation_depth_prefix=delegation_depth_prefix, **kwargs)
+        super(DelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix,
+                                                 satisfaction_threshold=satisfaction_threshold,
+                                                 delegation_depth_prefix=delegation_depth_prefix,
+                                                 **kwargs)
         self._own_cost = work_cost
         self._currently_doing_work_myself = False
+
+    # ------ Internal Methods ------
 
     def _create_delegation_client(self, checking_prefix):
         """
@@ -233,6 +275,8 @@ class DelegableBehaviour(DelegationBehaviour):
         self._currently_doing_work_myself = True
         self.start_work()
 
+    # ------ Start, Stop, Do_Step ------
+
     def start(self):
         """
         Starts an auction for this task, if possible, else it just starts to do
@@ -242,12 +286,15 @@ class DelegableBehaviour(DelegationBehaviour):
         if self._delegation_client.check_if_registered():
             conditions = self._get_conditions_for_delegation()
             try:
-                self._delegation_client.delegate(goal_name=self.name + "Goal", conditions=conditions,
+                self._delegation_client.delegate(goal_name=self.name + "Goal",
+                                                 conditions=conditions,
                                                  satisfaction_threshold=self._satisfaction_threshold,
-                                                 own_cost=self._own_cost, start_work_function=self._quick_start_work,
-                                                 success_function=self._deactivate_myself)
+                                                 own_cost=self._own_cost,
+                                                 start_work_function=self._quick_start_work,
+                                                 success_function=self._finish_after_success)
             except Exception as e:
-                rhbplog.logwarn("Attempted Delegation was not successful (error-msg: "+str(e.message)+")\n\t-->Will do work myself!")
+                rhbplog.logwarn("Attempted Delegation was not successful (error-msg: "
+                                + str(e.message) + ")\n\t-->Will do work myself!")
                 self._quick_start_work()
                 return
 
@@ -279,6 +326,8 @@ class DelegableBehaviour(DelegationBehaviour):
 
         else:
             super(DelegableBehaviour, self).do_step()
+
+    # ------ Abstract Functions if Work has to be done locally ------
 
     @abstractmethod
     def start_work(self):

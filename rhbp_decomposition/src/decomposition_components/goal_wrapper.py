@@ -1,3 +1,9 @@
+"""
+GoalWrapper for the RHBP using PDDL and a special kind of goal used by it
+
+@author: Mengers
+"""
+
 from delegation_components.goal_wrappers import GoalWrapperBase
 from behaviour_components.goals import GoalBase, rhbplog
 from delegation_components.delegation_errors import DelegationError
@@ -6,11 +12,18 @@ import rospy
 
 
 class DecompositionGoal(GoalBase):
+    """
+    Goal for the RHBPGoalWrapper that can check its current Manager and will
+    additionally not have a long Timeout if the Manager has been found dead
+    """
 
-    # plannerPrefix has to be called that
     # noinspection PyPep8Naming
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
-                 enabled=True):
+    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="",
+                 priority=0, satisfaction_threshold=1.0, enabled=True):
+        """
+        Constructor for Details see Base class (GoalBase)
+        """
+
         super(DecompositionGoal, self).__init__(name=name, permanent=permanent,
                                                 conditions=conditions, plannerPrefix=plannerPrefix,
                                                 priority=priority, satisfaction_threshold=satisfaction_threshold,
@@ -33,7 +46,7 @@ class DecompositionGoal(GoalBase):
         """
         Checks if the manager this goal is registered at is still running
 
-        :return: if the manager is still alive
+        :return: whether the manager is still alive
         :rtype: bool
         """
 
@@ -43,7 +56,9 @@ class DecompositionGoal(GoalBase):
                 rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
                 return True
             except ROSException:
-                rhbplog.logwarn("Connection to Manager with prefix \""+str(self._planner_prefix)+"\" was impossible")
+                rhbplog.logwarn("Connection to Manager with prefix \""
+                                + str(self._planner_prefix)
+                                + "\" was impossible")
                 self._failed_alive_check = True
                 return False
         else:
@@ -86,9 +101,11 @@ class RHBPGoalWrapper(GoalWrapperBase):
         of a PDDL goal-statement
 
         :return: goal representing PDDL-String
+        :rtype: str
         """
 
-        return " ".join([x.getPreconditionPDDL(self._satisfaction_threshold).statement for x in self._conditions])
+        return " ".join([x.getPreconditionPDDL(self._satisfaction_threshold).statement
+                         for x in self._conditions])
 
     def send_goal(self, name=""):
         """
@@ -97,10 +114,13 @@ class RHBPGoalWrapper(GoalWrapperBase):
 
         :param name: prefix of the manager, that should
                 receive the goal
+        :type name: str
         :raises DelegationError: if there is any problem with the goal creation
         """
         try:
-            self._goal = DecompositionGoal(name=self.goal_name, plannerPrefix=name, conditions=self._conditions, satisfaction_threshold=self._satisfaction_threshold)
+            self._goal = DecompositionGoal(name=self.goal_name, plannerPrefix=name,
+                                           conditions=self._conditions,
+                                           satisfaction_threshold=self._satisfaction_threshold)
             self._created_goal = True
             return
         except Exception as e:
@@ -133,6 +153,12 @@ class RHBPGoalWrapper(GoalWrapperBase):
             return True
 
     def check_goal_finished(self):
+        """
+        Checks whether the goal is finished ot not
+
+        :return: whether the goal is finished ot not
+        :rtype: bool
+        """
 
         if self.goal_is_created():
             return not self._goal.enabled

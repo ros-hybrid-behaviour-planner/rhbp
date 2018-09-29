@@ -47,8 +47,14 @@ class RHBPDelegationClient(DelegationClientBase):
         self._active_manager = True
         self._checking_prefix = checking_prefix
 
-        self._waiting_delegations = []
         self._success_function_dict = dict()
+
+    def __del__(self):
+        """
+        Destructor
+        """
+
+        super(RHBPDelegationClient, self).__del__()
 
     def _create_delegation_manager(self):
         """
@@ -57,15 +63,7 @@ class RHBPDelegationClient(DelegationClientBase):
         """
 
         self.logger.loginfo("Creating a new DelegationManager with the name \"" + str(rospy.get_name()) + "\"")
-        RHBPDelegationClient.used_delegation_manager = DelegationManager(instance_name=rospy.get_name())
-
-    def __del__(self):
-        """
-        Destructor
-        """
-
-        del self._waiting_delegations[:]
-        super(RHBPDelegationClient, self).__del__()
+        RHBPDelegationClient.used_delegation_manager = DelegationManager(name=rospy.get_name())
 
     # ------ Open Interface, interaction with delegations ------
 

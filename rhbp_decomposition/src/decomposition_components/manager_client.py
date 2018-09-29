@@ -42,7 +42,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
 
         new_cost_evaluator = self.get_new_cost_evaluator()
         prefix = self.__behaviour_manager.prefix
-        self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, manager_name=prefix)
+        self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, agent_name=prefix)
         self._delegation_manager.start_depth_service(prefix=prefix)
         self._added_cost_evaluator = True
 
@@ -51,7 +51,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         Creates a new DelegationManager just for this Client
         """
 
-        self._delegation_manager = DelegationManager(instance_name=self.__behaviour_manager.prefix, max_tasks=20)
+        self._delegation_manager = DelegationManager(name=self.__behaviour_manager.prefix)
 
     def remove_cost_computable(self):
         """
@@ -68,7 +68,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         Unregisters this Client from the DelegationManager and removes the
         CostEvaluator
         """
-        
+
         if self._active_manager and self._added_cost_evaluator:
             self._delegation_manager.stop_depth_service()
             self._delegation_manager.remove_cost_function_evaluator()
