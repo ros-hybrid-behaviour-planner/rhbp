@@ -204,6 +204,17 @@ class DelegationBehaviour(BehaviourBase):
 
         self._delegation_conditions.append(condition)
 
+    @property
+    def delegation_client(self):
+        """
+        The used DelegationClient
+
+        :return: the DelegationClient
+        :rtype: DelegationClient
+        """
+
+        return self._delegation_client
+
 
 class DelegableBehaviour(DelegationBehaviour):
     """
@@ -369,3 +380,16 @@ class DelegableBehaviour(DelegationBehaviour):
         """
 
         raise NotImplementedError()
+
+    # ------ Properties ------
+
+    @property
+    def currently_doing_work_locally(self):
+        """
+        Whether the work is done locally or not
+
+        :return: Whether the work is done locally or not
+        :rtype: bool
+        """
+
+        return self._currently_doing_work_myself

@@ -149,6 +149,17 @@ class DelegationGoal(DecompositionGoal):
     # ------ Properties ------
 
     @property
+    def delegation_id(self):
+        """
+        The Delegation ID inside the DelegationModule for this Goal at this Node
+
+        :return: the delegation ID
+        :rtype: int
+        """
+
+        return self._delegation_id
+
+    @property
     def auction_running(self):
         """
         Whether or not the auction for this goal is running

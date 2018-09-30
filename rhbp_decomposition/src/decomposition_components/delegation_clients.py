@@ -204,7 +204,7 @@ class RHBPDelegationClient(DelegationClientBase):
         Not needed in rhbp_decomposition!
         """
 
-        self.logger.logwarn("Explicit Registering of DelegationManagers is not needed in rhbp_decomposition")
+        super(RHBPDelegationClient, self).register(delegation_manager=delegation_manager)
 
 
 class RHBPDelegableClient(RHBPDelegationClient):
