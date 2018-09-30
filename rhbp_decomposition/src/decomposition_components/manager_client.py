@@ -24,7 +24,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         """
 
         super(RHBPManagerDelegationClient, self).__init__(checking_prefix=manager.prefix)
-        self.__behaviour_manager = manager
+        self._rhbp_manager = manager
         self._added_cost_evaluator = False
 
     def make_cost_computable(self):
@@ -41,7 +41,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
             self._create_own_delegation_manager()
 
         new_cost_evaluator = self.get_new_cost_evaluator()
-        prefix = self.__behaviour_manager.prefix
+        prefix = self._rhbp_manager.prefix
         self.add_own_cost_evaluator(cost_evaluator=new_cost_evaluator, agent_name=prefix)
         self._delegation_manager.start_depth_service(prefix=prefix)
         self._added_cost_evaluator = True
@@ -51,7 +51,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         Creates a new DelegationManager just for this Client
         """
 
-        self._delegation_manager = DelegationManager(name=self.__behaviour_manager.prefix)
+        self._delegation_manager = DelegationManager(name=self._rhbp_manager.prefix)
 
     def remove_cost_computable(self):
         """
@@ -83,6 +83,6 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         :rtype: PDDLCostEvaluator
         """
 
-        new_cost_evaluator = PDDLCostEvaluator(manager=self.__behaviour_manager)
+        new_cost_evaluator = PDDLCostEvaluator(manager=self._rhbp_manager)
 
         return new_cost_evaluator
