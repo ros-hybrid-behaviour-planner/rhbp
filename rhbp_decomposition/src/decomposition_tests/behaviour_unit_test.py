@@ -31,6 +31,8 @@ class TestDelegationBehaviour(DelegationBehaviour):
 class TestDelegableBehaviour(DelegableBehaviour):
     """
     Overrides the Client with a mocked Client and implements all abstract methods
+
+    Last work-function will be saved for testing purposes
     """
 
     # noinspection PyPep8Naming
@@ -77,6 +79,10 @@ class DelegationBehaviourTest(unittest.TestCase):
         self.uut.unregister()
 
     def test_start(self):
+        """
+        Tests start implementation
+        """
+
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
         self.uut.start()
@@ -85,14 +91,26 @@ class DelegationBehaviourTest(unittest.TestCase):
         self.assertEqual([self.test_condition], self.client.conditions)
 
     def test_do_step(self):
+        """
+        Tests do_step implementation
+        """
+
         self.uut.do_step()
         self.assertTrue(self.client.step_done)
 
     def test_stop(self):
+        """
+        Tests stop implementation
+        """
+
         self.uut.stop()
         self.assertTrue(self.client.terminated)
 
     def test_success_func(self):
+        """
+        Tests success function utility
+        """
+
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
         self.uut.start()
@@ -122,6 +140,10 @@ class DelegableBehaviourTest(unittest.TestCase):
     # ------ Not working myself ------
 
     def test_start(self):
+        """
+        Tests start implementation (Not working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
@@ -133,18 +155,30 @@ class DelegableBehaviourTest(unittest.TestCase):
         self.assertIsNone(self.uut.last_work)
 
     def test_do_step(self):
+        """
+        Tests do_step implementation (Not working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.do_step()
         self.assertIsNone(self.uut.last_work)
         self.assertTrue(self.client.step_done)
 
     def test_stop(self):
+        """
+        Tests stop implementation (Not working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.stop()
         self.assertIsNone(self.uut.last_work)
         self.assertTrue(self.client.terminated)
 
     def test_success_func(self):
+        """
+        Tests success function utility
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
@@ -157,6 +191,10 @@ class DelegableBehaviourTest(unittest.TestCase):
     # ------ Working myself (locally) ------
 
     def test_start_work_func(self):
+        """
+        Tests start work function utility
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
@@ -169,6 +207,10 @@ class DelegableBehaviourTest(unittest.TestCase):
         self.assertEqual(self.uut.last_work, "start")
 
     def test_start_locally(self):
+        """
+        Tests start implementation (Working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
@@ -179,6 +221,10 @@ class DelegableBehaviourTest(unittest.TestCase):
         self.assertEqual(self.uut.last_work, "start")
 
     def test_do_step_locally(self):
+        """
+        Tests do_step implementation (Working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
@@ -189,6 +235,10 @@ class DelegableBehaviourTest(unittest.TestCase):
         self.assertEqual(self.uut.last_work, "do_step")
 
     def test_stop_locally(self):
+        """
+        Tests stop implementation (Working myself)
+        """
+
         self.assertFalse(self.uut.currently_doing_work_locally)
         self.uut.add_effect(self.effect)
         self.uut.add_condition_for_delegation(self.test_condition)
