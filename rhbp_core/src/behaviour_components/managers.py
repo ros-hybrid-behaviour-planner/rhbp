@@ -1057,24 +1057,54 @@ class Manager(object):
         Uses the PDDL-planer to make a plan for the last used combination of
         operational goals and one additional goal statement
 
+        If fetchPDDL never was invoked before, it will be here (side effects on
+        sensor changes etc (see _fetchPDDL()))
+
         :param goal_statement: a proper PDDL goal statement
         :type goal_statement: str
         :return: a PDDL plan for currently pursued goals + goal statement
         """
 
         with self._step_lock:
-            current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)  # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+            if not self.__last_domain_PDDL:
+                # first get the goals and behaviours we want to use for planning
+                behaviours = [x for x in self._behaviours if x.operational]
+                # take all goals
+                goals = [x for x in self._goals if x.operational]
+                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+            else:
+                domain_pddl = copy(self.__last_domain_PDDL)
+
+            # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
+            current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)
             problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
-            domain_pddl = copy(self.__last_domain_PDDL)
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
         return plan
 
     def plan_this_single_goal(self, goal_statement):
+        """
+        Uses the PDDL-planer to make a plan for exactly one goal statement
+        ignoring current goals
 
+        If fetchPDDL never was invoked before, it will be here (side effects on
+        sensor changes etc (see _fetchPDDL()))
+
+        :param goal_statement: a proper PDDL goal statement
+        :type goal_statement: str
+        :return: a PDDL plan for the given goal statement
+        """
         with self._step_lock:
+            if not self.__last_domain_PDDL:
+                # first get the goals and behaviours we want to use for planning
+                behaviours = [x for x in self._behaviours if x.operational]
+                # take all goals
+                goals = [x for x in self._goals if x.operational]
+                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+            else:
+                domain_pddl = copy(self.__last_domain_PDDL)
+
             problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement)
-            domain_pddl = copy(self.__last_domain_PDDL)
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
         return plan
