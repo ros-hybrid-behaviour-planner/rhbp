@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>rhbp_decomposition</name>
-  <version>0.0.0</version>
-  <description>The rhbp_decomposition package</description>
+  <version>0.0.1</version>
+  <description>Extension for the RHBP with dynamic decomposition/allocation</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -26,6 +26,8 @@
   <!-- Authors do not have to be maintainers, but could be -->
   <!-- Example: -->
   <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="v.mengers@campus.tu-berlin.de">Vito Mengers</author>
+
 
 
   <!-- The *depend tags are used to specify dependencies -->
