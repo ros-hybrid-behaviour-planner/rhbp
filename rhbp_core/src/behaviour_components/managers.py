@@ -303,8 +303,10 @@ class Manager(object):
             Flag: self._plan_monitoring_unexpected_behaviour_finished
         """
 
-        if not self.activation_algorithm.is_planner_enabled():
-            return  # return if planner is disabled
+        # return directly if planner is disabled or we are missing goals or behaviours
+        if not self.activation_algorithm.is_planner_enabled() \
+                or len(self._operational_behaviours) == 0 or len(self._operational_goals) == 0:
+            return
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
         domain_pddl = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
