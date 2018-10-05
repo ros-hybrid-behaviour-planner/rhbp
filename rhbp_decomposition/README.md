@@ -29,5 +29,5 @@ While the task is delegated, it will be ensured that the other robot is still ac
 For additional information on the auction see the [DelegationModule](TODO) documentation.
 
 ## Configuration
-The package can be configured mainly at the [DelegationModule][TODO], where timeout-durations,
+The package can be configured mainly at the [DelegationModule](TODO), where timeout-durations,
 cost-function parameters etc. can be configured to suit your needs. 
