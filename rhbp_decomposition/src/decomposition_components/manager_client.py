@@ -26,6 +26,7 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         super(RHBPManagerDelegationClient, self).__init__(checking_prefix=manager.prefix)
         self._rhbp_manager = manager
         self._added_cost_evaluator = False
+        self._actively_pursued_goals = []
 
     def make_cost_computable(self):
         """
@@ -86,3 +87,22 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         new_cost_evaluator = PDDLCostEvaluator(manager=self._rhbp_manager)
 
         return new_cost_evaluator
+
+    def update_actively_pursued_goals(self, current_active_goals):
+        """
+        Updates currently pursued goals to notify the DelegationManager about
+        goals that are not longer pursued
+
+        :param current_active_goals: list of the goals that are currently
+                pursued by the corresponding manager
+        :type current_active_goals: list(goal)
+        """
+
+        if self._active_manager:
+            # for all goals that are not currently pursued, the goal
+            # could correspond to a task, which is failed now
+            for goal in self._actively_pursued_goals:
+                if not current_active_goals.__contains__(goal):
+                    self._delegation_manager.fail_task(goal_name=goal.name)
+
+        self._actively_pursued_goals = current_active_goals

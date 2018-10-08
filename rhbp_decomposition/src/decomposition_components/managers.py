@@ -51,8 +51,9 @@ class Manager(core.Manager):
 
         super(Manager, self).step(force=force, guarantee_decision=guarantee_decision)
 
-        # Let the DelegationManager do a step
+        # Let the DelegationManager do a step and update the pursued goals
         self._delegation_client.do_step()
+        self._delegation_client.update_actively_pursued_goals(current_active_goals=self._currently_pursued_goals)
 
     def remove_goal(self, goal_name):
         """
