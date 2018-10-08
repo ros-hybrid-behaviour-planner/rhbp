@@ -109,7 +109,7 @@ class Manager(object):
         self._planExecutionIndex = 0
         self.__goalPDDLs = {}
         self.__last_domain_PDDL = ""
-        self.__currently_pursued_goals = []
+        self._currently_pursued_goals = []
 
         self.planner = MetricFF()
 
@@ -371,7 +371,7 @@ class Manager(object):
                         self.__replanningNeeded = False
                         self._planExecutionIndex = 0
                         self._reset_sensor_changes()
-                        self.__currently_pursued_goals = goal_sequence
+                        self._currently_pursued_goals = goal_sequence
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
@@ -1076,7 +1076,7 @@ class Manager(object):
                 domain_pddl = copy(self.__last_domain_PDDL)
 
             # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-            current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self.__currently_pursued_goals)
+            current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self._currently_pursued_goals)
             problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
@@ -1132,8 +1132,8 @@ class Manager(object):
             response.plan_sequence = self.plan_with_registered_goals(goals=valid_goals,
                                                                      force_state_update=req.force_state_update)
         else:
-            if self.__currently_pursued_goals:
-                goals = self.__currently_pursued_goals
+            if self._currently_pursued_goals:
+                goals = self._currently_pursued_goals
                 force_state_update = req.force_state_update
             else:
                 # manager did not plan before we just use all enabled(not yet fulfilled) goals
