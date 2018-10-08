@@ -7,6 +7,7 @@ Special kind of DelegationClient used by RHBP Managers
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from decomposition_components.delegation_clients import RHBPDelegationClient
 from delegation_components.delegation_manager import DelegationManager
+from copy import copy
 
 
 class RHBPManagerDelegationClient(RHBPDelegationClient):
@@ -98,11 +99,11 @@ class RHBPManagerDelegationClient(RHBPDelegationClient):
         :type current_active_goals: list(goal)
         """
 
-        if self._active_manager:
+        if self._active_manager and self._added_cost_evaluator:
             # for all goals that are not currently pursued, the goal
             # could correspond to a task, which is failed now
             for goal in self._actively_pursued_goals:
                 if not current_active_goals.__contains__(goal):
                     self._delegation_manager.fail_task(goal_name=goal.name)
 
-        self._actively_pursued_goals = current_active_goals
+        self._actively_pursued_goals = copy(current_active_goals)

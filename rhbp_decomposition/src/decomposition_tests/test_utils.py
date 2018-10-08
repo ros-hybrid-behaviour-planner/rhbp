@@ -88,3 +88,12 @@ class FunctionPointerTester(object):
         """
 
         return self._function_called
+
+
+class MockedGoal(object):
+    """
+    Mocked Goal for testing
+    """
+
+    def __init__(self, name):
+        self.name = name

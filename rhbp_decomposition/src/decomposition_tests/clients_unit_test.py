@@ -10,7 +10,8 @@ from decomposition_components.delegation_clients import RHBPDelegationClient, RH
 from decomposition_components.manager_client import RHBPManagerDelegationClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_tests.test_utils import MockedDelegationManager
-from decomposition_tests.test_utils import MockedManager, FunctionPointerTester
+from decomposition_tests.test_utils import MockedManager, FunctionPointerTester,\
+    MockedGoal
 import unittest
 import rospy
 
@@ -26,7 +27,7 @@ class TestClientSimple(RHBPDelegationClient):
 
 class TestClientDelegable(RHBPDelegableClient):
     """
-        Version with mocked DelegationManager
+    Version with mocked DelegationManager
     """
 
     def _create_delegation_manager(self):
@@ -35,7 +36,7 @@ class TestClientDelegable(RHBPDelegableClient):
 
 class TestClientManager(RHBPManagerDelegationClient):
     """
-        Version with mocked DelegationManager
+    Version with mocked DelegationManager
     """
 
     def _create_delegation_manager(self):
@@ -113,7 +114,7 @@ class RHBPClientsTest(unittest.TestCase):
 
     def test_terminate_simple(self):
         """
-        Tests termiante delegation of simple client
+        Tests terminate delegation of simple client
         """
 
         uut = TestClientSimple(checking_prefix=self.checking_prefix)
@@ -205,7 +206,7 @@ class RHBPClientsTest(unittest.TestCase):
 
     def test_terminate_delegable(self):
         """
-        Tests termiante delegation of delegable client
+        Tests terminate delegation of delegable client
         """
 
         uut = TestClientDelegable(checking_prefix=self.checking_prefix)
@@ -281,6 +282,28 @@ class RHBPClientsTest(unittest.TestCase):
         self.assertTrue(uut._active_manager)
         self.assertEqual(uut._delegation_manager, self.mockedDM)
         self.assertEqual(self.mockedDM.start_service_prefix, self.mockedManager.prefix)
+
+    def test_manager_update_pursued_goals(self):
+        """
+        Tests manager client update actively pursued goals
+        """
+
+        uut = TestClientManager(manager=self.mockedManager)
+        self.mockedDM = uut.used_delegation_manager
+        uut.make_cost_computable()
+        self.mockedDM.failed_goals = []
+
+        goals = [MockedGoal(name="default")]
+        test_goal = MockedGoal(name="test_goal")
+        goals.append(test_goal)
+
+        self.assertListEqual(self.mockedDM.failed_goals, [])
+        uut.update_actively_pursued_goals(goals)
+        self.assertListEqual(self.mockedDM.failed_goals, [])
+
+        goals.remove(test_goal)
+        uut.update_actively_pursued_goals(goals)
+        self.assertListEqual(self.mockedDM.failed_goals, [test_goal.name])
 
 
 if __name__ == '__main__':
