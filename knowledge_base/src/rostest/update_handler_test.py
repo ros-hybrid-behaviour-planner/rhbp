@@ -367,6 +367,52 @@ class UpdateHandlerTestSuite(unittest.TestCase):
             updated_new_1 = (prefix, 'fact_new', str(i))
             self.assertTrue(updated_new_1 in current, 'Update of "' + str(updated_new_1) + '" not noticed')
 
+    def test_sub_fact_matching(self):
+        prefix = self.__message_prefix + '_test_multiple_updates'
+        fact_1 = (prefix, 'fact_1', '1', 'a')
+        self.__client.push(fact_1)
+        fact_2 = (prefix, 'fact_2', '2', 'a')
+        self.__client.push(fact_2)
+        fact_3 = (prefix, 'fact_3', '3', 'b')
+        self.__client.push(fact_3)
+
+        all_pattern = ()
+        cache = KnowledgeBaseFactCache(pattern=all_pattern, knowledge_base_name=self.__knowledge_base_address)
+
+        # initial check to see if we have a correct setup
+        current = cache.get_all_matching_facts()
+        self.assertEqual(3, len(current))
+
+        sub_fact_pattern = (prefix, 'fact_2', '2', 'a')
+        does_exist = cache.does_sub_fact_exist(pattern=sub_fact_pattern)
+
+        self.assertTrue(does_exist)
+
+        first_sub_fact = cache.get_matching_sub_fact(pattern=sub_fact_pattern)
+
+        self.assertEqual(first_sub_fact, fact_2)
+
+        # test with sub placeholders
+        sub_fact_pattern = (prefix, '*', '*', 'a')
+        does_exist = cache.does_sub_fact_exist(pattern=sub_fact_pattern)
+
+        self.assertTrue(does_exist)
+
+        first_sub_fact = cache.get_matching_sub_fact(pattern=sub_fact_pattern)
+
+        self.assertEqual(first_sub_fact, fact_1)
+
+        all_sub_facts = cache.get_all_matching_sub_facts(pattern=sub_fact_pattern)
+        self.assertEqual(2, len(all_sub_facts))
+        self.assertTrue(fact_1 in all_sub_facts, "fact_1 not found in sub facts")
+        self.assertTrue(fact_2 in all_sub_facts, "fact_2 not found in sub facts")
+
+        # invalid pattern
+        sub_fact_pattern = (prefix, 'fact_unknown', '2', 'a')
+        does_exist = cache.does_sub_fact_exist(pattern=sub_fact_pattern)
+
+        self.assertFalse(does_exist)
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'update_handler_test_node', UpdateHandlerTestSuite)

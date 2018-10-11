@@ -42,6 +42,10 @@ class KnowledgeBase(object):
     PUBLISHER_IDX_REMOVE = 1
     PUBLISHER_IDX_UPDATE = 2
 
+    PLACEHOLDER = '*'
+
+    PLACEHOLDER_ALL = ()
+
     # This will let the publisher queue grow infinitely but if we would drop here clients might lose information
     KB_PUBLISHER_QUEUE_SIZE = 0
 
@@ -86,7 +90,7 @@ class KnowledgeBase(object):
         """
         lst = list(pattern)
         for i in range(0, len(lst)):
-            if lst[i] == '*':
+            if lst[i] == KnowledgeBase.PLACEHOLDER:
                 lst[i] = str
         return tuple(lst)
 
@@ -139,7 +143,7 @@ class KnowledgeBase(object):
         # check for the empty tuple aka all placeholder
         # only run this without dont_inform, means it is a direct insert
         if dont_inform is None and self.__has_all_updates_subscriber():
-            add_update_topic = self.__fact_update_topics[()][KnowledgeBase.PUBLISHER_IDX_ADD]
+            add_update_topic = self.__fact_update_topics[KnowledgeBase.PLACEHOLDER_ALL][KnowledgeBase.PUBLISHER_IDX_ADD]
             add_update_topic.publish(sendeable_fact)
 
     def __has_all_updates_subscriber(self):
@@ -147,7 +151,7 @@ class KnowledgeBase(object):
         Checks if there is a subscriber for all updates, using a empty tuple pattern
         :return: True for such subscriber available
         """
-        return len(self.__subscribed_patterns_space.many(pattern=(), number=1)) > 0
+        return len(self.__subscribed_patterns_space.many(pattern=KnowledgeBase.PLACEHOLDER_ALL, number=1)) > 0
 
     def __exists_tuple_as_is(self, to_check):
         """
@@ -235,7 +239,7 @@ class KnowledgeBase(object):
         # handle the all placeholder
         # only run this without dont_inform (means it is a direct insert
         if dont_inform is None and self.__has_all_updates_subscriber():
-            removed_update_topic = self.__fact_update_topics[()][KnowledgeBase.PUBLISHER_IDX_REMOVE]
+            removed_update_topic = self.__fact_update_topics[KnowledgeBase.PLACEHOLDER_ALL][KnowledgeBase.PUBLISHER_IDX_REMOVE]
             removed_update_topic.publish(
                 FactRemoved(fact=removed_fact, another_matching_fact_exists=another_matching_fact_exists))
 
@@ -366,7 +370,7 @@ class KnowledgeBase(object):
             update_topic.publish(FactUpdated(removed=tuple(facts), new=new_fact))
         # handle the all placeholder
         if self.__has_all_updates_subscriber():
-            update_topic = self.__fact_update_topics[()][KnowledgeBase.PUBLISHER_IDX_UPDATE]
+            update_topic = self.__fact_update_topics[KnowledgeBase.PLACEHOLDER_ALL][KnowledgeBase.PUBLISHER_IDX_UPDATE]
             update_topic.publish(FactUpdated(removed=removed_facts, new=new_fact))
 
     def __update(self, update_request):
