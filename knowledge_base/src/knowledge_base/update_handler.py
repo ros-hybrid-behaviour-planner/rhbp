@@ -146,8 +146,8 @@ class KnowledgeBaseFactCache(object):
         self.__ensure_initialization()
         with self.__value_lock:
             for f in self.__contained_facts:
-                for i in range(0, len(pattern) - 1):
-                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
                         break
                 else:
                     return True
@@ -168,8 +168,8 @@ class KnowledgeBaseFactCache(object):
         self.__ensure_initialization()
         with self.__value_lock:
             for f in self.__contained_facts:
-                for i in range(0, len(pattern) - 1):
-                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
                         break
                 else:
                     return copy.deepcopy(f)
@@ -185,8 +185,8 @@ class KnowledgeBaseFactCache(object):
         with self.__value_lock:
             result = []
             for f in self.__contained_facts:
-                for i in range(0, len(pattern)-1):
-                    if pattern[i] != '*' and not pattern[i] == f[i]:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
                         break
                 else:
                     result.append(copy.deepcopy(f))
