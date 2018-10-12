@@ -10,7 +10,7 @@ project(rhbp_decomposition)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  task_decomposition_module
+  delegation_module
   rhbp_core
 )
 
@@ -106,7 +106,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rhbp_decomposition
-#  CATKIN_DEPENDS rospy std_msgs task_decomposition_module rhbp_core
+#  CATKIN_DEPENDS rospy std_msgs delegation_module rhbp_core
 #  DEPENDS system_lib
 )
 

@@ -53,15 +53,15 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>task_decomposition_module</build_depend>
+  <build_depend>delegation_module</build_depend>
   <build_depend>rhbp_core</build_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>task_decomposition_module</build_export_depend>
+  <build_export_depend>delegation_module</build_export_depend>
   <build_export_depend>rhbp_core</build_export_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>task_decomposition_module</exec_depend>
+  <exec_depend>delegation_module</exec_depend>
   <exec_depend>rhbp_core</exec_depend>
 
 
