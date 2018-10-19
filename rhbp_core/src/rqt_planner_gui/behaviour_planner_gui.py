@@ -30,7 +30,7 @@ class Overview(Plugin):
     def __init__(self, context):
         super(Overview, self).__init__(context)
         
-        self.__behaviour_widgets = {} # this stores all behaviours
+        self.__behaviour_widgets = {}  # this stores all behaviours
         self.__behaviour_names = []
         self.__goal_widgets = {}      # this stores all goals
         self.__goal_names = []
@@ -73,11 +73,11 @@ class Overview(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
         self._widget.activationThresholdDecayPushButton.clicked.connect(self.setActivationThresholdDecay)
-        self._widget.planner_prefixPushButton.clicked.connect(self.set_planner_prefix_callback)
+        self._widget.plannerPrefixPushButton.clicked.connect(self.set_planner_prefix_callback)
         self._widget.pausePushButton.toggled.connect(self.pauseButtonCallback)
         self._widget.stepPushButton.clicked.connect(self.step_push_button_callback)
-        self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_Callback)
-        self._widget.planner_prefixComboBox.activated.connect(self.set_planner_prefix_callback)
+        self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_callback)
+        self._widget.plannerPrefixComboBox.activated.connect(self.set_planner_prefix_callback)
 
         # Connect signal so we can refresh Widgets from the main thread        
         self.updateRequest.connect(self.updateGUI)
@@ -226,7 +226,7 @@ class Overview(Plugin):
         except rospy.exceptions.ROSException:
             rospy.logdebug("Service %s not available", service_name)
 
-    def _automatic_stepping_checkbox_Callback(self, status):
+    def _automatic_stepping_checkbox_callback(self, status):
         self._widget.stepPushButton.setEnabled(not status)
 
         service_name = self.__planner_prefix + '/' + 'set_automatic_stepping'
@@ -272,7 +272,7 @@ class Overview(Plugin):
         rospy.set_param("activationThresholdDecay", self._widget.activationThresholdDecayDoubleSpinBox.value())
     
     def set_planner_prefix_callback(self):
-        self.set_planner_prefix(self._widget.planner_prefixComboBox.currentText())
+        self.set_planner_prefix(self._widget.plannerPrefixComboBox.currentText())
 
     def set_planner_prefix(self, planner_prefix):
         self.__planner_prefix = planner_prefix
@@ -303,7 +303,7 @@ class Overview(Plugin):
         """
         if manager_prefix not in self._planner_prefix_collection:
             self._planner_prefix_collection.append(manager_prefix)
-            self._widget.planner_prefixComboBox.addItem(manager_prefix)
+            self._widget.plannerPrefixComboBox.addItem(manager_prefix)
             rospy.loginfo("Added prefix: %s", manager_prefix)
 
     def _planner_discovery_callback(self, msg):
@@ -345,7 +345,7 @@ class Overview(Plugin):
         rospy.loginfo("restoring planner_prefix setting")
         stored_planner_prefix = instance_settings.value("planner_prefix")
         if type(stored_planner_prefix) == unicode:
-            stored_planner_prefix = stored_planner_prefix.encode('ascii','ignore')
+            stored_planner_prefix = stored_planner_prefix.encode('ascii', 'ignore')
         if stored_planner_prefix:
             rospy.loginfo("Using stored prefix: %s", stored_planner_prefix)
             self._update_discovery(stored_planner_prefix)
