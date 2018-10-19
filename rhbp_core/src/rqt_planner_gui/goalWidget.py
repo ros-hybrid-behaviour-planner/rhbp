@@ -33,7 +33,7 @@ class GoalWidget(QWidget):
         generate the service prefix based on the current planner prefix value
         :return: str prefix
         """
-        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
+        return self._overviewPlugin.planner_prefix + '/' + self._name + '/'
 
     def __del__(self):
         self.__deleted = True

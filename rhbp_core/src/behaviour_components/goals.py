@@ -485,7 +485,7 @@ class GoalBase(Goal):
                     service_found = True
                 except rospy.ROSException:
                     rhbplog.logwarn("Goal '%s': Registration timeout for service '%s'. Keep waiting... Please check if "
-                                    "you use the correct 'plannerPrefix'. Current prefix:'%s'", self._name,
+                                    "you use the correct 'planner_prefix'. Current prefix:'%s'", self._name,
                                     service_name, self._planner_prefix)
 
             add_goal = rospy.ServiceProxy(service_name, AddGoal)
@@ -629,13 +629,13 @@ class PublisherGoal(GoalBase):
     Goal class which publishes its 'enabled' state as ROS topic
     """
 
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
+    def __init__(self, name, permanent=False, conditions=None, planner_prefix="", priority=0, satisfaction_threshold=1.0,
                  enabled=True):
         """
         Without manual goal enabling/disabling only permanent=False does make sense
         """
         super(PublisherGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
-                                            planner_prefix=plannerPrefix, priority=priority,
+                                            planner_prefix=planner_prefix, priority=priority,
                                             satisfaction_threshold=satisfaction_threshold, enabled=enabled)
 
         self.__topic_name = self._service_prefix + "_enabled"

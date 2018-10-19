@@ -371,7 +371,7 @@ class BehaviourBase(object):
         # Range [0,1]
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
         # if you have multiple planners in the same ROS environment use a prefix to name the right one.
-        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
+        self._planner_prefix = kwargs["planner_prefix"] if "planner_prefix" in kwargs else ""
         # configure if a running behaviour can be stopped by the manager, default is True
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else True
         # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
@@ -396,7 +396,7 @@ class BehaviourBase(object):
         """
         Init all required ROS services that are provided by the behaviour
         """
-        service_prefix = self._plannerPrefix + '/' + self._name + '/'
+        service_prefix = self._planner_prefix + '/' + self._name + '/'
         self._getStatusService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_GET_STATUS, GetStatus,
                                                self._get_status_callback)
         self._startService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_START, Empty, self._start_callback)
@@ -433,7 +433,7 @@ class BehaviourBase(object):
             rhbplog.logwarn("Behaviour '%s' is already registered", self._name)
             return
         try:
-            service_name = self._plannerPrefix + '/' + 'AddBehaviour'
+            service_name = self._planner_prefix + '/' + 'AddBehaviour'
             service_found = False
             while not service_found:
                 try:
@@ -441,8 +441,8 @@ class BehaviourBase(object):
                     service_found = True
                 except rospy.ROSException:
                     rhbplog.logwarn("Behaviour '%s': Registration timeout for service '%s'. Keep waiting...Please check"
-                                    "if you use the correct 'plannerPrefix'. Current prefix:'%s'", self._name,
-                                    service_name, self._plannerPrefix)
+                                    "if you use the correct 'planner_prefix'. Current prefix:'%s'", self._name,
+                                    service_name, self._planner_prefix)
 
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
             register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps)
@@ -457,7 +457,7 @@ class BehaviourBase(object):
         """
         self._active = False
         try:
-            service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
+            service_name = self._planner_prefix + '/' + 'RemoveBehaviour'
             rhbplog.logdebug("Waiting for service %s", service_name)
             # do not wait forever here, manager might be already closed
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)

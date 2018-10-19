@@ -51,7 +51,7 @@ class TestGoals(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
         goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
 
@@ -75,7 +75,7 @@ class TestGoals(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
         goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
@@ -101,8 +101,8 @@ class TestGoals(unittest.TestCase):
         condition = Condition(sensor, BooleanActivator())
 
         SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
-        goal = PublisherGoal(method_prefix + 'PublisherGoal', plannerPrefix=planner_prefix)
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
+        goal = PublisherGoal(method_prefix + 'PublisherGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
 
         goal_activated_condition = goal.create_condition()

@@ -53,15 +53,15 @@ class TestManager(unittest.TestCase):
 
         #independentFromPlanner and effects
         independent_behaviour = SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name_1,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix, independentFromPlanner=True)
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix, independentFromPlanner=True)
 
         #independentFromPlanner and no effects
         independent_behaviour2 = SetTrueBehavior(effect_name=None, topic_name=topic_name_1,
-                                                name=method_prefix + "SetTrue2", plannerPrefix=planner_prefix,
+                                                name=method_prefix + "SetTrue2", planner_prefix=planner_prefix,
                                                 independentFromPlanner=True)
         # not independentFromPlanner and no effects
         independent_behaviour3 = SetTrueBehavior(effect_name=None, topic_name=topic_name_1,
-                                                 name=method_prefix + "SetTrue3", plannerPrefix=planner_prefix,
+                                                 name=method_prefix + "SetTrue3", planner_prefix=planner_prefix,
                                                  independentFromPlanner=False)
 
         goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix)
@@ -92,13 +92,13 @@ class TestManager(unittest.TestCase):
         non_interruptable_sensor = TopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
         non_interruptable_condition = Condition(non_interruptable_sensor, GreedyActivator())
         non_interruptable_behaviour = IncreaserBehavior(effect_name=non_interruptable_sensor.name, topic_name=topic_name_1,
-                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, interruptable=False)
+                        name=method_prefix + "TopicIncreaser", planner_prefix=planner_prefix, interruptable=False)
 
         topic_name_2 = method_prefix + '/sensor_2'
         interruptable_sensor = TopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
         interruptable_condition = Condition(interruptable_sensor, GreedyActivator())
         interruptable_behaviour = IncreaserBehavior(effect_name=interruptable_sensor.name, topic_name=topic_name_2,
-                        name=method_prefix + "TopicIncreaser2", plannerPrefix=planner_prefix, interruptable=True)
+                        name=method_prefix + "TopicIncreaser2", planner_prefix=planner_prefix, interruptable=True)
 
         enable_sensor = Sensor(name='enable_sensor', initial_value=True)
         enable_cond = Condition(enable_sensor, BooleanActivator())
@@ -149,13 +149,13 @@ class TestManager(unittest.TestCase):
         sensor1 = TopicSensor(topic=topic_name_1, message_type=Int32, initial_value=False)
         condition1 = Condition(sensor1, GreedyActivator())
         behaviour1 = IncreaserBehavior(effect_name=sensor1.name, topic_name=topic_name_1,
-                        name=method_prefix + "TopicIncreaser", plannerPrefix=planner_prefix, interruptable=True)
+                        name=method_prefix + "TopicIncreaser", planner_prefix=planner_prefix, interruptable=True)
 
         topic_name_2 = method_prefix + '/sensor_2'
         sensor2 = TopicSensor(topic=topic_name_2, message_type=Int32, initial_value=False)
         condition2 = Condition(sensor2, GreedyActivator())
         behaviour2 = IncreaserBehavior(effect_name=sensor2.name, topic_name=topic_name_2,
-                        name=method_prefix + "TopicIncreaser2", plannerPrefix=planner_prefix, interruptable=True)
+                        name=method_prefix + "TopicIncreaser2", planner_prefix=planner_prefix, interruptable=True)
 
         # add a conflict here "-1"
         behaviour1.add_effect(Effect(sensor_name=sensor2.name, indicator=-1, sensor_type=int))
@@ -207,12 +207,12 @@ class TestManager(unittest.TestCase):
         sensor_2 = Sensor(name="Sensor2", initial_value=False)
         sensor_3 = Sensor(name="Sensor3", initial_value=False)
 
-        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1 = BehaviourBase(name="Behaviour1", planner_prefix=planner_prefix)
         behaviour_1.add_effect(Effect(sensor_name=sensor_1.name, indicator=1))
-        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2 = BehaviourBase(name="Behaviour2", planner_prefix=planner_prefix)
         behaviour_2.add_effect(Effect(sensor_name=sensor_2.name, indicator=1))
         behaviour_2.add_precondition(Condition(sensor_1, BooleanActivator()))
-        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        behaviour_3 = BehaviourBase(name="Behaviour3", planner_prefix=planner_prefix)
         behaviour_3.add_effect(Effect(sensor_name=sensor_3.name, indicator=1))
         behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
 
@@ -276,7 +276,7 @@ class TestManager(unittest.TestCase):
 
         sensor_3 = Sensor(name="Sensor3", initial_value=False)
 
-        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1 = BehaviourBase(name="Behaviour1", planner_prefix=planner_prefix)
 
         goal1 = GoalBase(name="Test_Goal1", conditions=[Condition(sensor_3, BooleanActivator())],
                          planner_prefix=planner_prefix)
@@ -300,15 +300,15 @@ class TestManager(unittest.TestCase):
 
         sensor_1 = Sensor(name="Sensor1", initial_value=False)
 
-        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1 = BehaviourBase(name="Behaviour1", planner_prefix=planner_prefix)
         behaviour_1.add_effect(Effect(sensor_1.name, 1))
 
         sensor_2 = Sensor(name="Sensor2", initial_value=False)
 
-        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2 = BehaviourBase(name="Behaviour2", planner_prefix=planner_prefix)
         behaviour_2.add_effect(Effect(sensor_2.name, 1))
 
-        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        behaviour_3 = BehaviourBase(name="Behaviour3", planner_prefix=planner_prefix)
         # adding precondition to get a reference to the sensor in the manager
         behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
         behaviour_3.add_effect(Effect(sensor_2.name, 1))
@@ -360,15 +360,15 @@ class TestManager(unittest.TestCase):
 
         sensor_1 = Sensor(name="Sensor1", initial_value=0)
 
-        behaviour_1 = BehaviourBase(name="Behaviour1", plannerPrefix=planner_prefix)
+        behaviour_1 = BehaviourBase(name="Behaviour1", planner_prefix=planner_prefix)
         behaviour_1.add_effect(Effect(sensor_1.name, 1, sensor_type=float))
 
         sensor_2 = Sensor(name="Sensor2", initial_value=0)
 
-        behaviour_2 = BehaviourBase(name="Behaviour2", plannerPrefix=planner_prefix)
+        behaviour_2 = BehaviourBase(name="Behaviour2", planner_prefix=planner_prefix)
         behaviour_2.add_effect(Effect(sensor_2.name, 1, sensor_type=float))
 
-        behaviour_3 = BehaviourBase(name="Behaviour3", plannerPrefix=planner_prefix)
+        behaviour_3 = BehaviourBase(name="Behaviour3", planner_prefix=planner_prefix)
         # adding precondition to get a reference to the sensor in the manager
         behaviour_3.add_precondition(Condition(sensor_2, BooleanActivator()))
         behaviour_3.add_effect(Effect(sensor_2.name, 1, sensor_type=float))

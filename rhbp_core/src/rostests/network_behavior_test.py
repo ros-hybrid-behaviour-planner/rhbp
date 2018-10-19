@@ -53,7 +53,7 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         m = Manager(activationThreshold=7, prefix=planner_prefix)
 
-        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', planner_prefix=planner_prefix,
                                                interruptable=True)
 
         mock_rhbp_logging.assert_has_calls(mock_rhbp_logging.logwarn, "logwarn not triggered")
@@ -78,18 +78,18 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
 
-        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix, createLogFiles=True)
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', planner_prefix=planner_prefix, createLogFiles=True)
         first_level_network.add_effects_and_goals([(sensor, effect)])
 
         second_level_network = NetworkBehaviour(name=method_prefix + '/SecondLevel',
-                                                plannerPrefix=first_level_network.get_manager_prefix(), createLogFiles=True)
+                                                planner_prefix=first_level_network.get_manager_prefix(), createLogFiles=True)
         # Doesnt matter, whether the effects are added via the constructor or the add method.
         # Both methods are used here, to demonstrate both ways.
         second_level_network.add_effects_and_goals([(sensor, effect)])
 
         increaser_behavior = IncreaserBehavior(effect_name=sensor.name, topic_name=topic_name,
                                                     name=method_prefix + "TopicIncreaser",
-                                                    plannerPrefix=second_level_network.get_manager_prefix())
+                                                    planner_prefix=second_level_network.get_manager_prefix())
 
         # activate the first_level_network, second_level_network and increaser_Behavior
         for x in range(0, 3, 1):
@@ -143,7 +143,7 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         effect = Effect(sensor_name=sensor.name, indicator=1, sensor_type=int, activator_name=condition.activator.name)
 
-        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', plannerPrefix=planner_prefix,
+        first_level_network = NetworkBehaviour(name=method_prefix + '/FirstLevel', planner_prefix=planner_prefix,
                                                createLogFiles=True)
         first_level_network.add_effects([effect])
         first_level_network.add_precondition(pre_con)
@@ -154,7 +154,7 @@ class TestNetworkBehaviour(unittest.TestCase):
 
         increaser_behavior = IncreaserBehavior(effect_name=sensor.name, topic_name=topic_name,
                                                name=method_prefix + "TopicIncreaser",
-                                               plannerPrefix=first_level_network.get_manager_prefix())
+                                               planner_prefix=first_level_network.get_manager_prefix())
 
         increaser_behavior.add_precondition(pre_con)
 
