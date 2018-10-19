@@ -621,7 +621,8 @@ class Manager(object):
 
                     ### if the behaviour got here it really is ready to be started ###
                     rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
-                    behaviour.start()
+                    behaviour.start()                                
+
 
                     amount_currently_selected_behaviours += 1
 

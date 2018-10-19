@@ -431,25 +431,25 @@ class GoalBase(Goal):
 
     SERVICE_TIMEOUT = 5
 
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="", priority=0, satisfaction_threshold=1.0,
+    def __init__(self, name, permanent=False, conditions=None, planner_prefix="", priority=0, satisfaction_threshold=1.0,
                  enabled=True):
         """
 
         :param name:  a unique name is mandatory
         :param permanent:
         :param conditions:
-        :param plannerPrefix: if you have multiple planners in the same ROS environment use a prefix to identify the right one.
+        :param planner_prefix: if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         :param priority:
         :param satisfaction_threshold:
         :param enabled:
         """
-        super(GoalBase, self).__init__(name=name, planner_prefix=plannerPrefix, conditions=conditions,
+        super(GoalBase, self).__init__(name=name, planner_prefix=planner_prefix, conditions=conditions,
                                        satisfaction_threshold=satisfaction_threshold, priority=priority,
                                        enabled=enabled)
         self._name = name
 
         self._permanent = permanent
-        self._planner_prefix = plannerPrefix
+        self._planner_prefix = planner_prefix
         self._registered = False  # keeps track of goal registration state
 
     def _init_services(self):
@@ -635,7 +635,7 @@ class PublisherGoal(GoalBase):
         Without manual goal enabling/disabling only permanent=False does make sense
         """
         super(PublisherGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
-                                            plannerPrefix=plannerPrefix, priority=priority,
+                                            planner_prefix=plannerPrefix, priority=priority,
                                             satisfaction_threshold=satisfaction_threshold, enabled=enabled)
 
         self.__topic_name = self._service_prefix + "_enabled"
