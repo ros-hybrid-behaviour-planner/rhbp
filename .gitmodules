@@ -1,0 +1,3 @@
+[submodule "delegation_module"]
+	path = delegation_module
+	url = https://gitlab.tubit.tu-berlin.de/rhbp/delegation_module
