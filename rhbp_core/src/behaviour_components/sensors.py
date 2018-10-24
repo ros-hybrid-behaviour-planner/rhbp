@@ -9,6 +9,7 @@ from threading import Lock
 
 import rospy
 import re
+import traceback
 from std_msgs.msg import String, Float64
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
@@ -155,10 +156,10 @@ class RawTopicSensor(Sensor):
             self._sub = rospy.Subscriber(self._topic_name, self._message_type, self.subscription_callback)
 
             if self._iShouldCreateLog:
-                self._logFile = LogFileWriter(path="",filename=self._name,extension=".log")
+                self._logFile = LogFileWriter(path="",filename=self._name, extension=".log")
                 self._logFile.write('{0}\n'.format(self._name))
         else:
-            rhbplog.logerr("Could not determine message type of: " + self._topic_name)
+            rhbplog.logerr("Could not determine message type of: %s. %s", self._topic_name, traceback.format_stack())
 
     def subscription_callback(self, msg):
         self.update(msg)

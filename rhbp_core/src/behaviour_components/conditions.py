@@ -445,8 +445,8 @@ class Condition(Conditonal):
         try:
             self._satisfaction = self._activator.computeActivation(self._normalizedSensorValue)
         except AssertionError:
-            rhbplog.logwarn("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?. %s", self._sensor,
-                          self._name, type(self._sensor.value), " optional" if self._sensor.optional else "",
+            rhbplog.logwarn("updateComputation:Wrong data type for %s in %s. Got type:'%s' and value '%s'. Possibly uninitialized%s sensor %s?. %s", self._sensor,
+                          self._name, type(self._sensor.value), str(self._sensor.value), " optional" if self._sensor.optional else "",
                           self._sensor.name, traceback.format_exc())
             self._satisfaction = 0.0
             return
@@ -473,7 +473,9 @@ class Condition(Conditonal):
             indicator = self._activator.getSensorWish(self._normalizedSensorValue)
             return [Wish(sensor_name=self._sensor.name, indicator=indicator, activator_name=self._activator.name)]
         except AssertionError:
-            rhbplog.logerr("Wrong data type for %s in %s. Got %s. Possibly uninitialized%s sensor %s?", self._sensor, self._name, type(self._sensor.value), " optional" if self._sensor.optional else "", self._sensor.name)
+            rhbplog.logerr("getWishes:Wrong data type for %s in %s. Got type:'%s' and value '%s'. Possibly uninitialized%s sensor %s?", self._sensor,
+                           self._name, type(self._sensor.value), str(self._sensor.value), " optional" if self._sensor.optional else "",
+                           self._sensor.name)
             raise
 
     def _get_current_sensor_value_for_pddl_creation(self):

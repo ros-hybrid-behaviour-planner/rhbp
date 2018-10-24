@@ -621,7 +621,8 @@ class Manager(object):
 
                     ### if the behaviour got here it really is ready to be started ###
                     rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
-                    behaviour.start()
+                    behaviour.start()                                
+
 
                     amount_currently_selected_behaviours += 1
 
@@ -1177,18 +1178,18 @@ class ManagerControl(object):
     Helper class for remotely controlling the manager
     '''
 
-    def __init__(self, plannerPrefix=""):
-        self.__plannerPrefix = plannerPrefix
+    def __init__(self, planner_prefix=""):
+        self.__planner_prefix = planner_prefix
 
     def pause(self):
-        service_name = self.__plannerPrefix + '/' + 'Pause'
+        service_name = self.__planner_prefix + '/' + 'Pause'
         rhbplog.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
         pauseRequest = rospy.ServiceProxy(service_name, Empty)
         pauseRequest()
 
     def resume(self):
-        service_name = self.__plannerPrefix + '/' + 'Resume'
+        service_name = self.__planner_prefix + '/' + 'Resume'
         rhbplog.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
         resumeRequest = rospy.ServiceProxy(service_name, Empty)

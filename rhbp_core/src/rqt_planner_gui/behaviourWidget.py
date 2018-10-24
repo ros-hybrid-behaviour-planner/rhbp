@@ -88,7 +88,7 @@ class BehaviourWidget(QWidget):
         generate the service prefix based on the current planner prefix value
         :return: str prefix
         """
-        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
+        return self._overviewPlugin.planner_prefix + '/' + self._name + '/'
     
     def activationCallback(self, status):
         service_name = self._get_service_prefix() + 'Enable'
@@ -99,7 +99,7 @@ class BehaviourWidget(QWidget):
         rospy.logdebug("Set enabled of %s to %s", self._name, status)
         
     def forceStartCallback(self, status):
-        service_name = self._overviewPlugin.plannerPrefix + '/'+ 'ForceStart'
+        service_name = self._overviewPlugin.planner_prefix + '/'+ 'ForceStart'
         rospy.logdebug("Waiting for service %s", )
         rospy.wait_for_service(service_name)
         forceStartRequest = rospy.ServiceProxy(service_name, ForceStart)
@@ -125,4 +125,5 @@ class BehaviourWidget(QWidget):
         priorityRequest = rospy.ServiceProxy(service_name, SetInteger)
         priorityRequest(self.executionTimeoutSpinBox.value())
         rospy.logdebug("Set executionTimeout of %s to %s", self._name, self.executionTimeoutSpinBox.value())
-        
+
+

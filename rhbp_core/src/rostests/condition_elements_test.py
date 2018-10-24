@@ -74,13 +74,13 @@ class TestConditionElements(unittest.TestCase):
         sensor2 = Sensor()
         sensor2.update(newValue=0.4)
 
-        behaviour1 = BehaviourBase("behaviour_1", plannerPrefix=planner_prefix)
+        behaviour1 = BehaviourBase("behaviour_1", planner_prefix=planner_prefix)
 
         behaviour1.add_effect(Effect(sensor_name=sensor1.name,indicator=-0.1, sensor_type=float))
 
         behaviour1.add_precondition(condition_increasing)
 
-        behaviour2 = BehaviourBase("behaviour_2", plannerPrefix=planner_prefix)
+        behaviour2 = BehaviourBase("behaviour_2", planner_prefix=planner_prefix)
 
         behaviour2.add_effect(Effect(sensor_name=sensor1.name, indicator=0.1, sensor_type=float))
 

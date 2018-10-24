@@ -51,7 +51,7 @@ class TestGreedyActivator(unittest.TestCase):
         condition = Condition(sensor=sensor, activator=activator)
 
         IncreaserBehavior(topic_name=topic_name, effect_name=sensor.name,
-                          createLogFiles=True, plannerPrefix=planner_prefix)
+                          createLogFiles=True, planner_prefix=planner_prefix)
         goal = OfflineGoal(name=self.__message_prefix + 'CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
