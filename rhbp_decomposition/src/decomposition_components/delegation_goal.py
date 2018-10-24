@@ -39,7 +39,7 @@ class DelegationGoal(DecompositionGoal):
 
         self._contractor_found = False
         super(DelegationGoal, self).__init__(name=name, permanent=permanent, conditions=conditions,
-                                             plannerPrefix="TBD", priority=priority,
+                                             planner_prefix="TBD", priority=priority,
                                              satisfaction_threshold=satisfaction_threshold, enabled=enabled)
         self._client = RHBPDelegationClient()
         self._goal_wrapper = None
@@ -218,7 +218,7 @@ class RunningGoalWrapper(RHBPGoalWrapper):
         Transfers the planner prefix of a Manager to this goal, so that it will
         register there
 
-        :param name: plannerPrefix of a Manager in the system
+        :param name: planner_prefix of a Manager in the system
         :type name: str
         """
 

@@ -18,14 +18,14 @@ class DecompositionGoal(GoalBase):
     """
 
     # noinspection PyPep8Naming
-    def __init__(self, name, permanent=False, conditions=None, plannerPrefix="",
+    def __init__(self, name, permanent=False, conditions=None, planner_prefix="",
                  priority=0, satisfaction_threshold=1.0, enabled=True):
         """
         Constructor for Details see Base class (GoalBase)
         """
 
         super(DecompositionGoal, self).__init__(name=name, permanent=permanent,
-                                                conditions=conditions, plannerPrefix=plannerPrefix,
+                                                conditions=conditions, planner_prefix=planner_prefix,
                                                 priority=priority, satisfaction_threshold=satisfaction_threshold,
                                                 enabled=enabled)
         self._failed_alive_check = False
@@ -118,7 +118,7 @@ class RHBPGoalWrapper(GoalWrapperBase):
         :raises DelegationError: if there is any problem with the goal creation
         """
         try:
-            self._goal = DecompositionGoal(name=self.goal_name, plannerPrefix=name,
+            self._goal = DecompositionGoal(name=self.goal_name, planner_prefix=name,
                                            conditions=self._conditions,
                                            satisfaction_threshold=self._satisfaction_threshold)
             self._created_goal = True

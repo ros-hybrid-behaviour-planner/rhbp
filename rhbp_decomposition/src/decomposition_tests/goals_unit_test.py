@@ -40,7 +40,7 @@ class DecompositionGoalTest(unittest.TestCase):
         Tests the check_if_alive function
         """
 
-        uut = DecompositionGoal(name=self.goal_name, plannerPrefix=self.manager_name, conditions=self.conditions, satisfaction_threshold=self.satisfaction_threshold)
+        uut = DecompositionGoal(name=self.goal_name, planner_prefix=self.manager_name, conditions=self.conditions, satisfaction_threshold=self.satisfaction_threshold)
         self.assertTrue(uut.check_if_alive())
         self.manager.unregister()
         self.assertFalse(uut.check_if_alive())

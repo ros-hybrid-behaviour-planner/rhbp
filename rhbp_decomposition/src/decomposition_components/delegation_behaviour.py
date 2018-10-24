@@ -24,16 +24,16 @@ class DelegationBehaviour(BehaviourBase):
     TYPE_STRING = "Delegation"
 
     # noinspection PyPep8Naming
-    def __init__(self, name, plannerPrefix, satisfaction_threshold=1.0,
+    def __init__(self, name, planner_prefix, satisfaction_threshold=1.0,
                  delegation_depth_prefix=None, **kwargs):
         """
         Constructor
 
         :param name: name of the Behaviour
         :type name: str
-        :param plannerPrefix: prefix of the manager, this behaviour should
+        :param planner_prefix: prefix of the manager, this behaviour should
                 register at
-        :type plannerPrefix: str
+        :type planner_prefix: str
         :param satisfaction_threshold: the satisfaction_threshold used for the
                 goal, that will be created by this behaviour
         :type satisfaction_threshold: float
@@ -48,12 +48,12 @@ class DelegationBehaviour(BehaviourBase):
         """
 
         if delegation_depth_prefix is None:
-            checking_prefix = plannerPrefix
+            checking_prefix = planner_prefix
         else:
             checking_prefix = delegation_depth_prefix
 
         super(DelegationBehaviour, self).__init__(name=name,
-                                                  plannerPrefix=plannerPrefix,
+                                                  planner_prefix=planner_prefix,
                                                   requires_execution_steps=True,
                                                   **kwargs)
         self._correlation_sensors = {}
@@ -231,7 +231,7 @@ class DelegableBehaviour(DelegationBehaviour):
     """
 
     # noinspection PyPep8Naming
-    def __init__(self, name, plannerPrefix, work_cost,
+    def __init__(self, name, planner_prefix, work_cost,
                  satisfaction_threshold=1.0, delegation_depth_prefix=None,
                  **kwargs):
         """
@@ -239,9 +239,9 @@ class DelegableBehaviour(DelegationBehaviour):
 
         :param name: name of the Behaviour
         :type name: str
-        :param plannerPrefix: prefix of the manager, this behaviour should
+        :param planner_prefix: prefix of the manager, this behaviour should
                 register at
-        :type plannerPrefix: str
+        :type planner_prefix: str
         :param work_cost: cost of doing the work myself, just needs to be right
                 relatively to the cost of other units
         :type work_cost: float
@@ -258,7 +258,7 @@ class DelegableBehaviour(DelegationBehaviour):
                 for documentation see the Constructor of BehaviourBase
         """
 
-        super(DelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix,
+        super(DelegableBehaviour, self).__init__(name=name, planner_prefix=planner_prefix,
                                                  satisfaction_threshold=satisfaction_threshold,
                                                  delegation_depth_prefix=delegation_depth_prefix,
                                                  **kwargs)

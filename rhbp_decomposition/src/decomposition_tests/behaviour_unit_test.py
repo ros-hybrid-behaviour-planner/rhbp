@@ -36,10 +36,10 @@ class TestDelegableBehaviour(DelegableBehaviour):
     """
 
     # noinspection PyPep8Naming
-    def __init__(self, name, plannerPrefix, work_cost,
+    def __init__(self, name, planner_prefix, work_cost,
                  satisfaction_threshold=1.0, delegation_depth_prefix=None,
                  **kwargs):
-        super(TestDelegableBehaviour, self).__init__(name=name, plannerPrefix=plannerPrefix,
+        super(TestDelegableBehaviour, self).__init__(name=name, planner_prefix=planner_prefix,
                                                      work_cost=work_cost,
                                                      satisfaction_threshold=satisfaction_threshold,
                                                      delegation_depth_prefix=delegation_depth_prefix,
@@ -68,7 +68,7 @@ class DelegationBehaviourTest(unittest.TestCase):
     def setUp(self):
         rospy.init_node("TestNode")
         self.manager = Manager(prefix="test_manager")
-        self.uut = TestDelegationBehaviour(name="test_behaviour", plannerPrefix="test_manager")
+        self.uut = TestDelegationBehaviour(name="test_behaviour", planner_prefix="test_manager")
         self.sensor = TopicSensor(name="test_sensor", topic="/sensor_topic", message_type=Bool, initial_value=False)
         self.test_condition = Condition(self.sensor, BooleanActivator())
         self.effect = Effect(sensor_name="test_sensor", indicator=1.0)
@@ -127,7 +127,7 @@ class DelegableBehaviourTest(unittest.TestCase):
     def setUp(self):
         rospy.init_node("TestNode")
         self.manager = Manager(prefix="test_manager")
-        self.uut = TestDelegableBehaviour(name="test_behaviour", plannerPrefix="test_manager", work_cost=5)
+        self.uut = TestDelegableBehaviour(name="test_behaviour", planner_prefix="test_manager", work_cost=5)
         self.sensor = TopicSensor(name="test_sensor", topic="/sensor_topic", message_type=Bool, initial_value=False)
         self.test_condition = Condition(self.sensor, BooleanActivator())
         self.effect = Effect(sensor_name="test_sensor", indicator=1.0)
