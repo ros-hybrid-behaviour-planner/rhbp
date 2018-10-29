@@ -72,7 +72,7 @@ class Manager(object):
         self._activation_threshold_decay = 0.9
 
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
-            "~createLogFiles", False)  # not sure how to set this just yet.
+            self._param_prefix + "/createLogFiles", False)  # not sure how to set this just yet.
         # configures if all contained behaviour or only the executed behaviours are used to determine if the manager is
         # interruptable
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
@@ -557,7 +557,7 @@ class Manager(object):
                 # perform the decision making based on the calculated activations
                 for behaviour in sorted(self._behaviours, key=lambda x: x.activation, reverse=True):
                     ### now comes a series of tests that a behaviour must pass in order to get started ###
-                    if not behaviour.active and not behaviour.manualStart: # it must be active
+                    if not behaviour.active and not behaviour.manualStart:  # it must be active
                         rhbplog.loginfo("'%s' will not be started because it is not active", behaviour.name)
                         continue
                     # Behaviour is not already running and is not manually activated
