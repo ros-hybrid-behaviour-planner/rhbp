@@ -117,7 +117,7 @@ class TestParamUtils(unittest.TestCase):
         self.assertEquals(False, test_value)
 
         behaviour = ParamSetterBehaviour(name="Test", param=self.param_name_bool, new_value=True,
-                                         plannerPrefix=self._manager_prefix)
+                                         planner_prefix=self._manager_prefix)
         # force manual start
         behaviour.start()
 

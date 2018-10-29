@@ -42,7 +42,7 @@ class Behaviour(object):
 
     SERVICE_TIMEOUT = 2
 
-    def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix=""):
+    def __init__(self, name, planner_prefix, independentFromPlanner=False, requires_execution_steps=False, create_log_files=False, log_file_path_prefix="", behaviour_type="Base"):
         '''
         Constructor
         '''
@@ -68,6 +68,7 @@ class Behaviour(object):
         self._independentFromPlanner = independentFromPlanner
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps = requires_execution_steps
+        self._behaviour_type = behaviour_type
         Behaviour._instanceCounter += 1
 
         self._log_file_path_prefix = log_file_path_prefix
@@ -333,6 +334,10 @@ class Behaviour(object):
     @executionTime.setter
     def executionTime(self, value):
         self._executionTime = value
+
+    @property
+    def behaviour_type(self):
+        return self._behaviour_type
     
     def __str__(self):
         return self._name
@@ -350,6 +355,7 @@ class BehaviourBase(object):
     __metaclass__ = FinalInitCaller
 
     SERVICE_TIMEOUT = 5
+    TYPE_STRING = "Base"    # TODO find a better name
 
     def __init__(self, name, requires_execution_steps=False, **kwargs):
         """
@@ -371,7 +377,7 @@ class BehaviourBase(object):
         # Range [0,1]
         self._readyThreshold = kwargs["readyThreshold"] if "readyThreshold" in kwargs else 0.8
         # if you have multiple planners in the same ROS environment use a prefix to name the right one.
-        self._plannerPrefix = kwargs["plannerPrefix"] if "plannerPrefix" in kwargs else ""
+        self._planner_prefix = kwargs["planner_prefix"] if "planner_prefix" in kwargs else ""
         # configure if a running behaviour can be stopped by the manager, default is True
         self._interruptable = kwargs["interruptable"] if "interruptable" in kwargs else True
         # This is the threshold that the preconditions must reach in order for this behaviour to be executable.
@@ -396,7 +402,7 @@ class BehaviourBase(object):
         """
         Init all required ROS services that are provided by the behaviour
         """
-        service_prefix = self._plannerPrefix + '/' + self._name + '/'
+        service_prefix = self._planner_prefix + '/' + self._name + '/'
         self._getStatusService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_GET_STATUS, GetStatus,
                                                self._get_status_callback)
         self._startService = rospy.Service(service_prefix + Behaviour.SERVICE_NAME_START, Empty, self._start_callback)
@@ -433,7 +439,7 @@ class BehaviourBase(object):
             rhbplog.logwarn("Behaviour '%s' is already registered", self._name)
             return
         try:
-            service_name = self._plannerPrefix + '/' + 'AddBehaviour'
+            service_name = self._planner_prefix + '/' + 'AddBehaviour'
             service_found = False
             while not service_found:
                 try:
@@ -441,11 +447,11 @@ class BehaviourBase(object):
                     service_found = True
                 except rospy.ROSException:
                     rhbplog.logwarn("Behaviour '%s': Registration timeout for service '%s'. Keep waiting...Please check"
-                                    "if you use the correct 'plannerPrefix'. Current prefix:'%s'", self._name,
-                                    service_name, self._plannerPrefix)
+                                    "if you use the correct 'planner_prefix'. Current prefix:'%s'", self._name,
+                                    service_name, self._planner_prefix)
 
             register_behaviour = rospy.ServiceProxy(service_name, AddBehaviour)
-            register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps)
+            register_behaviour(self._name, self._independentFromPlanner, self._requires_execution_steps, self.TYPE_STRING)
             self._registered = True
         except rospy.ServiceException:
             rhbplog.logerr("ROS service exception in 'register()' of behaviour '%s': %s", self._name, traceback.format_exc())
@@ -457,7 +463,7 @@ class BehaviourBase(object):
         """
         self._active = False
         try:
-            service_name = self._plannerPrefix + '/' + 'RemoveBehaviour'
+            service_name = self._planner_prefix + '/' + 'RemoveBehaviour'
             rhbplog.logdebug("Waiting for service %s", service_name)
             # do not wait forever here, manager might be already closed
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
