@@ -31,10 +31,16 @@ class Effect(object):
         :type condition: str
         """
         self.sensor_name = create_valid_pddl_name(sensor_name)
-        self.indicator = indicator
         self.activator_name = activator_name
         self.sensor_type = str(sensor_type)
         self.condition = condition
+        if isinstance(indicator, bool):
+            if indicator:
+                self.indicator = 1.0
+            else:
+                self.indicator = -1.0
+        else:
+            self.indicator = indicator
 
     @staticmethod
     def from_msg(msg):
