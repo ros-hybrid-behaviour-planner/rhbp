@@ -72,7 +72,8 @@ class Manager(object):
         self._activation_threshold_decay = 0.9
 
         self._create_log_files = kwargs["createLogFiles"] if "createLogFiles" in kwargs else rospy.get_param(
-            self._param_prefix + "/createLogFiles", False)  # not sure how to set this just yet.
+            self._param_prefix + "/createLogFiles", False)
+
         # configures if all contained behaviour or only the executed behaviours are used to determine if the manager is
         # interruptable
         self.__use_only_running_behaviors_for_interruptible = use_only_running_behaviors_for_interRuptible
@@ -92,6 +93,8 @@ class Manager(object):
             self.__threshFile = LogFileWriter(path=self.__log_file_path_prefix, filename="threshold", extension=".log")
             self.__threshFile.write("{0}\t{1}\n".format("Time", "activationThreshold"))
             rhbplog.loginfo("Writing additional logfiles to: %s", self.__log_file_path_prefix)
+        else:
+            rhbplog.loginfo("Writing additional logfiles is disabled.")
 
         self.__replanningNeeded = False # this is set when behaviours or goals are added or removed, or the last planning attempt returned an error.
         self.__previousStatePDDL = PDDL()
@@ -266,7 +269,7 @@ class Manager(object):
     def _log_pddl_files(self, domainPDDLString, problemPDDLString, goals):
 
         filename = "pddl{0}Domain".format(self._stepCounter)
-        domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl" )
+        domainLog = LogFileWriter(path=self.__log_file_path_prefix, filename=filename, extension=".pddl")
         domainLog.write(domainPDDLString)
 
         filename = "pddl{0}Problem_{1}".format(self._stepCounter, ''.join((str(g) for g in goals)))
