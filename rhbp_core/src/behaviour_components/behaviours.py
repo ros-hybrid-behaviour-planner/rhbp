@@ -69,6 +69,7 @@ class Behaviour(object):
         self._justFinished = False  # This is set to True by fetchStatus if the  behaviour has just finished its job
         self.__requires_execution_steps = requires_execution_steps
         self._behaviour_type = behaviour_type
+        self.activation_components = []  # list(Activation) public as only used for logging
         Behaviour._instanceCounter += 1
 
         self._log_file_path_prefix = log_file_path_prefix

@@ -8,6 +8,7 @@ import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
 from rhbp_core.srv import Enable, ForceStart, SetInteger
+from rhbp_core.msg import Status
 from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
@@ -44,7 +45,7 @@ class BehaviourWidget(QWidget):
         self.correlationsLabel.setText(newValues["correlations"])
         self.correlationsLabel.setToolTip(newValues["correlationsTooltip"])
         self.activationDoubleSpinBox.setValue(newValues["activation"])
-        self.activationDoubleSpinBox.setToolTip("{0}".format(newValues["activation"]))
+        self.activationDoubleSpinBox.setToolTip("{0}".format(newValues["activationTooltip"]))
         self.readyThresholdDoubleSpinBox.setValue(newValues["readyThreshold"])
         self.readyThresholdDoubleSpinBox.setToolTip("{0}".format(newValues["readyThreshold"]))
         self.executableLabel.setText(newValues["executable"])
@@ -60,6 +61,7 @@ class BehaviourWidget(QWidget):
     def refresh(self, msg):
         """
         Refreshes the widget with data from the new message.
+        :type msg: Status
         """
         assert self._name == msg.name
         self.updateGUIsignal.emit({
@@ -73,6 +75,7 @@ class BehaviourWidget(QWidget):
                                    "correlations" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "correlationsTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "activation" : msg.activation,
+                                   "activationTooltip": "\n".join(map(lambda x: "{0}: {1}".format(x.name, x.activation), msg.activations)),
                                    "readyThreshold" : msg.threshold,
                                    "executable" : str(msg.executable),
                                    "isExecuting" : str(msg.isExecuting),

@@ -1,5 +1,6 @@
 string name
 float32 activation
+Activation[] activations
 Correlation[] correlations
 float32 satisfaction
 float32 threshold

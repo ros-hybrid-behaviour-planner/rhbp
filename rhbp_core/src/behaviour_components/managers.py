@@ -678,6 +678,7 @@ class Manager(object):
             statusMessage = Status()
             statusMessage.name = behaviour.name
             statusMessage.activation = behaviour.activation
+            statusMessage.activations = behaviour.activation_components
             statusMessage.satisfaction = behaviour.preconditionSatisfaction
             statusMessage.isExecuting = behaviour.isExecuting
             statusMessage.executionTimeout = behaviour.executionTimeout

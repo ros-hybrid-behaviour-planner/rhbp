@@ -11,7 +11,7 @@ import rospy
 #from .managers import Manager has to be commented because of circular dependency problem
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
-
+from rhbp_core.msg import Activation
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
@@ -237,6 +237,14 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                                   + activation_plan
 
         ref_behaviour.current_activation_step = current_activation_step
+        ref_behaviour.activation_components = [Activation('Precondition', activation_precondition),
+                                               Activation('Goal', activation_goals),
+                                               Activation('Goal-Inhibition', inhibition_goals),
+                                               Activation('Predecessors', activation_predecessors),
+                                               Activation('Successors', activation_successors),
+                                               Activation('Conflictors', inhibition_conflictors),
+                                               Activation('Plan', activation_precondition),
+                                               ]
 
         return current_activation_step
 
