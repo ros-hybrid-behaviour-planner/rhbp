@@ -226,7 +226,7 @@ class GreedyActivator(Activator):
     def __init__(self, maximize=True, step_size=1, name=None):
         """
         :param maximize:
-        :param step_size: value, bigger than 0
+        :param step_size: value, >= 0
         :param name:
         """
         super(GreedyActivator, self).__init__(0, 1, name)
