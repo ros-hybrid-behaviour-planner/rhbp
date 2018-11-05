@@ -180,7 +180,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         if self._apply_goal_priority_weights:
 
             self._goal_priority_weights = self._calculate_goal_priority_weights()
-            rospy.logwarn("Goal prio weights: %s", str(self._goal_priority_weights))
+            rospy.logdebug("Goal prio weights: %s", str(self._goal_priority_weights))
 
     def _calculate_goal_priority_weights(self, min_weight=1, max_weight=2):
         """
@@ -194,8 +194,6 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
 
             max_prio = max(self._manager.operational_goals, key=lambda g: g.priority).priority
             min_prio = min(self._manager.operational_goals, key=lambda g: g.priority).priority
-
-            rospy.logwarn("Goal prio max: %s, min: %s", str(max_prio), str(min_prio))
 
             range_prio = max_prio-min_prio
 
