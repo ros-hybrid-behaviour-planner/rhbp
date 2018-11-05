@@ -137,7 +137,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         self._predecessor_bias = 1.0
         self._activation_decay = 0.9
         self._goal_priority_weights = {}
-        self._apply_goal_priority_weights = True
+        self._apply_goal_priority_weights = False
 
     def update_config(self, **kwargs):
         """
@@ -157,15 +157,18 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         self._successor_bias = kwargs.get('successorBias', self._successor_bias)
         self._predecessor_bias = kwargs.get('predecessorBias', self._predecessor_bias)
         self._activation_decay = kwargs.get('activationDecay', self._activation_decay)
+        self._apply_goal_priority_weights = kwargs.get('activationGoalPriority', self._apply_goal_priority_weights)
 
         rhbplog.loginfo("Activation weights updated: \n"
                         "situation_bias:%f\n"
                         "plan_bias:%f\n"
                         "goal_bias:%f\n"
+                        "with_goal_priority_weights:%s\n"
                         "successor_bias:%f\n"
                         "predecessor_bias:%f\n"
                         "conflictor_bias:%f\n"
-                        "activation_decay:%f\n", self._situation_bias, self._plan_bias, self._goal_bias,
+                        "activation_decay:%f\n",
+                        self._situation_bias, self._plan_bias, self._goal_bias, self._apply_goal_priority_weights,
                         self._successor_bias, self._predecessor_bias, self._conflictor_bias, self._activation_decay
                         )
 
