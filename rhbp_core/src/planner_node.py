@@ -11,6 +11,9 @@ from rhbp_core.srv import SetStepping, SetSteppingResponse, GetStepping, GetStep
 from std_srvs.srv import Empty, EmptyResponse
 from rospy.exceptions import ROSInterruptException
 
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME)
+
 
 class ManagerNode(object):
     """
@@ -28,8 +31,11 @@ class ManagerNode(object):
         self.automatic_stepping = rospy.get_param("~automatic_stepping", True)
         self.guarantee_decision = rospy.get_param("~guarantee_decision", False)
 
+        rhbplog.loginfo("Planner node configuration: prefix: %s; frequency:%d; automatic_stepping:%s; "
+                        "guarantee_decision:%s", prefix, self.rate, self.automatic_stepping, self.guarantee_decision)
+
         if not self.automatic_stepping:
-            rospy.logwarn("Started in manual stepping mode")
+            rhbplog.logwarn("Started in manual stepping mode")
 
         self._init_services(prefix)
 
@@ -63,7 +69,7 @@ class ManagerNode(object):
         """
         self.automatic_stepping = request.automatic_stepping
 
-        rospy.loginfo("Automatic Stepping changed to " + str(self.automatic_stepping))
+        rhbplog.loginfo("Automatic Stepping changed to " + str(self.automatic_stepping))
 
         return SetSteppingResponse()
 
@@ -84,7 +90,7 @@ class ManagerNode(object):
         if not self.automatic_stepping or self._manager.paused:
             self._manager.step(force=True, guarantee_decision=self.guarantee_decision)
         else:
-            rospy.logwarn("No manual stepping if automatic stepping is enabled and manager is not paused")
+            rhbplog.logwarn("No manual stepping if automatic stepping is enabled and manager is not paused")
         return EmptyResponse()
 
     def run(self):
@@ -113,4 +119,4 @@ if __name__ == '__main__':
     try:
         node.run()
     except ROSInterruptException:
-        rospy.loginfo("Planner node shut down")
+        rhbplog.loginfo("Planner node shut down")
