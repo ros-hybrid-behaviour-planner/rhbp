@@ -378,11 +378,16 @@ class Manager(object):
                         break
                     else:
                         rhbplog.loginfo("PROBLEM IMPOSSIBLE")
+                        # resetting the plan to avoid that we try to follow an impossible plan.
+                        self._planExecutionIndex = 0
+                        self._plan = {}
                     if self._create_log_files:
                         self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
                 except Exception as e:
                     rhbplog.logerr("PLANNER ERROR: %s. Generating PDDL log files for step %d", e, self._stepCounter)
                     self.__replanningNeeded = True  # in case of planning exceptions try again next iteration
+                    self._planExecutionIndex = 0
+                    self._plan = {}
                     self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
         else:
             rhbplog.loginfo("### NOT PLANNING ### because replanning needed: %s\n"
@@ -826,7 +831,7 @@ class Manager(object):
         """
         stop the execution of a behaviour
         :param behaviour: the behaviour to stop
-        :param reset_activation: true or false if the activation of the behaviour should be reseted
+        :param reset_activation: true or false if the activation of the behaviour should be reset
         """
         behaviour.stop(reset_activation)
         try:
