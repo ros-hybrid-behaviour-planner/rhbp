@@ -26,13 +26,14 @@ class ManagerNode(object):
 
         prefix = rospy.get_param("~prefix", manager_prefix)
         self._manager = Manager(prefix=prefix)
-        self.rate = rospy.Rate(rospy.get_param("~frequency", 1))
+        frequency = rospy.get_param("~frequency", 1)
+        self.rate = rospy.Rate(frequency)
 
         self.automatic_stepping = rospy.get_param("~automatic_stepping", True)
         self.guarantee_decision = rospy.get_param("~guarantee_decision", False)
 
         rhbplog.loginfo("Planner node configuration: prefix: %s; frequency:%d; automatic_stepping:%s; "
-                        "guarantee_decision:%s", prefix, self.rate, self.automatic_stepping, self.guarantee_decision)
+                        "guarantee_decision:%s", prefix, frequency, self.automatic_stepping, self.guarantee_decision)
 
         if not self.automatic_stepping:
             rhbplog.logwarn("Started in manual stepping mode")
