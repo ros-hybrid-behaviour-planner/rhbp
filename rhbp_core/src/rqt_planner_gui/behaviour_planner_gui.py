@@ -107,6 +107,7 @@ class Overview(Plugin):
         self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
         self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
         self._widget.currentStepLabel.setText(str(newValues["stepCounter"]))
+        self._widget.planLabel.setText(str(newValues["plan"]))
         # self.setPauseResumeButton(True)  # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
@@ -323,7 +324,8 @@ class Overview(Plugin):
                                      "activationThresholdDecay" : msg.activationThresholdDecay,
                                      "influencedSensors" : ", ".join(msg.influencedSensors),
                                      "runningBehaviours" : ", ".join(msg.runningBehaviours),
-                                     "stepCounter": msg.stepCounter
+                                     "stepCounter": msg.stepCounter,
+                                     "plan": msg.plan
                                     }) 
         except Exception as e:
             rospy.logerr("plannerStatusCallback:%s", traceback.format_exc())
