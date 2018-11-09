@@ -244,7 +244,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                                                Activation('Predecessors', activation_predecessors),
                                                Activation('Successors', activation_successors),
                                                Activation('Conflictors', inhibition_conflictors),
-                                               Activation('Plan', activation_precondition),
+                                               Activation('Plan', activation_plan),
                                                ]
 
         return current_activation_step
