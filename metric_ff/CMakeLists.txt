@@ -156,25 +156,31 @@ add_dependencies(ff.so ff_python_install)
 add_dependencies(ff_ffp_install ff_python_install)
 add_dependencies(ff.so ff_ffp_install)
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(metric_ff ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
 ## Declare a C++ executable
 # creating an additional executable for testing
 add_executable(${PROJECT_NAME} 
     main.c
+    ff.h
     memory.c
+    memory.h
     output.c
+    output.h
     parse.c
+    parse.h
     expressions.c
+    expressions.h
     inst_pre.c
+    inst_pre.h
     inst_easy.c
+    inst_easy.h
     inst_hard.c
+    inst_hard.h
     inst_final.c
+    inst_final.h
     relax.c
+    relax.h
     search.c
+    search.h
     scan-fct_pddl.tab.c
     scan-ops_pddl.tab.c
 )
