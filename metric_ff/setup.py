@@ -4,9 +4,9 @@ import os
 import sysconfig
 
 ffModule = Extension('ff',
-                     define_macros = [('PYTHON', '1')],
-                     libraries = ['m'],
-                     sources = [
+                     define_macros=[('PYTHON', '1')],
+                     libraries=['m'],
+                     sources=[
                                 "main.c",
                                 "memory.c",
                                 "output.c",
