@@ -663,12 +663,15 @@ class BehaviourBase(object):
             #update everything before generating the status message
             self.updateComputation(request.current_step)
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
+            satisfaction = self.computeSatisfaction()
+
             # this would eliminate the doubled calculation of it
             status = Status(**{
                                "name"         : self._name, # this is sent for sanity check and planner status messages only
-                               "activation"   : self.computeActivation(),
+                               "activation"   : satisfaction,
+                               # "activation": self.computeActivation(),  TODO should be removed in the future, but needs checks if always suitable
                                "correlations" : [x.get_msg() for x in self._correlations],
-                               "satisfaction" : self.computeSatisfaction(),
+                               "satisfaction" : satisfaction,
                                "threshold"    : self._readyThreshold,
                                "wishes"       : self.computeWishes(),
                                "isExecuting"  : self._isExecuting,
