@@ -336,7 +336,10 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
         except rospy.ROSException:
-            self._handle_service_timeout()
+            self._handle_service_timeout(logging_enabled=True)
+            return self.__old_PDDL
+        except rospy.ROSInterruptException:  # ros shutdown
+            self._handle_service_timeout(logging_enabled=False)
             return self.__old_PDDL
         try:
             getPDDLRequest = rospy.ServiceProxy(service_name, GetPDDL)
@@ -362,8 +365,10 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
         except rospy.ROSException:
-            self._handle_service_timeout()
-            # just return (old values will still be used)
+            self._handle_service_timeout(logging_enabled=True)
+            return
+        except rospy.ROSInterruptException:  # ros shutdown
+            self._handle_service_timeout(logging_enabled=False)
             return
 
         try:
@@ -386,12 +391,13 @@ class GoalProxy(AbstractGoalRepresentation):
             rhbplog.logerr("ROS service exception in 'fetchStatus' of goal '%s': %s", self._name,
                            traceback.format_exc())
 
-    def _handle_service_timeout(self):
+    def _handle_service_timeout(self, logging_enabled=True):
         """
         basically disable the goal in case a service has timeout
         """
-        rhbplog.logerr("ROS service timeout of goal '%s': %s.", self._name,
-                     traceback.format_exc())
+        if logging_enabled:
+            rhbplog.logerr("ROS service timeout of goal '%s': %s.", self._name,
+                         traceback.format_exc())
 
         self.__consecutive_timeouts += 1
 
@@ -409,7 +415,10 @@ class GoalProxy(AbstractGoalRepresentation):
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
         except rospy.ROSException:
-            self._handle_service_timeout()
+            self._handle_service_timeout(logging_enabled=True)
+            return
+        except rospy.ROSInterruptException:  # ros shutdown
+            self._handle_service_timeout(logging_enabled=False)
             return
         try:
             enable_request = rospy.ServiceProxy(service_name, Enable)
