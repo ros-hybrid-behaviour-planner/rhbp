@@ -745,11 +745,11 @@ class Manager(object):
         for behaviour in self._behaviours:
             ### do the activation computation ###
             self.activation_algorithm.compute_behaviour_activation_step(ref_behaviour=behaviour)
-            rhbplog.logdebug("%s", behaviour.name)
-            rhbplog.logdebug("\toperational %s", behaviour.operational)
-            rhbplog.logdebug("\twishes %s", behaviour.wishes)
-            rhbplog.logdebug(
-                "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
+            # rhbplog.logdebug("%s", behaviour.name)
+            # rhbplog.logdebug("\toperational %s", behaviour.operational)
+            # rhbplog.logdebug("\twishes %s", behaviour.wishes)
+            # rhbplog.logdebug(
+            #     "\texecutable: {0} ({1})\n".format(behaviour.executable, behaviour.preconditionSatisfaction))
 
         self.calculate_final_behaviour_activations()
         rhbplog.loginfo("current activation threshold: %f", self._activationThreshold)
@@ -801,7 +801,7 @@ class Manager(object):
 
                 for conflictor in stoppable_behaviours: # stop another behaviour in order to resolve the conflict
                     rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s",
-                                    behaviour.name, conflictor.name)
+                                    conflictor.name, behaviour.name)
 
                     self._stop_behaviour(conflictor, True)
 
