@@ -99,3 +99,23 @@ class KnowledgeFactNumberSensor(KnowledgeFirstFactSensor):
             new_value = self._initial_value
 
         return new_value
+
+
+class KnowledgeFactCountSensor(KnowledgeFirstFactSensor):
+    """
+    Sensor, which provides the number of matching facts for a given pattern
+    """
+
+    def __init__(self, pattern, optional=False, knowledge_base_name=KnowledgeBase.DEFAULT_NAME,
+                 name=None, initial_value=None):
+        super(KnowledgeFactCountSensor, self).__init__(name=name, optional=optional, initial_value=initial_value,
+                                                       pattern=pattern, knowledge_base_name=knowledge_base_name)
+
+    def _reduce_facts(self, facts):
+        """
+        Reduce the tuple of facts to a single value
+        :param facts: fact tuple
+        :return: single value, e.g. bool, float, str
+        """
+
+        return len(facts)

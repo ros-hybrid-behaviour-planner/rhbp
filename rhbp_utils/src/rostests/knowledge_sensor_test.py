@@ -11,7 +11,7 @@ import unittest
 import rospy
 import rostest
 import roslaunch
-from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor
+from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor, KnowledgeFactCountSensor
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient, KnowledgeBase
 
 PKG = 'rhbp_utils'
@@ -134,6 +134,50 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         sensor.sync()
         rospy.loginfo(sensor.value)
         self.assertEquals(sensor.value, initial_value)
+
+    def test_knowledge_fact_count_sensor(self):
+        """
+        Test KnowledgeFactCountSensor
+        """
+
+        initial_value = 0
+        sensor_pattern = (self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', '*')
+        sensor = KnowledgeFactCountSensor(pattern=sensor_pattern, knowledge_base_name=self.__knowledge_base_address,
+                                          initial_value=initial_value)
+        rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, initial_value)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.push((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'a'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 1)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.push((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'b'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 2)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.pop((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'b'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 1)
 
 
 if __name__ == '__main__':
