@@ -94,8 +94,8 @@ class NetworkBehaviour(BehaviourBase):
             return OfflineGoal(name=goal_name, planner_prefix=self.get_manager_prefix(), permanent=True,
                                conditions={condition})
         except RuntimeError:
-            raise RuntimeError(msg='Cant create goal for effect type \'' +
-                                   effect.sensor_type + '\'. Overwrite the method _create_goal to handle the type')
+            raise RuntimeError(msg="Can't create goal for effect type '" +
+                                   effect.sensor_type + "'.Overwrite the method _create_goal to handle the type")
 
     @deprecated
     def add_correlations(self, correlations):
