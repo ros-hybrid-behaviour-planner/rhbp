@@ -492,6 +492,8 @@ class GoalBase(Goal):
                 try:
                     rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
                     service_found = True
+                except rospy.ROSInterruptException:
+                    return
                 except rospy.ROSException:
                     rhbplog.logwarn("Goal '%s': Registration timeout for service '%s'. Keep waiting... Please check if "
                                     "you use the correct 'planner_prefix'. Current prefix:'%s'", self._name,
