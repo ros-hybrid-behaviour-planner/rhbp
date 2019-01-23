@@ -335,11 +335,11 @@ class GoalProxy(AbstractGoalRepresentation):
             rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
-        except rospy.ROSException:
-            self._handle_service_timeout(logging_enabled=True)
-            return self.__old_PDDL
         except rospy.ROSInterruptException:  # ros shutdown
             self._handle_service_timeout(logging_enabled=False)
+            return self.__old_PDDL
+        except rospy.ROSException:
+            self._handle_service_timeout(logging_enabled=True)
             return self.__old_PDDL
         try:
             getPDDLRequest = rospy.ServiceProxy(service_name, GetPDDL)
@@ -364,11 +364,11 @@ class GoalProxy(AbstractGoalRepresentation):
             rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
-        except rospy.ROSException:
-            self._handle_service_timeout(logging_enabled=True)
-            return
         except rospy.ROSInterruptException:  # ros shutdown
             self._handle_service_timeout(logging_enabled=False)
+            return
+        except rospy.ROSException:
+            self._handle_service_timeout(logging_enabled=True)
             return
 
         try:
@@ -414,11 +414,11 @@ class GoalProxy(AbstractGoalRepresentation):
         try:
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
             self.__consecutive_timeouts = 0
-        except rospy.ROSException:
-            self._handle_service_timeout(logging_enabled=True)
-            return
         except rospy.ROSInterruptException:  # ros shutdown
             self._handle_service_timeout(logging_enabled=False)
+            return
+        except rospy.ROSException:
+            self._handle_service_timeout(logging_enabled=True)
             return
         try:
             enable_request = rospy.ServiceProxy(service_name, Enable)
