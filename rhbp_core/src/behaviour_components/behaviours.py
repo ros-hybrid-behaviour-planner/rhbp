@@ -108,11 +108,11 @@ class Behaviour(object):
 
             rhbplog.logdebug("Waiting for service %s", service_name)
             rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
-        except rospy.ROSException:
-            self._handle_service_timeout(logging_enabled=True)
-            return
         except rospy.ROSInterruptException:  # ros shutdown
             self._handle_service_timeout(logging_enabled=False)
+            return
+        except rospy.ROSException:
+            self._handle_service_timeout(logging_enabled=True)
             return
         try:
             getStatusRequest = rospy.ServiceProxy(service_name, GetStatus)
@@ -183,11 +183,11 @@ class Behaviour(object):
             try:
                 rhbplog.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-            except rospy.ROSException:
-                self._handle_service_timeout(logging_enabled=True)
-                return
             except rospy.ROSInterruptException:  # ros shutdown
                 self._handle_service_timeout(logging_enabled=False)
+                return
+            except rospy.ROSException:
+                self._handle_service_timeout(logging_enabled=True)
                 return
             startRequest = rospy.ServiceProxy(service_name, Empty)
             startRequest()
@@ -211,11 +211,11 @@ class Behaviour(object):
             try:
                 rhbplog.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-            except rospy.ROSException:
-                self._handle_service_timeout(logging_enabled=True)
-                return
             except rospy.ROSInterruptException:  # ros shutdown
                 self._handle_service_timeout(logging_enabled=False)
+                return
+            except rospy.ROSException:
+                self._handle_service_timeout(logging_enabled=True)
                 return
             stopRequest = rospy.ServiceProxy(service_name, Empty)
             stopRequest()
@@ -456,6 +456,8 @@ class BehaviourBase(object):
                 try:
                     rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
                     service_found = True
+                except rospy.ROSInterruptException:
+                    return
                 except rospy.ROSException:
                     rhbplog.logwarn("Behaviour '%s': Registration timeout for service '%s'. Keep waiting...Please check"
                                     "if you use the correct 'planner_prefix'. Current prefix:'%s'", self._name,
