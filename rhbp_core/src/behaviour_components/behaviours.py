@@ -457,6 +457,7 @@ class BehaviourBase(object):
                     rospy.wait_for_service(service_name, timeout=self.SERVICE_TIMEOUT)
                     service_found = True
                 except rospy.ROSInterruptException:
+                    rhbplog.loginfo("Stopping registration of %s, system is shutting down.", self._name)
                     return
                 except rospy.ROSException:
                     rhbplog.logwarn("Behaviour '%s': Registration timeout for service '%s'. Keep waiting...Please check"
@@ -488,7 +489,7 @@ class BehaviourBase(object):
                                traceback.format_exc())
         except rospy.ROSException:
             # if the service is not available this is not crucial.
-            pass
+            rhbplog.logwarn("Behaviour %s unregister() failed.", self._name)
 
         if terminate_services:
             self._getStatusService.shutdown()
