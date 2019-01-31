@@ -35,7 +35,11 @@ class ReinforcementAlgorithmBase(object):
         model_exists = self.check_if_model_exists(num_inputs, num_outputs)
 
         if model_exists:
-            self.load_model(num_inputs, num_outputs)
+            try:
+                self.load_model(num_inputs, num_outputs)
+            except Exception as e:
+                rospy.logerr("Failed loading model, initialising a new one. Error: %s", e)
+                self.initialize_model(num_inputs, num_outputs)
         else:
             self.initialize_model(num_inputs, num_outputs)
 
@@ -47,16 +51,18 @@ class ReinforcementAlgorithmBase(object):
         check if the model exists
         :return: True if the model is saved. False otherwise
         """
-        self.model_path = 'models/' + str(num_inputs) + '/' + str(
-            num_outputs) + '/' + self.name + '/rl-model' + self.name + "_" + str(
-            num_inputs) + "_" + str(num_outputs) + '-1000.meta'
-        self.model_folder = './models/' + str(num_inputs) + '/' + str(num_outputs) + '/' + self.name
+        # TODO using just the number of inputs/outputs can also lead to weird results?! It would be better to use proper identifiers
+
+        self.model_folder = 'models/' + str(num_inputs) + '/' + str(num_outputs) + '/' + self.name
+        self.model_path = self.model_folder + '/rl-model' + self.name + "_" + str(num_inputs) + "_" + str(num_outputs) \
+                          + '-1000.meta'  # TODO Why this postfix?
+
         if not os.path.exists(self.model_folder):
             os.makedirs(self.model_folder)
         if not self.save_conf.load:
             return False
         try:
-            model_exists = tf.train.checkpoint_exists(self.model_folder)
+            model_exists = tf.train.checkpoint_exists(self.model_path)
             return model_exists
         except Exception as e:
             return False

@@ -156,7 +156,7 @@ class DQNModel(ReinforcementAlgorithmBase):
             if self.eval_config.plot_rewards:
                 self.evaluation.plot_rewards(self.rewards_over_time)
         # check if model should be saved
-        if self.counter % self.save_config.steps_save == 1 and self.save_config.save:
+        if (self.counter % self.save_config.steps_save) == 0 and self.save_config.save:
             self.save_model()
         # save the input tuple in buffer
         transformed_tuple = np.reshape(np.array([tuple[0], tuple[2], tuple[3], tuple[1]]), [1, 4])

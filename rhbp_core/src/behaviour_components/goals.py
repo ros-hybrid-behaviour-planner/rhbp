@@ -300,6 +300,7 @@ class GoalProxy(AbstractGoalRepresentation):
         '''
         super(GoalProxy, self).__init__(name, permanent)
         self._service_prefix = planner_prefix + '/' + self._name + '/'
+        self.sensor_values = []
 
     def fetchPDDL(self):
         '''

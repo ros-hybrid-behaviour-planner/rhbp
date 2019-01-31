@@ -19,7 +19,7 @@ class RLComponent(object):
         """
         # name of the rl_component
         self.name = name
-        # True if the model wwas set up
+        # True if the model was set up
         self.is_model_init = False
         # Service for communicating the activations
         self._getStateService = rospy.Service(name + 'GetActivation', GetActivation,

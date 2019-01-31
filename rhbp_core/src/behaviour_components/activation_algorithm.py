@@ -789,7 +789,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         rospy.loginfo("starting rl_component as a node")
         package = 'rhbp_core'
         executable = 'src/reinforcement_component/rl_component_node.py'
-        command = "rosrun {0} {1} _name:={2}".format(package, executable,self.rl_address)
+        command = "rosrun {0} {1} _name:={2}".format(package, executable, self.rl_address)
         p = subprocess.Popen(command, shell=True)
 
         state = p.poll()
@@ -822,7 +822,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         if len(last_action) == 0:
             return False, None, None, None, None, None
         last_action_index = self.input_transformer.behaviour_to_index(
-            last_action[0])  # can be expanded here to multiple executed actions
+            last_action[0])  # XXX can be expanded here to multiple executed actions
         if last_action_index is None:
             return False, None, None, None, None, None
 
@@ -836,7 +836,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         """
         # get the input state. also check if the input state is correct
         is_correct, num_inputs, num_outputs, input_state, reward, last_action_index = self.check_if_input_state_correct()
-        # if input state is incorect return
+        # if input state is incorrect return
         if not is_correct:
             return
         # create an input state message for sending it to the rl_node
@@ -847,7 +847,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         input_state_msg.reward = reward
         input_state_msg.last_action = last_action_index
 
-        # find negative state (not executable behaviors)
+        # collect negative states (not executable behaviors)
         num_actions = len(self._manager._behaviours)
         negative_states = []
         if self.config.use_negative_states:
@@ -955,9 +955,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # include BaseActivation functions
         super(ReinforcementLearningActivationAlgorithm, self).update_config(**kwargs)
         self._activation_decay = self.config.activation_decay
-        num_actions = len(self._manager._behaviours)
+        num_actions = len(self._manager._behaviours)  # TODO this is dirty, accessing private member
         # if the rl activation is not used dont calculate the values and set all to zero
-        if self.weight_rl <= 0:
+        if self.weight_rl <= 0: # TODO why this weight comes from a different source?
             self.activation_rl = [0] * num_actions
             return
         # get the activations from the rl_component via service
@@ -965,6 +965,9 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # return if no activations received
         if len(self.activation_rl) == 0:
             return
+
+        # TODO Idea: Why not test first for exploration? Furthermore, only return one behaviour with
+        # max_activation
 
         # check if exploration chooses randomly best action
         changed, best_action = self.exploration_strategies.e_greedy_pre_train(self._step_counter, num_actions)

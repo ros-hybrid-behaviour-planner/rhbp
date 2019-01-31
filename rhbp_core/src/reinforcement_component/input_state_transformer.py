@@ -145,7 +145,7 @@ class InputStateTransformer(object):
         # extend input array with the sensors from conditions/behaviours
         input_array, sensor_input = self.transform_behaviours(input_array)
         # extend input array with the sensors from goals
-        input_array = self.transform_goals(sensor_input,input_array)
+        input_array = self.transform_goals(sensor_input, input_array)
         # cut first dummy line
         input_array = input_array[1:]
         return input_array
