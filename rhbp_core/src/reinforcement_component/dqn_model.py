@@ -1,7 +1,7 @@
 """
 class for implementing the dqn model. including savign the model,
 metrics for measuring the success, the experience buffer and neural network
-@author: lehmann
+@author: lehmann, hrabia
 # inspired by awjuliani
 """
 

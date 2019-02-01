@@ -1,6 +1,6 @@
 """
 the rl component as a class. functions as a bridge between manager and rl-algo
-@author: lehmann
+@author: lehmann, hrabia
 """
 import rospy
 from reinforcement_component.dqn_model import DQNModel
@@ -32,6 +32,9 @@ class RLComponent(object):
         # the dimensions of the model
         self.number_outputs = -1
         self.number_inputs = -1
+
+        # current experience batch tuples (old_state,new_state,action,reward)
+        self.reward_list = []
 
     def _get_activation_state_callback(self, request_msg):
         """
@@ -130,7 +133,7 @@ class RLComponent(object):
         """
         starts the training in the model for each tuple. 
         Note: the updating of the weights in the algorithm happens
-        in a specified intervall
+        in a specified interval
         :return: 
         """
         for element in self.reward_list:

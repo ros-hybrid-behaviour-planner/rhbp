@@ -101,7 +101,7 @@ class ReinforcementAlgorithmBase(object):
         if self.save_conf.save_buffer:
             self.save_buffer()
 
-        rospy.loginfo("model saved")
+        rospy.loginfo("Saved model '%s'", self.model_path)
 
     def save_buffer(self):
         raise NotImplementedError
