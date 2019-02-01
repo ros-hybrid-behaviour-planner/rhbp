@@ -865,25 +865,31 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         # start service to get the activations from the model
         self.fetch_activation(input_state_msg, negative_states)
 
-    def fetch_activation(self, msg, negative_states):
+    def fetch_activation(self, input_state, negative_states):
         """
-        This method fetches the activation from the rl node via GetActivation service call
-        :param msg: 
+        This method fetches the activation from the RL component either directly or through
+        rl node via GetActivation service call
+        :param input_state:
         :param negative_states: 
         :return: 
         """
-        try:
-            rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
-            rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
-        except rospy.ROSException:
-            rospy.logerr("GetActivation service not found")
-            return 0
-        try:
-            getActivationRequest = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
-            activation_result = getActivationRequest(msg, negative_states)
-            self.activation_rl = list(activation_result.activation_state.activations)
-        except rospy.ServiceException as e:
-            rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
+        if self.config.use_node:  # either use the service or a direct method call.
+            try:
+                rhbplog.logdebug("Waiting for service %s", self.rl_address + 'GetActivation')
+                rospy.wait_for_service(self.rl_address + 'GetActivation', timeout=self.SERVICE_TIMEOUT)
+            except rospy.ROSException:
+                rospy.logerr("GetActivation service not found")
+                return 0
+            try:
+                get_activation_request = rospy.ServiceProxy(self.rl_address + 'GetActivation', GetActivation)
+                activation_state = get_activation_request(input_state, negative_states).activation_state
+
+            except rospy.ServiceException as e:
+                rhbplog.logerr("ROS service exception in 'fetchActivation' of behaviour '%s':", self.rl_address)
+        else:
+            activation_state = self.rl_component.get_activation_state(input_state, negative_states)
+
+        self.activation_rl = list(activation_state.activations)
 
     def get_rl_activation_for_ref(self, ref_behaviour):
         index = self.input_transformer.behaviour_to_index(ref_behaviour)
@@ -892,6 +898,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
             value = 0
         else:
             value = self.activation_rl[index]
+            # normalisation
             max = np.max(self.activation_rl)
             min = np.min(self.activation_rl)
             b = self.config.max_activation
@@ -958,21 +965,24 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         num_actions = len(self._manager._behaviours)  # TODO this is dirty, accessing private member
         # if the rl activation is not used dont calculate the values and set all to zero
         if self.weight_rl <= 0: # TODO why this weight comes from a different source?
-            self.activation_rl = [0] * num_actions
+            self.activation_rl = [0] * num_actions  # set all activations to 0
             return
+
         # get the activations from the rl_component via service
         self.get_activation_from_rl_node()
         # return if no activations received
         if len(self.activation_rl) == 0:
             return
 
-        # TODO Idea: Why not test first for exploration? Furthermore, only return one behaviour with
-        # max_activation
+        # TODO Idea: Why not test first for exploration? Test to move it before get_activation_from_rl_node.Maybe error
+        #  check " len(self.activation_rl) == 0"could make problems. Getting activation is also saving the current state
+        # hence it has to be called but maybe we can avoid the feed forward through a flag in the service?!
 
         # check if exploration chooses randomly best action
         changed, best_action = self.exploration_strategies.e_greedy_pre_train(self._step_counter, num_actions)
         if changed:
-            self.activation_rl[best_action] = self.max_activation
+            self.activation_rl = [0] * num_actions  # set all activations to 0
+            self.activation_rl[best_action] = self.max_activation  # only support the one to be explored
         # set the step counter higher
         self._step_counter += 1
 

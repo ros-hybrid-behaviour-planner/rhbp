@@ -1,5 +1,4 @@
 """
-the rl component as a class. functions as a bridge between manager and rl-algo
 @author: lehmann, hrabia
 """
 import rospy
@@ -10,12 +9,10 @@ import numpy
 
 
 class RLComponent(object):
-    def __init__(self, name, algorithm=0, pre_train=32):
+    def __init__(self, name):
         """
-        
+        The rl component as a class. functions as a bridge between manager and rl-algo
         :param name: name of the rl_component
-        :param algorithm: old parameter still in for older test versions. Not in use 
-        :param pre_train: old parameter still in for older test versions. Not in use 
         """
         # name of the rl_component
         self.name = name
@@ -38,57 +35,42 @@ class RLComponent(object):
 
     def _get_activation_state_callback(self, request_msg):
         """
-        answers the service and responds with the activations
+        answers the RL activation service and responds with the activations/reinforcements
         :param request_msg: GetActivation 
-        :return: 
+        :return: Service Response
         """
+        input_state = request_msg.input_state
+        negative_states = request_msg.negative_states
         try:
 
-            request = request_msg.input_state
-            #print(request.input_state,request.reward)
-            self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
-            # save current input state and update the model
-            self.save_request(request)
-            # update the last state
-            self.last_state = request.input_state
-            negative_states = request_msg.negative_states
-            for state in negative_states:
-                self.save_request(state)
-            # transform the input state and get activation
-            transformed_input = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
-            activations = self.model.feed_forward(transformed_input)
-            # return the activation via the service
-            activations = activations.tolist()[0]
-            activation_state = ActivationState(**{
-                "name": self.name,  # this is sent for sanity check and planner status messages only
-                "activations": activations,
-            })
+            activation_state = self.get_activation_state(input_state, negative_states)
             return GetActivationResponse(activation_state)
         except Exception as e:
             print(e)
             rospy.logerr(e.message)
             return None
 
-    def get_activation_state_test(self, request, negative_states=[]):
+    def get_activation_state(self, input_state, negative_states=None):
         """
-        uses same logic as the callback, but functions without a service. cann be called directly. used for testing
-        :param request: GetActivation 
-        :param negative_states: not in use
-        :return: 
+        Determine the activation/reinforcement for the given input states, save the state (combined with last
+        state for training)
+        :param input_state:
+        :param negative_states:
+        :return:
         """
+        if negative_states is None:
+            negative_states = []
         try:
-            self.check_if_model_is_valid(request.num_inputs, request.num_outputs)
+            self.check_if_model_is_valid(input_state.num_inputs, input_state.num_outputs)
             # save current input state and update the model
-            self.save_request(request)
+            self.save_state(input_state)
             # update the last state
-            self.last_state = request.input_state
+            self.last_state = input_state.input_state
             for state in negative_states:
-                self.save_request(state)
-
+                self.save_state(state)
             # transform the input state and get activation
-            transformed_input = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
+            transformed_input = numpy.array(input_state.input_state).reshape(([1, len(input_state.input_state)]))
             activations = self.model.feed_forward(transformed_input)
-
             # return the activation via the service
             activations = activations.tolist()[0]
             activation_state = ActivationState(**{
@@ -100,17 +82,17 @@ class RLComponent(object):
             rospy.logerr(e.message)
             return None
 
-    def save_request(self, request):
+    def save_state(self, input_state):
         """
         save the old_state,new_state,action,reward tuple in a list for batch updating of the model
-        :param request: 
-        :return: 
+        :param input_state: current state input (positive or negative)
+        :type input_state: InputState
         """
         if self.last_state is None:
             return
         last = numpy.array(self.last_state).reshape(([1, len(self.last_state)]))
-        new = numpy.array(request.input_state).reshape(([1, len(request.input_state)]))
-        reward_tuple = (last, new, request.last_action, request.reward)
+        new = numpy.array(input_state.input_state).reshape(([1, len(input_state.input_state)]))
+        reward_tuple = (last, new, input_state.last_action, input_state.reward)
 
         self.reward_list.append(reward_tuple)
         self.update_model()
