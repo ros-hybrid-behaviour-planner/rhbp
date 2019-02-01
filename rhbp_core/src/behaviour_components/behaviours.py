@@ -680,12 +680,10 @@ class BehaviourBase(object):
 
     def _get_status_callback(self, request):
         try:
-            #print("ssfe",self.name,int(False),int(True))
             #update everything before generating the status message
             self.updateComputation(request.current_step)
             self._active = self._activated
-            #self.sensor_values=self.get_sensor_values(self.get_preconditions())
-            self.sensor_values=self._sensor_transformer.get_sensor_values(self.get_preconditions())
+            self.sensor_values = self._sensor_transformer.get_sensor_values(self.get_preconditions())
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             # this would eliminate the doubled calculation of it
             status = Status(**{

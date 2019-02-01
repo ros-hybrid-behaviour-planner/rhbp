@@ -913,7 +913,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         :param ref_behaviour: for which behaviour the activation should be computed
         :return: 
         """
-        # when rl has all influence only compute it.
+        # when rl has all influence only compute it. TODO this has to be changed! Currently only RL activation used.
         """
         activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
         activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
