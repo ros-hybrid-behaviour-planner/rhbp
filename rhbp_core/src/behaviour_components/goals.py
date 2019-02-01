@@ -14,7 +14,6 @@ from abc import ABCMeta, abstractmethod
 import rospy
 from std_msgs.msg import Bool
 
-from reinforcement_component.input_state_transformer import SensorValueTransformer
 from rhbp_core.msg import Status
 from rhbp_core.srv import AddGoal, GetStatus, GetStatusResponse, Activate, ActivateResponse, GetPDDL, GetPDDLResponse, \
     SetInteger, SetIntegerResponse, RemoveGoal
@@ -26,6 +25,7 @@ from .pddl import PDDL, mergeStatePDDL
 from .sensors import TopicSensor
 from utils.misc import FinalInitCaller
 from utils.deprecation import deprecated
+from utils.sensor_value_transformer import SensorValueTransformer
 
 
 import utils.rhbp_logging

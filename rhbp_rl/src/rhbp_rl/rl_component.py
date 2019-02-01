@@ -2,7 +2,7 @@
 @author: lehmann, hrabia
 """
 import rospy
-from reinforcement_component.dqn_model import DQNModel
+from dqn_model import DQNModel
 from rhbp_core.msg import ActivationState
 from rhbp_core.srv import GetActivation, GetActivationResponse
 import numpy

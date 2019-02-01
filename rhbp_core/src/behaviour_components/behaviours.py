@@ -1,27 +1,28 @@
 '''
 Created on 13.04.2015
 
-@author: wypler,hrabia
+@author: wypler, hrabia
 ''' 
-from __future__ import division # force floating point division when using plain /
+from __future__ import division  # force floating point division when using plain /
 import traceback
 import rospy
 import operator
 import itertools
 
-from reinforcement_component.input_state_transformer import SensorValueTransformer
 from .conditions import Conditonal
 from std_srvs.srv import Empty, EmptyResponse
-from rhbp_core.msg import Status, ConditionState, ConditionValue, SensorValue
+from rhbp_core.msg import Status, ConditionState, ConditionValue
 from rhbp_core.srv import AddBehaviour, GetStatus, GetStatusResponse,GetStateResponse, Activate, ActivateResponse, SetInteger, \
     SetIntegerResponse, GetPDDL, GetPDDLResponse, RemoveBehaviour, GetState
 from .pddl import PDDL, mergeStatePDDL, create_valid_pddl_name
 from .condition_elements import Effect, Wish
 from utils.misc import FinalInitCaller, LogFileWriter
 from utils.deprecation import deprecated
+from utils.sensor_value_transformer import SensorValueTransformer
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
+
 
 class Behaviour(object):
     '''

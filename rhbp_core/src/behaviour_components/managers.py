@@ -94,7 +94,6 @@ class Manager(object):
 
         # create activation algorithm
         algorithm_name = kwargs['activation_algorithm'] if 'activation_algorithm' in kwargs else 'default'
-        algorithm_name = "reinforcement"  # TODO TODO change to make it with reinforcement ###################################################
         rhbplog.loginfo("Using activation algorithm: %s", algorithm_name)
         self.activation_algorithm = ActivationAlgorithmFactory.create_algorithm(algorithm_name, self)
         # trigger update once in order to initialize algorithm properly
