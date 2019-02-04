@@ -411,7 +411,6 @@ class GoalBase(Goal):
         self._permanent = permanent
         self._planner_prefix = plannerPrefix
         self._registered = False  # keeps track of goal registration state
-        self.preconditions = conditions
         self._sensor_transformer = SensorValueTransformer()
 
     def _init_services(self):
@@ -510,7 +509,7 @@ class GoalBase(Goal):
 
         try:
             self.updateComputation(request.current_step)
-            sensor_values = self._sensor_transformer.get_sensor_values(self.preconditions)
+            sensor_values = self._sensor_transformer.get_sensor_values(self._conditions)
             self._active = self._activated
             status = Status(**{
                 "name": self._name,

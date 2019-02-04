@@ -80,12 +80,13 @@ class SensorValueTransformer(object):
         :return: list of sensorvalues
         """
         list_of_sensor_values = []
-        for p in conditions:
-            value = self.get_value_of_condition(p)
-            if isinstance(value, (list,)):
-                list_of_sensor_values.extend(self.get_values_of_list(value))
+        if conditions:
+            for p in conditions:
+                value = self.get_value_of_condition(p)
+                if isinstance(value, (list,)):
+                    list_of_sensor_values.extend(self.get_values_of_list(value))
 
-            else:
-                if (value is not None):
-                    list_of_sensor_values.append(value)
+                else:
+                    if (value is not None):
+                        list_of_sensor_values.append(value)
         return list_of_sensor_values
