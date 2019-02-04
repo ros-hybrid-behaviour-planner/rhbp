@@ -14,7 +14,7 @@ import numpy
 class RLComponentNode(object):
     def __init__(self):
         # gets name as a ros parameter
-        self.name = rospy.get_param("~name")
+        self.name = rospy.get_param("~name", "rl_component_node")
         # True if the models is set up
         self.is_model_init = False
         # service for communicating the activations
@@ -29,6 +29,9 @@ class RLComponentNode(object):
         # default values of dimensions
         self.number_outputs = -1
         self.number_inputs = -1
+
+        # current experience batch tuples (old_state,new_state,action,reward)
+        self.reward_list = []
 
     def _get_activation_state_callback(self, request_msg):
         """
