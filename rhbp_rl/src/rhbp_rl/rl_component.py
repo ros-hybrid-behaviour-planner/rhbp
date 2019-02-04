@@ -1,3 +1,4 @@
+#! /usr/bin/env python2
 """
 @author: lehmann, hrabia
 """
@@ -9,9 +10,13 @@ import numpy
 
 
 class RLComponent(object):
+    """
+    The rl component as a class. functions as a bridge between manager and rl-algo.
+    It can also be used in a separated node through its service interface.
+    """
+
     def __init__(self, name):
         """
-        The rl component as a class. functions as a bridge between manager and rl-algo
         :param name: name of the rl_component
         """
         # name of the rl_component
@@ -140,3 +145,16 @@ class RLComponent(object):
         self.reward_list = []
 
         self.is_model_init = True
+
+
+# Component can also be started as a independent node.
+if __name__ == '__main__':
+    try:
+        rospy.init_node('rl_node', anonymous=True)
+        name = rospy.get_param("~name", "rl_component_node")
+        rl_component = RLComponent(name=name)
+
+        rospy.spin()
+
+    except rospy.ROSInterruptException:
+        rospy.logerr("program interrupted before completion")

@@ -80,7 +80,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         """
         rospy.loginfo("starting rl_component as a node")
         package = 'rhbp_rl'
-        executable = 'src/rhbp_rl/rl_component_node.py'
+        executable = 'src/rhbp_rl/rl_component.py'
         command = "rosrun {0} {1} _name:={2}".format(package, executable, self.rl_address)
         p = subprocess.Popen(command, shell=True)
 
