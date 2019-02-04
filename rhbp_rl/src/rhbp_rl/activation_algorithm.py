@@ -57,9 +57,12 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         if self.weight_rl > 0.0:
             # select if a own node should be started for the rl_component
             if self.config.use_node:
+                rhbplog.loginfo("Starting external RL node.")
                 self.start_rl_node()
+                rhbplog.loginfo("External RL node started.")
             else:
                 self.start_rl_class()
+                rhbplog.loginfo("Using RL component directly.")
         # implements different exploration strategies
         self.exploration_strategies = ExplorationStrategies()
 
@@ -202,8 +205,7 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         :param ref_behaviour: for which behaviour the activation should be computed
         :return: 
         """
-        # when rl has all influence only compute it. TODO this has to be changed! Currently only RL activation used.
-        """
+
         activation_precondition = self.get_activation_from_preconditions(ref_behaviour)
         activation_goals = self.get_activation_from_goals(ref_behaviour)[0]
         inhibition_goals = self.get_inhibition_from_goals(ref_behaviour)[0]
@@ -211,15 +213,6 @@ class ReinforcementLearningActivationAlgorithm(BaseActivationAlgorithm):
         activation_successors = self.get_activation_from_successors(ref_behaviour)[0]
         inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
         activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
-        rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
-        """
-        activation_precondition = 0
-        activation_goals = 0
-        inhibition_goals = 0
-        activation_predecessors = 0
-        activation_successors = 0
-        inhibition_conflictors = 0
-        activation_plan = 0
         rl_activation = self.get_rl_activation_for_ref(ref_behaviour)
 
         rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
