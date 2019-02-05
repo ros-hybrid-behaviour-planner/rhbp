@@ -180,7 +180,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         if self._apply_goal_priority_weights:
 
             self._goal_priority_weights = self._calculate_goal_priority_weights()
-            rospy.logdebug("Goal prio weights: %s", str(self._goal_priority_weights))
+            rhbplog.logdebug("Goal prio weights: %s", str(self._goal_priority_weights))
 
     def _calculate_goal_priority_weights(self, min_weight=1, max_weight=2):
         """
