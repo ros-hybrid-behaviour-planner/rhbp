@@ -41,8 +41,12 @@ class ActivationAlgorithmTestSuite(unittest.TestCase):
         self.assertTrue(isinstance(algo, BaseActivationAlgorithm), "Not the correct algorithm")
 
     def test_goal_priority(self):
+        """
+        Testing priority dependent goal activation calculation
+        """
 
         algo = BaseActivationAlgorithm(self.manager, extensive_logging=True)
+        algo._apply_goal_priority_weights = True
 
         class BehaviourMock(object):
 
