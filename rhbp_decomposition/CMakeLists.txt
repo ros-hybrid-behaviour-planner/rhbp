@@ -198,3 +198,8 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 catkin_add_nosetests(src/decomposition_tests)
+
+find_package(rostest REQUIRED)
+add_rostest(test/goal_wrapper.test)
+add_rostest(test/goals.test)
+add_rostest(test/manager.test)

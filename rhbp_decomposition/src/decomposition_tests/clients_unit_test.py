@@ -9,9 +9,8 @@ Needs a running ROSCORE!
 from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
 from decomposition_components.manager_client import RHBPManagerDelegationClient
 from decomposition_components.cost_computing import PDDLCostEvaluator
-from delegation_tests.test_utils import MockedDelegationManager
-from decomposition_tests.test_utils import MockedManager, FunctionPointerTester,\
-    MockedGoal
+from delegation_module_tests.test_utils import MockedDelegationManager
+from test_utils import MockedManager, FunctionPointerTester, MockedGoal
 import unittest
 import rospy
 
@@ -107,7 +106,8 @@ class RHBPClientsTest(unittest.TestCase):
         threshold = 0.9
         fpt = FunctionPointerTester()
 
-        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, success_function=fpt.function)
+        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold,
+                                     success_function=fpt.function)
 
         uut.delegation_successful(delegation_id=delegation_id)
         self.assertTrue(fpt.function_called)
@@ -137,7 +137,8 @@ class RHBPClientsTest(unittest.TestCase):
         threshold = 0.9
         fpt = FunctionPointerTester()
 
-        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, success_function=fpt.function)
+        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold,
+                                     success_function=fpt.function)
         uut.terminate_delegation(delegation_id=delegation_id)
 
         uut.delegation_successful(delegation_id=delegation_id)
@@ -170,9 +171,11 @@ class RHBPClientsTest(unittest.TestCase):
         fpt = FunctionPointerTester()
         own_cost = 2.3
 
-        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost)
+        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions,
+                          satisfaction_threshold=threshold, own_cost=own_cost)
 
-        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost, start_work_function=fpt.function)
+        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold,
+                                     own_cost=own_cost, start_work_function=fpt.function)
 
         self.assertEqual(delegation_id, 1)
         self.assertEqual(self.mockedDM.goal_wrapper._conditions, conditions)
@@ -192,9 +195,11 @@ class RHBPClientsTest(unittest.TestCase):
         conditions = ["test_conditions"]
         threshold = 0.9
 
-        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost)
+        self.assertRaises(RuntimeError, uut.delegate, goal_name=goal_name, conditions=conditions,
+                          satisfaction_threshold=threshold, own_cost=own_cost)
 
-        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold, own_cost=own_cost, start_work_function=fpt.function)
+        delegation_id = uut.delegate(goal_name=goal_name, conditions=conditions, satisfaction_threshold=threshold,
+                                     own_cost=own_cost, start_work_function=fpt.function)
 
         uut.start_work_for_delegation(delegation_id=delegation_id)
         self.assertTrue(fpt.function_called)

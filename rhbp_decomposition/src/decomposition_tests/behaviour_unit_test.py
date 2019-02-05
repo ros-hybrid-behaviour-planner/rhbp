@@ -9,7 +9,7 @@ Needs a running ROSCORE
 import unittest
 import rospy
 from behaviour_components.managers import Manager
-from delegation_tests.test_utils import MockedClient
+from delegation_module_tests.test_utils import MockedClient
 from decomposition_components.delegation_behaviour import DelegableBehaviour,\
     DelegationBehaviour
 from behaviour_components.sensors import TopicSensor

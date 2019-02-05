@@ -1,3 +1,4 @@
+#! /usr/bin/env python2
 """
 Unit tests for the RHBPGoalWrapper
 
@@ -7,6 +8,7 @@ Needs a running ROSCORE!
 """
 
 import unittest
+import rostest
 import rospy
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import TopicSensor
@@ -144,5 +146,5 @@ class GoalWrapperTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # Make sure a ROSCORE is running before starting
-    unittest.main()
+    rostest.rosrun('rhbp_decomposition', 'test_goal_wrapper_node', GoalWrapperTest)
+    rospy.spin()

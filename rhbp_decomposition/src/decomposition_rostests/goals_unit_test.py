@@ -1,3 +1,4 @@
+#! /usr/bin/env python2
 """
 Unit tests for the decomposition goal
 
@@ -8,13 +9,14 @@ Needs a running ROSCORE!
 
 import unittest
 import rospy
+import rostest
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import TopicSensor
 from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator
 from std_msgs.msg import Bool
 from decomposition_components.goal_wrapper import DecompositionGoal
-from delegation_tests.test_utils import MockedDelegationCommunicator
+from delegation_module_tests.test_utils import MockedDelegationCommunicator
 from decomposition_components.delegation_goal import DelegationGoal
 
 
@@ -112,5 +114,6 @@ class DelegationGoalTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # Make sure a ROSCORE is running before starting
-    unittest.main()
+    #rostest.rosrun('rhbp_decomposition', 'test_delegation_goal_node', DelegationGoalTest)
+    rostest.rosrun('rhbp_decomposition', 'test_decomposition_goal_node', DecompositionGoalTest)
+    rospy.spin()

@@ -1,0 +1,3 @@
+<launch>
+    <test pkg="rhbp_decomposition" type="goals_unit_test.py" test-name="goals_unit_test_node" />
+</launch>

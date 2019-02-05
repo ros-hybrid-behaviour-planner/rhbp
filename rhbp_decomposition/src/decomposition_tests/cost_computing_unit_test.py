@@ -8,7 +8,7 @@ import unittest
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_errors import DelegationPlanningWarning
 from delegation_components.cost_evaluators import CostParameters
-from decomposition_tests.test_utils import MockedManager
+from test_utils import MockedManager
 
 
 class CostComputingTest(unittest.TestCase):
@@ -40,7 +40,8 @@ class CostComputingTest(unittest.TestCase):
         Tests the getting of plan steps
         """
 
-        base, full, simple = self.uut._get_plan_steps(full_plan=self.manager.plan_with_additional_goal(0), simple_plan=self.manager.plan_this_single_goal(0))
+        base, full, simple = self.uut._get_plan_steps(full_plan=self.manager.plan_with_additional_goal(0),
+                                                      simple_plan=self.manager.plan_this_single_goal(0))
 
         self.assertEqual(base, 2)
         self.assertEqual(full, 4)
@@ -117,9 +118,12 @@ class CostComputingTest(unittest.TestCase):
         members = ["Member1", "Member2"]
         own_name = "Member1"
 
-        cost, possibility = self.uut.compute_cost_and_possibility(goal_representation=goal_representation, current_task_count=current_task_count,
-                                                                  max_task_count=max_task_count, current_depth=current_depth,
-                                                                  max_depth=max_depth, members=members, own_name=own_name)
+        cost, possibility = self.uut.compute_cost_and_possibility(goal_representation=goal_representation,
+                                                                  current_task_count=current_task_count,
+                                                                  max_task_count=max_task_count,
+                                                                  current_depth=current_depth,
+                                                                  max_depth=max_depth, members=members,
+                                                                  own_name=own_name)
 
         self.assertTrue(possibility)
         self.assertLess(0, cost)
@@ -128,9 +132,10 @@ class CostComputingTest(unittest.TestCase):
         self.assertEqual(self.uut.last_possibility, possibility)
 
         self.manager.failing_plans = True
-        self.assertRaises(DelegationPlanningWarning, self.uut.compute_cost_and_possibility, goal_representation=goal_representation,
-                          current_task_count=current_task_count, max_task_count=max_task_count, current_depth=current_depth,
-                          max_depth=max_depth, members=members, own_name=own_name)
+        self.assertRaises(DelegationPlanningWarning, self.uut.compute_cost_and_possibility,
+                          goal_representation=goal_representation, current_task_count=current_task_count,
+                          max_task_count=max_task_count, current_depth=current_depth, max_depth=max_depth,
+                          members=members, own_name=own_name)
 
         self.assertEqual(self.uut.last_cost, -1)
         self.assertFalse(self.uut.last_possibility)

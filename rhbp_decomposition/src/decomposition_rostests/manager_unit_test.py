@@ -1,3 +1,4 @@
+#! /usr/bin/env python2
 """
 Basic unit test for the rhbp_decomposition Manager
 
@@ -5,9 +6,10 @@ Basic unit test for the rhbp_decomposition Manager
 """
 
 from decomposition_components.managers import Manager
-from delegation_tests.test_utils import MockedDelegationManager
+from delegation_module_tests.test_utils import MockedDelegationManager
 import unittest
 import rospy
+import rostest
 
 
 class ManagerUnitTest(unittest.TestCase):
@@ -39,3 +41,7 @@ class ManagerUnitTest(unittest.TestCase):
         self.assertFalse(self.uut.participating_in_auctions)
         self.assertIsNone(self.mockedDM.cfe)
 
+
+if __name__ == '__main__':
+    rostest.rosrun('rhbp_decomposition', 'test_manager_node', ManagerUnitTest)
+    rospy.spin()
