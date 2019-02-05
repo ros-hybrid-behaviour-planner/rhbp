@@ -1,7 +1,7 @@
 '''
 Created on 22.03.2017
 
-@author: hrabia, wypler, lehmann
+@author: hrabia, wypler
 '''
 from __future__ import division  # force floating point division when using plain /
 from abc import ABCMeta, abstractmethod
@@ -94,9 +94,9 @@ class ActivationAlgorithmFactory(object):
         :return:
         """
         if not issubclass(algo, AbstractActivationAlgorithm):
-            assert ("Algo is not subclass of AbstractActivationAlgorithm")
+            assert("Algo is not subclass of AbstractActivationAlgorithm")
         if cls.algorithms.has_key(id_algo):
-            assert ("Algorithm ID already in use")
+            assert("Algorithm ID already in use")
         else:
             cls.algorithms[id_algo] = algo
 

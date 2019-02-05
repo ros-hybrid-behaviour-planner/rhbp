@@ -71,7 +71,6 @@ class Behaviour(object):
         self.__requires_execution_steps = requires_execution_steps
         self._behaviour_type = behaviour_type
         self.activation_components = []  # list(Activation) public as only used for logging
-        self._condition_values = []
         self._sensor_values = []
         Behaviour._instanceCounter += 1
 
@@ -266,6 +265,7 @@ class Behaviour(object):
     @property
     def sensor_values(self):
         return self._sensor_values
+
     @property
     def activation(self):
         return self._activation
@@ -336,12 +336,7 @@ class Behaviour(object):
     @property
     def justFinished(self):
         return self._justFinished
-
-    @property
-    def condition_values(self):
-        return self._condition_values
-
-
+    
     @property
     def independentFromPlanner(self):
         return self._independentFromPlanner
@@ -506,7 +501,6 @@ class BehaviourBase(object):
 
         if terminate_services:
             self._getStatusService.shutdown()
-            self._getStateService.shutdown()
             self._startService.shutdown()
             self._stopService.shutdown()
             self._enable_service.shutdown()
@@ -867,10 +861,6 @@ class BehaviourBase(object):
     @interruptable.setter
     def interruptable(self, interruptable):
         self._interruptable = interruptable
-
-    @property
-    def preconditons(self):
-        return self._preconditions
 
     @property
     def name(self):

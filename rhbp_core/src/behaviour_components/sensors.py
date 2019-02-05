@@ -19,7 +19,6 @@ from rhbp_core.srv import TopicUpdateSubscribe
 from .pddl import create_valid_pddl_name
 
 import utils.rhbp_logging
-
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
 

@@ -1,13 +1,12 @@
 """
 Created on 23.04.2015
 
-@author: wypler,hrabia
+@author: wypler, hrabia
 """
 
 import sys
 import threading
 
-import numpy
 import rospy
 import itertools
 
@@ -131,8 +130,6 @@ class Manager(object):
         self.init_services_topics()
 
         self.__executedBehaviours = []
-        self.counter = 0
-        numpy.random.seed(0)
 
         rhbplog.loginfo("RHBP manager with prefix '%s' is started.", self._prefix)
 
@@ -549,10 +546,6 @@ class Manager(object):
 
         self.send_discovery()
 
-        # initialize the rl model in the first step
-        # if not self.rl_component_initialized:
-        #    self.rl_component.start_learning()
-        #    self.rl_component_initialized = True
         with self._step_lock:
             rhbplog.logdebug("###################################### STEP {0} ######################################"
                              .format(self._stepCounter))
@@ -996,7 +989,7 @@ class Manager(object):
         return self._activationThreshold
 
     @property
-    def executedBehaviours(self):
+    def executed_behaviours(self):
         return self.__executedBehaviours
 
     @activationThreshold.setter
