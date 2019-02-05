@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
-from rhbp_core.srv import Activate, SetInteger
+from rhbp_core.srv import Enable, SetInteger
 from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for goal
@@ -33,13 +33,13 @@ class GoalWidget(QWidget):
         generate the service prefix based on the current planner prefix value
         :return: str prefix
         """
-        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
+        return self._overviewPlugin.planner_prefix + '/' + self._name + '/'
 
     def __del__(self):
         self.__deleted = True
     
     def updateGUI(self, newValues):
-        self.activatedCheckbox.setChecked(newValues["activated"])
+        self.activatedCheckbox.setChecked(newValues["enabled"])
         self.fulfillmentDoubleSpinBox.setValue(newValues["fulfillment"])
         self.fulfillmentDoubleSpinBox.setToolTip("{0}".format(newValues["fulfillment"]))
         self.activeLabel.setText(newValues["active"])
@@ -54,7 +54,7 @@ class GoalWidget(QWidget):
         """
         assert self._name == msg.name
         self.updateGUIsignal.emit({
-                                   "activated" : msg.activated,
+                                   "enabled" : msg.enabled,
                                    "fulfillment" : msg.satisfaction,
                                    "active" : str(msg.active),
                                    "priority" : msg.priority,
@@ -63,12 +63,12 @@ class GoalWidget(QWidget):
                                   })
     
     def activationCallback(self, status):
-        service_name = self._get_service_prefix() + 'Activate'
+        service_name = self._get_service_prefix() + 'Enable'
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
-        activateRequest = rospy.ServiceProxy(service_name, Activate)
+        activateRequest = rospy.ServiceProxy(service_name, Enable)
         activateRequest(status)
-        rospy.logdebug("Set activated of %s goal to %s", self._name, status)
+        rospy.logdebug("Set enabled of %s goal to %s", self._name, status)
        
     def setPriorityCallback(self):
         service_name = self._get_service_prefix() + 'Priority'

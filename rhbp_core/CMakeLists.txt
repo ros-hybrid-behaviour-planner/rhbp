@@ -11,11 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   ffp
+  dynamic_reconfigure
 )
-
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -49,15 +46,12 @@ catkin_python_setup()
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  Activation.msg
   Wish.msg
   Correlation.msg
   Status.msg
   PlannerStatus.msg
   DiscoverInfo.msg
-  ConditionValue.msg
-  ConditionState.msg
-  InputState.msg
-  ActivationState.msg
   SensorValue.msg
 )
 
@@ -67,18 +61,17 @@ add_service_files(
   AddBehaviour.srv
   AddGoal.srv
   GetStatus.srv
-  GetState.srv
   RemoveBehaviour.srv
   RemoveGoal.srv
   ForceStart.srv
-  Activate.srv
+  Enable.srv
   SetInteger.srv
   GetPDDL.srv
   TopicUpdateSubscribe.srv
   SetStepping.srv
   GetStepping.srv
-  GetActivation.srv
-  TrainBatches.srv
+  GetPaused.srv
+  PlanWithGoal.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -109,10 +102,9 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/Manager.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -212,10 +204,11 @@ install(PROGRAMS
 catkin_add_nosetests(src/tests)
 
 find_package(rostest REQUIRED)
+add_rostest(test/condition_elements_test.test)
 add_rostest(test/dynamic_sensor_test.test)
 add_rostest(test/goal_test.test)
 add_rostest(test/greedy_activator_test.test)
 add_rostest(test/manager_test.test)
 add_rostest(test/network_behavior_test.test)
-add_rostest(test/topic_listener_test.test)
 add_rostest(test/simple_sensor_test.test)
+add_rostest(test/topic_listener_test.test)

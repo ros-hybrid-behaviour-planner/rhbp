@@ -1,5 +1,6 @@
 string name
 bool independentFromPlanner
 bool requiresExecutionSteps
+string type
 ---
 

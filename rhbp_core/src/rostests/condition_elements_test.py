@@ -15,7 +15,7 @@ import rospy
 import rostest
 
 from behaviour_components.activators import LinearActivator
-from behaviour_components.conditions import Condition, MultiSensorCondition
+from behaviour_components.conditions import Condition
 from behaviour_components.managers import Manager
 from behaviour_components.sensors import Sensor
 from behaviour_components.behaviours import BehaviourBase
@@ -24,18 +24,8 @@ from behaviour_components.condition_elements import Effect
 PKG = 'rhbp_core'
 
 """
-Testing condition elements, requires running rosmaster
+Testing condition elements, requires running roscore
 """
-
-class AverageSensorSatisfactionCondition(MultiSensorCondition):
-
-    def __init__(self, sensors, activator, name=None, optional=False):
-        super(AverageSensorSatisfactionCondition, self).__init__(sensors=sensors, activator=activator, name=name, optional=optional)
-
-    def _reduceSatisfaction(self):
-        sum_values = sum(self._normalizedSensorValues.values())
-        cnt = len(self._normalizedSensorValues)
-        return sum_values/cnt
 
 
 class TestConditionElements(unittest.TestCase):
@@ -83,28 +73,18 @@ class TestConditionElements(unittest.TestCase):
 
         sensor2 = Sensor()
         sensor2.update(newValue=0.4)
-        average_condition = AverageSensorSatisfactionCondition(sensors=[sensor1,sensor2],activator=activator_decreasing)
-        average_condition.sync()
-        average_condition.updateComputation()
 
-        wish_average = average_condition.getWishes()
-
-        average_precon_pddl = average_condition.getPreconditionPDDL(satisfaction_threshold=satisfaction_threshold)
-        average_state = average_condition.getStatePDDL()
-
-        behaviour1 = BehaviourBase("behaviour_1", plannerPrefix=planner_prefix)
+        behaviour1 = BehaviourBase("behaviour_1", planner_prefix=planner_prefix)
 
         behaviour1.add_effect(Effect(sensor_name=sensor1.name,indicator=-0.1, sensor_type=float))
 
-        behaviour1.addPrecondition(condition_increasing)
+        behaviour1.add_precondition(condition_increasing)
 
-        behaviour2 = BehaviourBase("behaviour_2", plannerPrefix=planner_prefix)
+        behaviour2 = BehaviourBase("behaviour_2", planner_prefix=planner_prefix)
 
         behaviour2.add_effect(Effect(sensor_name=sensor1.name, indicator=0.1, sensor_type=float))
 
-        behaviour2.addPrecondition(condition_decreasing)
-
-        behaviour2.addPrecondition(average_condition)
+        behaviour2.add_precondition(condition_decreasing)
 
         m.step()
         m.step()
@@ -123,6 +103,6 @@ class TestConditionElements(unittest.TestCase):
         # goal_proxy.sync()
         # self.assertTrue(goal_proxy.satisfied, 'Goal is not satisfied')
 
+
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'test_condition_elements_node', TestConditionElements)
-    rospy.spin()

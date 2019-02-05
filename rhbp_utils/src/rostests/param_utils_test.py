@@ -30,6 +30,8 @@ class TestParamUtils(unittest.TestCase):
 
         self._manager_prefix = "TestParamUtils_manager" + str(time.time()).replace('.', '')
 
+        rospy.init_node('param_utils_test_node', log_level=rospy.DEBUG)
+
     def start_manager_node(self, prefix=""):
         """
         start the manager node in order to successfully launch behaviours
@@ -115,7 +117,7 @@ class TestParamUtils(unittest.TestCase):
         self.assertEquals(False, test_value)
 
         behaviour = ParamSetterBehaviour(name="Test", param=self.param_name_bool, new_value=True,
-                                         plannerPrefix=self._manager_prefix)
+                                         planner_prefix=self._manager_prefix)
         # force manual start
         behaviour.start()
 

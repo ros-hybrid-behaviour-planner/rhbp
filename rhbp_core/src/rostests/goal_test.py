@@ -50,10 +50,9 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
-        goal = GoalBase(method_prefix + 'CentralGoal', plannerPrefix=planner_prefix)
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
+        goal = GoalBase(method_prefix + 'CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
 
         for x in range(0, 3, 1):
@@ -75,9 +74,8 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
         goal = OfflineGoal('CentralGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
         m.add_goal(goal)
@@ -102,10 +100,9 @@ class TestGoals(unittest.TestCase):
         sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
         condition = Condition(sensor, BooleanActivator())
 
-        pddl_function_name = condition.getFunctionNames()[0]
-        SetTrueBehavior(effect_name=pddl_function_name, topic_name=topic_name,
-                        name=method_prefix + "SetTrue", plannerPrefix=planner_prefix)
-        goal = PublisherGoal(method_prefix + 'PublisherGoal', plannerPrefix=planner_prefix)
+        SetTrueBehavior(effect_name=sensor.name, topic_name=topic_name,
+                        name=method_prefix + "SetTrue", planner_prefix=planner_prefix)
+        goal = PublisherGoal(method_prefix + 'PublisherGoal', planner_prefix=planner_prefix)
         goal.add_condition(condition)
 
         goal_activated_condition = goal.create_condition()
@@ -120,7 +117,7 @@ class TestGoals(unittest.TestCase):
 
         goal_proxy = m.goals[0]
         goal_proxy.fetchStatus(2)
-        self.assertFalse(goal_proxy.activated, 'Goal still activated')
+        self.assertFalse(goal_proxy.enabled, 'Goal still enabled')
         # manually updating this conditions because it is not registered somewhere
         goal_activated_condition.sync()
         goal_activated_condition.updateComputation()

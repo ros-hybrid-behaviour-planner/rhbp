@@ -26,6 +26,7 @@ class Planner:
         """
         pass
 
+
 class MetricFFSearchMode(object):
     """
     Metric FF search modes
@@ -36,6 +37,7 @@ class MetricFFSearchMode(object):
     A_STAR_WEIGHTED = 3         #Weighted A* (cost minimization: YES)
     A_STAR_EPSILON = 4          #A*epsilon (cost minimization: YES)
     EHC_H_A_STAR_EPSILON = 5    #EHC+H then A*epsilon (cost minimization: YES)
+
 
 class MetricFF(Planner):
 
@@ -48,5 +50,5 @@ class MetricFF(Planner):
 
     def plan(self, domain_pddl, problem_pddl):
         return ffp.plan(domainPDDL=domain_pddl, problemPDDL=problem_pddl, searchMode=self.search_mode,
-                        upperCostBound=self.upper_bound, weight=self.weight, costMinimization =  self.cost_minimization,
-                        debug = self.debug)
+                        upperCostBound=self.upper_bound, weight=self.weight, costMinimization=self.cost_minimization,
+                        debug=self.debug)

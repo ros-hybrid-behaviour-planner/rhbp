@@ -7,7 +7,8 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
-from rhbp_core.srv import Activate, ForceStart, SetInteger
+from rhbp_core.srv import Enable, ForceStart, SetInteger
+from rhbp_core.msg import Status
 from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for Behaviour
@@ -35,7 +36,7 @@ class BehaviourWidget(QWidget):
         self.__deleted = True
     
     def updateGUI(self, newValues):
-        self.activatedCheckbox.setChecked(newValues["activated"])
+        self.activatedCheckbox.setChecked(newValues["enabled"])
         self.satisfactionDoubleSpinBox.setValue(newValues["satisfaction"])
         self.satisfactionDoubleSpinBox.setToolTip("{0}".format(newValues["satisfaction"]))
         self.activeLabel.setText(newValues["active"])
@@ -44,13 +45,11 @@ class BehaviourWidget(QWidget):
         self.correlationsLabel.setText(newValues["correlations"])
         self.correlationsLabel.setToolTip(newValues["correlationsTooltip"])
         self.activationDoubleSpinBox.setValue(newValues["activation"])
-        self.activationDoubleSpinBox.setToolTip("{0}".format(newValues["activation"]))
+        self.activationDoubleSpinBox.setToolTip("{0}".format(newValues["activationTooltip"]))
         self.readyThresholdDoubleSpinBox.setValue(newValues["readyThreshold"])
         self.readyThresholdDoubleSpinBox.setToolTip("{0}".format(newValues["readyThreshold"]))
         self.executableLabel.setText(newValues["executable"])
         self.isExecutingLabel.setText(newValues["isExecuting"])
-        self.progressDoubleSpinBox.setValue(newValues["progress"])
-        self.progressDoubleSpinBox.setToolTip("{0}".format(newValues["progress"]))
         self.executionTimeSpinBox.setValue(newValues["executionTime"])
         if not self.prioritySpinBox.hasFocus():
             self.prioritySpinBox.setValue(newValues["priority"])
@@ -62,10 +61,11 @@ class BehaviourWidget(QWidget):
     def refresh(self, msg):
         """
         Refreshes the widget with data from the new message.
+        :type msg: Status
         """
         assert self._name == msg.name
         self.updateGUIsignal.emit({
-                                   "activated" : msg.activated,
+                                   "enabled" : msg.enabled,
                                    "satisfaction" : msg.satisfaction,
                                    "active" : str(msg.active),
                                    #TODO information could be extended here
@@ -75,12 +75,12 @@ class BehaviourWidget(QWidget):
                                    "correlations" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "correlationsTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.correlations)),
                                    "activation" : msg.activation,
+                                   "activationTooltip": "\n".join(map(lambda x: "{0}: {1}".format(x.name, x.activation), msg.activations)),
                                    "readyThreshold" : msg.threshold,
                                    "executable" : str(msg.executable),
                                    "isExecuting" : str(msg.isExecuting),
                                    "executionTimeout" : msg.executionTimeout,
                                    "executionTime" : msg.executionTime,
-                                   "progress" : msg.progress,
                                    "priority" : msg.priority,
                                    "interruptable" : str(msg.interruptable),
                                    "independentFromPlanner": str(msg.independentFromPlanner)
@@ -91,18 +91,18 @@ class BehaviourWidget(QWidget):
         generate the service prefix based on the current planner prefix value
         :return: str prefix
         """
-        return self._overviewPlugin.plannerPrefix + '/' + self._name + '/'
+        return self._overviewPlugin.planner_prefix + '/' + self._name + '/'
     
     def activationCallback(self, status):
-        service_name = self._get_service_prefix() + 'Activate'
+        service_name = self._get_service_prefix() + 'Enable'
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
-        activateRequest = rospy.ServiceProxy(service_name, Activate)
+        activateRequest = rospy.ServiceProxy(service_name, Enable)
         activateRequest(status)
-        rospy.logdebug("Set activated of %s to %s", self._name, status)
+        rospy.logdebug("Set enabled of %s to %s", self._name, status)
         
     def forceStartCallback(self, status):
-        service_name = self._overviewPlugin.plannerPrefix + '/'+ 'ForceStart'
+        service_name = self._overviewPlugin.planner_prefix + '/'+ 'ForceStart'
         rospy.logdebug("Waiting for service %s", )
         rospy.wait_for_service(service_name)
         forceStartRequest = rospy.ServiceProxy(service_name, ForceStart)
@@ -128,4 +128,5 @@ class BehaviourWidget(QWidget):
         priorityRequest = rospy.ServiceProxy(service_name, SetInteger)
         priorityRequest(self.executionTimeoutSpinBox.value())
         rospy.logdebug("Set executionTimeout of %s to %s", self._name, self.executionTimeoutSpinBox.value())
-        
+
+

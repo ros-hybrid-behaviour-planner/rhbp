@@ -1,5 +1,6 @@
 string name
 float32 activation
+Activation[] activations
 Correlation[] correlations
 float32 satisfaction
 float32 threshold
@@ -7,11 +8,10 @@ Wish[] wishes
 bool isExecuting
 int32 executionTimeout
 int32 executionTime
-float32 progress
 bool active
 bool interruptable
 bool independentFromPlanner
 int32 priority
-bool activated
+bool enabled
 bool executable
 SensorValue[] sensor_values

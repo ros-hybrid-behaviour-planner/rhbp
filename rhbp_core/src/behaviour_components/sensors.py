@@ -9,7 +9,8 @@ from threading import Lock
 
 import rospy
 import re
-from std_msgs.msg import String
+import traceback
+from std_msgs.msg import String, Float64
 from utils.ros_helpers import get_topic_type
 from utils.topic_listener import TopicListener
 from utils.misc import FinalInitCaller, LogFileWriter
@@ -61,7 +62,9 @@ class Sensor(object):
         self._name = create_valid_pddl_name(self._name)
         self._optional = optional
         self._value = initial_value  # this is what it's all about. Of course, the type and how it is acquired will change depending on the specific sensor
+        self._value_update_time = rospy.Time.now()
         self._latestValue = initial_value
+        self._latest_value_update_time = self._value_update_time
         self._initial_value = initial_value
         self.rl_extension = RlExtension()
         Sensor._instanceCounter += 1
@@ -72,6 +75,7 @@ class Sensor(object):
         returns the just stored value
         """
         self._value = self._latestValue
+        self._value_update_time = self._latest_value_update_time
         return self._value
 
     def update(self, newValue):
@@ -81,10 +85,19 @@ class Sensor(object):
         :return:
         """
         self._latestValue = newValue
+        self._latest_value_update_time = rospy.Time.now()
 
     @property
     def value(self):
         return self._value
+
+    @property
+    def value_update_time(self):
+        """
+        Time stamp when the current value was fetched
+        :return: ROS time stamp
+        """
+        return self._value_update_time
 
     @property
     def latestValue(self):
@@ -115,6 +128,15 @@ class Sensor(object):
     @name.setter
     def name(self, newName):
         self._name = newName
+
+    def unregister(self):
+        """
+        Overwrite for any explicit cleanup operations
+        """
+        pass
+        
+    def __del__(self):
+        self.unregister()
 
 
 class RawTopicSensor(Sensor):
@@ -160,11 +182,11 @@ class RawTopicSensor(Sensor):
                 self._logFile = LogFileWriter(path="", filename=self._name, extension=".log")
                 self._logFile.write('{0}\n'.format(self._name))
         else:
-            rhbplog.logerr("Could not determine message type of: " + self._topic_name)
+            rhbplog.logerr("Could not determine message type of: %s. %s", self._topic_name, traceback.format_stack())
 
     def subscription_callback(self, msg):
         self.update(msg)
-        if (self.__print_updates):
+        if self.__print_updates:
             rhbplog.logdebug("%s received sensor message: %s of type %s", self._name, self._latestValue,
                              type(self._latestValue))
         if self._iShouldCreateLog:
@@ -174,7 +196,7 @@ class RawTopicSensor(Sensor):
     def topic_name(self):
         return self._topic_name
 
-    def __del__(self):
+    def unregister(self):
         self._sub.unregister()
 
 
@@ -196,7 +218,7 @@ class TopicSensor(RawTopicSensor):
         :param topic: see :class:RawTopicSensor
         :param name: see :class:RawTopicSensor
         :param message_type: see :class:RawTopicSensor
-        :param initial_value: see :class:RawTopicSensor
+        :param initial_value: see :class:RawTopicSensor + this value is also used in case attributes are inaccessible
         :param message_attr: the message attribute of the msg to use, to access nested attributes, separate attributes
          by TopicSensor.ATTRIBUTE_SEPARATOR; access tuple/list/dict attribute elements with e.g. 'data[0]'
         :param create_log: see :class:RawTopicSensor
@@ -206,6 +228,7 @@ class TopicSensor(RawTopicSensor):
                                           initial_value=initial_value, create_log=create_log,
                                           print_updates=print_updates)
         self._message_attr = message_attr
+        self._message_attr_original = message_attr # store unchanged version for logging
         if TopicSensor.ATTRIBUTE_INDEX_BEGIN in message_attr:
             self._has_index_attr = True
         else:
@@ -231,23 +254,32 @@ class TopicSensor(RawTopicSensor):
             index = index_elem[1:-1]  # remove [] from result
             if index.isdigit():
                 index = int(index)
-            return getattr(value, attr)[index]
+                return getattr(value, attr)[index]
         else:  # fallback
             return getattr(value, attr)
 
     def subscription_callback(self, msg):
-        if self._is_nested_attr:
-            msg_value = msg
-            for nested_attr in self._message_attr:
-                if self._has_index_attr:  # we use this to avoid complex parsing if not necessary
-                    msg_value = self._get_index_attribute(msg_value, nested_attr)
-                else:
-                    msg_value = getattr(msg_value, nested_attr)
-        else:
-            if self._has_index_attr:
-                msg_value = self._get_index_attribute(msg, self._message_attr)
+        try:
+            if self._is_nested_attr:
+                msg_value = msg
+                for nested_attr in self._message_attr:
+                    if self._has_index_attr:  # we use this to avoid complex parsing if not necessary
+                        msg_value = self._get_index_attribute(msg_value, nested_attr)
+                    else:
+                        msg_value = getattr(msg_value, nested_attr)
             else:
-                msg_value = getattr(msg, self._message_attr)
+                if self._has_index_attr:
+                    msg_value = self._get_index_attribute(msg, self._message_attr)
+                else:
+                    msg_value = getattr(msg, self._message_attr)
+        except IndexError:
+            rhbplog.logwarn("%s: attribute %s index out of bounds, returning initial value!",
+                            self.name, self._message_attr_original)
+            msg_value = self._initial_value
+        except AttributeError:
+            rhbplog.logwarn("%s: MSG has no attribute %s, returning initial value!",
+                            self.name, self._message_attr_original)
+            msg_value = self._initial_value
         super(TopicSensor, self).subscription_callback(msg_value)
 
 
@@ -279,7 +311,7 @@ class DynamicSensor(Sensor):
         :param initial_value: value, which will be used if no topic exists
         :param optional: see optional parameter of constructor from class Sensor
         :param topic_listener_name: name of topic listener
-        :param sensor_name: see name parameter of constructor from class Sensor
+        :param name: see name parameter of constructor from class Sensor
         :param expiration_time_values_of_active_topics: time in seconds,
                                                         after a value of a still existing topic is outdated
         :param expiration_time_values_of_removed_topics: time in seconds, after a value of a removed topic is outdated
@@ -392,7 +424,7 @@ class DynamicSensor(Sensor):
         """
         :param a: a received message
         :param b: another received message
-        :return: wether a is smaller than b
+        :return: whether a is smaller than b
         """
         if (hasattr(a, 'data') and hasattr(b, 'data')):
             return a.data < b.data
@@ -478,11 +510,13 @@ class AggregationSensor(Sensor):
     overwriting self._aggregate()
     """
 
-    def __init__(self, name, sensors, func=None, optional=False, initial_value=None):
+    def __init__(self, name, sensors, func=None, publish_aggregate=False, optional=False, initial_value=None):
         """
         :param sensors: list of other sensors to aggregate
         :param func: function that will be used to aggregate the sensor values, sensor values will be passed as a list
-            return should be an aggregated and normalised function value
+        :param publish_aggregate: if set to true the aggregated value will be published on a ROS topic, which name can
+               be retrieved with topic_name property
+        :return should be an aggregated and normalised function value
         """
         super(AggregationSensor, self).__init__(name=name, optional=optional, initial_value=initial_value)
         self._sensors = sensors
@@ -491,13 +525,39 @@ class AggregationSensor(Sensor):
         else:
             self._func = func
 
+        self._topic_name = self._name + "/aggregate"
+
+        if publish_aggregate:
+            self.__pub = rospy.Publisher(self._topic_name, Float64, queue_size=10)
+        else:
+            self.__pub = None
+
     def _aggregate(self, sensor_values):
+        """
+        callback to overwrite if used with inheritance
+        :param sensor_values: list of sensor values for aggregation
+        :return: aggregated float value
+        """
         raise NotImplementedError()
+        # return the aggregated values
 
     def sync(self):
 
         sensor_values = [sensor.sync() for sensor in self._sensors]
 
-        self._latestValue = self._func(sensor_values)
+        self.update(newValue=self._func(sensor_values))
 
-        self._value = self._latestValue
+        res = super(AggregationSensor, self).sync()
+
+        if self.__pub:
+            self.__pub.publish(self._value)
+
+        return res
+
+    @property
+    def topic_name(self):
+        return self._topic_name
+
+    @property
+    def sensors(self):
+        return self._sensors

@@ -4,8 +4,7 @@ Created on 05.01.2017
 @author: rieger
 '''
 
-from behaviour_components.activators import Activator, BooleanActivator, GreedyActivator
-from behaviour_components.conditions import Condition
+from behaviour_components.conditions import create_condition_from_effect
 from behaviour_components.behaviours import BehaviourBase
 from behaviour_components.goals import OfflineGoal
 from behaviour_components.managers import Manager
@@ -15,6 +14,7 @@ from utils.deprecation import deprecated
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.behaviours')
 
+
 class NetworkBehaviour(BehaviourBase):
     """
     Behavior, which encapsulates an additional manager and behaviors.
@@ -22,10 +22,12 @@ class NetworkBehaviour(BehaviourBase):
     """
 
     MANAGER_POSTFIX = "Manager"
+    TYPE_STRING = "Network"
 
     def __init__(self, name, requires_execution_steps=True,
                  only_running_for_deciding_interruptible=Manager.USE_ONLY_RUNNING_BEHAVIOURS_FOR_INTERRUPTIBLE_DEFAULT_VALUE,
-                 correlations = None, always_update_activation = False,
+                 correlations=None, always_update_activation=False,
+                 guarantee_decision=False,
                  **kwargs):
         """
         :param correlations: tuple <Effect>
@@ -33,15 +35,22 @@ class NetworkBehaviour(BehaviourBase):
         :param requires_execution_steps: whether the execution steps should be caused from the parent manager or not.
                 If not, the step method must be called manually
         :param always_update_activation: if set to True the entire activation calculation of the sub manager is updated on each behaviour computation update
+        :param guarantee_decision: if there are executable behaviours in the local network, adjust the thresholds until
+               at least one behaviour is selected
         :param kwargs: args for the manager, except the prefix arg
         """
         super(NetworkBehaviour, self).__init__(name=name, requires_execution_steps=requires_execution_steps, **kwargs)
+        if "interruptable" in kwargs:
+            rhbplog.logwarn("Interruptable parameter will be ignored in a NetworkBehaviour. Interruptable attribute is "
+                            "evaluated based on the running or registered parameters, "
+                            "see 'only_running_for_deciding_interruptible'")
         self.requires_execution_steps = requires_execution_steps
         self.always_update_activation = always_update_activation
+        self.guarantee_decision = guarantee_decision
         manager_args = {}
         manager_args.update(kwargs)
         manager_args['prefix'] = self.get_manager_prefix()
-        self.__manager = Manager(activated=False,
+        self.__manager = Manager(enabled=False,
                                  use_only_running_behaviors_for_interRuptible=only_running_for_deciding_interruptible,
                                  **manager_args)
 
@@ -50,15 +59,6 @@ class NetworkBehaviour(BehaviourBase):
 
         if correlations is not None:
             self.add_effects(correlations)
-
-    def updateComputation(self, manager_step):
-        super(NetworkBehaviour, self).updateComputation(manager_step)
-        if not self._isExecuting:
-            self.__manager.send_discovery()
-
-    def _restore_condition_name_from_pddl_function_name(self, pddl_function_name, sensor_name):
-        return Activator.restore_condition_name_from_pddl_function_name(pddl_function_name=pddl_function_name,
-                                                                        sensor_name=sensor_name)
 
     def get_manager_prefix(self):
         """
@@ -77,7 +77,7 @@ class NetworkBehaviour(BehaviourBase):
         self.__goal_counter += 1
         return name
 
-    def _create_goal(self, sensor, effect, goal_name, activator_name):
+    def _create_goal(self, sensor, effect, goal_name):
         """
         Generate goals, which made the manager trying to work infinitely on the given effect,
          until the network is stopped. Therefore the goal shouldn't reachable (except the goal for boolean effects)
@@ -85,19 +85,17 @@ class NetworkBehaviour(BehaviourBase):
         :param effect: instance of type  Effect
         :param goal_name: unique name for the goal
         :return: a goal, which causes the manager to work on the effect during the whole time
+        :raises RuntimeError: if the creation of a goal for an effect of this
+                type is not possible
         """
-        if effect.sensor_type == str(bool):
-            desired_value = True if effect.indicator > 0 else False
-            activator = BooleanActivator(name=activator_name, desiredValue=desired_value)
-            condition = Condition(activator=activator, sensor=sensor)
-            return OfflineGoal(name=goal_name,planner_prefix=self.get_manager_prefix(), permanent=True, conditions={condition})
-        if effect.sensor_type == str(int) or effect.sensor_type == str(float):
-            activator = GreedyActivator(maximize=effect.indicator > 0, step_size=abs(effect.indicator),
-                                        name=activator_name)
-            condition = Condition(activator=activator, sensor=sensor)
-            return OfflineGoal(goal_name, planner_prefix=self.get_manager_prefix(), permanent=True, conditions={condition})
-        raise RuntimeError(msg='Cant create goal for effect type \'' +
-            effect.sensor_type + '\'. Overwrite the method _create_goal to handle the type')
+
+        try:
+            condition = create_condition_from_effect(effect=effect, sensor=sensor)
+            return OfflineGoal(name=goal_name, planner_prefix=self.get_manager_prefix(), permanent=True,
+                               conditions={condition})
+        except RuntimeError:
+            raise RuntimeError(msg="Can't create goal for effect type '" +
+                                   effect.sensor_type + "'.Overwrite the method _create_goal to handle the type")
 
     @deprecated
     def add_correlations(self, correlations):
@@ -131,15 +129,9 @@ class NetworkBehaviour(BehaviourBase):
         Furthermore creates a goal for each Effect and registers it at the nested Manager
         :param sensor_effect: list of tuples of (Sensor, Effect)
         """
-        #TODO this might has to be revised
         for sensor, effect in sensor_effect:
             goal_name = self.__generate_goal_name(effect)
-            if not effect.activator_name:
-                activator_name = self._restore_condition_name_from_pddl_function_name(effect.sensor_name, sensor.name)
-            else:
-                activator_name = effect.activator_name
-            goal = self._create_goal(sensor=sensor, effect=effect, goal_name=goal_name,
-                                     activator_name=activator_name)
+            goal = self._create_goal(sensor=sensor, effect=effect, goal_name=goal_name)
             self.__manager.add_goal(goal)
             self._correlations.append(effect)
 
@@ -154,17 +146,20 @@ class NetworkBehaviour(BehaviourBase):
         super(NetworkBehaviour, self).updateComputation(manager_step)
 
         # only trigger the update if not already activated because then it would be executed anyhow
-        if self.always_update_activation and not self.__manager.activated:
+        if self.always_update_activation and not self.__manager.enabled:
             self.__manager.update_activation(plan_if_necessary=False)
 
+        if not self._isExecuting:
+            self.__manager.send_discovery()
+
     def do_step(self):
-        self.__manager.step()
+        self.__manager.step(guarantee_decision=self.guarantee_decision)
 
     def start(self):
-        self.__manager.activate()
+        self.__manager.enable()
 
     def stop(self):
-        self.__manager.deactivate()
+        self.__manager.disable()
 
     def _is_interruptible(self):
         return self.__manager.is_interruptible()

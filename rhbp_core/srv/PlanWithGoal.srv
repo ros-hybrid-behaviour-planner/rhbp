@@ -1,0 +1,5 @@
+string[] goal_names # goal names that are used for planning
+bool force_state_update
+---
+string[] plan_sequence # list of behaviour that fulfil the goal(s)
+

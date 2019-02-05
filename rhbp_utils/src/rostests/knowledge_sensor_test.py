@@ -11,13 +11,13 @@ import unittest
 import rospy
 import rostest
 import roslaunch
-from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor
+from rhbp_utils.knowledge_sensors import KnowledgeSensor, KnowledgeFactNumberSensor, KnowledgeFactCountSensor
 from knowledge_base.knowledge_base_client import KnowledgeBaseClient, KnowledgeBase
 
 PKG = 'rhbp_utils'
 
 """
-Integration test for KnowledgeSensor.
+Integration test for various KnowledgeSensor classes.
 """
 
 
@@ -25,7 +25,7 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestKnowledgeBaseSensor, self).__init__(*args, **kwargs)
 
-        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME
+        self.__knowledge_base_address = KnowledgeBase.DEFAULT_NAME + "KnowledgeBaseSensorTestSuite"
 
         # prevent influence of previous tests
         self.__message_prefix = 'TestKnowledgeBaseSensor' + str(time.time())
@@ -46,17 +46,23 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         launch = roslaunch.scriptapi.ROSLaunch()
         launch.start()
         self._kb_process = launch.launch(node)
+        rospy.sleep(1)
 
     def test_basic(self):
         """
         Tests sensor output, if the fact is added at runtime (and did not exist before)
         """
-        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_basic', 'pos', '*', '*'))
+        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_basic', 'pos', '*', '*'),
+                                 knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
         sensor.sync()
         self.assertFalse(sensor.value)
 
+        update_stamp = sensor._value_cache.update_time
         self.__client.push((self.__message_prefix, 'test_basic', 'pos', '42', '0'))
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
 
         sensor.sync()
         self.assertTrue(sensor.value)
@@ -66,20 +72,26 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         Tests sensor output , if the fact is removed
         """
         test_tuple = (self.__message_prefix, 'test_remove', 'pos', '42', '0')
-        self.__client.push(test_tuple)
 
-        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_remove', 'pos', '*', '*'))
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        sensor = KnowledgeSensor(pattern=(self.__message_prefix, 'test_remove', 'pos', '*', '*'),
+                                 knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
+        update_stamp = sensor._value_cache.update_time
+        self.__client.push(test_tuple)
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
         sensor.sync()
         self.assertTrue(sensor.value)
 
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        update_stamp = sensor._value_cache.update_time
 
         removed_facts = self.__client.pop(test_tuple)
 
         self.assertIsNotNone(removed_facts, "No fact removed")
 
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
 
         sensor.sync()
 
@@ -89,29 +101,83 @@ class TestKnowledgeBaseSensor(unittest.TestCase):
         """
         Test KnowledgeFactIntSensor
         """
+
         initial_value = 1337
         sensor_pattern = (self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', '*')
-        sensor = KnowledgeFactNumberSensor(pattern=sensor_pattern, initial_value=initial_value)
+        sensor = KnowledgeFactNumberSensor(pattern=sensor_pattern, initial_value=initial_value,
+                                           knowledge_base_name=self.__knowledge_base_address)
+        rospy.sleep(0.1)
+
         sensor.sync()
         self.assertEquals(sensor.value, initial_value)
 
         test_value = 42
 
+        update_stamp = sensor._value_cache.update_time
         # regular operation
         self.__client.push((self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', str(test_value)))
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
 
         sensor.sync()
         self.assertEquals(sensor.value, test_value)
 
+        update_stamp = sensor._value_cache.update_time
         # illegal operation with non integer value
-        self.__client.update(pattern=sensor_pattern, new=(self.__message_prefix, 'test_knowledge_fact_int_sensor',
-                                                          'number', "NO_NUMBER"))
-        rospy.sleep(1.0)  # long sleep times are really required here to make sure that all ROS msgs are transferred
+        new_tuple = (self.__message_prefix, 'test_knowledge_fact_int_sensor', 'number', "NO_NUMBER")
+        self.assertEquals(self.__client.update(pattern=sensor_pattern, new=new_tuple), True)
+        rospy.sleep(0.1)
+        while update_stamp > sensor.value_update_time:
+            rospy.sleep(0.5)
 
         sensor.sync()
         rospy.loginfo(sensor.value)
         self.assertEquals(sensor.value, initial_value)
+
+    def test_knowledge_fact_count_sensor(self):
+        """
+        Test KnowledgeFactCountSensor
+        """
+
+        initial_value = 0
+        sensor_pattern = (self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', '*')
+        sensor = KnowledgeFactCountSensor(pattern=sensor_pattern, knowledge_base_name=self.__knowledge_base_address,
+                                          initial_value=initial_value)
+        rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, initial_value)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.push((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'a'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 1)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.push((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'b'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 2)
+
+        update_stamp = sensor._value_cache.update_time
+        # regular operation
+        self.__client.pop((self.__message_prefix, 'test_knowledge_fact_count_sensor', 'test', 'b'))
+        rospy.sleep(0.1)
+        while update_stamp == sensor._value_cache.update_time:
+            rospy.sleep(0.1)
+
+        sensor.sync()
+        self.assertEquals(sensor.value, 1)
 
 
 if __name__ == '__main__':

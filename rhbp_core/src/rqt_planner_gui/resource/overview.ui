@@ -43,7 +43,7 @@
         <x>0</x>
         <y>0</y>
         <width>509</width>
-        <height>247</height>
+        <height>267</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -71,19 +71,6 @@
           <property name="bottomMargin">
            <number>5</number>
           </property>
-          <item row="6" column="1">
-           <widget class="QLabel" name="runningBehavioursLabel">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
           <item row="0" column="2">
            <widget class="QPushButton" name="plannerPrefixPushButton">
             <property name="sizePolicy">
@@ -113,6 +100,73 @@
             </property>
            </widget>
           </item>
+          <item row="12" column="0" colspan="3">
+           <widget class="QPushButton" name="pausePushButton">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>pause</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="runningBehavioursDescriptionLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Running Behaviours</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="plannerPrefixComboBox">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="0">
+           <widget class="QPushButton" name="stepPushButton">
+            <property name="text">
+             <string>step</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="currentStepLabel">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="10" column="1">
+           <widget class="QCheckBox" name="automaticSteppingCheckBox">
+            <property name="text">
+             <string>Automatic stepping</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="currentStepDescriptionLabel">
+            <property name="text">
+             <string>Current Step</string>
+            </property>
+           </widget>
+          </item>
           <item row="2" column="0">
            <widget class="QLabel" name="activationThresholdLabel">
             <property name="sizePolicy">
@@ -126,7 +180,7 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="0">
+          <item row="8" column="0">
            <widget class="QLabel" name="influencedSensorsDescriptionLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -191,7 +245,7 @@
             </property>
            </widget>
           </item>
-          <item row="7" column="1">
+          <item row="8" column="1">
            <widget class="QLabel" name="influencedSensorsLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -204,68 +258,28 @@
             </property>
            </widget>
           </item>
-          <item row="10" column="0" colspan="3">
-           <widget class="QPushButton" name="pausePushButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
+          <item row="4" column="0">
+           <widget class="QLabel" name="planDescriptionLabel">
             <property name="text">
-             <string>pause</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
+             <string>Plan:</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="runningBehavioursDescriptionLabel">
+          <item row="4" column="1">
+           <widget class="QLabel" name="planLabel">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1" colspan="2">
+           <widget class="QLabel" name="runningBehavioursLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
-            <property name="text">
-             <string>Running Behaviours</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="plannerPrefixComboBox">
-            <property name="editable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="0">
-           <widget class="QPushButton" name="stepPushButton">
-            <property name="text">
-             <string>step</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="1">
-           <widget class="QCheckBox" name="automaticSteppingCheckBox">
-            <property name="text">
-             <string>Automatic stepping</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="currentStepDescriptionLabel">
-            <property name="text">
-             <string>Current Step</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLabel" name="currentStepLabel">
             <property name="text">
              <string/>
             </property>
@@ -295,7 +309,7 @@
         <x>0</x>
         <y>0</y>
         <width>509</width>
-        <height>342</height>
+        <height>322</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">

@@ -38,12 +38,14 @@ class KnowledgeBaseFactCache(object):
         self.__value_lock = threading.Lock()
         self.__update_listeners = []  # functions to call on update
         self.__update_time = None
+        self.__last_updated_fact = tuple()
 
         try:
-            rospy.wait_for_service(self.__example_service_name, timeout=10)
+            initial_timeout = timeout if timeout else 5 # use here also provided timeout for initial non crucial waiting
+            rospy.wait_for_service(self.__example_service_name, initial_timeout)
             self.__register_for_updates()
         except rospy.ROSException:
-            rhbplog.loginfo(
+            rhbplog.logwarn(
                 'The following knowledge base node is currently not present. Connection will be established later: '
                 + knowledge_base_name)
 
@@ -56,6 +58,7 @@ class KnowledgeBaseFactCache(object):
         rospy.Subscriber(removed_topic_name, FactRemoved, self.__handle_remove_update)
         rospy.Subscriber(update_topic_name, FactUpdated, self.__handle_fact_update)
         self.update_state_manually()
+        rospy.sleep(0.1)  # Short sleep guarantees that we do not miss updates (triggering publisher queue processing)
         self.__initialized = True
         rhbplog.logdebug('Connected to knowledge base: ' + self.__knowledge_base_name)
 
@@ -64,10 +67,11 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was added
         :param fact_added: empty message
         """
+        tuple_fact = tuple(fact_added.content)
         with self.__value_lock:
-            if fact_added.content not in self.__contained_facts:
-                self.__contained_facts.append(tuple(fact_added.content))
-                self.__update_time = rospy.get_time()
+            if tuple_fact not in self.__contained_facts:
+                self.__contained_facts.append(tuple_fact)
+                self._cache_updated(tuple_fact)
         self._notify_listeners()
 
     def __handle_remove_update(self, fact_removed):
@@ -75,28 +79,33 @@ class KnowledgeBaseFactCache(object):
         handles message, that a matching fact was removed
         :param fact_removed: FactRemoved, as defined ROS message
         """
+        tuple_fact = tuple(fact_removed.fact)
         with self.__value_lock:
             try:
-                self.__contained_facts.remove(tuple(fact_removed.fact))
+                self.__contained_facts.remove(tuple_fact)
             except ValueError:
                 pass
-        self.__update_time = rospy.get_time()
+        self._cache_updated(tuple_fact)
         self._notify_listeners()
 
     def __handle_fact_update(self, fact_updated):
+        tuple_fact_new = tuple(fact_updated.new)
         with self.__value_lock:
-            if fact_updated.new not in self.__contained_facts:
-                self.__contained_facts.append(tuple(fact_updated.new))
+
+            if tuple_fact_new not in self.__contained_facts:
+                self.__contained_facts.append(tuple_fact_new)
 
             for removed_fact in fact_updated.removed:
-                try:
-                    self.__contained_facts.remove(tuple(removed_fact.content))
-                except ValueError:
-                    pass
-        self.__update_time = rospy.get_time()
+                tuple_fact_old = tuple(removed_fact.content)
+                if tuple_fact_old != tuple_fact_new:
+                    try:
+                        self.__contained_facts.remove(tuple_fact_old)
+                    except ValueError:
+                        pass
+        self._cache_updated(tuple_fact_new)
         self._notify_listeners()
 
-    def update_state_manually(self):
+    def update_state_manually(self, enable_listener_notification=True):
         """
         requests/polls from knowledge base, whether a matching state exists
         :return: whether matching fact exists
@@ -104,7 +113,10 @@ class KnowledgeBaseFactCache(object):
         new_content = self.__client.all(self.__pattern)
         with self.__value_lock:
             self.__contained_facts = new_content
-            self.__update_time = rospy.get_time()
+            last_fact = self.__contained_facts[-1] if len(self.__contained_facts) > 0 else tuple()
+            self._cache_updated(last_fact)  # last element of all facts
+            if enable_listener_notification:
+                self._notify_listeners()
             return not (len(self.__contained_facts) == 0)
 
     def __ensure_initialization(self):
@@ -124,10 +136,61 @@ class KnowledgeBaseFactCache(object):
         with self.__value_lock:
             return not (len(self.__contained_facts) == 0)
 
+    def does_sub_fact_exist(self, pattern):
+        """
+        Returns whether a fact contained in this KnowledgeBaseFactCache and additionally matching the
+        given pattern exists.
+        :param pattern: the pattern to look for
+        :return: True if a cached fact matches the given pattern, else False
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            for f in self.__contained_facts:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
+                        break
+                else:
+                    return True
+        return False
+
     def get_all_matching_facts(self):
         self.__ensure_initialization()
         with self.__value_lock:
             return copy.deepcopy(self.__contained_facts)
+
+    def get_matching_sub_fact(self, pattern):
+        """
+        Returns the first fact that matches the given pattern, which should be a subset (i.e. more specific)
+        of the pattern used during initialization of this KnowledgeBaseFactCache.
+        :param pattern: the pattern to look for
+        :return: the first contained fact matching the given pattern
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            for f in self.__contained_facts:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
+                        break
+                else:
+                    return copy.deepcopy(f)
+
+    def get_all_matching_sub_facts(self, pattern):
+        """
+        Returns all facts that match the given pattern, which should be a subset (i.e. more specific) of the pattern
+        used during initialization of this KnowledgeBaseFactCache.
+        :param pattern: the pattern that facts should match
+        :return: a list of contained facts matching the pattern
+        """
+        self.__ensure_initialization()
+        with self.__value_lock:
+            result = []
+            for f in self.__contained_facts:
+                for i, pattern_elem in enumerate(pattern):
+                    if pattern_elem != KnowledgeBase.PLACEHOLDER and not pattern_elem == f[i]:
+                        break
+                else:
+                    result.append(copy.deepcopy(f))
+            return result
 
     def _notify_listeners(self):
         """
@@ -152,6 +215,15 @@ class KnowledgeBaseFactCache(object):
         if func in self.__update_listeners:
             self.__update_listeners.remove(func)
 
+    def _cache_updated(self, fact):
+        """
+        function should be triggered when the cache was updated
+        it stores some information about the last update
+        :param fact: last updated fact
+        """
+        self.__update_time = rospy.Time.now()
+        self.__last_updated_fact = fact
+
     @property
     def update_time(self):
         """
@@ -159,3 +231,11 @@ class KnowledgeBaseFactCache(object):
         :return: ROSTime of last fact change
         """
         return self.__update_time
+
+    @property
+    def last_updated_fact(self):
+        """
+        Get last updated fact
+        :return: fact
+        """
+        return self.__last_updated_fact

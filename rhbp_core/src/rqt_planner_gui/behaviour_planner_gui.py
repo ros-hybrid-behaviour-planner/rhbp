@@ -1,6 +1,6 @@
 ## rqt widget showing global behaviour planner attributes and providing a container for behaviour widgets
 #Created on 10.08.2015
-#@author: stephan wypler
+#@author: wypler, hrabia
 
 import os
 import rospy
@@ -12,10 +12,11 @@ from python_qt_binding.QtWidgets import QWidget
 from behaviourWidget import BehaviourWidget
 from goalWidget import GoalWidget
 from rhbp_core.msg import PlannerStatus, DiscoverInfo
-from rhbp_core.srv import SetStepping, GetStepping
+from rhbp_core.srv import SetStepping, GetStepping, GetPaused
 from PyQt5.QtCore import pyqtSignal
 from behaviour_components.managers import Manager
 from threading import Lock
+import traceback
 
 
 class Overview(Plugin):
@@ -29,11 +30,11 @@ class Overview(Plugin):
     def __init__(self, context):
         super(Overview, self).__init__(context)
         
-        self.__behaviour_widgets = {} # this stores all behaviours
+        self.__behaviour_widgets = {}  # this stores all behaviours
         self.__behaviour_names = []
         self.__goal_widgets = {}      # this stores all goals
         self.__goal_names = []
-        self.__plannerPrefix = ""
+        self.__planner_prefix = ""
         
         # Give QObjects reasonable names
         self.setObjectName('behaviour_planner_overview')
@@ -44,12 +45,12 @@ class Overview(Plugin):
         from argparse import ArgumentParser
         parser = ArgumentParser()
         # Add argument(s) to the parser.
-        parser.add_argument("-p", "--plannerPrefix", dest="plannerPrefix", help="Specify the planner prefix")
+        parser.add_argument("-p", "--planner_prefix", dest="planner_prefix", help="Specify the planner prefix")
         args, unknowns = parser.parse_known_args(context.argv())
-        if args.plannerPrefix:
-            self.__plannerPrefix = args.plannerPrefix
-            self._planner_prefix_collection.append(self.__plannerPrefix)
-            rospy.loginfo("using planner prefix %s", self.__plannerPrefix)
+        if args.planner_prefix:
+            self.__planner_prefix = args.planner_prefix
+            self._planner_prefix_collection.append(self.__planner_prefix)
+            rospy.loginfo("using planner prefix %s", self.__planner_prefix)
 
         self.__behaviour_lock = Lock()
         self.__goal_lock = Lock()
@@ -75,9 +76,7 @@ class Overview(Plugin):
         self._widget.plannerPrefixPushButton.clicked.connect(self.set_planner_prefix_callback)
         self._widget.pausePushButton.toggled.connect(self.pauseButtonCallback)
         self._widget.stepPushButton.clicked.connect(self.step_push_button_callback)
-        self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_Callback)
-        #this fire fore every key input
-        #self._widget.plannerPrefixComboBox.editTextChanged.connect(self.set_planner_prefix_callback)
+        self._widget.automaticSteppingCheckBox.toggled.connect(self._automatic_stepping_checkbox_callback)
         self._widget.plannerPrefixComboBox.activated.connect(self.set_planner_prefix_callback)
 
         # Connect signal so we can refresh Widgets from the main thread        
@@ -90,9 +89,16 @@ class Overview(Plugin):
 
         # subscribe to our information source
         self.__sub_planner_status = None
-        self.set_planner_prefix(self.__plannerPrefix)
+        self.set_planner_prefix(self.__planner_prefix)
 
-        self.__sub_planner_discovery = rospy.Subscriber(Manager.MANAGER_DISCOVERY_TOPIC, DiscoverInfo, self._planner_discovery_callback)
+        manager_paused = self._is_paused()
+
+        rospy.logdebug("Manager paused: " + str(manager_paused))
+
+        self.setPauseResumeButton(running=not manager_paused)
+
+        self.__sub_planner_discovery = rospy.Subscriber(Manager.MANAGER_DISCOVERY_TOPIC, DiscoverInfo,
+                                                        self._planner_discovery_callback)
         
     def updateGUI(self, newValues):
         self._widget.activationThresholdDoubleSpinBox.setValue(newValues["activationThreshold"])
@@ -101,7 +107,8 @@ class Overview(Plugin):
         self._widget.influencedSensorsLabel.setText(newValues["influencedSensors"])
         self._widget.runningBehavioursLabel.setText(newValues["runningBehaviours"])
         self._widget.currentStepLabel.setText(str(newValues["stepCounter"]))
-        self.setPauseResumeButton(True)  # if we receive updates the manager is running
+        self._widget.planLabel.setText(str(newValues["plan"]))
+        # self.setPauseResumeButton(True)  # if we receive updates the manager is running
     
     def addBehaviourWidget(self, name):
         self.__behaviour_widgets[name] = BehaviourWidget(name, self)
@@ -129,26 +136,32 @@ class Overview(Plugin):
         if running:
             self._widget.pausePushButton.setText("pause")
             self._widget.pausePushButton.setChecked(False)
+            try:
+                self._widget.stepPushButton.setEnabled(not self._is_automatic_stepping_enabled())
+            except:
+                self._widget.stepPushButton.setEnabled(False)
+
         else:
             self._widget.pausePushButton.setText("resume")
             self._widget.pausePushButton.setChecked(True)
+            self._widget.stepPushButton.setEnabled(True)
     
     def pauseButtonCallback(self, status):
         try:
-            if status == True:
-                service_name = self.__plannerPrefix + '/' + 'Pause'
+            if status is True:
+                service_name = self.__planner_prefix + '/' + 'Pause'
                 rospy.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-                pauseRequest = rospy.ServiceProxy(service_name, Empty)
-                pauseRequest()
-                self.setPauseResumeButton(False)
+                pause_request = rospy.ServiceProxy(service_name, Empty)
+                pause_request()
             else:
-                service_name = self.__plannerPrefix + '/' + 'Resume'
+                service_name = self.__planner_prefix + '/' + 'Resume'
                 rospy.logdebug("Waiting for service %s", service_name)
                 rospy.wait_for_service(service_name)
-                resumeRequest = rospy.ServiceProxy(service_name, Empty)
-                resumeRequest()
-                self.setPauseResumeButton(True)
+                resume_request = rospy.ServiceProxy(service_name, Empty)
+                resume_request()
+            # double checking if pausing/resuming worked
+            self.setPauseResumeButton(running=not self._is_paused())
         except Exception as e:
             rospy.logerr("error while toggling pause or resume: %s", str(e))
     
@@ -165,7 +178,10 @@ class Overview(Plugin):
                     self.addBehaviourRequest.emit(b.name)
                     rospy.logdebug("Added behaviour %s", b.name)
                 else:
-                    self.__behaviour_widgets[b.name].refresh(b)
+                    try:
+                        self.__behaviour_widgets[b.name].refresh(b)
+                    except KeyError:
+                        pass  # doing nothing because this only happens if an update takes too long
                 updated_behaviour_names.append(b.name)
 
             # check if we have to delete a behaviour widget
@@ -188,7 +204,10 @@ class Overview(Plugin):
                     self.addGoalRequest.emit(g.name)
                     rospy.logdebug("Added goal %s", g.name)
                 else:
-                    self.__goal_widgets[g.name].refresh(g)
+                    try:
+                        self.__goal_widgets[g.name].refresh(g)
+                    except KeyError:
+                        pass  # doing nothing because this only happens if an update takes too long
                 updated_goal_names.append(g.name)
 
             # check if we have to delete a goal widget
@@ -199,23 +218,29 @@ class Overview(Plugin):
                     rospy.logdebug("Removed goal %s", name)
 
     def step_push_button_callback(self):
-        service_name = self.__plannerPrefix + '/' + 'step'
+        service_name = self.__planner_prefix + '/step'
         rospy.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name, timeout=1)
-        stepRequest = rospy.ServiceProxy(service_name, Empty)
-        stepRequest()
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            stepRequest = rospy.ServiceProxy(service_name, Empty)
+            stepRequest()
+        except rospy.exceptions.ROSException:
+            rospy.logdebug("Service %s not available", service_name)
 
-    def _automatic_stepping_checkbox_Callback(self, status):
-        self._widget.stepPushButton.setEnabled(status)
+    def _automatic_stepping_checkbox_callback(self, status):
+        self._widget.stepPushButton.setEnabled(not status)
 
-        service_name = self.__plannerPrefix + '/' + 'set_automatic_stepping'
+        service_name = self.__planner_prefix + '/' + 'set_automatic_stepping'
         rospy.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name, timeout=1)
-        set_stepping = rospy.ServiceProxy(service_name, SetStepping)
-        set_stepping(status)
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            set_stepping = rospy.ServiceProxy(service_name, SetStepping)
+            set_stepping(status)
+        except rospy.exceptions.ROSException:
+            rospy.logdebug("Service %s not available", service_name)
 
     def _is_automatic_stepping_enabled(self):
-        service_name = self.__plannerPrefix + '/' + 'get_automatic_stepping'
+        service_name = self.__planner_prefix + '/' + 'get_automatic_stepping'
         rospy.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name, timeout=1)
         get_stepping = rospy.ServiceProxy(service_name, GetStepping)
@@ -223,6 +248,24 @@ class Overview(Plugin):
         if ret and ret.automatic_stepping:
             return True
         else:
+            return False
+
+    def _is_paused(self):
+        """
+        Determine if the manager is currently paused
+        :return: True if paused, False if running/not paused
+        """
+        service_name = self.__planner_prefix + '/' + 'GetPaused'
+        rospy.logdebug("Waiting for service %s", service_name)
+        try:
+            rospy.wait_for_service(service_name, timeout=1)
+            get_paused = rospy.ServiceProxy(service_name, GetPaused)
+            ret = get_paused()
+            if ret and ret.paused:
+                return True
+            else:
+                return False
+        except:
             return False
 
     def setActivationThresholdDecay(self):
@@ -233,7 +276,7 @@ class Overview(Plugin):
         self.set_planner_prefix(self._widget.plannerPrefixComboBox.currentText())
 
     def set_planner_prefix(self, planner_prefix):
-        self.__plannerPrefix = planner_prefix
+        self.__planner_prefix = planner_prefix
         if self.__sub_planner_status:
             self.__sub_planner_status.unregister()
         status_topic_name = planner_prefix + '/' + "Planner/plannerStatus"
@@ -246,10 +289,12 @@ class Overview(Plugin):
             enabled = self._is_automatic_stepping_enabled()
             rospy.loginfo("Automatic stepping enabled: " + str(enabled))
             self._widget.automaticSteppingCheckBox.setEnabled(True)
+            self._widget.automaticSteppingCheckBox.setChecked(enabled)
             self._widget.stepPushButton.setEnabled(not enabled)
         except:
             self._widget.automaticSteppingCheckBox.setEnabled(False)
             self._widget.stepPushButton.setEnabled(False)
+            self._widget.automaticSteppingCheckBox.setChecked(True)
 
     def _update_discovery(self, manager_prefix):
         """
@@ -279,29 +324,30 @@ class Overview(Plugin):
                                      "activationThresholdDecay" : msg.activationThresholdDecay,
                                      "influencedSensors" : ", ".join(msg.influencedSensors),
                                      "runningBehaviours" : ", ".join(msg.runningBehaviours),
-                                     "stepCounter": msg.stepCounter
+                                     "stepCounter": msg.stepCounter,
+                                     "plan": msg.plan
                                     }) 
         except Exception as e:
-            rospy.logerr("%s", e)
+            rospy.logerr("plannerStatusCallback:%s", traceback.format_exc())
     
     @property
-    def plannerPrefix(self):
-        return self.__plannerPrefix
+    def planner_prefix(self):
+        return self.__planner_prefix
         
     def shutdown_plugin(self):
         self.__sub_planner_status.unregister()
 
     def save_settings(self, plugin_settings, instance_settings):
         # TODO save intrinsic configuration, usually using:
-        rospy.loginfo("saving plannerPrefix setting")
-        instance_settings.set_value("plannerPrefix", self.__plannerPrefix)
+        rospy.loginfo("saving planner_prefix setting")
+        instance_settings.set_value("planner_prefix", self.__planner_prefix)
 
     def restore_settings(self, plugin_settings, instance_settings):
         # TODO restore intrinsic configuration, usually using:
-        rospy.loginfo("restoring plannerPrefix setting")
-        stored_planner_prefix = instance_settings.value("plannerPrefix")
+        rospy.loginfo("restoring planner_prefix setting")
+        stored_planner_prefix = instance_settings.value("planner_prefix")
         if type(stored_planner_prefix) == unicode:
-            stored_planner_prefix = stored_planner_prefix.encode('ascii','ignore')
+            stored_planner_prefix = stored_planner_prefix.encode('ascii', 'ignore')
         if stored_planner_prefix:
             rospy.loginfo("Using stored prefix: %s", stored_planner_prefix)
             self._update_discovery(stored_planner_prefix)
