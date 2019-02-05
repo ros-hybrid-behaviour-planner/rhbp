@@ -1,11 +1,10 @@
 """
 transforms values from rhbp to rl-values
-@author: lehmann
+@author: lehmann, hrabia
 """
 
 from rhbp_core.msg import SensorValue
-
-# TODO this entire implementation has to be double checked and revised!
+from behaviour_components.sensors import Sensor
 
 
 class SensorValueTransformer(object):
@@ -16,40 +15,36 @@ class SensorValueTransformer(object):
     def __init__(self):
         self.conditions = {}
 
+    def _create_sensor_value_msg(self, sensor):
+        """
+        create a SensorValue msg from a RHBP core sensor
+        :param sensor: a sensor
+        :type sensor: Sensor
+        :return: SensorValue
+        """
+        value = float(sensor.value)
+        sensor_value = SensorValue()
+        sensor_value.name = sensor.name
+        sensor_value.value = value
+        sensor_value.encoding = sensor.rl_extension.encoding
+        sensor_value.state_space = sensor.rl_extension.state_space
+        sensor_value.include_in_rl = sensor.rl_extension.include_in_rl
+        return sensor_value
+
     def get_value_of_condition(self, cond):
         """
-        gets the sensor values of a given condition 
+        gets the sensor values of a given condition
+        Function recursively goes through nested conditions
         :param cond: the condition
         :return: SensorValue: a object containing necessary parameter from the sensor
         """
-        # for getting the right sensor values it can be found in different locations
-        # this function looks through one after another and returns the sensor value if found
         try:
-            value = float(cond._sensor.value)
-            sensor_value = SensorValue()
-            sensor_value.name = cond._sensor._name
-            sensor_value.value = value
-            sensor_value.encoding = cond._sensor.rl_extension.encoding
-            sensor_value.state_space = cond._sensor.rl_extension.state_space
-            sensor_value.include_in_rl = cond._sensor.rl_extension.include_in_rl
-            return sensor_value
-        except Exception as e:
-            pass
-        try:
-
-            value = float(cond._condition._sensor.value)
-            sensor_value = SensorValue()
-            sensor_value.name = cond._condition._sensor._name
-            sensor_value.value = value
-            sensor_value.encoding = cond._condition._sensor.rl_extension.encoding
-            sensor_value.state_space = cond._condition._sensor.rl_extension.state_space
-            sensor_value.include_in_rl = cond._condition._sensor.rl_extension.include_in_rl
-            return sensor_value
+            return self._create_sensor_value_msg(cond.sensor)
         except Exception:
             pass
         try:
             list = []
-            for c in cond._conditions:
+            for c in cond.conditions:
                 value = self.get_value_of_condition(c)
                 if value is not None:
                     list.append(self.get_value_of_condition(c))
@@ -85,8 +80,7 @@ class SensorValueTransformer(object):
                 value = self.get_value_of_condition(p)
                 if isinstance(value, (list,)):
                     list_of_sensor_values.extend(self.get_values_of_list(value))
-
                 else:
-                    if (value is not None):
+                    if value is not None:
                         list_of_sensor_values.append(value)
         return list_of_sensor_values
