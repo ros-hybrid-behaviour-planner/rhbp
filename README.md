@@ -9,6 +9,8 @@ RHBP is a planning and decision making component for ROS. The hybrid approach is
 3. **[metric_ff](metric_ff/README.md):** The PDDL-compatible symbolic planner that is used to provide long-term guidance to the behaviour network. The planner is used by rhbp_core.
 4. **ffp:** Just a wrapper for metric_ff allowing to run the planning process in a separate child process in order to avoid existing memory issues of the original metric_ff implementation.
 5. **[knowledge_base](knowledge_base/README.md):** A versatile ROS knowledge base implementation based on the tuple space implementation lindypy. Further documentation inside the [package](knowledge_base/README.md)
+6. **[rhbp_decomposition](rhbp_decomposition/README.md):** RHBP extension that enables automated task decomposition, allocation and delegation. Please see [package](rhbp_decomposition/README.md) for more details.
+6. **[rhbp_rl](rhbp_rl/README.md):** RHBP extension that integrates reinforcement learning as additional activation source. Please see [package](rhbp_rl/README.md) for more details.
 
 ## Build
 
