@@ -336,6 +336,7 @@ class Negation(Conditonal):
         assert isinstance(conditional, Conditonal), "Only Conditionals can be negated"
         self._condition = conditional
         self._name = "not_"+self._condition._name
+
     def sync(self):
         self._condition.sync()
 
@@ -396,7 +397,7 @@ class Negation(Conditonal):
 
     @property
     def conditions(self):
-        return self._condition
+        return [self._condition]
     
     def __str__(self):
         return "{0} of {1}".format(self._name, self._condition)
