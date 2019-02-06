@@ -406,7 +406,8 @@ class GoalProxy(AbstractGoalRepresentation):
         self.__consecutive_timeouts += 1
 
         if self.__consecutive_timeouts > self.MAX_CONSECUTIVE_TIMEOUTS:
-            rhbplog.logerr("Too many consecutive timeouts for goal '%s'! Fulfillment will be reset", self._name)
+            if logging_enabled:
+                rhbplog.logerr("Too many consecutive timeouts for goal '%s'! Fulfillment will be reset", self._name)
             self._active = False
             self.fulfillment = 0.0
 
