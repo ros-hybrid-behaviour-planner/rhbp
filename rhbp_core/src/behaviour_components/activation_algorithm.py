@@ -12,7 +12,6 @@ from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
 from rhbp_core.msg import Activation
 import utils.rhbp_logging
-
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.planning')
 
 
@@ -221,13 +220,13 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         inhibition_conflictors = self.get_inhibition_from_conflictors(ref_behaviour)[0]
         activation_plan = self.get_activation_from_plan(ref_behaviour)[0]
 
-        rhbplog.loginfo("\t%s: activation from preconditions: %s", ref_behaviour, activation_precondition)
-        rhbplog.loginfo("\t%s: activation from goals: %s", ref_behaviour, activation_goals)
-        rhbplog.loginfo("\t%s: inhibition from goals: %s", ref_behaviour, inhibition_goals)
-        rhbplog.loginfo("\t%s: activation from predecessors: %s", ref_behaviour, activation_predecessors)
-        rhbplog.loginfo("\t%s: activation from successors: %s", ref_behaviour, activation_successors)
-        rhbplog.loginfo("\t%s: inhibition from conflicted: %s", ref_behaviour, inhibition_conflictors)
-        rhbplog.loginfo("\t%s: activation from plan: %s", ref_behaviour, activation_plan)
+        rhbplog.loginfo("\t%s: activation from preconditions: %2.3f", ref_behaviour, activation_precondition)
+        rhbplog.loginfo("\t%s: activation from goals: %2.3f", ref_behaviour, activation_goals)
+        rhbplog.loginfo("\t%s: inhibition from goals: %2.3f", ref_behaviour, inhibition_goals)
+        rhbplog.loginfo("\t%s: activation from predecessors: %2.3f", ref_behaviour, activation_predecessors)
+        rhbplog.loginfo("\t%s: activation from successors: %2.3f", ref_behaviour, activation_successors)
+        rhbplog.loginfo("\t%s: inhibition from conflicted: %2.3f", ref_behaviour, inhibition_conflictors)
+        rhbplog.loginfo("\t%s: activation from plan: %2.3f", ref_behaviour, activation_plan)
 
         current_activation_step = activation_precondition \
                                   + activation_goals \
