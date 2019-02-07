@@ -182,6 +182,22 @@ class Manager(object):
     def __del__(self):
         self.unregister()
 
+    def reset(self):
+        """
+        Reset internal decision_state by stopping running behaviours, reseting thresholds etc
+        """
+        for b in self.executed_behaviours:
+            self._stop_behaviour(b)
+
+        self._plan = {}
+        self._planExecutionIndex = 0
+        self.__goalPDDLs = {}
+        self.__last_domain_PDDL = ""
+        self._currently_pursued_goals = []
+        self.__replanningNeeded = True
+        self._totalActivation = 0.0  # pre-computed (in step()) sum all activations of operational behaviours
+        self._activationThreshold = rospy.get_param(self._param_prefix + "/activationThreshold", 7.0)
+
     def _getDomainName(self):
         return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
