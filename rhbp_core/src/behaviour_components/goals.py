@@ -576,7 +576,6 @@ class GoalBase(Goal):
 
     def _get_status_callback(self, request):
 
-
         try:
             self.updateComputation(request.current_step)
             

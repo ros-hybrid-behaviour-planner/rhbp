@@ -188,6 +188,7 @@ class Manager(object):
         """
         for b in self.executed_behaviours:
             self._stop_behaviour(b)
+        self.__executedBehaviours = []
 
         self._plan = {}
         self._planExecutionIndex = 0
@@ -666,7 +667,7 @@ class Manager(object):
                     rhbplog.loginfo("INCREASING ACTIVATION THRESHOLD TO %f", self._activationThreshold)
                     self._activationThreshold *= (1 / self._activation_threshold_decay)
 
-                executable_behaviours = [b for b in self._behaviours if b.executable]
+                executable_behaviours = [b for b in self._behaviours if b.executable and b.activation > 0]
                 if not guarantee_decision or len(self.__executedBehaviours) > 0 or len(executable_behaviours) == 0:
                     # at least one behaviour is executing or there is no executable behaviour available
                     break
