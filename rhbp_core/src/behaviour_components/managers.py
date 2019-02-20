@@ -822,8 +822,8 @@ class Manager(object):
                                 interfering_correlations)
 
                 for conflictor in stoppable_behaviours:  # stop another behaviour in order to resolve the conflict
-                    rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority than %s",
-                                    conflictor.name, behaviour.name)
+                    rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority or same "
+                                    "priority with less activation than %s", conflictor.name, behaviour.name)
 
                     self._stop_behaviour(conflictor, True)
 
