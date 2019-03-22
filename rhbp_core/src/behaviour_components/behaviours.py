@@ -349,6 +349,7 @@ class Behaviour(object):
     @property
     def behaviour_type(self):
         return self._behaviour_type
+
     
     def __str__(self):
         return self._name
@@ -851,6 +852,10 @@ class BehaviourBase(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def isExecuting(self):
+        return self._isExecuting
     
     def start(self):
         """
