@@ -8,6 +8,8 @@ from abc import ABCMeta, abstractmethod
 
 # from .managers import Manager has to be commented because of circular dependency problem
 
+from math import sqrt
+
 from .behaviours import Behaviour
 from .pddl import create_valid_pddl_name
 from rhbp_core.msg import Activation
@@ -252,7 +254,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
         activation = ref_behaviour.activation * self._activation_decay + ref_behaviour.current_activation_step
         if activation < 0.0:
             activation = 0.0
-        ref_behaviour.activation = activation
+        ref_behaviour.update_activation(activation=activation, step=self._manager.current_step)
         ref_behaviour.current_activation_step = 0.0
 
         return activation
@@ -290,7 +292,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                 for correlation_indicator in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=wish_name):
                     if correlation_indicator * wish_indicator > 0.0:  # This means we affect the sensor in a way that is desirable by the goal
 
-                        totalActivation = correlation_indicator * wish_indicator * self._goal_bias * prio_weight
+                        totalActivation = correlation_indicator * wish_indicator * prio_weight * self._goal_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating activation from goals for %s. There is/are %d active behaviour(s) that support(s) %s via %s: %s with a total activation of %f. GoalBias is %f",
@@ -341,7 +343,9 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                             totalInhibition = -0.1  # just take a fixed small inhibition here
                         else:
                             totalInhibition = -(1 - abs(wish_indicator * correlation_indicator))
-                        totalInhibition = totalInhibition * self._conflictor_bias * prio_weight # TODO somehow strange that we use the conflictor bias here
+
+                        # TODO somehow strange that we use the conflictor bias here
+                        totalInhibition = totalInhibition * prio_weight * self._conflictor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s via %s: %s and a total inhibition score of %f",
@@ -473,8 +477,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                         # So we take -(1 - abs(wish * correlation)) as the amount of total inhibition created by this
                         # (for all wishes*effect != 1), in the other case we take a fixed small inhibition of -0.1
                         # conflict and divide it by the number of conflictors
-                        if abs(
-                                        wish_indicator * effect_indicator) == 1:  # without this condition it would result in an inhibition of 0
+                        if abs(wish_indicator * effect_indicator) == 1:  # without this condition it would result in an inhibition of 0
                             totalInhibition = -0.1  # just take a fixed small inhibition here
                         else:
                             totalInhibition = -(1 - abs(wish_indicator * effect_indicator))
@@ -494,7 +497,7 @@ class BaseActivationAlgorithm(AbstractActivationAlgorithm):
                             (behaviour, effect_name, totalInhibition / amount_behaviours_sharing_conflict))
                     # if we would change the currently existing good state for that behaviour (wish is zero but we have
                     # non-zero correlation to it)
-                    elif wish_indicator * effect_indicator == 0.0 and wish_indicator == 0:
+                    elif wish_indicator == 0:
                         totalInhibition = -abs(effect_indicator) * (
                             behaviour.activation / self._manager.totalActivation) * self._conflictor_bias
                         if self._extensive_logging:
@@ -579,6 +582,12 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
         """
         activated_by_goals = []
         for goal in self._manager.operational_goals:
+
+            if self._apply_goal_priority_weights:
+                prio_weight = self._goal_priority_weights.get(goal, 1.0)
+            else:
+                prio_weight = 1.0
+
             # check for each sensor in the goal wishes for behaviours that have sensor effect correlations
             for wish in goal.wishes:
                 wish_name = wish.get_pddl_effect_name()
@@ -591,7 +600,8 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                 for correlation_indicator in self._matching_effect_indicators(ref_behaviour=ref_behaviour, effect_name=wish_name):
                     # The following condition checks if we affect the sensor in a way that is desirable by the goal
                     if correlation_indicator * wish_indicator > 0.0:
-                        total_activation = (correlation_indicator ** 2 + wish_indicator ** 2) * self._goal_bias
+                        total_activation = sqrt(correlation_indicator ** 2 + wish_indicator ** 2) * prio_weight \
+                                           * self._goal_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating activation from goals for %s. There is/are %d operational behaviour(s) that"
@@ -614,6 +624,12 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
         """
         inhibitedByGoals = []
         for goal in self._manager.operational_goals:
+
+            if self._apply_goal_priority_weights:
+                prio_weight = self._goal_priority_weights.get(goal, 1.0)
+            else:
+                prio_weight = 1.0
+
             for wish in goal.wishes:
                 wish_name = wish.get_pddl_effect_name()
                 wish_indicator = wish.indicator
@@ -628,26 +644,18 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                     behaviours_inhibited_by_same_goal) > 0 else 1
                 for correlation_indicator in self._matching_effect_indicators(ref_behaviour=ref_behaviour,
                                                                               effect_name=wish_name):
-                    if correlation_indicator * wish_indicator < 0.0:  # This means we affect the sensor in a way that is not desirable by the goal
+                    # First term we affect the sensor in a way that is not desirable by the goal
+                    # Second term means the goals was achieved (wish indicator is 0) but we potentially undo that
+                    # (because we are correlated to it somehow)
+                    if correlation_indicator * wish_indicator < 0.0 or \
+                       correlation_indicator != 0 and wish_indicator == 0:
 
-                        total_inhibition = -(
-                            wish_indicator ** 2 + correlation_indicator ** 2) * self._conflictor_bias  # TODO somehow strange that we use the conflictor bias here
+                        total_inhibition = -sqrt(wish_indicator ** 2 + correlation_indicator ** 2) * prio_weight \
+                                           * self._conflictor_bias  # TODO somehow strange that we use the conflictor bias here
                         if self._extensive_logging:
                             rhbplog.logdebug(
                                 "Calculating inhibition from goals for %s. There is/are %d behaviours(s) that worsen %s "
                                 "via %s: %s and a total inhibition score of %f",
-                                ref_behaviour.name, amount_conflictor_behaviours, goal.name, wish_name,
-                                behaviours_inhibited_by_same_goal, total_inhibition)
-                        # The activation we get from that is the result of the correlation we have to this Sensor and
-                        # the Goal's desired change of this Sensor. Note that this is negative, hence the name inhibition!
-                        # Actually, we are only interested in the value itself but for debug purposed we make it a tuple
-                        # including the goal itself
-                        inhibitedByGoals.append((goal, total_inhibition / amount_conflictor_behaviours))
-                    elif correlation_indicator != 0 and wish_indicator == 0:  # That means the goals was achieved (wish indicator is 0) but we would undo that (because we are correlated to it somehow)
-                        total_inhibition = -correlation_indicator ** 2 * self._conflictor_bias
-                        if self._extensive_logging:
-                            rhbplog.logdebug(
-                                "Calculating inhibition from goals for %s. There is/are %d behaviour(s) that undo %s via %s: %s and a total inhibition score of %f",
                                 ref_behaviour.name, amount_conflictor_behaviours, goal.name, wish_name,
                                 behaviours_inhibited_by_same_goal, total_inhibition)
                         # The activation we get from that is the result of the correlation we have to this Sensor and
@@ -682,7 +690,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                                                                                effect_name=wish_name):
                     # If a predecessor can satisfy my precondition
                     if correlation_indicators * behaviour.preconditionSatisfaction * wish_indicator > 0.0:
-                        total_activation = (correlation_indicators ** 2 + wish_indicator ** 2) * (
+                        total_activation = sqrt(correlation_indicators ** 2 + wish_indicator ** 2) * (
                             behaviour.activation / self._manager.totalActivation) * self._predecessor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug(
@@ -717,7 +725,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                 amount_behaviours_sharing_correlation = len(behaviours_with_same_correlation) if len(behaviours_with_same_correlation) > 0 else 1
                 for wish_indicator in self._matching_wishes_indicators(ref_behaviour=behaviour, effect_name=effect_name):  # if we affect other behaviour's wishes somehow
                     if wish_indicator * effect_indicator > 0:  # if we are a predecessor so we get activation from that successor
-                        total_activation = (wish_indicator ** 2 + effect_indicator ** 2) * (
+                        total_activation = sqrt(wish_indicator ** 2 + effect_indicator ** 2) * (
                             behaviour.activation / self._manager.totalActivation) * self._successor_bias
                         if self._extensive_logging:
                             rhbplog.logdebug("Calculating activation from successors for %s. There is/are %d active "
@@ -760,9 +768,14 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                     amount_behaviours_sharing_conflict = len(
                         behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) \
                         if len(behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation) > 0 else 1
-                    if wish_indicator * effect_indicator < 0.0:  # if we make an existing conflict stronger
 
-                        total_inhibition = -(wish_indicator ** 2 + effect_indicator ** 2) * \
+                    # first term: if we make an existing conflict stronger
+                    # second term: if we would change the currently existing good state for that behaviour
+                    #              (wish is zero but we have non-zero correlation to it)
+                    if wish_indicator * effect_indicator < 0.0 \
+                            or wish_indicator * effect_indicator == 0.0 and wish_indicator == 0:
+
+                        total_inhibition = - sqrt(wish_indicator ** 2 + effect_indicator ** 2) * \
                                            (behaviour.activation / self._manager.totalActivation) * \
                                            self._conflictor_bias  # TODO somehow strange that we use the conflictor bias here
                         if self._extensive_logging:
@@ -777,25 +790,7 @@ class UniformActivationAlgorithm(BaseActivationAlgorithm):
                         # among them.
                         inhibition_from_conflictors.append(
                             (behaviour, effect_name, total_inhibition / amount_behaviours_sharing_conflict))
-                    # if we would change the currently existing good state for that behaviour (wish is zero but we have
-                    # non-zero correlation to it)
-                    elif wish_indicator * effect_indicator == 0.0 and wish_indicator == 0:
-                        total_inhibition = -effect_indicator ** 2 * (
-                            behaviour.activation / self._manager.totalActivation) \
-                                           * self._conflictor_bias
-                        if self._extensive_logging:
-                            rhbplog.logdebug(
-                                "Calculating inhibition from conflicted for %s. %s is undone via %s (wish: %f) by %d behaviour(s): %s by a total score of %f",
-                                ref_behaviour.name, behaviour.name, effect_name, wish_indicator,
-                                amount_behaviours_sharing_conflict,
-                                behavioursThatConflictWithThatBehaviourBecauseOfTheSameCorrelation, total_inhibition)
-                        # The inhibition experienced is my bad influence (my correlation to this effect_name) times the
-                        # wish of the other behaviour concerning this effect_name. Actually only the value is needed
-                        # but it is a tuple for debug purposes.
-                        # amount_behaviours_sharing_conflict knows how many more behaviours cause the same harm to this
-                        # conflictor so its inhibition shall be distributed among them.
-                        inhibition_from_conflictors.append(
-                            (behaviour, effect_name, total_inhibition / amount_behaviours_sharing_conflict))
+
         return (0.0,) if len(inhibition_from_conflictors) == 0 else \
             (reduce(lambda x, y: x + y, (x[2] for x in inhibition_from_conflictors)), inhibition_from_conflictors)
 
