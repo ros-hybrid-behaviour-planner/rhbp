@@ -14,7 +14,8 @@ from std_srvs.srv import Empty, EmptyResponse
 from rhbp_core.msg import PlannerStatus, Status, DiscoverInfo
 from rhbp_core.srv import AddBehaviour, AddBehaviourResponse, AddGoal, AddGoalResponse, RemoveBehaviour, \
     RemoveBehaviourResponse, RemoveGoal, RemoveGoalResponse, ForceStart, ForceStartResponse, GetPaused, \
-    GetPausedResponse, PlanWithGoal, PlanWithGoalResponse
+    GetPausedResponse, PlanWithGoal, PlanWithGoalResponse, SetStepping
+from rospy import ROSInterruptException
 from .behaviours import Behaviour
 from .goals import GoalProxy
 from .pddl import PDDL, mergeStatePDDL, tokenizePDDL, getStatePDDLchanges, predicateRegex, init_missing_functions, \
@@ -1065,6 +1066,10 @@ class Manager(object):
             return None
 
     @property
+    def current_step(self):
+        return self._stepCounter
+
+    @property
     def prefix(self):
         return self._prefix
 
@@ -1222,13 +1227,45 @@ class ManagerControl(object):
     def pause(self):
         service_name = self.__planner_prefix + '/' + 'Pause'
         rhbplog.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name)
-        pauseRequest = rospy.ServiceProxy(service_name, Empty)
-        pauseRequest()
+        try:
+            rospy.wait_for_service(service_name)
+            pauseRequest = rospy.ServiceProxy(service_name, Empty)
+            pauseRequest()
+        except ROSInterruptException:
+            pass
 
     def resume(self):
-        service_name = self.__planner_prefix + '/' + 'Resume'
+        service_name = self.__planner_prefix + '/Resume'
         rhbplog.logdebug("Waiting for service %s", service_name)
-        rospy.wait_for_service(service_name)
-        resumeRequest = rospy.ServiceProxy(service_name, Empty)
-        resumeRequest()
+        try:
+            rospy.wait_for_service(service_name)
+            resumeRequest = rospy.ServiceProxy(service_name, Empty)
+            resumeRequest()
+        except ROSInterruptException:
+            pass
+
+    def step(self):
+        """
+        Triggers a manager step, only works if manager is running on planner node
+        """
+        service_name = self.__planner_prefix + '/step'
+        rhbplog.logdebug("Waiting for service %s", service_name)
+        try:
+            rospy.wait_for_service(service_name)
+            stepRequest = rospy.ServiceProxy(service_name, Empty)
+            stepRequest()
+        except ROSInterruptException:
+            pass
+
+    def set_automatic_stepping(self, enabled):
+        """
+        Enables/Disables automatic manager stepping, only works if manager is running on planner node
+        """
+        service_name = self.__planner_prefix + '/set_automatic_stepping'
+        rhbplog.logdebug("Waiting for service %s", service_name)
+        try:
+            rospy.wait_for_service(service_name)
+            setAutoSteppingRequest = rospy.ServiceProxy(service_name, SetStepping)
+            setAutoSteppingRequest(enabled)
+        except ROSInterruptException:
+            pass

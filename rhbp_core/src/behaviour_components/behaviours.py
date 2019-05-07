@@ -78,7 +78,7 @@ class Behaviour(object):
         if self._create_log_files:
             self.__logFile = LogFileWriter(path=self._log_file_path_prefix, filename=self._name, extension=".log")
             try:
-                self.__logFile.write('Time\t{0}\n'.format(self._name))
+                self.__logFile.write('Time\tStep\t{0}\n'.format(self._name))
             except Exception as e:
                 rhbplog.logerr("Failed to create log files in behaviour '%s': %s", self._name,
                              traceback.format_exc())
@@ -270,12 +270,12 @@ class Behaviour(object):
     def activation(self):
         return self._activation
 
-    @activation.setter
-    def activation(self, value):
-        self._activation = value
+    def update_activation(self, activation, step):
+
+        self._activation = activation
 
         if self._create_log_files:
-            self.__logFile.append("{0:f}\t{1:f}\n".format(rospy.get_time(), self._activation))
+            self.__logFile.append("{0:f}\t{1:d}\t{2:f}\n".format(rospy.get_time(), step, self._activation))
 
     @property
     def current_activation_step(self):
