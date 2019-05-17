@@ -100,7 +100,7 @@ class ManagerNode(object):
         """
         while not rospy.is_shutdown():
             if self.automatic_stepping:
-                self._manager.step()
+                self._manager.step(guarantee_decision=self.guarantee_decision)
             else:
                 self._manager.send_discovery()
             self.rate.sleep()
