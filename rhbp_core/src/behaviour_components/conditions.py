@@ -473,9 +473,11 @@ class Condition(Conditonal):
             indicator = self._activator.getSensorWish(self._normalizedSensorValue)
             return [Wish(sensor_name=self._sensor.name, indicator=indicator, activator_name=self._activator.name)]
         except AssertionError:
-            rhbplog.logerr("getWishes:Wrong data type for %s in %s. Got type:'%s' and value '%s'. Possibly uninitialized%s sensor %s?", self._sensor,
-                           self._name, type(self._sensor.value), str(self._sensor.value), " optional" if self._sensor.optional else "",
-                           self._sensor.name)
+            rhbplog.logerr("getWishes:Wrong data type for %s in %s with %s of type %s. Type:'%s', Value '%s' "
+                           "nomalized value '%s'. Possibly uninitialized %s sensor %s?", self._sensor,
+                           self._name, self._activator.name, type(self._activator), type(self._sensor.value),
+                           str(self._sensor.value), str(self._normalizedSensorValue),
+                           " optional" if self._sensor.optional else "", self._sensor.name)
             raise
 
     def _get_current_sensor_value_for_pddl_creation(self):
@@ -486,7 +488,8 @@ class Condition(Conditonal):
                                                          self._get_current_sensor_value_for_pddl_creation())
 
     def getStatePDDL(self):
-        return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue, self._sensor.value_update_time)]
+        return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue,
+                                                   self._sensor.value_update_time)]
 
     def getFunctionNames(self):
         """
