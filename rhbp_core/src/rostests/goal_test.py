@@ -124,6 +124,55 @@ class TestGoals(unittest.TestCase):
         # Satisfaction should become 0.0 if the goal is deactivated, this also tests the publishing part indirectly
         self.assertEquals(goal_activated_condition.satisfaction, 0.0, 'goal_condition not properly updated')
 
+    def test_register_unregister(self):
+
+        method_prefix = self.__message_prefix + "TestRegisterUnregisterGoal"
+        planner_prefix = method_prefix + "Manager"
+        m = Manager(activationThreshold=7, prefix=planner_prefix)
+
+        topic_name = method_prefix + '/Topic'
+
+        sensor = TopicSensor(topic=topic_name, message_type=Bool, initial_value=False)
+        condition = Condition(sensor, BooleanActivator())
+
+        goal = GoalBase(method_prefix + 'Goal', planner_prefix=planner_prefix)
+        goal.add_condition(condition)
+
+        rospy.sleep(0.1)
+        m.step()
+
+        self.assertEquals(len(m.goals), 1, 'goal not registered properly')
+
+        goal.unregister()
+
+        rospy.sleep(0.1)
+        m.step()
+
+        self.assertEquals(len(m.goals), 0, 'goal not unregistered properly')
+
+        # try to register again
+        goal.register()
+
+        rospy.sleep(0.1)
+        m.step()
+
+        self.assertEquals(len(m.goals), 1, 'goal not registered properly')
+
+        goal.unregister(terminate_services=False)
+
+        rospy.sleep(0.1)
+        m.step()
+
+        self.assertEquals(len(m.goals), 0, 'goal not unregistered properly')
+
+        # try to register again
+        goal.register()
+
+        rospy.sleep(0.1)
+        m.step()
+
+        self.assertEquals(len(m.goals), 1, 'goal not registered properly')
+
 
 if __name__ == '__main__':
     rostest.rosrun(PKG, 'test_goals_node', TestGoals)

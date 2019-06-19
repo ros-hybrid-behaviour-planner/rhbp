@@ -870,8 +870,7 @@ class Manager(object):
         :type goal: AbstractGoalRepresentation
         '''
         with self._step_lock:
-            self._goals = filter(lambda x: x.name != goal.name,
-                                 self._goals)  # kick out existing goals with the same name.
+            self._goals = filter(lambda x: x.name != goal.name, self._goals)  # kick out existing goals with the same name.
             self._goals.append(goal)
             rhbplog.loginfo("A goal with name %s registered", goal.name)
             self.__replanningNeeded = True
@@ -905,8 +904,7 @@ class Manager(object):
     def remove_goal(self, goal_name):
 
         with self._step_lock:
-            self._goals = [g for g in self._goals if
-                           g.name != goal_name]  # kick out existing goals with that name.
+            self._goals = [g for g in self._goals if g.name != goal_name]  # kick out existing goals with that name.
             self.__replanningNeeded = True
 
     def remove_behaviour(self, behaviour_name):

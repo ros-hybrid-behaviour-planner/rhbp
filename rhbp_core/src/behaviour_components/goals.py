@@ -491,6 +491,9 @@ class GoalBase(Goal):
             return
         try:
 
+            if not self._services_running:  # (re)register services if necessary
+                self._init_services()
+
             service_name = self._planner_prefix + '/' + 'AddGoal'
 
             service_found = False
