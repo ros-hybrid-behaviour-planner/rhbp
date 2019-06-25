@@ -1,19 +1,31 @@
 #! /usr/bin/env python2
 """
-Created on 13.04.2015
+Created on 25.06.2019
 
-@author: wypler, hrabia
-
-This is just the planner/manager node executable, the particular implementation has been extracted to the ManagerNode
-class to have it as well available in other packages.
+@author: hrabia
 
 """
 import sys
 from behaviour_components.manager_node import ManagerNode
+from decomposition_components.managers import Manager
 from rospy.exceptions import ROSInterruptException
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME)
+
+
+class DelegationManagerNode(ManagerNode):
+    """
+    Custom ManagerNode creating the specific DelegationManager instead of the default one.
+    """
+
+    def _create_manager(self, prefix):
+        """
+        overwritten factory method for creating a specific manager
+        :param prefix: manager prefix
+        :return: manager instance
+        """
+        return Manager(prefix=prefix)
 
 
 if __name__ == '__main__':
@@ -25,7 +37,7 @@ if __name__ == '__main__':
             prefix = arg[len('prefix:='):]
             break
 
-    node = ManagerNode(manager_prefix=prefix)
+    node = DelegationManagerNode(manager_prefix=prefix)
 
     try:
         node.run()
