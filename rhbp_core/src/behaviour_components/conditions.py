@@ -410,19 +410,24 @@ class Condition(Conditonal):
     '''
     _instanceCounter = 0 # static _instanceCounter to get distinguishable names
 
-    def __init__(self, sensor, activator, name=None, optional=False):
+    def __init__(self, sensor, activator, name=None, optional=False, optional_for_planning=False):
         """
         Constructor
         :param sensor: The sensor :py:class:`sensors.Sensor` that is evaluated by this condition
         :param activator: The :py:class:`Activator` that is used to calculate the activation from the sensor value
         :param name: condition name, a name will be generated if None is passed
-        :param optional: If true the condition will not be considered for precondition satisfaction and only for activation calculation
+        :param optional: If true the condition will not be considered for precondition satisfaction and only for
+                         activation calculation
+        :param optional_for_planning: Ignore this condition in symbolic planning. This makes sense in cases where there
+                                      is no way for the planner/behaviours to fulfil the condition, e.g. a condition
+                                      that relies on the number of registered goals.
         """
         super(Condition, self).__init__()
         self._name = name if name else "Condition{0}".format(Condition._instanceCounter)
         self._sensor = sensor
         self._activator = activator
         self._optional = optional
+        self._optional_for_planning = optional_for_planning
 
         self._normalizedSensorValue = 0
         self._satisfaction = 0
@@ -484,7 +489,11 @@ class Condition(Conditonal):
         return self._normalizedSensorValue
 
     def getPreconditionPDDL(self, satisfaction_threshold):
-        return self._activator.getSensorPreconditionPDDL(self._sensor.name, satisfaction_threshold,
+
+        if self._optional_for_planning:
+            return PDDL()
+        else:
+            return self._activator.getSensorPreconditionPDDL(self._sensor.name, satisfaction_threshold,
                                                          self._get_current_sensor_value_for_pddl_creation())
 
     def getStatePDDL(self):
