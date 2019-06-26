@@ -1,7 +1,7 @@
 """
 DelegationGoal and the GoalWrapper used by the DelegationGoal
 
-@author: Mengers
+@author: Mengers, Hrabia
 """
 
 from decomposition_components.delegation_clients import RHBPDelegationClient
@@ -180,6 +180,19 @@ class DelegationGoal(DecompositionGoal):
         """
 
         return self._contractor_found
+
+    @property
+    def number_of_proposals(self):
+
+        return self._client.get_number_of_proposals(delegation_id=self._delegation_id)
+
+    @property
+    def contractor_prefix(self):
+        """
+        gets the planner prefix of the finally found contractor
+        :return: planner prefix str
+        """
+        return self._planner_prefix
 
 
 class RunningGoalWrapper(RHBPGoalWrapper):

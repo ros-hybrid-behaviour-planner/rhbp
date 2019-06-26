@@ -2,11 +2,16 @@
 Manager for the RHBP that has to be used by Nodes that want to include the
 rhbp_decomposition capabilities
 
-@author: Mengers
+@author: Mengers, Hrabia
 """
+
+import rospy
 
 import behaviour_components.managers as core
 from decomposition_components.manager_client import RHBPManagerDelegationClient
+
+import utils.rhbp_logging
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
 
 
 class Manager(core.Manager):
@@ -33,7 +38,12 @@ class Manager(core.Manager):
                                       **kwargs)
 
         self._delegation_client = RHBPManagerDelegationClient(manager=self)
-        self._participating_in_auctions = False
+
+        self._participating_in_auctions = kwargs['participating_in_auctions'] if 'participating_in_auctions' in kwargs else \
+            rospy.get_param(self._param_prefix + "/participating_in_auctions", False)
+        if self._participating_in_auctions:
+            self.participate_in_auctions()
+        rhbplog.loginfo("Manager %s is participating in auctions: %s", self._prefix, self._participating_in_auctions)
 
     def step(self, force=False, guarantee_decision=False):
         """

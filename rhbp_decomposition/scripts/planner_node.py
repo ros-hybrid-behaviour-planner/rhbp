@@ -11,7 +11,7 @@ from decomposition_components.managers import Manager
 from rospy.exceptions import ROSInterruptException
 
 import utils.rhbp_logging
-rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME)
+rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')
 
 
 class DelegationManagerNode(ManagerNode):

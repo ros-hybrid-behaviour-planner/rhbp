@@ -1,7 +1,7 @@
 """
 Delegation Clients for components, that do not participate in auctions
 
-@author: Mengers
+@author: Mengers, Hrabia
 """
 
 from delegation_components.delegation_clients import DelegationClientBase
@@ -104,6 +104,15 @@ class RHBPDelegationClient(DelegationClientBase):
 
         self.logger.loginfo("Delegation has local ID " + str(delegation_id))
         return delegation_id
+
+    def get_number_of_proposals(self, delegation_id):
+        """
+        Determine the number of already available proposals for a delegation
+        :param delegation_id: ID of the delegation
+        :type delegation_id: int
+        :return: number of proposals
+        """
+        return self._delegation_manager.get_delegation(delegation_id).number_of_proposals
 
     def terminate_delegation(self, delegation_id):
         """
