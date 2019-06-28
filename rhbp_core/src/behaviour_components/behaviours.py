@@ -414,6 +414,8 @@ class BehaviourBase(object):
         self._active = True
         self._enabled = True  # The enable Service sets the value of this property.
         self._requires_execution_steps = requires_execution_steps
+
+        self._current_manger_step = 0
         # transforms the conditions into the sensor values of them
         self._sensor_transformer = SensorValueTransformer()
         self._init_services()
@@ -680,11 +682,11 @@ class BehaviourBase(object):
                          traceback.format_exc())
             return None
 
-
     def _get_status_callback(self, request):
         try:
             #update everything before generating the status message
-            self.updateComputation(request.current_step)
+            self._current_manger_step = request.current_step
+            self.updateComputation(manager_step=self._current_manger_step)
             self.sensor_values = self._sensor_transformer.get_sensor_values(self.preconditions)
             # TODO possible improvement is providing computeSatisfaction and computeActivation with a precalulated list of satisfactions
             satisfaction = self.computeSatisfaction()
@@ -870,6 +872,10 @@ class BehaviourBase(object):
     @property
     def isExecuting(self):
         return self._isExecuting
+
+    @property
+    def current_manager_step(self):
+        return self._current_manger_step
     
     def start(self):
         """

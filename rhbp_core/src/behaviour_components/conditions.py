@@ -36,10 +36,11 @@ class Conditonal(object):
         """
         Check if in the current manager step updates have already been computed
         and set last update step to given manager_step
-        :param manager_step: current planning step of the manager
+        :param manager_step: current planning step of the manager, pass none to force an update
         :return: True if sync and update_computation are required
         """
-
+        if manager_step is None:
+            return True
         if self._last_update_step != manager_step:
             self._last_update_step = manager_step
             return True
@@ -149,7 +150,8 @@ class Disjunction(Conditonal):
         for c in self._conditions:
             if c.need_update(manager_step):
                 need_update = True
-                self._last_update_step = manager_step
+                if manager_step is not None:
+                    self._last_update_step = manager_step
 
         return need_update
 
@@ -257,7 +259,8 @@ class Conjunction(Conditonal):
         for c in self._conditions:
             if c.need_update(manager_step):
                 need_update = True
-                self._last_update_step = manager_step
+                if manager_step is not None:
+                    self._last_update_step = manager_step
 
         return need_update
 

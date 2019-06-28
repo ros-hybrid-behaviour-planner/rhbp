@@ -573,8 +573,8 @@ class Manager(object):
             while True:  # do while loop for guarantee_decision
 
                 rhbplog.loginfo("############## ACTIONS ###############")
-                # actually, operational_behaviours should be enough as search space but if the behaviour implementer resets active
-                # before isExecuting we are safe this way
+                # actually, operational_behaviours should be enough as search space but if the behaviour implementer
+                # resets active before isExecuting we are safe this way
                 self.__executedBehaviours = filter(lambda x: x.isExecuting, self._behaviours)
                 amount_of_manually_startable_behaviours = len(filter(lambda x: x.manualStart, self._behaviours))
                 amount_started_behaviours = 0
@@ -1108,7 +1108,7 @@ class Manager(object):
         """
 
         with self._step_lock:
-            if not self.__last_domain_PDDL:
+            if not self.__last_domain_PDDL or len(self._goals) == 0:
                 # first get the goals and behaviours we want to use for planning
                 behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals
@@ -1137,7 +1137,7 @@ class Manager(object):
         :return: a PDDL plan for the given goal statement
         """
         with self._step_lock:
-            if not self.__last_domain_PDDL:
+            if not self.__last_domain_PDDL or len(self._goals) == 0:
                 # first get the goals and behaviours we want to use for planning
                 behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals

@@ -86,11 +86,9 @@ class DelegationGoal(DecompositionGoal):
 
         Wait for some time depending on system specs before finishing auction
         """
-
-        self._goal_wrapper = RunningGoalWrapper(goal=self,
-                                                conditions=self._conditions)
-        self._delegation_id = self._client.delegate_goal_wrapper(goal_wrapper=self._goal_wrapper,
-                                                                 known_depth=0)
+        self.updateComputation(manager_step=None) # TODO actually this is not needed we are not transfering the state information
+        self._goal_wrapper = RunningGoalWrapper(goal=self, conditions=self._conditions)
+        self._delegation_id = self._client.delegate_goal_wrapper(goal_wrapper=self._goal_wrapper, known_depth=0)
         self._auction_running = True
 
     def finish_auction(self):
@@ -110,7 +108,7 @@ class DelegationGoal(DecompositionGoal):
             rhbplog.logwarn("Trying to finish an auction that has not started yet for DelegationGoal"+self.name)
             return False
 
-        for i in range(DelegationManager.DEFAULT_AUCTION_STEPS):
+        for i in range(DelegationManager.DEFAULT_AUCTION_STEPS):  # TODO make this configurable, too!
             self._client.do_step()
 
         if not self._contractor_found:

@@ -5,6 +5,7 @@ Unit tests for the PDDLCostEvaluator
 """
 
 import unittest
+import math
 from decomposition_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_errors import DelegationPlanningWarning
 from delegation_components.cost_evaluators import CostParameters
@@ -32,7 +33,7 @@ class CostComputingTest(unittest.TestCase):
         Tests basic properties
         """
 
-        self.assertEqual(self.uut.last_cost, -1)
+        self.assertTrue(math.isnan(self.uut.last_cost))
         self.assertEqual(self.uut.last_possibility, False)
 
     def test_plan_steps_getting(self):
@@ -137,7 +138,7 @@ class CostComputingTest(unittest.TestCase):
                           max_task_count=max_task_count, current_depth=current_depth, max_depth=max_depth,
                           members=members, own_name=own_name)
 
-        self.assertEqual(self.uut.last_cost, -1)
+        self.assertTrue(math.isnan(self.uut.last_cost))
         self.assertFalse(self.uut.last_possibility)
 
         self.manager.plan_exception = True
