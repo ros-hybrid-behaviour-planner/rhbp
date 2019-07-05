@@ -634,7 +634,10 @@ class Manager(object):
 
                     currently_influenced_sensors = self._get_currently_influenced_sensors()
 
-                    behaviour_is_interfering_others, currently_influenced_sensors = self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+                    behaviour_is_interfering_others, currently_influenced_sensors, stopped_behaviour_amount = \
+                        self.handle_interfering_correlations(behaviour, currently_influenced_sensors)
+
+                    amount_currently_selected_behaviours -= stopped_behaviour_amount  # address resolved conflicts
 
                     if behaviour_is_interfering_others:
                         continue
@@ -652,7 +655,6 @@ class Manager(object):
                     ### if the behaviour got here it really is ready to be started ###
                     rhbplog.loginfo("STARTING BEHAVIOUR %s", behaviour.name)
                     behaviour.start()                                
-
 
                     amount_currently_selected_behaviours += 1
 
@@ -787,9 +789,13 @@ class Manager(object):
         Method checks and resolves (if possible) conflicts with other behaviours of a given behaviour
         :param behaviour: the behaviour that is about to be started
         :param currently_influenced_sensors: list of the currently influenced sensors, will be updated if necessary
-        :return: tuple(True if this behaviour is interfering and this cannot be resolved, maybe updated currently_influenced_sensors)
+        :return: tuple(True if this behaviour is interfering and this cannot be resolved,
+                       maybe updated currently_influenced_sensors,
+                       stopped_behaviour_amount)
         """
         # TODO .get_pddl_effect_name() might not be 100% accurate, reconsider this
+
+        stopped_behaviour_amount = 0
 
         interfering_correlations = currently_influenced_sensors.intersection(
             set([item.get_pddl_effect_name() for item in behaviour.correlations]))
@@ -826,18 +832,21 @@ class Manager(object):
                     rhbplog.loginfo("STOP BEHAVIOUR %s because it is interruptable and has less priority or same "
                                     "priority with less activation than %s", conflictor.name, behaviour.name)
 
-                    self._stop_behaviour(conflictor, True)
+                    successfully_stopped = self._stop_behaviour(conflictor, True)
 
                     # stopping a behaviour here requires to recalculate the currently_influenced_sensors
                     currently_influenced_sensors = self._get_currently_influenced_sensors()
                     # As a result, we have now made room for the higher-priority behaviour ###
+
+                    if successfully_stopped:
+                        stopped_behaviour_amount += 1
             else:
                 rhbplog.loginfo(
                     "%s will not be started because it has conflicting correlations with already running behaviour(s) "
                     "%s that cannot be solved (%s)",
                     behaviour.name, already_running_behaviours_related_to_conflict, interfering_correlations)
-                return True, currently_influenced_sensors
-        return False, currently_influenced_sensors
+                return True, currently_influenced_sensors, stopped_behaviour_amount
+        return False, currently_influenced_sensors, stopped_behaviour_amount
 
     def _get_currently_influenced_sensors(self):
         """
@@ -857,12 +866,17 @@ class Manager(object):
         :param behaviour: the behaviour to stop
         :param reset_activation: true or false if the activation of the behaviour should be reset
         """
+        if not behaviour.isExecuting:
+            return False
+
         behaviour.stop(reset_activation)
         try:
             self.__executedBehaviours.remove(behaviour)  # remove it from the list of executed behaviours
         except ValueError as e:
             rhbplog.logwarn("Tried to stop already stopped behaviour %s", behaviour.name)
+            return False
         rhbplog.logdebug("Stopped %s still running behaviours: %s", behaviour.name, self.__executedBehaviours)
+        return True
 
     def add_goal(self, goal):
         '''
