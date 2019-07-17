@@ -1,4 +1,4 @@
-# rhbp_decomposition
+# rhbp_delegation
 This package provides a functionality for explicit dynamic cooperation of agents/robots.
 
 ## Usage

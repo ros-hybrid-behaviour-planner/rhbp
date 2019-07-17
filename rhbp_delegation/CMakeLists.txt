@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(rhbp_decomposition)
+project(rhbp_delegation)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -105,7 +105,7 @@ catkin_python_setup()
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES rhbp_decomposition
+#  LIBRARIES rhbp_delegation
 #  CATKIN_DEPENDS rospy std_msgs delegation_module rhbp_core
 #  DEPENDS system_lib
 )
@@ -123,7 +123,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/rhbp_decomposition.cpp
+#   src/${PROJECT_NAME}/rhbp_delegation.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -134,7 +134,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/rhbp_decomposition_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/rhbp_delegation_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -191,13 +191,13 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_rhbp_decomposition.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_rhbp_delegation.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
-catkin_add_nosetests(src/decomposition_tests)
+catkin_add_nosetests(src/delegation_tests)
 
 find_package(rostest REQUIRED)
 add_rostest(test/goal_wrapper.test)
