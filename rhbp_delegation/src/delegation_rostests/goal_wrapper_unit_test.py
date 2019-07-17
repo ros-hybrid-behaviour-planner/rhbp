@@ -16,7 +16,7 @@ from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator
 from behaviour_components.goals import OfflineGoal
 from std_msgs.msg import Bool
-from decomposition_components.goal_wrapper import RHBPGoalWrapper
+from rhbp_delegation_components.goal_wrapper import RHBPGoalWrapper
 
 
 class GoalWrapperTest(unittest.TestCase):
@@ -146,5 +146,5 @@ class GoalWrapperTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun('rhbp_decomposition', 'test_goal_wrapper_node', GoalWrapperTest)
+    rostest.rosrun('rhbp_delegation', 'test_goal_wrapper_node', GoalWrapperTest)
     rospy.spin()

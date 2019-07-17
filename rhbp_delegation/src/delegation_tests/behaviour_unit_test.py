@@ -10,8 +10,7 @@ import unittest
 import rospy
 from behaviour_components.managers import Manager
 from delegation_module_tests.test_utils import MockedClient
-from decomposition_components.delegation_behaviour import DelegableBehaviour,\
-    DelegationBehaviour
+from rhbp_delegation_components.delegation_behaviour import DelegableBehaviour,DelegationBehaviour
 from behaviour_components.sensors import TopicSensor
 from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator

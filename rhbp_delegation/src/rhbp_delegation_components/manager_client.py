@@ -4,8 +4,8 @@ Special kind of DelegationClient used by RHBP Managers
 @author: Mengers
 """
 
-from decomposition_components.cost_computing import PDDLCostEvaluator
-from decomposition_components.delegation_clients import RHBPDelegationClient
+from rhbp_delegation_components.cost_computing import PDDLCostEvaluator
+from rhbp_delegation_components.delegation_clients import RHBPDelegationClient
 from delegation_components.delegation_manager import DelegationManager
 from copy import copy
 

@@ -1,6 +1,6 @@
 """
 Manager for the RHBP that has to be used by Nodes that want to include the
-rhbp_decomposition capabilities
+rhbp_delegation capabilities
 
 @author: Mengers, Hrabia
 """
@@ -8,7 +8,7 @@ rhbp_decomposition capabilities
 import rospy
 
 import behaviour_components.managers as core
-from decomposition_components.manager_client import RHBPManagerDelegationClient
+from rhbp_delegation_components.manager_client import RHBPManagerDelegationClient
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')

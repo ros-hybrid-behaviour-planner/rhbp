@@ -4,8 +4,8 @@ DelegationGoal and the GoalWrapper used by the DelegationGoal
 @author: Mengers, Hrabia
 """
 
-from decomposition_components.delegation_clients import RHBPDelegationClient
-from decomposition_components.goal_wrapper import RHBPGoalWrapper, DecompositionGoal
+from rhbp_delegation_components.delegation_clients import RHBPDelegationClient
+from rhbp_delegation_components.goal_wrapper import RHBPGoalWrapper, DecompositionGoal
 from delegation_components.delegation_manager import DelegationManager
 from behaviour_components.goals import rhbplog
 

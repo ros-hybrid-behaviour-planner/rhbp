@@ -5,7 +5,7 @@ DelegationBehaviour and DelegableBehaviour
 """
 
 from behaviour_components.behaviours import BehaviourBase, rhbplog
-from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
+from rhbp_delegation_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
 from behaviour_components.conditions import create_condition_from_effect
 from delegation_components.delegation_errors import DelegationError
 from abc import abstractmethod

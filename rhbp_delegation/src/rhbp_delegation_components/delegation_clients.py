@@ -6,7 +6,7 @@ Delegation Clients for components, that do not participate in auctions
 
 from delegation_components.delegation_clients import DelegationClientBase
 from delegation_components.delegation_manager import DelegationManager
-from decomposition_components.goal_wrapper import RHBPGoalWrapper
+from rhbp_delegation_components.goal_wrapper import RHBPGoalWrapper
 from delegation_components.delegation_errors import DelegationError
 import rospy
 import utils.rhbp_logging
@@ -210,7 +210,7 @@ class RHBPDelegationClient(DelegationClientBase):
 
     def register(self, delegation_manager):
         """
-        Not needed in rhbp_decomposition!
+        Not needed in rhbp_delegation!
         """
 
         super(RHBPDelegationClient, self).register(delegation_manager=delegation_manager)

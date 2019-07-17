@@ -6,7 +6,7 @@ Unit tests for the PDDLCostEvaluator
 
 import unittest
 import math
-from decomposition_components.cost_computing import PDDLCostEvaluator
+from rhbp_delegation_components.cost_computing import PDDLCostEvaluator
 from delegation_components.delegation_errors import DelegationPlanningWarning
 from delegation_components.cost_evaluators import CostParameters
 from test_utils import MockedManager

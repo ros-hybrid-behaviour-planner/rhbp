@@ -5,7 +5,7 @@ Basic unit test for the rhbp_decomposition Manager
 @author: Mengers
 """
 
-from decomposition_components.managers import Manager
+from rhbp_delegation_components.managers import Manager
 from delegation_module_tests.test_utils import MockedDelegationManager
 import unittest
 import rospy
@@ -43,5 +43,5 @@ class ManagerUnitTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    rostest.rosrun('rhbp_decomposition', 'test_manager_node', ManagerUnitTest)
+    rostest.rosrun('rhbp_delegation', 'test_manager_node', ManagerUnitTest)
     rospy.spin()

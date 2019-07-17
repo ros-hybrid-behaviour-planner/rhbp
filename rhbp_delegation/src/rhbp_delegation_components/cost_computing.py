@@ -6,7 +6,7 @@ The PDDLCostEvaluator that uses the PDDL-Planer of the RHBP for the plans
 
 from delegation_components.cost_evaluators import CostEvaluatorBase, CostParameters
 from delegation_components.delegation_errors import DelegationPlanningWarning
-from decomposition_components.delegation_behaviour import DelegationBehaviour
+from rhbp_delegation_components.delegation_behaviour import DelegationBehaviour
 import utils.rhbp_logging
 # DelegationLogger for rhbplogger
 rhbplogger = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.delegation')

@@ -7,7 +7,7 @@ Created on 25.06.2019
 """
 import sys
 from behaviour_components.manager_node import ManagerNode
-from decomposition_components.managers import Manager
+from rhbp_delegation_components.managers import Manager
 from rospy.exceptions import ROSInterruptException
 
 import utils.rhbp_logging

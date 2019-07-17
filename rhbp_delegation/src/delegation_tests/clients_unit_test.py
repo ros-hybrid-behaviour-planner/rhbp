@@ -6,9 +6,9 @@ Needs a running ROSCORE!
 @author: Mengers
 """
 
-from decomposition_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
-from decomposition_components.manager_client import RHBPManagerDelegationClient
-from decomposition_components.cost_computing import PDDLCostEvaluator
+from rhbp_delegation_components.delegation_clients import RHBPDelegationClient, RHBPDelegableClient
+from rhbp_delegation_components.manager_client import RHBPManagerDelegationClient
+from rhbp_delegation_components.cost_computing import PDDLCostEvaluator
 from delegation_module_tests.test_utils import MockedDelegationManager
 from test_utils import MockedManager, FunctionPointerTester, MockedGoal
 import unittest

@@ -15,9 +15,9 @@ from behaviour_components.sensors import TopicSensor
 from behaviour_components.conditions import Condition
 from behaviour_components.activators import BooleanActivator
 from std_msgs.msg import Bool
-from decomposition_components.goal_wrapper import DecompositionGoal
+from rhbp_delegation_components.goal_wrapper import DecompositionGoal
 from delegation_module_tests.test_utils import MockedDelegationCommunicator
-from decomposition_components.delegation_goal import DelegationGoal
+from rhbp_delegation_components.delegation_goal import DelegationGoal
 
 
 class DecompositionGoalTest(unittest.TestCase):
@@ -114,6 +114,6 @@ class DelegationGoalTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    #rostest.rosrun('rhbp_decomposition', 'test_delegation_goal_node', DelegationGoalTest)
-    rostest.rosrun('rhbp_decomposition', 'test_decomposition_goal_node', DecompositionGoalTest)
+    #rostest.rosrun('rhbp_delegation', 'test_delegation_goal_node', DelegationGoalTest)
+    rostest.rosrun('rhbp_delegation', 'test_decomposition_goal_node', DecompositionGoalTest)
     rospy.spin()
