@@ -53,6 +53,8 @@ class PDDLCostEvaluator(CostEvaluatorBase):
         """
 
         # Make plans
+        # TODO here it would also save performance if PDDL domain and state are only calculated once! And not again
+        # in both following methods
         full_plan = self._manager.plan_with_additional_goal(goal_statement=goal_representation)
         simple_plan = self._manager.plan_this_single_goal(goal_statement=goal_representation)
         # Check if planned successful

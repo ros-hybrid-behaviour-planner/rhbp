@@ -174,6 +174,7 @@ class Goal(object):
         self._enabled = enabled  # The enable Service sets the value of this property.
         self._priority = priority  # The higher the (unsigned) number the higher the importance
         self._services_running = False
+        self._current_manger_step = 0
         self._init_services()
 
     def _init_services(self):
@@ -329,7 +330,7 @@ class GoalProxy(AbstractGoalRepresentation):
         self.__old_PDDL = (PDDL(statement=name), PDDL(statement="", predicates=[], functions=[]))
         self.__consecutive_timeouts = 0
 
-    def fetchPDDL(self):
+    def fetchPDDL(self, update_computation=False):
         '''
         This method fetches the PDDL from the actual goal node via GetPDDLservice call
         '''
@@ -346,7 +347,7 @@ class GoalProxy(AbstractGoalRepresentation):
             return self.__old_PDDL
         try:
             getPDDLRequest = rospy.ServiceProxy(service_name, GetPDDL)
-            pddl = getPDDLRequest()
+            pddl = getPDDLRequest(update_computation=update_computation)
             self.__old_PDDL = (PDDL(statement=pddl.goalStatement),
                     PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates,
                          functions=pddl.stateFunctions))
@@ -564,8 +565,12 @@ class GoalBase(Goal):
         except Exception as e:
             rhbplog.logerr("Error in destructor of GoalBase: %s", e)
 
-    def _pddl_callback(self, dummy):
+    def _pddl_callback(self, msg):
         try:
+
+            if msg.update_computation:
+                self.updateComputation(manager_step=self._current_manger_step)
+
             goalStatements = self.getGoalStatements()
             statePDDL = self.getStatePDDL()
             return GetPDDLResponse(**{"goalStatement": goalStatements,
@@ -580,6 +585,7 @@ class GoalBase(Goal):
     def _get_status_callback(self, request):
 
         try:
+            self._current_manger_step = request.current_step
             self.updateComputation(request.current_step)
             
             sensor_values = self._sensor_transformer.get_sensor_values(self._conditions)

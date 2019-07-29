@@ -157,17 +157,18 @@ class Behaviour(object):
         self._activation = 0.0
         self._preconditionSatisfaction = 0.0
 
-    def fetchPDDL(self):
+    def fetchPDDL(self, update_computation=False):
         '''
         This method fetches the PDDL from the actual behaviour node via GetPDDLservice call.
         It returns a tuple of (action_pddl, state_pddl).
+        :param update_computation: set to true if you want to force sensor/function state updates.
         '''
         service_name = self._service_prefix + Behaviour.SERVICE_NAME_GET_PDDL
         rhbplog.logdebug("Waiting for service %s", service_name)
         rospy.wait_for_service(service_name)
         try:
             getPDDLRequest = rospy.ServiceProxy(service_name, GetPDDL)
-            pddl = getPDDLRequest()
+            pddl = getPDDLRequest(update_computation=update_computation)
             return (PDDL(statement=pddl.actionStatement, predicates=pddl.actionPredicates, functions=pddl.actionFunctions), \
                    PDDL(statement=pddl.stateStatement, predicates=pddl.statePredicates, functions=pddl.stateFunctions))
         except rospy.ServiceException:
@@ -655,8 +656,12 @@ class BehaviourBase(object):
                     pddl = mergeStatePDDL(s, pddl)
         return pddl                      
 
-    def _pddl_callback(self, dummy):
+    def _pddl_callback(self, msg):
         try:
+
+            if msg.update_computation:
+                self.updateComputation(manager_step=self._current_manger_step)
+
             if not self._independentFromPlanner and len(self._correlations) == 0:
                 # Since the correlations arent setted in constructor once right place for warning is here
                 rhbplog.logwarn('Behavior {0} has no effects but is not independent from planner'.format(self._name))

@@ -1,3 +1,4 @@
+bool update_computation  # True force a state and function update, especially useful if the service is used standalone
 ---
 string actionStatement
 string[] actionPredicates

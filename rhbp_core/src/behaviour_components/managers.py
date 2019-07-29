@@ -203,29 +203,30 @@ class Manager(object):
     def _getDomainName(self):
         return create_valid_pddl_name(self._prefix) if self._prefix else "UNNAMED"
 
-    def _fetchPDDL(self, behaviours, goals):
+    def _fetchPDDL(self, behaviours, goals, update_computation=False):
         '''
         This method fetches the PDDL from all behaviours and goals, merges the state descriptions and returns the domain
         PDDL string ready for ff. Alongside it updates
         As a side effect, is also computes the sensor changes that happened between the last invocation and now.
+        :param update_computation: set to true if you want to force sensor/function state updates.
         '''
-        behaviourPDDLs = [behaviour.fetchPDDL() for behaviour in behaviours]
-        self.__goalPDDLs = {goal: goal.fetchPDDL() for goal in goals}
+        behaviourPDDLs = [behaviour.fetchPDDL(update_computation) for behaviour in behaviours]
+        self.__goalPDDLs = {goal: goal.fetchPDDL(update_computation) for goal in goals}
         pddl = PDDL()
         # Get relevant domain information from behaviour pddls
-        for actionPDDL, statePDDL in behaviourPDDLs:
+        for actionPDDL, state_pddl in behaviourPDDLs:
             pddl.statement += actionPDDL.statement
             pddl.predicates = pddl.predicates.union(actionPDDL.predicates)
             pddl.functions = pddl.functions.union(actionPDDL.functions)
-            pddl.functions = pddl.functions.union(statePDDL.functions)
+            pddl.functions = pddl.functions.union(state_pddl.functions)
         # Get relevant domain information from goal pddls
         for goal, goal_pddl in self.__goalPDDLs.iteritems():
             if goal_pddl is None:
                 continue
             # pddl.statement and  pddl.predicates are not needed from goals for the domain description
-            actionPDDL, statePDDL = goal_pddl
+            actionPDDL, state_pddl = goal_pddl
             pddl.functions = pddl.functions.union(actionPDDL.functions)
-            pddl.functions = pddl.functions.union(statePDDL.functions)
+            pddl.functions = pddl.functions.union(state_pddl.functions)
         domainPDDLString = "(define (domain {0})\n".format(self._getDomainName())
         # Update requirements if necessary
         # Actually :fluents could just be :numeric-fluents, but this is not accepted by metric-ff
@@ -234,12 +235,12 @@ class Manager(object):
         domainPDDLString += "(:functions\n    " + "\n    ".join("({0})".format(x) for x in pddl.functions) + ")\n"
         domainPDDLString += pddl.statement + ")"
         merged_state_pddl = PDDL()
-        for _actionPDDL, statePDDL in behaviourPDDLs:
-            merged_state_pddl = mergeStatePDDL(statePDDL, merged_state_pddl)
+        for _actionPDDL, state_pddl in behaviourPDDLs:
+            merged_state_pddl = mergeStatePDDL(state_pddl, merged_state_pddl)
         for v in self.__goalPDDLs.itervalues():
             if not v is None:
-                _goalPDDL, statePDDL = v
-                merged_state_pddl = mergeStatePDDL(statePDDL, merged_state_pddl)
+                _goalPDDL, state_pddl = v
+                merged_state_pddl = mergeStatePDDL(state_pddl, merged_state_pddl)
 
         merged_state_pddl = init_missing_functions(pddl, merged_state_pddl)
 
@@ -247,43 +248,45 @@ class Manager(object):
         new_parsed_state_pddl = parseStatePDDL(merged_state_pddl)
 
         # filter out negative predicates. FF can't handle them!
-        statePDDL = PDDL(statement="\n\t\t".join(
+        state_pddl = PDDL(statement="\n\t\t".join(
             filter(lambda x: predicateRegex.match(x) is None or predicateRegex.match(x).group(2) is None, tokenizePDDL(merged_state_pddl.statement)))
-        )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated (which is also ok)
+        )# if the regex does not match it is a function (which is ok) and if the second group is None it is not negated
+         # (which is also ok)
 
         # compute changes
         new_sensor_changes = getStatePDDLchanges(self.__previous_parsed_state_pddl, new_parsed_state_pddl)
         self.__aggregated_sensor_changes = aggregate_sensor_changes(old_changes=self.__sensorChanges,
                                                                     new_changes=new_sensor_changes)
         self.__sensorChanges = new_sensor_changes
-        self.__previousStatePDDL = statePDDL
+        self.__previousStatePDDL = state_pddl
         self.__previous_parsed_state_pddl = new_parsed_state_pddl
         self.__last_domain_PDDL = domainPDDLString
-        return domainPDDLString
+        return domainPDDLString, state_pddl
 
     def _reset_sensor_changes(self):
         self.__aggregated_sensor_changes = {}
 
-    def _create_problem_pddl(self, goals):
+    def _create_problem_pddl(self, goals, state_pddl):
         '''
         This method creates the problem PDDL for a given set of goals.
         It relies on the fact that self.fetchPDDL() has run before and filled the self.__goalPDDLs dictionary with the most recent responses from the actual goals and self.__previousStatePDDL with the CURRENT state PDDL
         '''
         goalConditions = (self.__goalPDDLs[goal][0].statement for goal in goals) # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
-        problemPDDLString = self._create_problem_pddl_string(" ".join(goalConditions))
+        problemPDDLString = self._create_problem_pddl_string(" ".join(goalConditions), state_pddl)
 
         return problemPDDLString
 
-    def _create_problem_pddl_string(self, goal_conditions_string):
+    def _create_problem_pddl_string(self, goal_conditions_string, state_pddl):
         """
         Creates a problem PDDL-String for a given String, that contains all goal statements
 
         :param goal_conditions_string: string containing all goal statements separated by a space
+        :param state_pddl: current State PDDL object.
         :return: problemPDDLString
         """
 
         problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(
-            self._getDomainName(), self.__previousStatePDDL.statement)  # at this point the "previous" is the current state PDDL
+            self._getDomainName(), state_pddl.statement)  # at this point the "previous" is the current state PDDL
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(goal_conditions_string)
         problemPDDLString += ")\n"
         return problemPDDLString
@@ -334,7 +337,7 @@ class Manager(object):
             return
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
-        domain_pddl = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
+        domain_pddl, state_pddl = self._fetchPDDL(behaviours=self._operational_behaviours, goals=self._operational_goals)
 
         rhbplog.logdebug("Changes: %s", self.__sensorChanges)
 
@@ -387,7 +390,7 @@ class Manager(object):
                 problem_pddl = ""
                 try:
                     rhbplog.logdebug("trying to reach goals %s", goal_sequence)
-                    problem_pddl = self._create_problem_pddl(goal_sequence)
+                    problem_pddl = self._create_problem_pddl(goal_sequence, state_pddl)
 
                     tmp_plan = self.planner.plan(domain_pddl, problem_pddl)
                     if tmp_plan and "cost" in tmp_plan and tmp_plan["cost"] != -1.0:
@@ -1127,15 +1130,22 @@ class Manager(object):
                 behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals
                 goals = [x for x in self._goals if x.operational]
-                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+
+                domain_pddl, state_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals, update_computation=True)
             else:
                 domain_pddl = copy(self.__last_domain_PDDL)
+                state_pddl = self.__previousStatePDDL
 
             # self.__goalPDDLs[goal][0] is the goalPDDL of goal's (goalPDDL, statePDDL) tuple
             current_goal_conditions = (self.__goalPDDLs[goal][0].statement for goal in self._currently_pursued_goals)
-            problem_pddl = self._create_problem_pddl_string(" ".join(current_goal_conditions) + " " + goal_statement)
+            problem_pddl = self._create_problem_pddl_string(goal_conditions_string=" ".join(current_goal_conditions)
+                                                                                   + " " + goal_statement,
+                                                            state_pddl=state_pddl)
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
+
+        # rhbplog.logerr("ADDITIONAL) Domain: %s\n, Problem: %s\n, Plan: %s", domain_pddl, problem_pddl, plan)
+
         return plan
 
     def plan_this_single_goal(self, goal_statement):
@@ -1156,13 +1166,18 @@ class Manager(object):
                 behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals
                 goals = [x for x in self._goals if x.operational]
-                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+                domain_pddl, state_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals, update_computation=True)
             else:
                 domain_pddl = copy(self.__last_domain_PDDL)
+                state_pddl = self.__previousStatePDDL
 
-            problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement)
+            problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement,
+                                                            state_pddl=state_pddl)
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
+
+        # rhbplog.logerr("SINGLE) Domain: %s\n, Problem: %s\n, Plan: %s", domain_pddl, problem_pddl, plan)
+
         return plan
 
     def __plan_with_registered_goals_callback(self, req):
@@ -1215,11 +1230,12 @@ class Manager(object):
                 behaviours = [x for x in self._behaviours if x.operational]
                 # take all goals if not specified
                 goals = goals if len(goals) > 0 else [x for x in self._goals if x.operational]
-                domain_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals)
+                domain_pddl, state_pddl = self._fetchPDDL(behaviours=behaviours, goals=goals, update_computation=True)
             else:
                 domain_pddl = copy(self.__last_domain_PDDL)
+                state_pddl = self.__previousStatePDDL
 
-            problem_pddl = self._create_problem_pddl(goals)
+            problem_pddl = self._create_problem_pddl(goals, state_pddl)
 
         try:
             plan = self.planner.plan(domain_pddl, problem_pddl)
