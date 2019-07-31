@@ -4,7 +4,7 @@ Created on 17.04.2018
 @author: hrabia
 """
 
-from behaviour_components.sensors import AggregationSensor
+from behaviour_components.sensors import AggregationSensor, RawTopicSensor
 
 import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.utils')
@@ -38,3 +38,43 @@ class ValueDifferSensor(AggregationSensor):
             value = False
 
         return value
+
+
+class GoalAmountSensor(RawTopicSensor):
+    """
+    Sensor that determines the number of currently registered goals in the planner
+    """
+
+    def __init__(self, topic="/Planner/plannerStatus", name=None, initial_value=0, create_log=False,
+                 print_updates=False):
+        super(GoalAmountSensor, self).__init__(name=name, topic=topic, initial_value=initial_value,
+                                               create_log=create_log, print_updates=print_updates)
+
+    def update(self, value):
+
+        if value.goals:
+            amount_of_goals = len(value.goals)
+        else:
+            amount_of_goals = 0
+
+        super(GoalAmountSensor, self).update(amount_of_goals)
+
+
+class GoalEnabledAmountSensor(RawTopicSensor):
+    """
+    Sensor that determines the number of currently registered and enabled goals in the planner
+    """
+
+    def __init__(self, topic="/Planner/plannerStatus", name=None, initial_value=0, create_log=False,
+                 print_updates=False):
+        super(GoalEnabledAmountSensor, self).__init__(name=name, topic=topic, initial_value=initial_value,
+                                                      create_log=create_log, print_updates=print_updates)
+
+    def update(self, value):
+
+        if value.goals:
+            amount_of_goals = len([g for g in value.goals if g.enabled])
+        else:
+            amount_of_goals = 0
+
+        super(GoalEnabledAmountSensor, self).update(amount_of_goals)
