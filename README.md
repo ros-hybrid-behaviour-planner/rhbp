@@ -54,15 +54,62 @@ In: 2017 IEEE 3nd International Conference on Control, Automation and Robotics (
 ```
 
 ```bibtex
-@INPROCEEDINGS{hrabia_goal_driven_2017,
+@INPROCEEDINGS{hrabia2017goaldriven,
 author={Christopher-Eyk Hrabia, Stephan Wypler and Sahin Albayrak},
 booktitle={2017 3nd International Conference on Control, Automation and Robotics (ICCAR)},
 title={Towards Goal-driven Behaviour Control of Multi-Robot Systems},
 year={2017},
 }
 ```
+About the self-organisation extension:
 
-For application of RHBP in the German SpaceBot Cup competition:
+```
+Combining Self-Organisation with Decision-Making and Planning
+Christopher-Eyk Hrabia, Tanja Katharina Kaiser, Sahin Albayrak
+In: Multi-Agent Systems and Agreement Technologies: 15th European Conference, EUMAS 2017, and 5th International Conference, AT 2017, Evry, France, December 14-15, 2017; 2018
+```
+
+```bibtex
+@InProceedings{hrabia2018combining,
+author="Hrabia, Christopher-Eyk
+and Kaiser, Tanja Katharina
+and Albayrak, Sahin",
+editor="Belardinelli, Francesco
+and Argente, Estefan{\'i}a",
+title="Combining Self-Organisation with Decision-Making and Planning",
+booktitle="Multi-Agent Systems and Agreement Technologies",
+year="2018",
+publisher="Springer International Publishing",
+address="Cham",
+pages="385--399",
+isbn="978-3-030-01713-2"
+}
+```
+
+About the reinforcement learning extension:
+
+```
+Increasing Self-Adaptation in a Hybrid Decision-Making and Planning System with Reinforcement Learning
+Christopher-Eyk Hrabia , Patrick Marvin Lehmann, Sahin Albayrak
+In: 2019 IEEE 43rd Annual Computer Software and Applications Conference (COMPSAC); 2019
+```
+
+```bibtex
+@INPROCEEDINGS{hrabia2019increasing, 
+author={Christopher-Eyk {Hrabia} and Patrick Marvin {Lehmann} and Sahin {Albayrak}}, 
+booktitle={2019 IEEE 43rd Annual Computer Software and Applications Conference (COMPSAC)}, 
+title={Increasing Self-Adaptation in a Hybrid Decision-Making and Planning System with Reinforcement Learning}, 
+year={2019}, 
+volume={1}, 
+number={}, 
+pages={469-478}, 
+keywords={decision-making, planning, reinforcement learning, self-adaptation, autonomous robots}, 
+doi={10.1109/COMPSAC.2019.00073}, 
+ISSN={0730-3157}, 
+month={July},}
+```
+
+About the application of RHBP in the German SpaceBot Cup competition:
 
 ```
 An autonomous companion UAV for the SpaceBot Cup competition 2015
@@ -71,7 +118,7 @@ In: Robot Operating System (ROS) - The Complete Reference (Volume 2); 2017
 ```
 
 ```bibtex
-@InBook{hrabia_ros_2017,
+@InBook{hrabia2017ros,
   Title                    = {Robot Operating System (ROS) - The Complete Reference (Volume 2)},
   Author                   = {Christopher-Eyk Hrabia and Martin Berger and Axel Hessler and Stephan Wypler and Jan Brehmer and Simon Matern and Sahin Albayrak},
   Chapter                  = {An autonomous companion UAV for the SpaceBot Cup competition 2015},
@@ -81,3 +128,54 @@ In: Robot Operating System (ROS) - The Complete Reference (Volume 2); 2017
   Doi                      = {10.1007/978-3-319-54927-9},
 }
 ```
+
+About the application in the Multi-Agent Programming Contest (MAPC) (https://github.com/agentcontest)
+
+```
+Applying robotic frameworks in a simulated multi-agent contest
+Christopher-Eyk Hrabia, Patrick Marvin Lehmann, Nabil Battjbuer, Axel Heßler, Sahin Albayrak
+In: Annals of Mathematics and Artificial Intelligence; 2018
+```
+
+```bibtex
+@Article{hrabia2018mapc,
+author="Hrabia, Christopher-Eyk
+and Lehmann, Patrick Marvin
+and Battjbuer, Nabil
+and Hessler, Axel
+and Albayrak, Sahin",
+title="Applying robotic frameworks in a simulated multi-agent contest",
+journal="Annals of Mathematics and Artificial Intelligence",
+year="2018",
+month="May",
+day="07",
+abstract="In the Multi-Agent Programming Contest 2017 the TUBDAI team of the Technische Universit{\"a}t Berlin is using the complex multi-agent scenario to evaluate the application of two frameworks from the field (multi-)robot systems. In particular the task-level decision-making and planning framework ROS Hybrid Behaviour Planner (RHBP) is used to implement the execution and decision-making for single agents. The RHBP framework builds on top of the framework Robot Operating System (ROS) that is used to implement the communication and scenario specific coordination strategy of the agents. The united team for the official contest is formed by volunteering students from a project course and their supervisors.",
+issn="1573-7470",
+doi="10.1007/s10472-018-9586-x",
+url="https://doi.org/10.1007/s10472-018-9586-x"
+}
+```
+
+About the application in the BMBF EffFeu project:
+
+```
+EffFeu Project: Towards Mission-Guided Application of Drones in Safety and Security Environments
+Christopher-Eyk Hrabia, Axel Heßler, Yuan Xu, Jacob Seibert, Jan Brehmer, and Sahin Albayrak
+In: MDPI Sensors, Special Issue Unmanned Aerial Vehicle Networks, Systems and Applications; 2019
+```
+
+```bibtex
+@Article{hrabia2019efffeu,
+AUTHOR = {Hrabia, Christopher-Eyk and Hessler, Axel and Xu, Yuan and Seibert, Jacob and Brehmer, Jan and Albayrak, Sahin},
+TITLE = {EffFeu Project: Towards Mission-Guided Application of Drones in Safety and Security Environments},
+JOURNAL = {Sensors},
+VOLUME = {19},
+YEAR = {2019},
+NUMBER = {4},
+ARTICLE-NUMBER = {973},
+URL = {http://www.mdpi.com/1424-8220/19/4/973},
+ISSN = {1424-8220},
+DOI = {10.3390/s19040973}
+}
+```
+
