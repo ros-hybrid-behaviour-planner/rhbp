@@ -4,3 +4,6 @@
 [submodule "delegation_module"]
 	path = delegation_module
 	url = ../delegation_module
+[submodule "knowledge_base"]
+	path = knowledge_base
+	url = ../knowledge_base

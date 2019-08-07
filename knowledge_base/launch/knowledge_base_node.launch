@@ -1,4 +1,0 @@
-<launch>
-	<arg name="knowledge_base_name" default="knowledgeBaseNode" />
-  	<node pkg="knowledge_base" type="knowledge_base_node.py" name ="$(arg knowledge_base_name)" />
-</launch>

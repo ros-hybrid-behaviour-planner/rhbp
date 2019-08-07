@@ -1,6 +1,0 @@
-string[] pattern
-string[] newFact
-bool pushWithoutExisting
----
-# whether fact exists after update
-bool successful

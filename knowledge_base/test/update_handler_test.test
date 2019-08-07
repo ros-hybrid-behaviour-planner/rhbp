@@ -1,4 +1,0 @@
-<!-- Tests the fact cache -->
-<launch>
-    <test pkg="knowledge_base" type="update_handler_test.py" test-name="update_handler_test_node"/>
-</launch>

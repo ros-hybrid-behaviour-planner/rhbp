@@ -1,4 +1,0 @@
-<!-- Tests the knowledge base manager -->
-<launch>
-    <test pkg="knowledge_base" type="knowledge_base_manager_test.py" test-name="knowledge_base_manager_test_node"/>
-</launch>
