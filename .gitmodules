@@ -1,6 +1,6 @@
 [submodule "rhbp_rl"]
 	path = rhbp_rl
-	url = https://gitlab.tubit.tu-berlin.de/rhbp/rhbp_rl.git
+	url = ../rhbp_rl.git
 [submodule "delegation_module"]
 	path = delegation_module
-	url = https://gitlab.tubit.tu-berlin.de/rhbp/delegation_module
+	url = ../delegation_module
