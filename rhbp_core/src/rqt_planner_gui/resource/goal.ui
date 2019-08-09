@@ -145,7 +145,7 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="wishesDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -161,7 +161,7 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="1" colspan="2">
+         <item row="5" column="1" colspan="2">
           <widget class="QLabel" name="wishesLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
@@ -177,6 +177,16 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="prioritySpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
          <item row="3" column="1" colspan="2">
           <widget class="QLabel" name="activeLabel">
            <property name="sizePolicy">
@@ -189,7 +199,7 @@
             <string>if the behaviour is activated but not active there is an internal problem</string>
            </property>
            <property name="text">
-            <string>Active</string>
+            <string/>
            </property>
           </widget>
          </item>
@@ -197,16 +207,6 @@
           <widget class="QLabel" name="label">
            <property name="text">
             <string>Priority</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QSpinBox" name="prioritySpinBox">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
            </property>
           </widget>
          </item>
@@ -220,6 +220,20 @@
            </property>
            <property name="text">
             <string>set</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="permanentDescriptionLabel">
+           <property name="text">
+            <string>Permanent</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLabel" name="permanentLabel">
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>

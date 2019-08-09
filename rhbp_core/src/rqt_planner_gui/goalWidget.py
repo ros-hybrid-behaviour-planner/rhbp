@@ -47,6 +47,7 @@ class GoalWidget(QWidget):
         self.wishesLabel.setToolTip(newValues["wishesTooltip"])
         if not self.prioritySpinBox.hasFocus():
             self.prioritySpinBox.setValue(newValues["priority"])
+        self.permanentLabel.setText(newValues["permanent"])
         
     def refresh(self, msg):
         """
@@ -58,6 +59,7 @@ class GoalWidget(QWidget):
                                    "fulfillment" : msg.satisfaction,
                                    "active" : str(msg.active),
                                    "priority" : msg.priority,
+                                   "permanent": str(msg.permanent),
                                    "wishes" : "\n".join(map(lambda x: "{0}: {1:.4g}".format(x.sensorName, x.indicator), msg.wishes)),
                                    "wishesTooltip" : "\n".join(map(lambda x: "{0}: {1}".format(x.sensorName, x.indicator), msg.wishes))
                                   })
