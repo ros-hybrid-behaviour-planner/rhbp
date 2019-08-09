@@ -62,18 +62,27 @@ class GoalAmountSensor(RawTopicSensor):
 
 class GoalEnabledAmountSensor(RawTopicSensor):
     """
-    Sensor that determines the number of currently registered and enabled goals in the planner
+    Sensor that determines the number of currently registered and enabled goals in the planner.
+    Moreover, it allows to filter permanent and non-permanent goals.
     """
 
-    def __init__(self, topic="/Planner/plannerStatus", name=None, initial_value=0, create_log=False,
-                 print_updates=False):
+    def __init__(self, topic="/Planner/plannerStatus", name=None, initial_value=0, permanent_to_filter=None,
+                 create_log=False, print_updates=False):
+        """
+        :param permanent_to_filter: None = No filter, True = only permanent (maintenance goals),
+        False = only non-permanent, goals (achievement goals)
+        """
         super(GoalEnabledAmountSensor, self).__init__(name=name, topic=topic, initial_value=initial_value,
                                                       create_log=create_log, print_updates=print_updates)
+        self.filter_permanent = permanent_to_filter
 
     def update(self, value):
 
         if value.goals:
-            amount_of_goals = len([g for g in value.goals if g.enabled])
+            if self.filter_permanent is None:
+                amount_of_goals = len([g for g in value.goals if g.enabled])
+            else:
+                amount_of_goals = len([g for g in value.goals if g.enabled and g.permanent == self.filter_permanent])
         else:
             amount_of_goals = 0
 

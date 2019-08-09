@@ -71,7 +71,7 @@ class GoalWrapperTest(unittest.TestCase):
         self.assertTrue(test_wrapper.goal_is_created())
 
         goal = test_wrapper.get_goal()
-        self.assertFalse(goal.isPermanent)
+        self.assertFalse(goal.permanent)
 
         goals = self.manager.goals
 

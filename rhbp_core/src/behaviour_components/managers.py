@@ -754,7 +754,7 @@ class Manager(object):
             rhbplog.logdebug("%s: enabled: %s, operational: %s, fulfillment: %f, wishes %s", goal.name, goal.enabled,
                              goal.operational, goal.fulfillment, goal.wishes)
             # Deactivate non-permanent and satisfied goals
-            if goal.enabled and not goal.isPermanent and goal.satisfied:
+            if goal.enabled and not goal.permanent and goal.satisfied:
                 goal.enabled = False
                 rhbplog.logdebug("Set 'enabled' of %s goal to False", goal.name)
         ### do housekeeping ###
@@ -899,7 +899,7 @@ class Manager(object):
         :type request: AddGoal
         :return: AddGoalResponse
         """
-        goal = GoalProxy(name=request.name, permanent=request.permanent, planner_prefix=self._prefix)
+        goal = GoalProxy(name=request.name, planner_prefix=self._prefix)
         self.add_goal(goal)
         return AddGoalResponse()
 

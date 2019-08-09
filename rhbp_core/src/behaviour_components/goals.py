@@ -41,7 +41,7 @@ class AbstractGoalRepresentation(object):
 
     def __init__(self, name, permanent=False, satisfaction_threshold=1.0, priority=0, active=True, enabled=True):
         self._name = name
-        self._isPermanent = permanent
+        self._permanent = permanent
         self._priority = priority
         self._satisfaction_threshold = satisfaction_threshold
         self._wishes = []
@@ -58,8 +58,13 @@ class AbstractGoalRepresentation(object):
         return self._name
 
     @property
+    @deprecated
     def isPermanent(self):
-        return self._isPermanent
+        return self._permanent
+
+    @property
+    def permanent(self):
+        return self._permanent
 
     @property
     def priority(self):
@@ -134,11 +139,12 @@ class AbstractGoalRepresentation(object):
         return self._fulfillment >= self._satisfaction_threshold
 
     @abstractmethod
-    def fetchPDDL(self):
-        '''
+    def fetchPDDL(self, update_computation=False):
+        """
         This method generates pddl.
-        It returns a tuple of (goal_pddl, state_pddl).
-        '''
+        :param update_computation: force a sensor/condition/activator update
+        :return: tuple of (goal_pddl, state_pddl).
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -159,7 +165,8 @@ class Goal(object):
     SERVICE_NAME_ENABLE = "Enable"
     SERVICE_NAME_PRIORITY = "Priority"
 
-    def __init__(self, name, planner_prefix, conditions=None, satisfaction_threshold=1.0, priority=0, active=True, enabled=True):
+    def __init__(self, name, planner_prefix, conditions=None, permanent=False, satisfaction_threshold=1.0, priority=0,
+                 active=True, enabled=True):
         '''
         Constructor
         '''
@@ -175,6 +182,7 @@ class Goal(object):
         self._priority = priority  # The higher the (unsigned) number the higher the importance
         self._services_running = False
         self._current_manger_step = 0
+        self._permanent = permanent
         self._init_services()
 
     def _init_services(self):
@@ -300,6 +308,15 @@ class Goal(object):
         return self._active
 
     @property
+    def permanent(self):
+        return self._permanent
+
+    @property
+    @deprecated
+    def isPermanent(self):
+        return self._permanent
+
+    @property
     def name(self):
         return self._name
 
@@ -319,11 +336,11 @@ class GoalProxy(AbstractGoalRepresentation):
     SERVICE_NAME_FETCH_PDDL = 'PDDL'
     SERVICE_NAME_GET_STATUS = 'GetStatus'
 
-    def __init__(self, name, permanent, planner_prefix):
+    def __init__(self, name, planner_prefix):
         '''
         Constructor
         '''
-        super(GoalProxy, self).__init__(name, permanent)
+        super(GoalProxy, self).__init__(name)
         self._service_prefix = planner_prefix + '/' + self._name + '/'
         
         self.sensor_values = []
@@ -382,6 +399,7 @@ class GoalProxy(AbstractGoalRepresentation):
             self._wishes = [Wish.from_wish_msg(wish) for wish in status.wishes]
             self._active = status.active
             self._enabled = status.enabled
+            self._permanent = status.permanent
             self._priority = status.priority
             self._satisfaction_threshold = status.threshold
             self.sensor_values = status.sensor_values
@@ -451,7 +469,7 @@ class GoalBase(Goal):
         """
 
         :param name:  a unique name is mandatory
-        :param permanent:
+        :param permanent: define if it is a maintenance goals (permanent=True) or a achievement goal (permanent=False)
         :param conditions:
         :param planner_prefix: if you have multiple planners in the same ROS environment use a prefix to identify the right one.
         :param priority:
@@ -459,11 +477,10 @@ class GoalBase(Goal):
         :param enabled:
         """
         super(GoalBase, self).__init__(name=name, planner_prefix=planner_prefix, conditions=conditions,
-                                       satisfaction_threshold=satisfaction_threshold, priority=priority,
-                                       enabled=enabled)
+                                       permanent=permanent, satisfaction_threshold=satisfaction_threshold,
+                                       priority=priority, enabled=enabled)
         self._name = name
 
-        self._permanent = permanent
         self._planner_prefix = planner_prefix
         self._registered = False  # keeps track of goal registration state
         self._sensor_transformer = SensorValueTransformer()
@@ -511,7 +528,7 @@ class GoalBase(Goal):
                                     service_name, self._planner_prefix)
 
             add_goal = rospy.ServiceProxy(service_name, AddGoal)
-            add_goal(self._name, self._permanent)
+            add_goal(self._name)
             self._registered = True
             rhbplog.logdebug("GoalBase constructor registered at planner manager with prefix '%s' for goal node %s",
                              self._planner_prefix, self._name)
@@ -598,17 +615,14 @@ class GoalBase(Goal):
                 "enabled": self._enabled,
                 "priority": self._priority,
                 "threshold": self._satisfaction_threshold,
-                "sensor_values": sensor_values
+                "sensor_values": sensor_values,
+                "permanent": self.permanent
             })
             return GetStatusResponse(status)
         except Exception:
             rhbplog.logerr("ROS service callback exception in '_get_status_callback' of goal '%s': %s", self._name,
                          traceback.format_exc())
             return None
-
-    @property
-    def isPermanent(self):
-        return self._permanent
 
 
 class OfflineGoal(AbstractGoalRepresentation):
@@ -626,23 +640,31 @@ class OfflineGoal(AbstractGoalRepresentation):
                                           satisfaction_threshold=satisfaction_threshold, priority=priority,
                                           enabled=enabled)
 
+        self._current_step = 0
+
         #nested goal object that takes care of calculation and provides management services
-        self.__goal = Goal(name=name, satisfaction_threshold=satisfaction_threshold, planner_prefix=planner_prefix)
+        self.__goal = Goal(name=name, permanent=permanent, satisfaction_threshold=satisfaction_threshold,
+                           planner_prefix=planner_prefix)
 
         if conditions is not None:
             for condition in conditions:
                 self.add_condition(condition)
 
     def fetchStatus(self, current_step):
-        self.__goal.updateComputation(current_step)
+        self._current_step = current_step
+        self.__goal.updateComputation(self._current_step)
         self._fulfillment = self.__goal.computeSatisfaction()
         self._wishes = [Wish.from_wish_msg(wish) for wish in self.__goal.computeWishes()]
         self._priority = self.__goal.priority
         self._active = self.__goal.active
         self._enabled = self.__goal.enabled
         self._satisfaction_threshold = self.__goal.satisfaction_threshold
+        self._permanent = self.__goal.permanent
 
-    def fetchPDDL(self):
+    def fetchPDDL(self, update_computation=False):
+        if update_computation:
+            self.__goal.updateComputation(self._current_step)
+
         goal_statements = self.__goal.getGoalStatements()
         state_pddl = self.__goal.getStatePDDL()
         return (PDDL(statement=goal_statements),

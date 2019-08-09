@@ -14,4 +14,5 @@ bool independentFromPlanner
 int32 priority
 bool enabled
 bool executable
+bool permanent # only relevent for Goals
 SensorValue[] sensor_values
