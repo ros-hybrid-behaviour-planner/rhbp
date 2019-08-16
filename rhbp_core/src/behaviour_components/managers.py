@@ -703,6 +703,8 @@ class Manager(object):
             statusMessage.enabled = goal.enabled
             statusMessage.satisfaction = goal.fulfillment
             statusMessage.priority = goal.priority
+            statusMessage.permanent = goal.permanent
+            # TODO here we could also copy the sensor_values if we need them somewhere else
             plannerStatusMessage.goals.append(statusMessage)
 
         # collect all that stuff for the rqt gui
@@ -724,6 +726,7 @@ class Manager(object):
             statusMessage.active = behaviour.active
             statusMessage.correlations = [correlation.get_msg() for correlation in behaviour.correlations]
             statusMessage.wishes = [w.get_wish_msg() for w in behaviour.wishes]
+            # TODO here we could also copy the sensor_values if we need them somewhere else
             plannerStatusMessage.behaviours.append(statusMessage)
         plannerStatusMessage.runningBehaviours = [b.name for b in self.__executedBehaviours]
         plannerStatusMessage.influencedSensors = list(currently_influenced_sensors)
