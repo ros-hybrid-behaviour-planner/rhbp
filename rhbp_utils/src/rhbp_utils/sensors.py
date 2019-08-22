@@ -87,3 +87,29 @@ class GoalEnabledAmountSensor(RawTopicSensor):
             amount_of_goals = 0
 
         super(GoalEnabledAmountSensor, self).update(amount_of_goals)
+
+
+class GoalEnabledWithNameSensor(RawTopicSensor):
+    """
+    Sensor that determines if a goal containing the targeted name is enabled and registered.
+    """
+
+    def __init__(self, target_goal_name, topic="/Planner/plannerStatus", name=None, initial_value=False,
+                 create_log=False, print_updates=False):
+        """
+        :param target_goal_name: name component that is searched with "in"
+        """
+        super(GoalEnabledWithNameSensor, self).__init__(name=name, topic=topic, initial_value=initial_value,
+                                                        create_log=create_log, print_updates=print_updates)
+        self.target_goal_name = target_goal_name
+
+    def update(self, value):
+
+        goal_found = False
+
+        for g in value.goals:
+            if self.target_goal_name in g.name and g.enabled:
+                goal_found = True
+                break
+
+        super(GoalEnabledWithNameSensor, self).update(goal_found)
