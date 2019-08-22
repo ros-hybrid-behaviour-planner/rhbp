@@ -500,8 +500,11 @@ class Condition(Conditonal):
                                                          self._get_current_sensor_value_for_pddl_creation())
 
     def getStatePDDL(self):
-        return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue,
-                                                   self._sensor.value_update_time)]
+        if self._optional_for_planning:
+            return [PDDL()]
+        else:
+            return [self._activator.getSensorStatePDDL(self._sensor.name, self._normalizedSensorValue,
+                                                       self._sensor.value_update_time)]
 
     def getFunctionNames(self):
         """
