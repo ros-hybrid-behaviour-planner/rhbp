@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
-from rhbp_core.srv import Enable, ForceStart, SetInteger
+from rhbp_core.srv import Enable, ForceStart, SetInteger, RemoveBehaviour
 from rhbp_core.msg import Status
 from PyQt5.QtCore import pyqtSignal
 
@@ -29,6 +29,7 @@ class BehaviourWidget(QWidget):
         self.activatedCheckbox.toggled.connect(self.activationCallback)
         self.forceStartButton.toggled.connect(self.forceStartCallback)
         self.priorityPushButton.clicked.connect(self.setPriorityCallback)
+        self.removePushButton.clicked.connect(self.removeCallback)
         self.executionTimeoutPushButton.clicked.connect(self.setExecutionTimeoutCallback)
         self.updateGUIsignal.connect(self.updateGUI)
 
@@ -112,6 +113,14 @@ class BehaviourWidget(QWidget):
         else:
             self.forceStartButton.setText("start")
         rospy.logdebug("Set forceStart of %s to %s", self._name, status)
+
+    def removeCallback(self):
+        service_name = self._overviewPlugin.planner_prefix + '/' + 'RemoveBehaviour'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        removeRequest = rospy.ServiceProxy(service_name, RemoveBehaviour)
+        removeRequest(self._name)
+        rospy.logdebug("Removed %s", self._name)
     
     def setPriorityCallback(self):
         service_name = self._get_service_prefix() + 'Priority'

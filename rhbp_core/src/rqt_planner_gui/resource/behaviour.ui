@@ -226,6 +226,13 @@
            </property>
           </widget>
          </item>
+         <item row="13" column="2" colspan="2">
+          <widget class="QLabel" name="correlationsLabel">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
          <item row="9" column="0">
           <widget class="QLabel" name="activeDescriptionLabel">
            <property name="sizePolicy">
@@ -255,8 +262,8 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="2" colspan="2">
-          <widget class="QLabel" name="correlationsLabel">
+         <item row="14" column="2" colspan="2">
+          <widget class="QLabel" name="wishesLabel">
            <property name="text">
             <string/>
            </property>
@@ -275,8 +282,8 @@
            </property>
           </widget>
          </item>
-         <item row="14" column="2" colspan="2">
-          <widget class="QLabel" name="wishesLabel">
+         <item row="5" column="2" colspan="2">
+          <widget class="QLabel" name="executableLabel">
            <property name="text">
             <string/>
            </property>
@@ -292,26 +299,6 @@
            </property>
            <property name="text">
             <string>Executable</string>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="2" colspan="2">
-          <widget class="QLabel" name="executableLabel">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="14" column="0">
-          <widget class="QLabel" name="wishesDescriptionLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Wishes</string>
            </property>
           </widget>
          </item>
@@ -335,8 +322,8 @@
            </property>
           </widget>
          </item>
-         <item row="13" column="0">
-          <widget class="QLabel" name="correlationsDescriptionLabel">
+         <item row="14" column="0">
+          <widget class="QLabel" name="wishesDescriptionLabel">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -344,7 +331,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Effects</string>
+            <string>Wishes</string>
            </property>
           </widget>
          </item>
@@ -358,6 +345,19 @@
            </property>
            <property name="minimum">
             <number>-1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="13" column="0">
+          <widget class="QLabel" name="correlationsDescriptionLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Effects</string>
            </property>
           </widget>
          </item>
@@ -430,6 +430,13 @@
            </property>
           </widget>
          </item>
+         <item row="12" column="2" colspan="2">
+          <widget class="QLabel" name="independentFromPlannerLabel">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="2" colspan="2">
           <widget class="QPushButton" name="forceStartButton">
            <property name="enabled">
@@ -449,13 +456,6 @@
            </property>
           </widget>
          </item>
-         <item row="12" column="2" colspan="2">
-          <widget class="QLabel" name="independentFromPlannerLabel">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
          <item row="6" column="2" colspan="2">
           <widget class="QSpinBox" name="executionTimeSpinBox">
            <property name="enabled">
@@ -463,6 +463,19 @@
            </property>
            <property name="minimum">
             <number>-1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="15" column="2">
+          <widget class="QPushButton" name="removePushButton">
+           <property name="maximumSize">
+            <size>
+             <width>200</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Remove</string>
            </property>
           </widget>
          </item>

@@ -7,7 +7,7 @@ import rospy
 import rospkg
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
-from rhbp_core.srv import Enable, SetInteger
+from rhbp_core.srv import Enable, SetInteger, RemoveGoal
 from PyQt5.QtCore import pyqtSignal
 
 # Custum Widget for goal
@@ -26,6 +26,7 @@ class GoalWidget(QWidget):
         self.goalGroupBox.setTitle(self._name)
         self.activatedCheckbox.toggled.connect(self.activationCallback)
         self.priorityButton.clicked.connect(self.setPriorityCallback)
+        self.removePushButton.clicked.connect(self.removeCallback)
         self.updateGUIsignal.connect(self.updateGUI)
 
     def _get_service_prefix(self):
@@ -71,6 +72,14 @@ class GoalWidget(QWidget):
         activateRequest = rospy.ServiceProxy(service_name, Enable)
         activateRequest(status)
         rospy.logdebug("Set enabled of %s goal to %s", self._name, status)
+
+    def removeCallback(self):
+        service_name = self._overviewPlugin.planner_prefix + '/' + 'RemoveGoal'
+        rospy.logdebug("Waiting for service %s", service_name)
+        rospy.wait_for_service(service_name)
+        removeRequest = rospy.ServiceProxy(service_name, RemoveGoal)
+        removeRequest(self._name)
+        rospy.logdebug("Removed %s", self._name)
        
     def setPriorityCallback(self):
         service_name = self._get_service_prefix() + 'Priority'
