@@ -286,7 +286,7 @@ class Manager(object):
         """
 
         problemPDDLString = "(define (problem problem-{0})\n\t(:domain {0})\n\t(:init \n\t\t{1}\n\t)\n".format(
-            self._getDomainName(), state_pddl.statement)  # at this point the "previous" is the current state PDDL
+            self._getDomainName(), state_pddl.statement)
         problemPDDLString += "\t(:goal (and {0}))\n\t(:metric minimize (costs))\n".format(goal_conditions_string)
         problemPDDLString += ")\n"
         return problemPDDLString
@@ -334,6 +334,7 @@ class Manager(object):
         # return directly if planner is disabled or we are missing goals or behaviours
         if not self.activation_algorithm.is_planner_enabled() \
                 or len(self._operational_behaviours) == 0 or len(self._operational_goals) == 0:
+            self._currently_pursued_goals = []
             return
 
         # _fetchPDDL also updates our self.__sensorChanges and self.__goalPDDLs dictionaries
@@ -414,6 +415,8 @@ class Manager(object):
                     self._planExecutionIndex = 0
                     self._plan = {}
                     self._log_pddl_files(domain_pddl, problem_pddl, goal_sequence)
+            if not self._plan:
+                self._currently_pursued_goals = []
         else:
             rhbplog.loginfo("### NOT PLANNING ### because replanning needed: %s\n"
                             "planIndex: %s, unexpected_behaviour_finished:%s, all_changes_were_not_expected:%s, "
@@ -1147,7 +1150,8 @@ class Manager(object):
 
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
 
-        # rhbplog.logerr("ADDITIONAL) Domain: %s\n, Problem: %s\n, Plan: %s", domain_pddl, problem_pddl, plan)
+        #if not (plan and "cost" in plan and plan["cost"] != -1.0):
+        #   rhbplog.logerr("%s ADDITIONAL) Plan: %s", self.prefix, plan)
 
         return plan
 
@@ -1177,9 +1181,12 @@ class Manager(object):
             problem_pddl = self._create_problem_pddl_string(goal_conditions_string=goal_statement,
                                                             state_pddl=state_pddl)
 
+        # if not (plan and "cost" in plan and plan["cost"] != -1.0):
+        #   rhbplog.logerr("%s SINGLE) Domain: %s\n, Problem: %s\n", self.prefix, domain_pddl, problem_pddl)
+
         plan = self.planner.plan(domain_pddl=domain_pddl, problem_pddl=problem_pddl)
 
-        # rhbplog.logerr("SINGLE) Domain: %s\n, Problem: %s\n, Plan: %s", domain_pddl, problem_pddl, plan)
+        # rhbplog.logerr("%s Plan: %s", self.prefix, plan)
 
         return plan
 
