@@ -19,7 +19,14 @@ RHBP is a planning and decision making component for ROS. The hybrid approach is
 Required for knowledge_base
 
 ```bash
-pip install lindypy
+pip install --user lindypy
+
+```
+
+Required for rhbp_rl
+
+```bash
+pip install --user h5py
 
 ```
 
