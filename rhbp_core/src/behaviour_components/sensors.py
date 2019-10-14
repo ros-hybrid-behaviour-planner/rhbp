@@ -22,26 +22,6 @@ import utils.rhbp_logging
 rhbplog = utils.rhbp_logging.LogManager(logger_name=utils.rhbp_logging.LOGGER_DEFAULT_NAME + '.conditions.sensors')
 
 
-class EncodingConstants(object):
-    """
-    choose here an appropriate encoding style
-    """
-    HOT_STATE = "hot_state"  # Chose this for nominal, categorical, and discrete values, e.g. booleans
-    NONE_STATE = "none"
-
-
-class RlExtension(object):
-    """
-    This Extension can be included in the Sensors. It determines how the true values of the sensors should be used the
-    RL-algorithm.
-    # Encoding types = [ hot_state , none] see EncodingConstants above
-    """
-    # TODO state_space does not work for negative numbers!
-    def __init__(self, encoding="none", state_space=2, include_in_rl=True):
-        self.encoding = encoding
-        self.state_space = state_space  # State space is only required for EncodingConstants.HOT_STATE
-        self.include_in_rl = include_in_rl  # True if it should be used for learning
-
 
 class Sensor(object):
     """
@@ -64,7 +44,6 @@ class Sensor(object):
         self._latestValue = initial_value
         self._latest_value_update_time = self._value_update_time
         self._initial_value = initial_value
-        self.rl_extension = RlExtension()
         Sensor._instanceCounter += 1
 
     def sync(self):
