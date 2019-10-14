@@ -26,9 +26,6 @@ class SensorValueTransformer(object):
         sensor_value = SensorValue()
         sensor_value.name = sensor.name
         sensor_value.value = value
-        sensor_value.encoding = sensor.rl_extension.encoding
-        sensor_value.state_space = sensor.rl_extension.state_space
-        sensor_value.include_in_rl = sensor.rl_extension.include_in_rl
         return sensor_value
 
     def get_value_of_condition(self, cond):
